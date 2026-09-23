@@ -67,7 +67,16 @@ object PushBridge {
 }
 
 class RegistrationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
-    override fun doWork(): Result = if (PushBridge.sync(applicationContext)) Result.success() else Result.retry()
+    override fun doWork(): Result {
+        val ready = PushBridge.sync(applicationContext)
+        if (ready) {
+            // Once server push registration is confirmed, the phone should stay idle.
+            // Token refreshes and setting changes schedule their own one-shot syncs.
+            WorkManager.getInstance(applicationContext).cancelUniqueWork("index-watch")
+            return Result.success()
+        }
+        return Result.retry()
+    }
 }
 
 class AlertFirebaseService : FirebaseMessagingService() {
