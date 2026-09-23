@@ -40,9 +40,11 @@ class DashboardActivity : ComponentActivity() {
         }
 
         val firebaseConfigured = PushBridge.tryInit(this)
+        // Keep a local safety watch only until the server confirms this device's
+        // FCM registration. Once confirmed, periodic phone work is cancelled.
         ensureLocalWatch()
         status.value = if (firebaseConfigured) {
-            "Firebase 앱 연결됨 · 서버 인증 확인 중 · 15분 로컬 감시 유지"
+            "Firebase 앱 연결됨 · 서버 등록 확인 중 · 임시 로컬 감시 유지"
         } else {
             "Firebase 설정 전 · 15분 로컬 감시 모드"
         }
@@ -65,6 +67,10 @@ class DashboardActivity : ComponentActivity() {
         val req = PeriodicWorkRequestBuilder<IndexWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(this)
             .enqueueUniquePeriodicWork("index-watch", ExistingPeriodicWorkPolicy.UPDATE, req)
+    }
+
+    private fun stopLocalWatch() {
+        WorkManager.getInstance(this).cancelUniqueWork("index-watch")
     }
 
     private fun refreshNow() {
@@ -91,10 +97,10 @@ class DashboardActivity : ComponentActivity() {
 
             snapshots.value = result.first
             serverPushReady = result.second
-            ensureLocalWatch()
+            if (serverPushReady) stopLocalWatch() else ensureLocalWatch()
 
             val mode = when {
-                serverPushReady -> "서버 등록 확인 · 15분마다 연결 재확인"
+                serverPushReady -> "서버 푸시 감시 활성화 · 휴대폰 주기 조회 없음"
                 PushBridge.configured() -> "서버 등록 재시도 중 · 15분 로컬 감시 유지"
                 else -> "Firebase 설정 전 · 15분 로컬 감시 모드"
             }
@@ -148,4 +154,3 @@ object BackendMarket {
         return if (v.isFinite()) v else null
     }
 }
-
