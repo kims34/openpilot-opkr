@@ -1,5 +1,6 @@
 package com.indexalert.app
 
+import android.app.NotificationManager
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -18,6 +19,9 @@ object PushBridge {
     fun configured(): Boolean = BuildConfig.INDEXALERT_BACKEND_URL.isNotBlank() &&
         BuildConfig.FIREBASE_APP_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() &&
         BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() && BuildConfig.FIREBASE_SENDER_ID.isNotBlank()
+
+    fun notificationsEnabled(ctx: Context): Boolean =
+        (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).areNotificationsEnabled()
 
     fun tryInit(ctx: Context): Boolean {
         if (!configured()) return false
@@ -42,6 +46,9 @@ object PushBridge {
     @Synchronized
     fun sync(ctx: Context): Boolean = runCatching {
         check(configured())
+        // Do not tell the server this device is ready until Android can actually
+        // show notifications. The permission callback schedules another sync.
+        check(notificationsEnabled(ctx))
         val token = Tasks.await(FirebaseMessaging.getInstance().token, 15, TimeUnit.SECONDS)
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
         val enabled = JSONObject()
@@ -68,6 +75,9 @@ object PushBridge {
 
 class RegistrationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
+        // Permission denial is not a transient network error. Avoid an endless
+        // background retry loop; granting permission schedules a fresh sync.
+        if (!PushBridge.notificationsEnabled(applicationContext)) return Result.success()
         val ready = PushBridge.sync(applicationContext)
         if (ready) {
             // Once server push registration is confirmed, the phone should stay idle.
@@ -101,7 +111,7 @@ class AlertFirebaseService : FirebaseMessagingService() {
             val deliveredKey = "delivered_${id}_${cycle}_${threshold}"
             if (eventId in seen || prefs.getBoolean(deliveredKey, false)) return
             createChannel(ctx)
-            // Persist receipt even when system notification permission is disabled.
+            // Persist receipt even when the OS suppresses presentation later.
             HistoryStore.add(ctx, "$title / $body")
             val edit = prefs.edit().putString("received_events", (listOf(eventId) + seen).take(200).joinToString("\n"))
             val thresholds = runCatching { JSONArray(message.data["thresholds"] ?: "[$threshold]") }.getOrDefault(JSONArray().put(threshold))
