@@ -178,6 +178,7 @@ fun Home(
                                     onCheckedChange = {
                                         enabled = it
                                         prefs.edit().putBoolean("enabled_${rule.id}_${lv.first}", it).apply()
+                                        PushBridge.scheduleSync(ctx)
                                     }
                                 )
                             }
@@ -345,6 +346,7 @@ object MarketEngine {
 
 class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
+        if (PushBridge.sync(applicationContext)) return Result.success()
         rules.forEach { rule -> runCatching { check(rule) } }
         return Result.success()
     }
@@ -360,8 +362,6 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
         }
         if (crossed.isEmpty()) return
         val edit = prefs.edit()
-        crossed.forEach { edit.putBoolean("fired_${rule.id}_${it.first}", true) }
-        edit.apply()
         val deepest = crossed.maxBy { it.first }
         val next = rule.levels.firstOrNull { it.first > deepest.first }
         val title = "${rule.name} -${deepest.first}% 매수구간 진입"
@@ -370,14 +370,22 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
             append(" · ${s.sourceText}")
             if (next != null) append(" · 다음 -${next.first}%")
         }
-        notify(applicationContext, title, body)
+        if (!notify(applicationContext, title, body)) return
+        crossed.forEach { edit.putBoolean("fired_${rule.id}_${it.first}", true) }
+        edit.apply()
         HistoryStore.add(applicationContext, "$title / $body")
     }
 
     companion object {
-        fun notify(ctx: Context, title: String, body: String) {
+        fun notify(ctx: Context, title: String, body: String): Boolean {
+            createChannel(ctx)
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (!nm.areNotificationsEnabled()) return false
+            val intent = android.content.Intent(ctx, DashboardActivity::class.java)
+            val pending = android.app.PendingIntent.getActivity(ctx, 0, intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
             val n = NotificationCompat.Builder(ctx, "index_alerts")
+                .setContentIntent(pending)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -385,12 +393,16 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .build()
-            nm.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), n)
+            return runCatching {
+                nm.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), n)
+                true
+            }.getOrDefault(false)
         }
     }
 }
 
 object HistoryStore {
+    @Synchronized
     fun add(ctx: Context, text: String) {
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
         val stamp = SimpleDateFormat("MM/dd HH:mm", Locale.KOREA).format(Date())
@@ -413,3 +425,4 @@ fun createChannel(ctx: Context) {
         nm.createNotificationChannel(channel)
     }
 }
+

@@ -72,7 +72,7 @@ class DashboardActivity : ComponentActivity() {
         loading.value = true
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                val ready = PushBridge.configured() && PushBridge.serverFirebaseReady()
+                val ready = PushBridge.sync(applicationContext)
                 val data = if (PushBridge.configured()) {
                     runCatching { BackendMarket.snapshots(applicationContext) }.getOrElse {
                         rules.map { r ->
@@ -91,15 +91,11 @@ class DashboardActivity : ComponentActivity() {
 
             snapshots.value = result.first
             serverPushReady = result.second
-            if (serverPushReady) {
-                WorkManager.getInstance(this@DashboardActivity).cancelUniqueWork("index-watch")
-            } else {
-                ensureLocalWatch()
-            }
+            ensureLocalWatch()
 
             val mode = when {
-                serverPushReady -> "서버 푸시 감시 활성화 · 휴대폰 주기 조회 없음"
-                PushBridge.configured() -> "서버 Firebase 인증 대기 · 15분 로컬 감시 유지"
+                serverPushReady -> "서버 등록 확인 · 15분마다 연결 재확인"
+                PushBridge.configured() -> "서버 등록 재시도 중 · 15분 로컬 감시 유지"
                 else -> "Firebase 설정 전 · 15분 로컬 감시 모드"
             }
             status.value = "$mode · ${SimpleDateFormat("MM/dd HH:mm", Locale.KOREA).format(Date())}"
@@ -152,3 +148,4 @@ object BackendMarket {
         return if (v.isFinite()) v else null
     }
 }
+
