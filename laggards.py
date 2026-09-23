@@ -400,15 +400,16 @@ def refresh(monitor):
                 ],
             )
 
+        status_updates = []
         with monitor.db() as con:
             con.execute("DELETE FROM universe_laggard_cache")
             for universe, members in universes.items():
                 rows = [result_map[s] for s in members if s in result_map]
                 coverage = len(rows)
                 total = len(members)
-                _set_meta(monitor, f"laggard_{universe}_coverage", f"{coverage}/{total}")
                 status = "ready" if total > 0 and coverage >= max(10, int(total * 0.80)) else "building"
-                _set_meta(monitor, f"laggard_{universe}_status", status)
+                status_updates.append((f"laggard_{universe}_coverage", f"{coverage}/{total}"))
+                status_updates.append((f"laggard_{universe}_status", status))
                 if status != "ready":
                     continue
                 ranked = sorted(rows, key=lambda x: x["drawdown"])[:10]
@@ -426,6 +427,8 @@ def refresh(monitor):
                     ],
                 )
 
+        for key, value in status_updates:
+            _set_meta(monitor, key, value)
         _set_meta(monitor, "laggard_source_time", now)
         _set_meta(monitor, "laggard_status", "ready")
     except Exception as exc:
@@ -463,7 +466,6 @@ def get(monitor):
                 ],
             }
 
-    # Keep the old top-level S&P500 fields for v0.9 clients while v1.0 rolls out.
     sp = sections["sp500"]
     return {
         "status": meta.get("laggard_status", "building"),
