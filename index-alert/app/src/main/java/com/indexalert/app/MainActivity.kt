@@ -147,7 +147,12 @@ data class LaggardItem(
     val drawdown: Double,
     val sp500: Boolean,
     val nasdaq100: Boolean,
-    val schd: Boolean
+    val schd: Boolean,
+    val universe: String = "sp500",
+    val previousClose: Double = 0.0,
+    val dayChange: Double = 0.0,
+    val dayChangePercent: Double = 0.0,
+    val athDays: Int = 0
 )
 
 @Composable
@@ -162,9 +167,7 @@ fun Home(
 ) {
     val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
     var refreshHistory by remember { mutableIntStateOf(0) }
-    Column(
-        Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())
-    ) {
+    Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         Text("시장 하락 알리미", style = MaterialTheme.typography.headlineMedium)
         Text("SPY · QQQ · SCHD · KOSPI100 / ATH 기준 현황", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(14.dp))
@@ -185,23 +188,31 @@ fun Home(
         Text(statusText, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall)
 
         Spacer(Modifier.height(10.dp))
-        if (snapshots.isEmpty() && loading) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
+        if (snapshots.isEmpty() && loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         snapshots.forEach { s -> IndexCard(s) }
 
-        if (laggardStatus.isNotBlank() || laggards.isNotEmpty()) {
-            Spacer(Modifier.height(18.dp))
-            Text("S&P500 개별종목 ATH 하락 TOP 10", style = MaterialTheme.typography.titleLarge)
-            Text("ATH 대비 하락률이 큰 순 · 구성종목 소속은 중복 표시", style = MaterialTheme.typography.bodySmall)
-            if (laggards.isEmpty()) {
-                Text(laggardStatus.ifBlank { "순위 계산 중" }, Modifier.padding(top = 8.dp))
-            } else {
-                laggards.forEach { LaggardCard(it) }
-                if (laggardStatus.isNotBlank()) {
-                    Text(laggardStatus, Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall)
-                }
+        Spacer(Modifier.height(18.dp))
+        Text("개별종목 ATH 하락 TOP 10", style = MaterialTheme.typography.titleLarge)
+        Text("각 그룹별 ATH 대비 하락률이 큰 순 · 중복 편입은 그대로 표시", style = MaterialTheme.typography.bodySmall)
+        val groups = listOf(
+            "sp500" to "S&P500 하락 TOP 10",
+            "nasdaq100" to "NASDAQ100 하락 TOP 10",
+            "schd" to "SCHD 보유종목 하락 TOP 10"
+        )
+        var anyGroup = false
+        groups.forEach { (key, title) ->
+            val group = laggards.filter { it.universe == key }.sortedBy { it.rank }
+            if (group.isNotEmpty()) {
+                anyGroup = true
+                Spacer(Modifier.height(12.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                group.forEach { LaggardCard(it) }
             }
+        }
+        if (!anyGroup) {
+            Text(laggardStatus.ifBlank { "TOP10 순위 계산 중" }, Modifier.padding(top = 8.dp))
+        } else if (laggardStatus.isNotBlank()) {
+            Text(laggardStatus, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall)
         }
 
         Spacer(Modifier.height(18.dp))
@@ -213,9 +224,7 @@ fun Home(
                     Text(rule.name, style = MaterialTheme.typography.titleMedium)
                     rule.levels.forEach { lv ->
                         key("${rule.id}_${lv.first}") {
-                            var enabled by remember {
-                                mutableStateOf(prefs.getBoolean("enabled_${rule.id}_${lv.first}", true))
-                            }
+                            var enabled by remember { mutableStateOf(prefs.getBoolean("enabled_${rule.id}_${lv.first}", true)) }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("-${lv.first}%  ·  추가매수 자금 ${lv.second}%")
                                 Switch(
@@ -236,16 +245,14 @@ fun Home(
         Spacer(Modifier.height(18.dp))
         Text("최근 알림", style = MaterialTheme.typography.titleLarge)
         val history = remember(refreshHistory, statusText) { HistoryStore.list(ctx) }
-        if (history.isEmpty()) {
-            Text("아직 기록된 알림이 없습니다.", style = MaterialTheme.typography.bodySmall)
-        } else {
-            history.take(8).forEach { Text("• $it", Modifier.padding(vertical = 2.dp)) }
-        }
+        if (history.isEmpty()) Text("아직 기록된 알림이 없습니다.", style = MaterialTheme.typography.bodySmall)
+        else history.take(8).forEach { Text("• $it", Modifier.padding(vertical = 2.dp)) }
 
         Spacer(Modifier.height(18.dp))
         Text(
             "SPY · QQQ · SCHD는 정규장과 프리마켓·애프터마켓의 ETF 자체 가격을 서버가 감시합니다. " +
-                "KOSPI100은 지수 현황만 표시하며 알림을 보내지 않습니다. 무료 프로토타입 시세는 공식 거래소 실시간 피드와 다를 수 있습니다.",
+                "KOSPI100은 지수 현황만 표시하며 알림을 보내지 않습니다. 개별종목 TOP10은 서버 캐시를 주기적으로 갱신합니다. " +
+                "무료 프로토타입 시세는 공식 거래소 실시간 피드와 다를 수 있습니다.",
             style = MaterialTheme.typography.bodySmall
         )
         Spacer(Modifier.height(24.dp))
@@ -263,9 +270,7 @@ fun IndexCard(s: IndexSnapshot) {
                 Text("데이터 확인 실패: ${s.error}")
             } else {
                 Spacer(Modifier.height(8.dp))
-                val change = if (s.dayChange != null && s.dayChangePercent != null) {
-                    "  ${signed(s.dayChange)} (${signedPct(s.dayChangePercent)})"
-                } else ""
+                val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signed(s.dayChange)} (${signedPct(s.dayChangePercent)})" else ""
                 Text("현재값  ${fmt(s.current)}$change", style = MaterialTheme.typography.titleMedium)
                 val age = s.athDays?.let { if (it == 0) " · 오늘 최고가" else " · 최고가 후 ${it}일" } ?: ""
                 val date = s.athDate?.let { " ($it)" } ?: ""
@@ -286,13 +291,15 @@ fun LaggardCard(item: LaggardItem) {
     Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(Modifier.padding(12.dp)) {
             Text("${item.rank}. ${item.symbol} · ${item.name}", style = MaterialTheme.typography.titleMedium)
-            Text("현재 ${fmt(item.current)} · ATH ${fmt(item.ath)} · ${String.format(Locale.US, "%.2f%%", item.drawdown)}")
+            Text("현재 ${fmt(item.current)}  ${signed(item.dayChange)} (${signedPct(item.dayChangePercent)})")
+            val age = if (item.athDays == 0) "오늘 최고가" else "최고가 후 ${item.athDays}일"
+            Text("ATH ${fmt(item.ath)} · $age · ATH 대비 ${String.format(Locale.US, "%.2f%%", item.drawdown)}")
             val memberships = buildList {
                 if (item.sp500) add("S&P500")
                 if (item.nasdaq100) add("Nasdaq100")
                 if (item.schd) add("SCHD")
             }.joinToString(" · ")
-            Text("포함: $memberships", style = MaterialTheme.typography.bodySmall)
+            Text("포함: ${memberships.ifBlank { "해당 없음" }}", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -301,14 +308,7 @@ private fun fmt(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f",
 private fun signed(v: Double): String = String.format(Locale.US, "%+,.2f", v)
 private fun signedPct(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
 
-data class ChartData(
-    val current: Double,
-    val previousClose: Double,
-    val marketState: String,
-    val high: Double,
-    val highTs: Long
-)
-
+data class ChartData(val current: Double, val previousClose: Double, val marketState: String, val high: Double, val highTs: Long)
 data class AthData(val value: Double, val timestamp: Long)
 
 object MarketEngine {
@@ -321,20 +321,13 @@ object MarketEngine {
         val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         if (ath <= 0 || prefs.getString("ath_day_${rule.id}", null) != day) {
             val hist = fetchAth(rule.cashSymbol)
-            if (hist.value >= ath) {
-                ath = hist.value
-                athTs = hist.timestamp
-            }
+            if (hist.value >= ath) { ath = hist.value; athTs = hist.timestamp }
             prefs.edit().putString("ath_day_${rule.id}", day).apply()
         }
-        if (baseData.high >= ath) {
-            ath = baseData.high
-            athTs = baseData.highTs
-        }
+        if (baseData.high >= ath) { ath = baseData.high; athTs = baseData.highTs }
         prefs.edit().putString(key, ath.toString()).putLong("ath_ts_${rule.id}", athTs).apply()
         val current = baseData.current
         val source = if (rule.id == "kospi100") "KOSPI 100 지수 · 로컬 보조 조회" else "ETF 자체 가격 · 로컬 보조 조회"
-
         val dd = if (ath > 0) (current / ath - 1.0) * 100.0 else 0.0
         val dayChange = current - baseData.previousClose
         val dayChangePct = if (baseData.previousClose > 0) (current / baseData.previousClose - 1.0) * 100.0 else 0.0
@@ -347,12 +340,7 @@ object MarketEngine {
         val zone = ZoneId.of(rule.timezone)
         val athDate = if (athTs > 0) Instant.ofEpochSecond(athTs).atZone(zone).toLocalDate() else null
         val athDays = athDate?.let { ChronoUnit.DAYS.between(it, java.time.LocalDate.now(zone)).toInt().coerceAtLeast(0) }
-
-        return IndexSnapshot(
-            rule, current, ath, dd, stageText, nextText, source,
-            dayChange, dayChangePct, athDate?.toString(), athDays,
-            alertsEnabled = rule.levels.isNotEmpty()
-        )
+        return IndexSnapshot(rule, current, ath, dd, stageText, nextText, source, dayChange, dayChangePct, athDate?.toString(), athDays, rule.levels.isNotEmpty())
     }
 
     private fun fetchCurrent(symbol: String): ChartData {
@@ -363,16 +351,8 @@ object MarketEngine {
         val timestamps = result.optJSONArray("timestamp")
         var last = Double.NaN
         var lastIndex = -1
-        for (i in closes.length() - 1 downTo 0) {
-            if (!closes.isNull(i)) {
-                last = closes.getDouble(i)
-                lastIndex = i
-                break
-            }
-        }
-        if (!last.isFinite()) {
-            last = meta.optDouble("regularMarketPrice", Double.NaN)
-        }
+        for (i in closes.length() - 1 downTo 0) if (!closes.isNull(i)) { last = closes.getDouble(i); lastIndex = i; break }
+        if (!last.isFinite()) last = meta.optDouble("regularMarketPrice", Double.NaN)
         val prev = when {
             meta.has("regularMarketPreviousClose") -> meta.optDouble("regularMarketPreviousClose", Double.NaN)
             meta.has("chartPreviousClose") -> meta.optDouble("chartPreviousClose", Double.NaN)
@@ -386,10 +366,7 @@ object MarketEngine {
         var recentHighTs = if (timestamps != null && lastIndex >= 0) timestamps.optLong(lastIndex, 0L) else 0L
         if (highs != null) for (i in 0 until highs.length()) {
             val high = highs.optDouble(i, Double.NaN)
-            if (high.isFinite() && high >= recentHigh) {
-                recentHigh = high
-                recentHighTs = timestamps?.optLong(i, recentHighTs) ?: recentHighTs
-            }
+            if (high.isFinite() && high >= recentHigh) { recentHigh = high; recentHighTs = timestamps?.optLong(i, recentHighTs) ?: recentHighTs }
         }
         return ChartData(last, previousClose, meta.optString("marketState", "CLOSED"), recentHigh, recentHighTs)
     }
@@ -410,7 +387,6 @@ object MarketEngine {
         val timestamps = result.getJSONArray("timestamp")
         val quote = result.getJSONObject("indicators").getJSONArray("quote").getJSONObject(0)
         val highs = quote.getJSONArray("high")
-
         val splits = mutableListOf<Pair<Long, Double>>()
         val splitObj = result.optJSONObject("events")?.optJSONObject("splits")
         if (splitObj != null) {
@@ -421,9 +397,8 @@ object MarketEngine {
                 var ratio = 0.0
                 val num = ev.optDouble("numerator", 0.0)
                 val den = ev.optDouble("denominator", 0.0)
-                if (num > 0.0 && den > 0.0) {
-                    ratio = num / den
-                } else {
+                if (num > 0.0 && den > 0.0) ratio = num / den
+                else {
                     val raw = ev.optString("splitRatio", "")
                     if (raw.contains(":")) {
                         val p = raw.split(":", limit = 2)
@@ -433,7 +408,6 @@ object MarketEngine {
                 if (ts > 0L && ratio > 0.0) splits.add(ts to ratio)
             }
         }
-
         var ath = 0.0
         var athTs = 0L
         val count = minOf(timestamps.length(), highs.length())
@@ -445,10 +419,7 @@ object MarketEngine {
             var factor = 1.0
             splits.forEach { (splitTs, ratio) -> if (splitTs > ts) factor *= ratio }
             val adjusted = h / factor
-            if (adjusted >= ath) {
-                ath = adjusted
-                athTs = ts
-            }
+            if (adjusted >= ath) { ath = adjusted; athTs = ts }
         }
         if (ath <= 0) error("ATH 계산 실패")
         return AthData(ath, athTs)
@@ -487,9 +458,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
             val dd = s.drawdown ?: return
             val prefs = applicationContext.getSharedPreferences("state", Context.MODE_PRIVATE)
             val crossed = rule.levels.filter { lv ->
-                prefs.getBoolean("enabled_${rule.id}_${lv.first}", true) &&
-                    dd <= -lv.first &&
-                    !prefs.getBoolean("delivered_${rule.id}_${s.ath}_${lv.first}", false)
+                prefs.getBoolean("enabled_${rule.id}_${lv.first}", true) && dd <= -lv.first && !prefs.getBoolean("delivered_${rule.id}_${s.ath}_${lv.first}", false)
             }
             if (crossed.isEmpty()) return
             val edit = prefs.edit()
@@ -514,10 +483,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (!nm.areNotificationsEnabled()) return false
             val intent = android.content.Intent(ctx, DashboardActivity::class.java)
-            val pending = android.app.PendingIntent.getActivity(
-                ctx, 0, intent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-            )
+            val pending = android.app.PendingIntent.getActivity(ctx, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
             val n = NotificationCompat.Builder(ctx, "index_alerts")
                 .setContentIntent(pending)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -527,10 +493,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .build()
-            return runCatching {
-                nm.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), n)
-                true
-            }.getOrDefault(false)
+            return runCatching { nm.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), n); true }.getOrDefault(false)
         }
     }
 }
