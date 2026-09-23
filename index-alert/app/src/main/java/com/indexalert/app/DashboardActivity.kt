@@ -32,7 +32,7 @@ private data class DashboardPayload(
     val laggardStatus: String
 )
 
-private data class LaggardFeed(val items: List<LaggardItem>, val statusText: String)
+data class LaggardFeed(val items: List<LaggardItem>, val statusText: String)
 
 class DashboardActivity : ComponentActivity() {
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
