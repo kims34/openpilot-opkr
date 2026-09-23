@@ -102,7 +102,7 @@ val rules = listOf(
     Rule(
         "djdiv", "SCHD 기준지수", "^DJUSDIV", "SCHD",
         listOf(5 to 15, 10 to 20, 15 to 20, 20 to 20, 25 to 15, 30 to 10),
-        "Dow Jones U.S. Dividend 100 · 미지원 시 SCHD 프록시"
+        "Dow Jones U.S. Dividend 100"
     )
 )
 
@@ -231,55 +231,25 @@ fun IndexCard(s: IndexSnapshot) {
 
 private fun fmt(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
 
-data class ChartData(val current: Double, val previousClose: Double, val marketState: String)
+data class ChartData(val current: Double, val previousClose: Double, val marketState: String, val high: Double)
 
 object MarketEngine {
     fun snapshot(ctx: Context, rule: Rule): IndexSnapshot {
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
-        var official = true
-        val cash = runCatching { fetchCurrent(rule.cashSymbol) }.getOrNull()
-        val baseData: ChartData
-        val athSymbol: String
-        if (cash != null) {
-            baseData = cash
-            athSymbol = rule.cashSymbol
-        } else if (rule.id == "djdiv" && rule.proxySymbol != null) {
-            baseData = fetchCurrent(rule.proxySymbol)
-            athSymbol = rule.proxySymbol
-            official = false
-        } else {
-            error("${rule.cashSymbol} 응답 없음")
+        // Local fallback uses official cash data only: an ETF price cannot share
+        // an index ATH, and an unanchored futures ratio can create false alerts.
+        val baseData = fetchCurrent(rule.cashSymbol)
+        val key = "ath_cash_${rule.id}"
+        var ath = prefs.getString(key, null)?.toDoubleOrNull() ?: 0.0
+        val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        if (ath <= 0 || prefs.getString("ath_day_${rule.id}", null) != day) {
+            ath = max(ath, fetchAth(rule.cashSymbol))
+            prefs.edit().putString("ath_day_${rule.id}", day).apply()
         }
-
-        var ath = prefs.getFloat("ath_${rule.id}", 0f).toDouble()
-        if (ath <= 0.0) {
-            ath = fetchAth(athSymbol)
-            prefs.edit().putFloat("ath_${rule.id}", ath.toFloat()).apply()
-        }
-
-        var current = baseData.current
-        var source = if (official) "현물지수" else "SCHD ETF 프록시"
-        val state = baseData.marketState.uppercase(Locale.US)
-
-        if (official && state != "REGULAR" && rule.proxySymbol != null) {
-            val proxy = runCatching { fetchCurrent(rule.proxySymbol) }.getOrNull()
-            if (proxy != null && proxy.previousClose > 0) {
-                current = baseData.current * (proxy.current / proxy.previousClose)
-                source = "장외시장 연동 추정치"
-            } else {
-                source = "현물 마지막 값"
-            }
-        }
-
-        if (official && state == "REGULAR" && baseData.current > ath) {
-            ath = baseData.current
-            val edit = prefs.edit().putFloat("ath_${rule.id}", ath.toFloat())
-            rule.levels.forEach { edit.putBoolean("fired_${rule.id}_${it.first}", false) }
-            edit.apply()
-        } else if (!official && baseData.current > ath) {
-            ath = baseData.current
-            prefs.edit().putFloat("ath_${rule.id}", ath.toFloat()).apply()
-        }
+        ath = max(ath, baseData.high)
+        prefs.edit().putString(key, ath.toString()).apply()
+        val current = baseData.current
+        val source = "현물 마지막 값 · 로컬 보조 조회"
 
         val dd = if (ath > 0) (current / ath - 1.0) * 100.0 else 0.0
         val enabledLevels = rule.levels.filter { prefs.getBoolean("enabled_${rule.id}_${it.first}", true) }
@@ -293,7 +263,7 @@ object MarketEngine {
     }
 
     private fun fetchCurrent(symbol: String): ChartData {
-        val result = fetchResult(symbol, "5d", "5m", true)
+        val result = fetchResult(symbol, "5d", "5m", false)
         val meta = result.getJSONObject("meta")
         val quote = result.getJSONObject("indicators").getJSONArray("quote").getJSONObject(0)
         val closes = quote.getJSONArray("close")
@@ -314,7 +284,13 @@ object MarketEngine {
         }
         val previousClose = if (prev.isFinite() && prev > 0) prev else last
         if (!last.isFinite() || last <= 0) error("현재값 없음")
-        return ChartData(last, previousClose, meta.optString("marketState", "CLOSED"))
+        val highs = quote.optJSONArray("high")
+        var recentHigh = last
+        if (highs != null) for (i in 0 until highs.length()) {
+            val high = highs.optDouble(i, Double.NaN)
+            if (high.isFinite()) recentHigh = max(recentHigh, high)
+        }
+        return ChartData(last, previousClose, meta.optString("marketState", "CLOSED"), recentHigh)
     }
 
     private fun fetchAth(symbol: String): Double {
@@ -358,7 +334,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
         val crossed = rule.levels.filter { lv ->
             prefs.getBoolean("enabled_${rule.id}_${lv.first}", true) &&
                 dd <= -lv.first &&
-                !prefs.getBoolean("fired_${rule.id}_${lv.first}", false)
+                !prefs.getBoolean("delivered_${rule.id}_${s.ath}_${lv.first}", false)
         }
         if (crossed.isEmpty()) return
         val edit = prefs.edit()
@@ -371,7 +347,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
             if (next != null) append(" · 다음 -${next.first}%")
         }
         if (!notify(applicationContext, title, body)) return
-        crossed.forEach { edit.putBoolean("fired_${rule.id}_${it.first}", true) }
+        crossed.forEach { edit.putBoolean("delivered_${rule.id}_${s.ath}_${it.first}", true) }
         edit.apply()
         HistoryStore.add(applicationContext, "$title / $body")
     }

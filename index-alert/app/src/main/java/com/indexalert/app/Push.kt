@@ -88,11 +88,16 @@ class AlertFirebaseService : FirebaseMessagingService() {
         val body = message.data["body"] ?: message.notification?.body ?: return
         synchronized(HistoryStore) {
             val seen = prefs.getString("received_events", "")!!.split('\n').filter { it.isNotBlank() }
-            if (eventId in seen) return
+            val cycle = message.data["cycle"] ?: ""
+            val deliveredKey = "delivered_${id}_${cycle}_${threshold}"
+            if (eventId in seen || prefs.getBoolean(deliveredKey, false)) return
             createChannel(ctx)
             // Persist receipt even when system notification permission is disabled.
             HistoryStore.add(ctx, "$title / $body")
-            prefs.edit().putString("received_events", (listOf(eventId) + seen).take(200).joinToString("\n")).commit()
+            val edit = prefs.edit().putString("received_events", (listOf(eventId) + seen).take(200).joinToString("\n"))
+            val thresholds = runCatching { JSONArray(message.data["thresholds"] ?: "[$threshold]") }.getOrDefault(JSONArray().put(threshold))
+            for (i in 0 until thresholds.length()) edit.putBoolean("delivered_${id}_${cycle}_${thresholds.getInt(i)}", true)
+            edit.commit()
             IndexWorker.notify(ctx, title, body)
         }
     }
