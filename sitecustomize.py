@@ -8,8 +8,9 @@ from bs4 import BeautifulSoup
 
 try:
     import laggards
-except Exception:
+except Exception as exc:
     laggards = None
+    print("constituent patch import failed", type(exc).__name__, flush=True)
 
 BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
@@ -52,23 +53,27 @@ def _symbols_from_html_table(html: str, header_names):
 def robust_nasdaq100_symbols():
     urls = [
         "https://indexes.nasdaq.com/Index/Weighting/NDX",
-        "https://en.wikipedia.org/wiki/Nasdaq-100",
+        "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies",
+        "https://stockanalysis.com/list/nasdaq-100-stocks/",
     ]
     for url in urls:
         try:
             r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
+            print("nasdaq source", url, r.status_code, len(r.text), flush=True)
             r.raise_for_status()
             out = _symbols_from_html_table(r.text, ("security symbol", "symbol", "ticker", "ticker symbol"))
+            print("nasdaq parsed", url, len(out), flush=True)
             if len(out) >= 90:
                 return out
-        except Exception:
-            continue
+        except Exception as exc:
+            print("nasdaq source failed", url, type(exc).__name__, flush=True)
     return set()
 
 
 def _schd_from_all_holdings():
     url = "https://www.schwabassetmanagement.com/allholdings/schd"
     r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
+    print("schd allholdings source", r.status_code, len(r.text), flush=True)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
     text = soup.get_text(" ", strip=True)
@@ -79,6 +84,7 @@ def _schd_from_all_holdings():
 def _schd_from_export_csv():
     product_url = "https://www.schwabassetmanagement.com/products/schd"
     r = requests.get(product_url, headers=BROWSER_HEADERS, timeout=30)
+    print("schd product source", r.status_code, len(r.text), flush=True)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
     href = None
@@ -88,9 +94,11 @@ def _schd_from_export_csv():
             href = a.get("href")
             break
     if not href:
+        print("schd export link missing", flush=True)
         return set()
     csv_url = urljoin(product_url, href)
     cr = requests.get(csv_url, headers=BROWSER_HEADERS, timeout=30)
+    print("schd export source", csv_url, cr.status_code, len(cr.content), flush=True)
     cr.raise_for_status()
     text = cr.content.decode("utf-8-sig", errors="replace")
     rows = list(csv.reader(io.StringIO(text)))
@@ -98,7 +106,7 @@ def _schd_from_export_csv():
         return set()
     header_idx = None
     symbol_col = None
-    for i, row in enumerate(rows[:20]):
+    for i, row in enumerate(rows[:30]):
         lowered = [c.strip().lower() for c in row]
         if "symbol" in lowered:
             header_idx = i
@@ -116,18 +124,32 @@ def _schd_from_export_csv():
     return out
 
 
+def _schd_from_stockanalysis():
+    url = "https://stockanalysis.com/etf/schd/holdings/"
+    r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
+    print("schd fallback source", r.status_code, len(r.text), flush=True)
+    r.raise_for_status()
+    out = _symbols_from_html_table(r.text, ("symbol", "ticker"))
+    return {x for x in out if not x.endswith("XX")}
+
+
 def robust_schd_symbols():
-    for loader in (_schd_from_all_holdings, _schd_from_export_csv):
+    best = set()
+    for loader in (_schd_from_all_holdings, _schd_from_export_csv, _schd_from_stockanalysis):
         try:
             out = loader()
+            print("schd parsed", loader.__name__, len(out), flush=True)
+            if len(out) > len(best):
+                best = out
             if len(out) >= 80:
                 return out
-        except Exception:
-            continue
-    return set()
+        except Exception as exc:
+            print("schd source failed", loader.__name__, type(exc).__name__, flush=True)
+    return best if len(best) >= 80 else set()
 
 
 if laggards is not None:
     laggards.UA = BROWSER_HEADERS
     laggards.nasdaq100_symbols = robust_nasdaq100_symbols
     laggards.schd_symbols = robust_schd_symbols
+    print("constituent source patch active", flush=True)
