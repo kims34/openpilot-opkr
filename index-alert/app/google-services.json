@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "610381086978",
+    "project_id": "indexalert-ac878",
+    "storage_bucket": "indexalert-ac878.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610381086978:android:ae3fe34164da421b0e821b",
+        "android_client_info": {
+          "package_name": "com.indexalert.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoibowitBZ2XJF5Jz4uGLmfVhjooeoz2E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
