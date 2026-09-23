@@ -24,9 +24,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build installable debug APK
-        run: gradle assembleDebug --stacktrace
+      - name: Build debug and unsigned release APKs
+        run: gradle assembleDebug assembleRelease --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: IndexAlert-v0.7-installable
+          name: IndexAlert-v0.8-debug
           path: index-alert/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IndexAlert-v0.8-unsigned-release
+          path: index-alert/app/build/outputs/apk/release/app-release-unsigned.apk
