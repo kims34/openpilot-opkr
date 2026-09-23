@@ -35,11 +35,11 @@ jobs:
           cp "$BT/lib/apksigner.jar" ../apksigner-tool/lib/
       - uses: actions/upload-artifact@v4
         with:
-          name: IndexAlert-v0.9-debug
+          name: IndexAlert-v1.0-debug
           path: index-alert/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: IndexAlert-v0.9-unsigned-release
+          name: IndexAlert-v1.0-unsigned-release
           path: index-alert/app/build/outputs/apk/release/app-release-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
