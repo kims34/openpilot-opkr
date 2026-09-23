@@ -12,14 +12,20 @@ android {
         applicationId = "com.indexalert.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4"
+        versionCode = 5
+        versionName = "0.5"
+
         val backendUrl = envString("INDEXALERT_BACKEND_URL").ifBlank { "https://indexalert-runtime-production.up.railway.app" }
+        val firebaseAppId = envString("FIREBASE_APP_ID").ifBlank { "1:610381086978:android:ae3fe34164da421b0e821b" }
+        val firebaseApiKey = envString("FIREBASE_API_KEY").ifBlank { "AIzaSyBoibowitBZ2XJF5Jz4uGLmfVhjooeoz2E" }
+        val firebaseProjectId = envString("FIREBASE_PROJECT_ID").ifBlank { "indexalert-ac878" }
+        val firebaseSenderId = envString("FIREBASE_SENDER_ID").ifBlank { "610381086978" }
+
         buildConfigField("String", "INDEXALERT_BACKEND_URL", "\"$backendUrl\"")
-        buildConfigField("String", "FIREBASE_APP_ID", "\"${envString("FIREBASE_APP_ID")}\"")
-        buildConfigField("String", "FIREBASE_API_KEY", "\"${envString("FIREBASE_API_KEY")}\"")
-        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${envString("FIREBASE_PROJECT_ID")}\"")
-        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${envString("FIREBASE_SENDER_ID")}\"")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"$firebaseAppId\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"$firebaseSenderId\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
