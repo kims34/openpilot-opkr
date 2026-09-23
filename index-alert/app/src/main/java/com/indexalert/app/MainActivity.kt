@@ -329,6 +329,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
 
     private fun check(rule: Rule) {
         val s = MarketEngine.snapshot(applicationContext, rule)
+        synchronized(HistoryStore) {
         val dd = s.drawdown ?: return
         val prefs = applicationContext.getSharedPreferences("state", Context.MODE_PRIVATE)
         val crossed = rule.levels.filter { lv ->
@@ -350,6 +351,7 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
         crossed.forEach { edit.putBoolean("delivered_${rule.id}_${s.ath}_${it.first}", true) }
         edit.apply()
         HistoryStore.add(applicationContext, "$title / $body")
+        }
     }
 
     companion object {

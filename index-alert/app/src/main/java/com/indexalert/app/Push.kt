@@ -41,7 +41,7 @@ object PushBridge {
 
     @Synchronized
     fun sync(ctx: Context): Boolean = runCatching {
-        if (!configured()) return false
+        check(configured())
         val token = Tasks.await(FirebaseMessaging.getInstance().token, 15, TimeUnit.SECONDS)
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
         val enabled = JSONObject()
