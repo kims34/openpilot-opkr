@@ -26,6 +26,13 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug and unsigned release APKs
         run: gradle assembleDebug assembleRelease --stacktrace
+      - name: Collect Android APK signing tools
+        run: |
+          BT=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          mkdir -p ../apksigner-tool/lib
+          cp "$BT/apksigner" ../apksigner-tool/
+          cp "$BT/zipalign" ../apksigner-tool/
+          cp "$BT/lib/apksigner.jar" ../apksigner-tool/lib/
       - uses: actions/upload-artifact@v4
         with:
           name: IndexAlert-v0.8-debug
@@ -34,3 +41,7 @@ jobs:
         with:
           name: IndexAlert-v0.8-unsigned-release
           path: index-alert/app/build/outputs/apk/release/app-release-unsigned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Android-apksigner-tool
+          path: apksigner-tool
