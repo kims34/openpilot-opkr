@@ -135,7 +135,7 @@ fun Home(
         Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())
     ) {
         Text("지수 하락 알리미", style = MaterialTheme.typography.headlineMedium)
-        Text("Galaxy S25 · ATH 대비 단계별 매수구간 알림", style = MaterialTheme.typography.bodyMedium)
+        Text("Android · ATH 대비 단계별 매수구간 알림", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(14.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -322,7 +322,10 @@ object MarketEngine {
 
 class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
-        if (PushBridge.sync(applicationContext)) return Result.success()
+        if (PushBridge.sync(applicationContext)) {
+            WorkManager.getInstance(applicationContext).cancelUniqueWork("index-watch")
+            return Result.success()
+        }
         rules.forEach { rule -> runCatching { check(rule) } }
         return Result.success()
     }
@@ -403,4 +406,3 @@ fun createChannel(ctx: Context) {
         nm.createNotificationChannel(channel)
     }
 }
-
