@@ -2,7 +2,7 @@ import math
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -283,14 +283,14 @@ def _history_ath(monitor, symbol: str):
     return best, best_ts
 
 
-def _daily_quote(monitor, symbol: str):
-    result = monitor.yahoo_result(_yahoo_symbol(symbol), "5d", "1d", False)
+def _market_quote(monitor, symbol: str):
+    result = monitor.yahoo_result(_yahoo_symbol(symbol), "5d", "5m", True)
     points = monitor.series(result)
     if not points:
         raise RuntimeError("quote unavailable")
     ts, current = points[-1]
-    previous_close = points[-2][1] if len(points) >= 2 else current
     meta = result.get("meta", {})
+    previous_close = current
     for key in ("regularMarketPreviousClose", "previousClose", "chartPreviousClose"):
         try:
             value = float(meta.get(key) or 0)
@@ -299,15 +299,23 @@ def _daily_quote(monitor, symbol: str):
                 break
         except Exception:
             pass
+
     highs = result.get("indicators", {}).get("quote", [{}])[0].get("high", []) or []
     timestamps = result.get("timestamp") or []
-    recent_high = current
-    recent_high_ts = ts
+    recent_high = 0.0
+    recent_high_ts = 0
+    regular_start = time(9, 30)
+    regular_end = time(16, 0)
     for hts, high in zip(timestamps, highs):
         if high is None:
             continue
         h = float(high)
-        if math.isfinite(h) and h >= recent_high:
+        if not math.isfinite(h) or h <= 0:
+            continue
+        local = datetime.fromtimestamp(int(hts), tz=timezone.utc).astimezone(NY)
+        if local.weekday() >= 5 or not (regular_start <= local.time() < regular_end):
+            continue
+        if h >= recent_high:
             recent_high = h
             recent_high_ts = int(hts)
     name = str(meta.get("longName") or meta.get("shortName") or symbol).strip()
@@ -349,13 +357,13 @@ def refresh(monitor):
             }
 
         def work(symbol):
-            current, previous_close, recent_high, recent_high_ts, quote_name = _daily_quote(monitor, symbol)
+            current, previous_close, recent_high, recent_high_ts, quote_name = _market_quote(monitor, symbol)
             name = sp_names.get(symbol) or quote_name or symbol
             if symbol in existing:
                 ath, ath_ts = existing[symbol]
             else:
                 ath, ath_ts = _history_ath(monitor, symbol)
-            if recent_high >= ath:
+            if recent_high > 0 and recent_high >= ath:
                 ath, ath_ts = recent_high, recent_high_ts
             if ath <= 0 or current <= 0 or previous_close <= 0:
                 raise RuntimeError("invalid values")
@@ -401,6 +409,7 @@ def refresh(monitor):
             )
 
         status_updates = []
+        summaries = {}
         with monitor.db() as con:
             con.execute("DELETE FROM universe_laggard_cache")
             for universe, members in universes.items():
@@ -410,27 +419,30 @@ def refresh(monitor):
                 status = "ready" if total > 0 and coverage >= max(10, int(total * 0.80)) else "building"
                 status_updates.append((f"laggard_{universe}_coverage", f"{coverage}/{total}"))
                 status_updates.append((f"laggard_{universe}_status", status))
-                if status != "ready":
-                    continue
-                ranked = sorted(rows, key=lambda x: x["drawdown"])[:10]
-                con.executemany(
-                    """INSERT INTO universe_laggard_cache(
-                           universe,rank,symbol,name,current,previous_close,day_change,day_change_pct,
-                           ath,ath_ts,ath_days,drawdown,in_sp500,in_nasdaq100,in_schd,updated_at)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    [
-                        (universe, i, r["symbol"], r["name"], r["current"], r["previous_close"],
-                         r["day_change"], r["day_change_pct"], r["ath"], r["ath_ts"], r["ath_days"],
-                         r["drawdown"], int(r["symbol"] in sp500), int(r["symbol"] in ndx),
-                         int(r["symbol"] in schd), now)
-                        for i, r in enumerate(ranked, 1)
-                    ],
-                )
+                item_count = 0
+                if status == "ready":
+                    ranked = sorted(rows, key=lambda x: x["drawdown"])[:10]
+                    item_count = len(ranked)
+                    con.executemany(
+                        """INSERT INTO universe_laggard_cache(
+                               universe,rank,symbol,name,current,previous_close,day_change,day_change_pct,
+                               ath,ath_ts,ath_days,drawdown,in_sp500,in_nasdaq100,in_schd,updated_at)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        [
+                            (universe, i, r["symbol"], r["name"], r["current"], r["previous_close"],
+                             r["day_change"], r["day_change_pct"], r["ath"], r["ath_ts"], r["ath_days"],
+                             r["drawdown"], int(r["symbol"] in sp500), int(r["symbol"] in ndx),
+                             int(r["symbol"] in schd), now)
+                            for i, r in enumerate(ranked, 1)
+                        ],
+                    )
+                summaries[universe] = {"coverage": f"{coverage}/{total}", "status": status, "items": item_count}
 
         for key, value in status_updates:
             _set_meta(monitor, key, value)
         _set_meta(monitor, "laggard_source_time", now)
         _set_meta(monitor, "laggard_status", "ready")
+        print("laggard refresh complete", summaries, flush=True)
     except Exception as exc:
         _set_meta(monitor, "laggard_status", "error")
         _set_meta(monitor, "laggard_error", type(exc).__name__)
