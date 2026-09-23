@@ -5,7 +5,7 @@ from monitor import app, send_push
 _TEST_SENT = False
 _TEST_RESULT = None
 
-@app.get("/test-push/{key}")
+@app.get("/test_push/{key}")
 def test_push(key: str):
     global _TEST_SENT, _TEST_RESULT
     expected = os.getenv("TEST_PUSH_KEY", "")
