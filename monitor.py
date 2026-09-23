@@ -1,4 +1,4 @@
-import json, os, sqlite3, threading, time
+import json, os, sqlite3, threading, time, uuid, math
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -15,6 +15,7 @@ POLL_SECONDS = max(60, int(os.getenv("MARKET_POLL_SECONDS", "60")))
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 UA = {"User-Agent": "Mozilla/5.0 IndexAlert/1.0"}
 LOCK = threading.Lock()
+ATH_REFRESH = {}
 
 RULES = {
     "sp500": {
@@ -34,12 +35,14 @@ RULES = {
     },
 }
 
-app = FastAPI(title="IndexAlert Monitor", version="1.1.1")
+app = FastAPI(title="IndexAlert Monitor", version="1.2.0")
 scheduler = BackgroundScheduler(timezone="UTC")
 
 class RegisterBody(BaseModel):
     token: str
     platform: str = "android"
+    enabled_levels: dict[str, list[int]] | None = None
+    protocol: int = 1
 
 @contextmanager
 def db():
@@ -65,6 +68,24 @@ def init_db():
             PRIMARY KEY(index_id, threshold)
         );
         """)
+
+        columns = {r[1] for r in con.execute("PRAGMA table_info(devices)")}
+        if "settings" not in columns:
+            con.execute("ALTER TABLE devices ADD COLUMN settings TEXT NOT NULL DEFAULT '{}'")
+            con.execute("ALTER TABLE devices ADD COLUMN protocol INTEGER NOT NULL DEFAULT 1")
+        con.executescript("""
+        CREATE TABLE IF NOT EXISTS deliveries(
+          token TEXT, index_id TEXT, cycle TEXT, threshold INTEGER,
+          event_id TEXT, payload TEXT, created REAL, sent INTEGER DEFAULT 0,
+          PRIMARY KEY(token,index_id,cycle,threshold));
+        CREATE TABLE IF NOT EXISTS migrations(name TEXT PRIMARY KEY);
+        """)
+        if not con.execute("SELECT 1 FROM migrations WHERE name='device-ledger'").fetchone():
+            con.execute("""INSERT OR IGNORE INTO deliveries
+              SELECT d.token,f.index_id,CAST(s.ath AS TEXT),f.threshold,'legacy','{}',0,1
+              FROM devices d CROSS JOIN fired f JOIN index_state s ON s.id=f.index_id""")
+            con.execute("INSERT INTO migrations VALUES('device-ledger')")
+
 
 def init_firebase() -> bool:
     if firebase_admin._apps:
@@ -182,42 +203,83 @@ def mark_fired(index_id: str, thresholds):
             [(index_id, int(t)) for t in thresholds],
         )
 
-def send_push(title: str, body: str, data: dict):
+def deliver_pending(index_id, cycle):
     if not init_firebase():
-        print("FCM not configured:", title, body, flush=True)
-        return 0
+        return
     with db() as con:
-        tokens = [r[0] for r in con.execute("SELECT token FROM devices").fetchall()]
-    sent, dead = 0, []
-    for token in tokens:
-        try:
-            messaging.send(messaging.Message(
-                token=token,
-                notification=messaging.Notification(title=title, body=body),
-                data={k: str(v) for k, v in data.items()},
-                android=messaging.AndroidConfig(
-                    priority="high",
-                    notification=messaging.AndroidNotification(channel_id="index_alerts"),
-                ),
-            ))
-            sent += 1
-        except Exception as exc:
-            msg = str(exc).lower()
-            if "registration-token-not-registered" in msg or "not found" in msg:
-                dead.append(token)
-            print("FCM send failed:", exc, flush=True)
-    if dead:
-        with db() as con:
-            con.executemany("DELETE FROM devices WHERE token=?", [(x,) for x in dead])
-    return sent
+        con.execute("DELETE FROM deliveries WHERE index_id=? AND (cycle<>? OR (sent=0 AND created<?))",
+                    (index_id, cycle, time.time()-86400))
+        pending = con.execute("""SELECT DISTINCT q.token,q.event_id,q.payload,d.settings,d.protocol
+            FROM deliveries q JOIN devices d ON d.token=q.token
+            WHERE q.index_id=? AND q.cycle=? AND q.sent=0""", (index_id,cycle)).fetchall()
+        for token, event_id, payload, settings, protocol in pending:
+            data = json.loads(payload)
+            enabled = json.loads(settings).get(index_id, [t for t,_ in RULES[index_id]["levels"]])
+            rows = con.execute("SELECT threshold FROM deliveries WHERE token=? AND event_id=? AND sent=0",
+                               (token,event_id)).fetchall()
+            active = [r[0] for r in rows if r[0] in enabled]
+            if not active:
+                con.execute("DELETE FROM deliveries WHERE token=? AND event_id=? AND sent=0", (token,event_id))
+                continue
+            threshold = max(active)
+            allocation = dict(RULES[index_id]["levels"])[threshold]
+            data.update(threshold=str(threshold), allocation=str(allocation),
+                        title=f"{RULES[index_id]['name']} -{threshold}% 매수구간 진입",
+                        body=f"ATH 대비 {float(data['drawdown']):.2f}% · 이번 단계 {allocation}% · {data['source']}",
+                        thresholds=json.dumps(active))
+            try:
+                messaging.send(messaging.Message(token=token,
+                    notification=None if protocol >= 2 else messaging.Notification(title=data['title'],body=data['body']),
+                    data=data, android=messaging.AndroidConfig(priority="high", ttl=3600)))
+                con.execute("UPDATE deliveries SET sent=1 WHERE token=? AND event_id=?", (token,event_id))
+            except messaging.UnregisteredError:
+                con.execute("DELETE FROM devices WHERE token=?", (token,))
+                con.execute("DELETE FROM deliveries WHERE token=?", (token,))
+            except Exception as exc:
+                # Do not print tokens or full provider errors.
+                print("FCM retry pending:", type(exc).__name__, flush=True)
+
+def enqueue_crossings(index_id, ath, dd, source):
+    cycle = str(float(ath))
+    with db() as con:
+        for token, settings in con.execute("SELECT token,settings FROM devices").fetchall():
+            enabled = json.loads(settings).get(index_id, [t for t,_ in RULES[index_id]["levels"]])
+            existing = {r[0] for r in con.execute(
+                "SELECT threshold FROM deliveries WHERE token=? AND index_id=? AND cycle=?", (token,index_id,cycle))}
+            crossed = [t for t,_ in RULES[index_id]["levels"] if dd <= -t and t in enabled and t not in existing]
+            if not crossed:
+                continue
+            event_id = str(uuid.uuid4())
+            payload = json.dumps(dict(index_id=index_id, drawdown=str(dd), source=source,
+                                      cycle=cycle,event_id=event_id))
+            con.executemany("INSERT INTO deliveries VALUES(?,?,?,?,?,?,?,0)",
+                [(token,index_id,cycle,t,event_id,payload,time.time()) for t in crossed])
+    deliver_pending(index_id, cycle)
+
 
 def evaluate(index_id: str):
     rule = RULES[index_id]
-    cash_now, _, market_state, cash_ts = current(rule["cash"])
+    cash_result = yahoo_result(rule["cash"], prepost=False)
+    points = series(cash_result)
+    if not points:
+        raise RuntimeError("no cash prices")
+    cash_ts, cash_now = points[-1]
+    market_state = session_state(cash_result.get("meta", {}))
+    highs = cash_result.get("indicators", {}).get("quote", [{}])[0].get("high", []) or []
+    recent_high = max([cash_now] + [float(x) for x in highs if x is not None and math.isfinite(float(x))])
     state = get_state(index_id)
     ath = float(state[0]) if state and state[0] else 0.0
-    if ath <= 0:
-        ath = historical_ath(rule["cash"])
+    old_ath = ath
+    # Refresh full history daily, including after long server downtime.
+    day = datetime.now(timezone.utc).date().isoformat()
+    if ath <= 0 or ATH_REFRESH.get(index_id) != day:
+        ath = max(ath, historical_ath(rule["cash"]))
+        ATH_REFRESH[index_id] = day
+    ath = max(ath, recent_high)
+    if not math.isfinite(ath) or ath <= 0 or not math.isfinite(cash_now) or cash_now <= 0:
+        raise RuntimeError("invalid cash data")
+    if ath > old_ath:
+        clear_fired(index_id)
 
     value = cash_now
     source = "현물지수"
@@ -231,29 +293,8 @@ def evaluate(index_id: str):
             "proxy_anchor_ts": p_anchor_ts, "proxy_latest_ts": p_latest_ts,
         }
 
-    # Only an official cash-index print may establish/reset ATH.
-    if market_state == "REGULAR" and cash_now > ath:
-        ath = cash_now
-        clear_fired(index_id)
-
-    dd = (value / ath - 1.0) * 100.0 if ath else 0.0
-    already = fired_set(index_id)
-    crossed = [(thr, pct) for thr, pct in rule["levels"] if dd <= -thr and thr not in already]
-    if crossed:
-        thr, pct = max(crossed, key=lambda x: x[0])
-        next_level = next((x for x in rule["levels"] if x[0] > thr), None)
-        title = f"{rule['name']} -{thr}% 매수구간 진입"
-        body = f"ATH 대비 {dd:.2f}% · 이번 단계 {pct}% · {source}"
-        if next_level:
-            body += f" · 다음 -{next_level[0]}%"
-        sent = send_push(title, body, {
-            "index_id": index_id, "drawdown": f"{dd:.4f}",
-            "threshold": thr, "allocation": pct, "source": source,
-        })
-        # Missing credentials, no devices, and failed sends must not consume
-        # a threshold. Retry while the market remains in the crossed range.
-        if sent > 0:
-            mark_fired(index_id, [x[0] for x in crossed])
+    dd = (value / ath - 1.0) * 100.0
+    enqueue_crossings(index_id, ath, dd, source)
 
     save_state(index_id, ath, cash_now, value, source)
     out = {
@@ -292,7 +333,7 @@ def health():
         "ok": True,
         "firebase": bool(firebase_admin._apps),
         "poll_seconds": POLL_SECONDS,
-        "version": "1.1.1",
+        "version": "1.2.0",
         "time": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -301,12 +342,26 @@ def register(body: RegisterBody):
     token = body.token.strip()
     if len(token) < 20:
         raise HTTPException(400, "invalid token")
+    settings = body.enabled_levels
+    if settings is not None:
+        if set(settings) != set(RULES) or any(
+            any(t not in dict(RULES[k]["levels"]) for t in levels) for k,levels in settings.items()
+        ):
+            raise HTTPException(400, "invalid enabled levels")
     with db() as con:
         con.execute(
-            "INSERT INTO devices(token,platform,updated_at) VALUES(?,?,?) ON CONFLICT(token) DO UPDATE SET platform=excluded.platform,updated_at=excluded.updated_at",
-            (token, body.platform, datetime.now(timezone.utc).isoformat()),
+            "INSERT INTO devices(token,platform,updated_at,settings,protocol) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(token) DO UPDATE SET platform=excluded.platform,updated_at=excluded.updated_at,"
+            "settings=CASE WHEN ? THEN excluded.settings ELSE devices.settings END,protocol=excluded.protocol",
+            (token, body.platform, datetime.now(timezone.utc).isoformat(),json.dumps(settings or {}),body.protocol,settings is not None),
         )
-    return {"ok": True}
+        if settings is not None:
+            for index_id, levels in settings.items():
+                for threshold,_ in RULES[index_id]["levels"]:
+                    if threshold not in levels:
+                        con.execute("DELETE FROM deliveries WHERE token=? AND index_id=? AND threshold=? AND sent=0",
+                                    (token,index_id,threshold))
+    return {"ok": True, "registered": True, "firebase": bool(firebase_admin._apps), "protocol": 2}
 
 @app.get("/status")
 def status():
@@ -329,3 +384,4 @@ def status():
 def check():
     check_all()
     return status()
+
