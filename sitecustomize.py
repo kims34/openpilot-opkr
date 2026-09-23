@@ -24,6 +24,10 @@ def _clean(symbol: str) -> str:
     return symbol.strip().upper().replace("\u00a0", "")
 
 
+def _valid_equity_symbol(symbol: str) -> bool:
+    return bool(re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,7}", symbol)) and not symbol.endswith("XX")
+
+
 def _symbols_from_html_table(html: str, header_names):
     soup = BeautifulSoup(html, "html.parser")
     best = set()
@@ -32,21 +36,22 @@ def _symbols_from_html_table(html: str, header_names):
         trs = table.find_all("tr")
         if not trs:
             continue
-        header_cells = trs[0].find_all(["th", "td"])
-        headers = [c.get_text(" ", strip=True).lower() for c in header_cells]
-        idx = next((i for i, h in enumerate(headers) if h in wanted), None)
-        if idx is None:
-            continue
-        out = set()
-        for tr in trs[1:]:
-            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
-            if idx >= len(cells):
+        for header_row_index in range(min(4, len(trs))):
+            header_cells = trs[header_row_index].find_all(["th", "td"])
+            headers = [c.get_text(" ", strip=True).lower() for c in header_cells]
+            idx = next((i for i, h in enumerate(headers) if h in wanted), None)
+            if idx is None:
                 continue
-            sym = _clean(cells[idx])
-            if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,7}", sym):
-                out.add(sym)
-        if len(out) > len(best):
-            best = out
+            out = set()
+            for tr in trs[header_row_index + 1:]:
+                cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
+                if idx >= len(cells):
+                    continue
+                sym = _clean(cells[idx].replace(":PR", ""))
+                if _valid_equity_symbol(sym):
+                    out.add(sym)
+            if len(out) > len(best):
+                best = out
     return best
 
 
@@ -75,10 +80,9 @@ def _schd_from_all_holdings():
     r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
     print("schd allholdings source", r.status_code, len(r.text), flush=True)
     r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    text = soup.get_text(" ", strip=True)
+    text = BeautifulSoup(r.text, "html.parser").get_text(" ", strip=True)
     out = {_clean(x) for x in re.findall(r"\bSymbol\s+([A-Z][A-Z0-9.\-]{0,7})\b", text)}
-    return {x for x in out if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,7}", x) and not x.endswith("XX")}
+    return {x for x in out if _valid_equity_symbol(x)}
 
 
 def _schd_from_export_csv():
@@ -102,10 +106,7 @@ def _schd_from_export_csv():
     cr.raise_for_status()
     text = cr.content.decode("utf-8-sig", errors="replace")
     rows = list(csv.reader(io.StringIO(text)))
-    if not rows:
-        return set()
-    header_idx = None
-    symbol_col = None
+    header_idx = symbol_col = None
     for i, row in enumerate(rows[:30]):
         lowered = [c.strip().lower() for c in row]
         if "symbol" in lowered:
@@ -119,23 +120,55 @@ def _schd_from_export_csv():
         if symbol_col >= len(row):
             continue
         sym = _clean(row[symbol_col])
-        if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,7}", sym) and not sym.endswith("XX"):
+        if _valid_equity_symbol(sym):
             out.add(sym)
     return out
 
 
-def _schd_from_stockanalysis():
-    url = "https://stockanalysis.com/etf/schd/holdings/"
+def _schd_from_generic_table(url: str, label: str):
     r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
-    print("schd fallback source", r.status_code, len(r.text), flush=True)
+    print(label, r.status_code, len(r.text), flush=True)
     r.raise_for_status()
     out = _symbols_from_html_table(r.text, ("symbol", "ticker"))
-    return {x for x in out if not x.endswith("XX")}
+    if len(out) >= 80:
+        return out
+
+    # Some full-list pages render simple text rows rather than semantic tables.
+    text = BeautifulSoup(r.text, "html.parser").get_text("\n", strip=True)
+    candidates = set()
+    for line in text.splitlines():
+        token = _clean(line.split()[0]) if line.split() else ""
+        token = token.replace(":PR", "")
+        if _valid_equity_symbol(token):
+            candidates.add(token)
+    # Restrict the loose text fallback to plausible portfolio sizes.
+    if 80 <= len(candidates) <= 180:
+        return candidates
+    return out
+
+
+def _schd_from_stockmarketwatch():
+    return _schd_from_generic_table("https://stockmarketwatch.com/etf/schd/holdings", "schd stockmarketwatch source")
+
+
+def _schd_from_marketxls():
+    return _schd_from_generic_table("https://www.marketxls.com/etfs/schd/holdings", "schd marketxls source")
+
+
+def _schd_from_stockanalysis():
+    return _schd_from_generic_table("https://stockanalysis.com/etf/schd/holdings/", "schd stockanalysis source")
 
 
 def robust_schd_symbols():
     best = set()
-    for loader in (_schd_from_all_holdings, _schd_from_export_csv, _schd_from_stockanalysis):
+    loaders = (
+        _schd_from_all_holdings,
+        _schd_from_export_csv,
+        _schd_from_stockmarketwatch,
+        _schd_from_marketxls,
+        _schd_from_stockanalysis,
+    )
+    for loader in loaders:
         try:
             out = loader()
             print("schd parsed", loader.__name__, len(out), flush=True)
