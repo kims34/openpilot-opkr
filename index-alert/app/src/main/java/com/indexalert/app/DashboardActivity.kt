@@ -25,6 +25,15 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
+private data class DashboardPayload(
+    val snapshots: List<IndexSnapshot>,
+    val ready: Boolean,
+    val laggards: List<LaggardItem>,
+    val laggardStatus: String
+)
+
+private data class LaggardFeed(val items: List<LaggardItem>, val statusText: String)
+
 class DashboardActivity : ComponentActivity() {
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
@@ -35,6 +44,8 @@ class DashboardActivity : ComponentActivity() {
         }
     }
     private var snapshots = androidx.compose.runtime.mutableStateOf<List<IndexSnapshot>>(emptyList())
+    private var laggards = androidx.compose.runtime.mutableStateOf<List<LaggardItem>>(emptyList())
+    private var laggardStatus = androidx.compose.runtime.mutableStateOf("")
     private var loading = androidx.compose.runtime.mutableStateOf(false)
     private var status = androidx.compose.runtime.mutableStateOf("")
     private var serverPushReady = false
@@ -47,8 +58,6 @@ class DashboardActivity : ComponentActivity() {
         }
 
         val firebaseConfigured = PushBridge.tryInit(this)
-        // Keep a local safety watch only until the server confirms this device's
-        // FCM registration. Once confirmed, periodic phone work is cancelled.
         ensureLocalWatch()
         status.value = when {
             !PushBridge.notificationsEnabled(this) -> "알림 권한 확인 중 · 허용 후 서버 푸시 등록"
@@ -63,7 +72,9 @@ class DashboardActivity : ComponentActivity() {
                     snapshots = snapshots.value,
                     loading = loading.value,
                     statusText = status.value,
-                    onRefresh = { refreshNow() }
+                    onRefresh = { refreshNow() },
+                    laggards = laggards.value,
+                    laggardStatus = laggardStatus.value
                 )
             }
         }
@@ -99,11 +110,19 @@ class DashboardActivity : ComponentActivity() {
                             .getOrElse { e -> IndexSnapshot.error(r, e.message ?: "데이터 확인 실패") }
                     }
                 }
-                Pair(data, ready)
+                val feed = if (PushBridge.configured()) {
+                    runCatching { BackendMarket.laggards() }
+                        .getOrElse { LaggardFeed(emptyList(), "S&P500 TOP10 서버 계산 대기") }
+                } else {
+                    LaggardFeed(emptyList(), "서버 연결 시 S&P500 TOP10 제공")
+                }
+                DashboardPayload(data, ready, feed.items, feed.statusText)
             }
 
-            snapshots.value = result.first
-            serverPushReady = result.second
+            snapshots.value = result.snapshots
+            laggards.value = result.laggards
+            laggardStatus.value = result.laggardStatus
+            serverPushReady = result.ready
             if (serverPushReady) stopLocalWatch() else ensureLocalWatch()
 
             val mode = when {
@@ -140,8 +159,12 @@ object BackendMarket {
             val o = byId[rule.id] ?: return@map IndexSnapshot.error(rule, "서버 상태 없음")
             val ath = nullableDouble(o, "ath")
             val value = nullableDouble(o, "last_value")
-            val dd = if (ath != null && value != null && ath > 0) (value / ath - 1.0) * 100.0 else null
-            val enabled = rule.levels.filter { prefs.getBoolean("enabled_${rule.id}_${it.first}", true) }
+            val dd = nullableDouble(o, "drawdown")
+                ?: if (ath != null && value != null && ath > 0) (value / ath - 1.0) * 100.0 else null
+            val alertsEnabled = o.optBoolean("alerts_enabled", rule.levels.isNotEmpty())
+            val enabled = if (alertsEnabled) {
+                rule.levels.filter { prefs.getBoolean("enabled_${rule.id}_${it.first}", true) }
+            } else emptyList()
             val reached = if (dd == null) emptyList() else enabled.filter { dd <= -it.first }
             val stage = reached.maxByOrNull { it.first }
             val next = if (dd == null) enabled.firstOrNull() else enabled.firstOrNull { it.first > abs(dd) }
@@ -150,16 +173,72 @@ object BackendMarket {
                 current = value,
                 ath = ath,
                 drawdown = dd,
-                stageText = stage?.let { "-${it.first}% 구간 · ${it.second}%" } ?: "대기",
-                nextText = next?.let { "-${it.first}%" } ?: if (enabled.isEmpty()) "알림 단계 꺼짐" else "최종 단계 도달",
-                sourceText = o.optString("source", "서버 감시")
+                stageText = if (!alertsEnabled) "" else stage?.let { "-${it.first}% 구간 · ${it.second}%" } ?: "대기",
+                nextText = if (!alertsEnabled) "" else next?.let { "-${it.first}%" }
+                    ?: if (enabled.isEmpty()) "알림 단계 꺼짐" else "최종 단계 도달",
+                sourceText = o.optString("source", "서버 감시"),
+                dayChange = nullableDouble(o, "day_change"),
+                dayChangePercent = nullableDouble(o, "day_change_percent"),
+                athDate = nullableString(o, "ath_date"),
+                athDays = nullableInt(o, "ath_days"),
+                alertsEnabled = alertsEnabled
             )
         }
+    }
+
+    fun laggards(): LaggardFeed {
+        val base = BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/')
+        val c = URL("$base/laggards").openConnection() as HttpURLConnection
+        c.requestMethod = "GET"
+        c.connectTimeout = 10000
+        c.readTimeout = 10000
+        c.setRequestProperty("Accept", "application/json")
+        val text = c.inputStream.bufferedReader().use { it.readText() }
+        c.disconnect()
+        val root = JSONObject(text)
+        val status = root.optString("status", "building")
+        val coverage = root.optString("coverage", "0/0")
+        val arr = root.optJSONArray("items")
+        val items = mutableListOf<LaggardItem>()
+        if (arr != null) {
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                items.add(
+                    LaggardItem(
+                        rank = o.optInt("rank", i + 1),
+                        symbol = o.optString("symbol"),
+                        name = o.optString("name"),
+                        current = o.optDouble("current", 0.0),
+                        ath = o.optDouble("ath", 0.0),
+                        drawdown = o.optDouble("drawdown", 0.0),
+                        sp500 = o.optBoolean("sp500", true),
+                        nasdaq100 = o.optBoolean("nasdaq100", false),
+                        schd = o.optBoolean("schd", false)
+                    )
+                )
+            }
+        }
+        val label = when (status) {
+            "ready" -> "서버 일일 갱신 · 계산 범위 $coverage"
+            "building" -> "최초 ATH 계산 중 · $coverage"
+            else -> "순위 갱신 대기 · $coverage"
+        }
+        return LaggardFeed(items, label)
     }
 
     private fun nullableDouble(o: JSONObject, key: String): Double? {
         if (!o.has(key) || o.isNull(key)) return null
         val v = o.optDouble(key, Double.NaN)
         return if (v.isFinite()) v else null
+    }
+
+    private fun nullableString(o: JSONObject, key: String): String? {
+        if (!o.has(key) || o.isNull(key)) return null
+        return o.optString(key).takeIf { it.isNotBlank() && it != "null" }
+    }
+
+    private fun nullableInt(o: JSONObject, key: String): Int? {
+        if (!o.has(key) || o.isNull(key)) return null
+        return o.optInt(key)
     }
 }
