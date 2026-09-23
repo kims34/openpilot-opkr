@@ -4,6 +4,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -17,6 +18,8 @@ NASDAQ100_URLS = [
 SCHD_URL = "https://www.schwabassetmanagement.com/allholdings/schd"
 REFRESH_LOCK = threading.Lock()
 ATH_MIGRATION = "laggard-split-detect-v3"
+MULTI_MIGRATION = "laggard-multi-universe-v4"
+NY = ZoneInfo("America/New_York")
 
 
 def _clean_symbol(symbol: str) -> str:
@@ -115,6 +118,12 @@ def schd_symbols():
         return set()
 
 
+def _ensure_column(con, table: str, column: str, ddl: str):
+    existing = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in existing:
+        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+
+
 def init_db(monitor):
     with monitor.db() as con:
         con.executescript("""
@@ -138,13 +147,33 @@ def init_db(monitor):
             in_schd INTEGER NOT NULL,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS universe_laggard_cache(
+            universe TEXT NOT NULL,
+            rank INTEGER NOT NULL,
+            symbol TEXT NOT NULL,
+            name TEXT NOT NULL,
+            current REAL NOT NULL,
+            previous_close REAL NOT NULL,
+            day_change REAL NOT NULL,
+            day_change_pct REAL NOT NULL,
+            ath REAL NOT NULL,
+            ath_ts INTEGER NOT NULL,
+            ath_days INTEGER NOT NULL,
+            drawdown REAL NOT NULL,
+            in_sp500 INTEGER NOT NULL,
+            in_nasdaq100 INTEGER NOT NULL,
+            in_schd INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(universe, rank)
+        );
         CREATE TABLE IF NOT EXISTS app_meta(
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
         """)
-        # Purge the earlier monthly/double-split-adjusted ATH cache once. The
-        # migrations table is created by monitor.init_db before this function.
+        _ensure_column(con, "stock_ath", "previous_close", "REAL NOT NULL DEFAULT 0")
+        _ensure_column(con, "stock_ath", "day_change", "REAL NOT NULL DEFAULT 0")
+        _ensure_column(con, "stock_ath", "day_change_pct", "REAL NOT NULL DEFAULT 0")
         try:
             migrated = con.execute("SELECT 1 FROM migrations WHERE name=?", (ATH_MIGRATION,)).fetchone()
             if not migrated:
@@ -152,6 +181,11 @@ def init_db(monitor):
                 con.execute("DELETE FROM laggard_cache")
                 con.execute("DELETE FROM app_meta WHERE key LIKE 'laggard_%'")
                 con.execute("INSERT INTO migrations(name) VALUES(?)", (ATH_MIGRATION,))
+            multi = con.execute("SELECT 1 FROM migrations WHERE name=?", (MULTI_MIGRATION,)).fetchone()
+            if not multi:
+                con.execute("DELETE FROM universe_laggard_cache")
+                con.execute("DELETE FROM app_meta WHERE key LIKE 'laggard_%'")
+                con.execute("INSERT INTO migrations(name) VALUES(?)", (MULTI_MIGRATION,))
         except Exception:
             pass
 
@@ -195,15 +229,11 @@ def _split_needs_adjustment(split_ts, ratio, timestamps, closes):
             after = c
             break
     if before is None or after is None or ratio <= 0:
-        # With no local evidence, avoid applying a split twice. Recent data and
-        # subsequent cached highs can still establish the correct ATH.
         return False
     observed = after / before
     expected_raw_jump = 1.0 / ratio
     if observed <= 0 or expected_raw_jump <= 0:
         return False
-    # Compare in log space: if the observed jump is closer to the mechanical
-    # split jump than to 1.0, the OHLC series is raw and needs adjustment.
     raw_error = abs(math.log(observed / expected_raw_jump))
     adjusted_error = abs(math.log(observed))
     return raw_error + 0.15 < adjusted_error
@@ -259,6 +289,16 @@ def _daily_quote(monitor, symbol: str):
     if not points:
         raise RuntimeError("quote unavailable")
     ts, current = points[-1]
+    previous_close = points[-2][1] if len(points) >= 2 else current
+    meta = result.get("meta", {})
+    for key in ("regularMarketPreviousClose", "previousClose", "chartPreviousClose"):
+        try:
+            value = float(meta.get(key) or 0)
+            if math.isfinite(value) and value > 0:
+                previous_close = value
+                break
+        except Exception:
+            pass
     highs = result.get("indicators", {}).get("quote", [{}])[0].get("high", []) or []
     timestamps = result.get("timestamp") or []
     recent_high = current
@@ -270,7 +310,8 @@ def _daily_quote(monitor, symbol: str):
         if math.isfinite(h) and h >= recent_high:
             recent_high = h
             recent_high_ts = int(hts)
-    return current, recent_high, recent_high_ts
+    name = str(meta.get("longName") or meta.get("shortName") or symbol).strip()
+    return current, previous_close, recent_high, recent_high_ts, name
 
 
 def _set_meta(monitor, key: str, value: str):
@@ -281,72 +322,111 @@ def _set_meta(monitor, key: str, value: str):
         )
 
 
+def _ath_days(ath_ts: int):
+    if not ath_ts:
+        return 0
+    then = datetime.fromtimestamp(ath_ts, tz=timezone.utc).astimezone(NY).date()
+    return max(0, (datetime.now(NY).date() - then).days)
+
+
 def refresh(monitor):
     if not REFRESH_LOCK.acquire(blocking=False):
         return
     try:
         init_db(monitor)
-        constituents = sp500_constituents()
+        sp_list = sp500_constituents()
+        sp_names = {s: n for s, n in sp_list}
+        sp500 = set(sp_names)
         ndx = nasdaq100_symbols()
         schd = schd_symbols()
+        universes = {"sp500": sp500, "nasdaq100": ndx, "schd": schd}
+        all_symbols = sorted(sp500 | ndx | schd)
+
         with monitor.db() as con:
             existing = {
                 row[0]: (float(row[1]), int(row[2]))
                 for row in con.execute("SELECT symbol,ath,ath_ts FROM stock_ath").fetchall()
             }
 
-        def work(item):
-            symbol, name = item
-            current, recent_high, recent_high_ts = _daily_quote(monitor, symbol)
+        def work(symbol):
+            current, previous_close, recent_high, recent_high_ts, quote_name = _daily_quote(monitor, symbol)
+            name = sp_names.get(symbol) or quote_name or symbol
             if symbol in existing:
                 ath, ath_ts = existing[symbol]
             else:
                 ath, ath_ts = _history_ath(monitor, symbol)
             if recent_high >= ath:
                 ath, ath_ts = recent_high, recent_high_ts
-            if ath <= 0 or current <= 0:
+            if ath <= 0 or current <= 0 or previous_close <= 0:
                 raise RuntimeError("invalid values")
             dd = (current / ath - 1.0) * 100.0
-            return symbol, name, current, ath, ath_ts, dd
+            day_change = current - previous_close
+            day_change_pct = (current / previous_close - 1.0) * 100.0
+            return {
+                "symbol": symbol,
+                "name": name,
+                "current": current,
+                "previous_close": previous_close,
+                "day_change": day_change,
+                "day_change_pct": day_change_pct,
+                "ath": ath,
+                "ath_ts": ath_ts,
+                "ath_days": _ath_days(ath_ts),
+                "drawdown": dd,
+            }
 
-        results = []
+        result_map = {}
         with ThreadPoolExecutor(max_workers=8) as pool:
-            futures = [pool.submit(work, item) for item in constituents]
+            futures = {pool.submit(work, symbol): symbol for symbol in all_symbols}
             for future in as_completed(futures):
                 try:
-                    results.append(future.result())
+                    row = future.result()
+                    result_map[row["symbol"]] = row
                 except Exception:
                     pass
 
         now = datetime.now(timezone.utc).isoformat()
         with monitor.db() as con:
             con.executemany(
-                """INSERT INTO stock_ath(symbol,name,ath,ath_ts,current,drawdown,updated_at)
-                   VALUES(?,?,?,?,?,?,?)
+                """INSERT INTO stock_ath(symbol,name,ath,ath_ts,current,drawdown,updated_at,previous_close,day_change,day_change_pct)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(symbol) DO UPDATE SET name=excluded.name,ath=excluded.ath,ath_ts=excluded.ath_ts,
-                   current=excluded.current,drawdown=excluded.drawdown,updated_at=excluded.updated_at""",
-                [(s,n,a,ts,c,dd,now) for s,n,c,a,ts,dd in results],
-            )
-
-        coverage = len(results)
-        total = len(constituents)
-        _set_meta(monitor, "laggard_coverage", f"{coverage}/{total}")
-        _set_meta(monitor, "laggard_source_time", now)
-        if coverage < max(400, int(total * 0.85)):
-            _set_meta(monitor, "laggard_status", "building")
-            return
-
-        ranked = sorted(results, key=lambda x: x[5])[:10]
-        with monitor.db() as con:
-            con.execute("DELETE FROM laggard_cache")
-            con.executemany(
-                """INSERT INTO laggard_cache(rank,symbol,name,current,ath,drawdown,in_nasdaq100,in_schd,updated_at)
-                   VALUES(?,?,?,?,?,?,?,?,?)""",
+                   current=excluded.current,drawdown=excluded.drawdown,updated_at=excluded.updated_at,
+                   previous_close=excluded.previous_close,day_change=excluded.day_change,day_change_pct=excluded.day_change_pct""",
                 [
-                    (i, s, n, c, a, dd, int(s in ndx), int(s in schd), now)
-                    for i, (s,n,c,a,ts,dd) in enumerate(ranked, 1)
+                    (r["symbol"], r["name"], r["ath"], r["ath_ts"], r["current"], r["drawdown"], now,
+                     r["previous_close"], r["day_change"], r["day_change_pct"])
+                    for r in result_map.values()
                 ],
             )
+
+        with monitor.db() as con:
+            con.execute("DELETE FROM universe_laggard_cache")
+            for universe, members in universes.items():
+                rows = [result_map[s] for s in members if s in result_map]
+                coverage = len(rows)
+                total = len(members)
+                _set_meta(monitor, f"laggard_{universe}_coverage", f"{coverage}/{total}")
+                status = "ready" if total > 0 and coverage >= max(10, int(total * 0.80)) else "building"
+                _set_meta(monitor, f"laggard_{universe}_status", status)
+                if status != "ready":
+                    continue
+                ranked = sorted(rows, key=lambda x: x["drawdown"])[:10]
+                con.executemany(
+                    """INSERT INTO universe_laggard_cache(
+                           universe,rank,symbol,name,current,previous_close,day_change,day_change_pct,
+                           ath,ath_ts,ath_days,drawdown,in_sp500,in_nasdaq100,in_schd,updated_at)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    [
+                        (universe, i, r["symbol"], r["name"], r["current"], r["previous_close"],
+                         r["day_change"], r["day_change_pct"], r["ath"], r["ath_ts"], r["ath_days"],
+                         r["drawdown"], int(r["symbol"] in sp500), int(r["symbol"] in ndx),
+                         int(r["symbol"] in schd), now)
+                        for i, r in enumerate(ranked, 1)
+                    ],
+                )
+
+        _set_meta(monitor, "laggard_source_time", now)
         _set_meta(monitor, "laggard_status", "ready")
     except Exception as exc:
         _set_meta(monitor, "laggard_status", "error")
@@ -359,21 +439,36 @@ def refresh(monitor):
 def get(monitor):
     init_db(monitor)
     with monitor.db() as con:
-        rows = con.execute(
-            """SELECT rank,symbol,name,current,ath,drawdown,in_nasdaq100,in_schd,updated_at
-               FROM laggard_cache ORDER BY rank"""
-        ).fetchall()
         meta = dict(con.execute("SELECT key,value FROM app_meta WHERE key LIKE 'laggard_%'").fetchall())
+        sections = {}
+        for universe in ("sp500", "nasdaq100", "schd"):
+            rows = con.execute(
+                """SELECT rank,symbol,name,current,previous_close,day_change,day_change_pct,
+                          ath,ath_ts,ath_days,drawdown,in_sp500,in_nasdaq100,in_schd,updated_at
+                   FROM universe_laggard_cache WHERE universe=? ORDER BY rank""",
+                (universe,),
+            ).fetchall()
+            sections[universe] = {
+                "status": meta.get(f"laggard_{universe}_status", "building"),
+                "coverage": meta.get(f"laggard_{universe}_coverage", "0/0"),
+                "items": [
+                    {
+                        "rank": r[0], "symbol": r[1], "name": r[2], "current": r[3],
+                        "previous_close": r[4], "day_change": r[5], "day_change_percent": r[6],
+                        "ath": r[7], "ath_ts": r[8], "ath_days": r[9], "drawdown": r[10],
+                        "sp500": bool(r[11]), "nasdaq100": bool(r[12]), "schd": bool(r[13]),
+                        "updated_at": r[14],
+                    }
+                    for r in rows
+                ],
+            }
+
+    # Keep the old top-level S&P500 fields for v0.9 clients while v1.0 rolls out.
+    sp = sections["sp500"]
     return {
         "status": meta.get("laggard_status", "building"),
-        "coverage": meta.get("laggard_coverage", "0/0"),
+        "coverage": sp["coverage"],
         "updated_at": meta.get("laggard_source_time"),
-        "items": [
-            {
-                "rank": r[0], "symbol": r[1], "name": r[2], "current": r[3], "ath": r[4],
-                "drawdown": r[5], "sp500": True, "nasdaq100": bool(r[6]), "schd": bool(r[7]),
-                "updated_at": r[8],
-            }
-            for r in rows
-        ],
+        "items": sp["items"],
+        "sections": sections,
     }
