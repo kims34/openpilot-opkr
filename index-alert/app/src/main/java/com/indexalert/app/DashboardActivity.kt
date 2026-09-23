@@ -30,6 +30,7 @@ class DashboardActivity : ComponentActivity() {
     private var snapshots = androidx.compose.runtime.mutableStateOf<List<IndexSnapshot>>(emptyList())
     private var loading = androidx.compose.runtime.mutableStateOf(false)
     private var status = androidx.compose.runtime.mutableStateOf("")
+    private var serverPushReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,14 +39,12 @@ class DashboardActivity : ComponentActivity() {
             permission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        val pushReady = PushBridge.tryInit(this)
-        if (pushReady) {
-            WorkManager.getInstance(this).cancelUniqueWork("index-watch")
-            status.value = "서버 푸시 감시 활성화 · 휴대폰 주기 조회 없음"
+        val firebaseConfigured = PushBridge.tryInit(this)
+        ensureLocalWatch()
+        status.value = if (firebaseConfigured) {
+            "Firebase 앱 연결됨 · 서버 인증 확인 중 · 15분 로컬 감시 유지"
         } else {
-            val req = PeriodicWorkRequestBuilder<IndexWorker>(15, TimeUnit.MINUTES).build()
-            WorkManager.getInstance(this).enqueueUniquePeriodicWork("index-watch", ExistingPeriodicWorkPolicy.UPDATE, req)
-            status.value = "Firebase 설정 전 · 15분 로컬 감시 모드"
+            "Firebase 설정 전 · 15분 로컬 감시 모드"
         }
 
         setContent {
@@ -62,12 +61,19 @@ class DashboardActivity : ComponentActivity() {
         refreshNow()
     }
 
+    private fun ensureLocalWatch() {
+        val req = PeriodicWorkRequestBuilder<IndexWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork("index-watch", ExistingPeriodicWorkPolicy.UPDATE, req)
+    }
+
     private fun refreshNow() {
         if (loading.value) return
         loading.value = true
         lifecycleScope.launch {
-            val data = withContext(Dispatchers.IO) {
-                if (PushBridge.configured()) {
+            val result = withContext(Dispatchers.IO) {
+                val ready = PushBridge.configured() && PushBridge.serverFirebaseReady()
+                val data = if (PushBridge.configured()) {
                     runCatching { BackendMarket.snapshots(applicationContext) }.getOrElse {
                         rules.map { r ->
                             runCatching { MarketEngine.snapshot(applicationContext, r) }
@@ -77,13 +83,26 @@ class DashboardActivity : ComponentActivity() {
                 } else {
                     rules.map { r ->
                         runCatching { MarketEngine.snapshot(applicationContext, r) }
-                            .getOrElse { IndexSnapshot.error(r, it.message ?: "데이터 확인 실패") }
+                            .getOrElse { e -> IndexSnapshot.error(r, e.message ?: "데이터 확인 실패") }
                     }
                 }
+                Pair(data, ready)
             }
-            snapshots.value = data
-            val mode = if (PushBridge.configured()) "서버 푸시" else "로컬 감시"
-            status.value = "$mode · 마지막 새로고침 ${SimpleDateFormat("MM/dd HH:mm", Locale.KOREA).format(Date())}"
+
+            snapshots.value = result.first
+            serverPushReady = result.second
+            if (serverPushReady) {
+                WorkManager.getInstance(this@DashboardActivity).cancelUniqueWork("index-watch")
+            } else {
+                ensureLocalWatch()
+            }
+
+            val mode = when {
+                serverPushReady -> "서버 푸시 감시 활성화 · 휴대폰 주기 조회 없음"
+                PushBridge.configured() -> "서버 Firebase 인증 대기 · 15분 로컬 감시 유지"
+                else -> "Firebase 설정 전 · 15분 로컬 감시 모드"
+            }
+            status.value = "$mode · ${SimpleDateFormat("MM/dd HH:mm", Locale.KOREA).format(Date())}"
             loading.value = false
         }
     }
