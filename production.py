@@ -332,7 +332,7 @@ def start_laggard_refresh():
         monitor.scheduler.add_job(
             lambda: laggards.refresh(monitor),
             "interval",
-            hours=24,
+            hours=4,
             id="laggard-refresh",
             max_instances=1,
             coalesce=True,
