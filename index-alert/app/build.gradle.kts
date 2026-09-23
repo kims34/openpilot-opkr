@@ -12,9 +12,10 @@ android {
         applicationId = "com.indexalert.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
-        buildConfigField("String", "INDEXALERT_BACKEND_URL", "\"${envString("INDEXALERT_BACKEND_URL")}\"")
+        versionCode = 4
+        versionName = "0.4"
+        val backendUrl = envString("INDEXALERT_BACKEND_URL").ifBlank { "https://indexalert-runtime-production.up.railway.app" }
+        buildConfigField("String", "INDEXALERT_BACKEND_URL", "\"$backendUrl\"")
         buildConfigField("String", "FIREBASE_APP_ID", "\"${envString("FIREBASE_APP_ID")}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${envString("FIREBASE_API_KEY")}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${envString("FIREBASE_PROJECT_ID")}\"")
