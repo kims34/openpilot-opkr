@@ -26,7 +26,14 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 class DashboardActivity : ComponentActivity() {
-    private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            PushBridge.scheduleSync(this)
+            refreshNow()
+        } else {
+            status.value = "알림 권한 필요 · IndexAlert 알림을 허용해야 실제 알림을 받을 수 있습니다."
+        }
+    }
     private var snapshots = androidx.compose.runtime.mutableStateOf<List<IndexSnapshot>>(emptyList())
     private var loading = androidx.compose.runtime.mutableStateOf(false)
     private var status = androidx.compose.runtime.mutableStateOf("")
@@ -43,10 +50,10 @@ class DashboardActivity : ComponentActivity() {
         // Keep a local safety watch only until the server confirms this device's
         // FCM registration. Once confirmed, periodic phone work is cancelled.
         ensureLocalWatch()
-        status.value = if (firebaseConfigured) {
-            "Firebase 앱 연결됨 · 서버 등록 확인 중 · 임시 로컬 감시 유지"
-        } else {
-            "Firebase 설정 전 · 15분 로컬 감시 모드"
+        status.value = when {
+            !PushBridge.notificationsEnabled(this) -> "알림 권한 확인 중 · 허용 후 서버 푸시 등록"
+            firebaseConfigured -> "Firebase 앱 연결됨 · 서버 등록 확인 중 · 임시 로컬 감시 유지"
+            else -> "Firebase 설정 전 · 15분 로컬 감시 모드"
         }
 
         setContent {
@@ -100,6 +107,8 @@ class DashboardActivity : ComponentActivity() {
             if (serverPushReady) stopLocalWatch() else ensureLocalWatch()
 
             val mode = when {
+                !PushBridge.notificationsEnabled(this@DashboardActivity) ->
+                    "알림 권한 필요 · 휴대폰 설정에서 IndexAlert 알림을 허용하세요"
                 serverPushReady -> "서버 푸시 감시 활성화 · 휴대폰 주기 조회 없음"
                 PushBridge.configured() -> "서버 등록 재시도 중 · 15분 로컬 감시 유지"
                 else -> "Firebase 설정 전 · 15분 로컬 감시 모드"
@@ -142,7 +151,7 @@ object BackendMarket {
                 ath = ath,
                 drawdown = dd,
                 stageText = stage?.let { "-${it.first}% 구간 · ${it.second}%" } ?: "대기",
-                nextText = next?.let { "-${it.first}%" } ?: "최종 단계 도달",
+                nextText = next?.let { "-${it.first}%" } ?: if (enabled.isEmpty()) "알림 단계 꺼짐" else "최종 단계 도달",
                 sourceText = o.optString("source", "서버 감시")
             )
         }
