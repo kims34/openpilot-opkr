@@ -5,9 +5,6 @@ from urllib.parse import quote
 import monitor
 from fastapi import HTTPException
 
-# Use the ETFs themselves as the alert basis while preserving the existing
-# internal ids so already-installed Android clients and saved settings remain
-# compatible.
 monitor.RULES.update({
     "sp500": {
         "name": "SPY (S&P 500 ETF)",
@@ -35,9 +32,6 @@ monitor.RULES.update({
     },
 })
 
-# One-time migrations from the old index basis and from the first ETF build
-# that did not adjust historical prices for stock splits. Device registrations
-# and per-level settings are intentionally preserved.
 _original_init_db = monitor.init_db
 
 def _init_db_with_etf_migration():
@@ -118,6 +112,15 @@ def _split_adjusted_historical_ath(symbol: str) -> float:
     return max(vals)
 
 
+def _latest_etf_price(symbol: str):
+    result = monitor.yahoo_result(symbol, prepost=True)
+    points = monitor.series(result)
+    if not points:
+        raise RuntimeError(f"no ETF price for {symbol}")
+    ts, value = points[-1]
+    return ts, value
+
+
 def _evaluate_etf(index_id: str):
     rule = monitor.RULES[index_id]
     cash_result = monitor.yahoo_result(rule["cash"], prepost=False)
@@ -144,24 +147,19 @@ def _evaluate_etf(index_id: str):
 
     value = cash_now
     source = rule["regular_label"]
-    proxy_debug = None
+    value_ts = cash_ts
     if market_state != "REGULAR":
-        ratio, p_now, p_anchor, p_anchor_ts, p_latest_ts = monitor.proxy_ratio_from_cash_close(rule["proxy"], cash_ts)
-        value = cash_now * ratio
+        value_ts, value = _latest_etf_price(rule["cash"])
         source = rule["proxy_label"]
-        proxy_debug = {
-            "ratio": ratio,
-            "proxy_now": p_now,
-            "proxy_anchor": p_anchor,
-            "proxy_anchor_ts": p_anchor_ts,
-            "proxy_latest_ts": p_latest_ts,
-        }
+
+    if not math.isfinite(value) or value <= 0:
+        raise RuntimeError("invalid extended ETF data")
 
     dd = (value / ath - 1.0) * 100.0
     monitor.enqueue_crossings(index_id, ath, dd, source)
     monitor.save_state(index_id, ath, cash_now, value, source)
 
-    out = {
+    return {
         "id": index_id,
         "name": rule["name"],
         "value": value,
@@ -171,16 +169,11 @@ def _evaluate_etf(index_id: str):
         "source": source,
         "market_state": market_state,
         "cash_ts": cash_ts,
+        "value_ts": value_ts,
     }
-    if proxy_debug:
-        out["proxy"] = proxy_debug
-    return out
 
 monitor.evaluate = _evaluate_etf
 
-# Reuse the proven monitor app and background scheduler, but keep operational
-# endpoints minimal in production. The manual /check endpoint is intentionally
-# not exposed because it can force repeated upstream market-data requests.
 app = monitor.app
 app.router.routes = [
     route for route in app.router.routes
