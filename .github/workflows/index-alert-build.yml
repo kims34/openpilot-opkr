@@ -24,25 +24,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Probe extended-hours reference values
-        working-directory: .
-        run: |
-          python - <<'PY'
-          import json, urllib.parse, urllib.request
-          for sym in ['ES=F','NQ=F','SCHD','^GSPC','^NDX','^DJUSDIV']:
-              q=urllib.parse.quote(sym,safe='')
-              u=f'https://query1.finance.yahoo.com/v8/finance/chart/{q}?range=5d&interval=5m&includePrePost=true'
-              req=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0'})
-              with urllib.request.urlopen(req,timeout=20) as r:
-                  res=json.load(r)['chart']['result'][0]
-              m=res.get('meta',{})
-              closes=res.get('indicators',{}).get('quote',[{}])[0].get('close',[])
-              latest=next((x for x in reversed(closes) if x is not None),None)
-              print('SYMBOL',sym)
-              print('latestClose',latest)
-              for k in ['regularMarketPrice','previousClose','chartPreviousClose','marketState','exchangeTimezoneName','currentTradingPeriod']:
-                  print(k,json.dumps(m.get(k),ensure_ascii=False))
-          PY
       - name: Build APK
         run: gradle assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
