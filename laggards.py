@@ -16,6 +16,7 @@ NASDAQ100_URLS = [
 ]
 SCHD_URL = "https://www.schwabassetmanagement.com/allholdings/schd"
 REFRESH_LOCK = threading.Lock()
+ATH_MIGRATION = "laggard-split-detect-v3"
 
 
 def _clean_symbol(symbol: str) -> str:
@@ -142,23 +143,20 @@ def init_db(monitor):
             value TEXT NOT NULL
         );
         """)
+        # Purge the earlier monthly/double-split-adjusted ATH cache once. The
+        # migrations table is created by monitor.init_db before this function.
+        try:
+            migrated = con.execute("SELECT 1 FROM migrations WHERE name=?", (ATH_MIGRATION,)).fetchone()
+            if not migrated:
+                con.execute("DELETE FROM stock_ath")
+                con.execute("DELETE FROM laggard_cache")
+                con.execute("DELETE FROM app_meta WHERE key LIKE 'laggard_%'")
+                con.execute("INSERT INTO migrations(name) VALUES(?)", (ATH_MIGRATION,))
+        except Exception:
+            pass
 
 
-def _history_ath(monitor, symbol: str):
-    ys = _yahoo_symbol(symbol)
-    url = monitor.YAHOO.format(symbol=quote(ys, safe=""))
-    r = requests.get(
-        url,
-        params={"range": "max", "interval": "1mo", "includePrePost": "false", "events": "splits"},
-        headers=UA,
-        timeout=20,
-    )
-    r.raise_for_status()
-    result = (r.json().get("chart", {}).get("result") or [None])[0]
-    if not result:
-        raise RuntimeError("history unavailable")
-    timestamps = result.get("timestamp") or []
-    highs = result.get("indicators", {}).get("quote", [{}])[0].get("high", []) or []
+def _parse_splits(result):
     split_events = (result.get("events") or {}).get("splits") or {}
     splits = []
     for ev in split_events.values():
@@ -175,10 +173,65 @@ def _history_ath(monitor, symbol: str):
                     ratio = float(a) / float(b)
                 else:
                     ratio = float(raw)
-            if ts > 0 and ratio > 0:
+            if ts > 0 and ratio > 0 and math.isfinite(ratio):
                 splits.append((ts, ratio))
         except Exception:
             continue
+    return sorted(splits)
+
+
+def _split_needs_adjustment(split_ts, ratio, timestamps, closes):
+    before = None
+    after = None
+    for ts, close in zip(timestamps, closes):
+        if close is None:
+            continue
+        c = float(close)
+        if not math.isfinite(c) or c <= 0:
+            continue
+        if int(ts) < split_ts:
+            before = c
+        elif int(ts) >= split_ts and after is None:
+            after = c
+            break
+    if before is None or after is None or ratio <= 0:
+        # With no local evidence, avoid applying a split twice. Recent data and
+        # subsequent cached highs can still establish the correct ATH.
+        return False
+    observed = after / before
+    expected_raw_jump = 1.0 / ratio
+    if observed <= 0 or expected_raw_jump <= 0:
+        return False
+    # Compare in log space: if the observed jump is closer to the mechanical
+    # split jump than to 1.0, the OHLC series is raw and needs adjustment.
+    raw_error = abs(math.log(observed / expected_raw_jump))
+    adjusted_error = abs(math.log(observed))
+    return raw_error + 0.15 < adjusted_error
+
+
+def _history_ath(monitor, symbol: str):
+    ys = _yahoo_symbol(symbol)
+    url = monitor.YAHOO.format(symbol=quote(ys, safe=""))
+    r = requests.get(
+        url,
+        params={"range": "max", "interval": "1d", "includePrePost": "false", "events": "splits"},
+        headers=UA,
+        timeout=30,
+    )
+    r.raise_for_status()
+    result = (r.json().get("chart", {}).get("result") or [None])[0]
+    if not result:
+        raise RuntimeError("history unavailable")
+    timestamps = result.get("timestamp") or []
+    quote_data = result.get("indicators", {}).get("quote", [{}])[0]
+    highs = quote_data.get("high", []) or []
+    closes = quote_data.get("close", []) or []
+    splits = [
+        (ts, ratio)
+        for ts, ratio in _parse_splits(result)
+        if _split_needs_adjustment(ts, ratio, timestamps, closes)
+    ]
+
     best = 0.0
     best_ts = 0
     for ts, high in zip(timestamps, highs):
