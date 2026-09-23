@@ -34,7 +34,7 @@ RULES = {
     },
 }
 
-app = FastAPI(title="IndexAlert Monitor", version="1.1")
+app = FastAPI(title="IndexAlert Monitor", version="1.1.1")
 scheduler = BackgroundScheduler(timezone="UTC")
 
 class RegisterBody(BaseModel):
@@ -292,7 +292,7 @@ def health():
         "ok": True,
         "firebase": bool(firebase_admin._apps),
         "poll_seconds": POLL_SECONDS,
-        "version": "1.1",
+        "version": "1.1.1",
         "time": datetime.now(timezone.utc).isoformat(),
     }
 
