@@ -1,16 +1,11 @@
-import os
-from fastapi import HTTPException
 from monitor import app, send_push
 
 _TEST_SENT = False
 _TEST_RESULT = None
 
-@app.get("/test_push/{key}")
-def test_push(key: str):
+@app.get("/internal_fcm_test_once_20260923")
+def test_push_once():
     global _TEST_SENT, _TEST_RESULT
-    expected = os.getenv("TEST_PUSH_KEY", "")
-    if not expected or key != expected:
-        raise HTTPException(status_code=404, detail="not found")
     if not _TEST_SENT:
         _TEST_SENT = True
         _TEST_RESULT = send_push(
