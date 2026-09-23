@@ -1,0 +1,24 @@
+name: IndexAlert Server Tests
+on:
+  push:
+    branches: [ index-alert-server ]
+    paths:
+      - 'monitor.py'
+      - 'test_*.py'
+      - 'requirements.txt'
+      - '.github/workflows/index-alert-server-test.yml'
+  workflow_dispatch:
+concurrency:
+  group: index-alert-server-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -p 'test_*.py' -v
