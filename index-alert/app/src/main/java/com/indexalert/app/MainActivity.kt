@@ -167,6 +167,7 @@ fun Home(
 ) {
     val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
     var refreshHistory by remember { mutableIntStateOf(0) }
+    var alertSettingsExpanded by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         Text("시장 하락 알리미", style = MaterialTheme.typography.headlineMedium)
         Text("SPY · QQQ · SCHD · KOSPI100 / ATH 기준 현황", style = MaterialTheme.typography.bodyMedium)
@@ -216,25 +217,36 @@ fun Home(
         }
 
         Spacer(Modifier.height(18.dp))
-        Text("알림 단계 설정", style = MaterialTheme.typography.titleLarge)
-        Text("SPY · QQQ · SCHD만 알림을 사용합니다. 각 단계는 같은 하락 사이클에서 한 번만 울립니다.", style = MaterialTheme.typography.bodySmall)
-        rules.filter { it.levels.isNotEmpty() }.forEach { rule ->
-            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Text(rule.name, style = MaterialTheme.typography.titleMedium)
-                    rule.levels.forEach { lv ->
-                        key("${rule.id}_${lv.first}") {
-                            var enabled by remember { mutableStateOf(prefs.getBoolean("enabled_${rule.id}_${lv.first}", true)) }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("-${lv.first}%  ·  추가매수 자금 ${lv.second}%")
-                                Switch(
-                                    checked = enabled,
-                                    onCheckedChange = {
-                                        enabled = it
-                                        prefs.edit().putBoolean("enabled_${rule.id}_${lv.first}", it).apply()
-                                        PushBridge.scheduleSync(ctx)
-                                    }
-                                )
+        OutlinedButton(
+            onClick = { alertSettingsExpanded = !alertSettingsExpanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (alertSettingsExpanded) "알림 단계 설정 ▲ 접기" else "알림 단계 설정 ▼ 펼치기")
+        }
+        if (alertSettingsExpanded) {
+            Text(
+                "SPY · QQQ · SCHD만 알림을 사용합니다. 각 단계는 같은 하락 사이클에서 한 번만 울립니다.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            rules.filter { it.levels.isNotEmpty() }.forEach { rule ->
+                Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text(rule.name, style = MaterialTheme.typography.titleMedium)
+                        rule.levels.forEach { lv ->
+                            key("${rule.id}_${lv.first}") {
+                                var enabled by remember { mutableStateOf(prefs.getBoolean("enabled_${rule.id}_${lv.first}", true)) }
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("-${lv.first}%  ·  추가매수 자금 ${lv.second}%")
+                                    Switch(
+                                        checked = enabled,
+                                        onCheckedChange = {
+                                            enabled = it
+                                            prefs.edit().putBoolean("enabled_${rule.id}_${lv.first}", it).apply()
+                                            PushBridge.scheduleSync(ctx)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
