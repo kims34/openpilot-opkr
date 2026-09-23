@@ -6,6 +6,9 @@ on:
       - 'index-alert/**'
       - '.github/workflows/index-alert-build.yml'
   workflow_dispatch:
+concurrency:
+  group: index-alert-apk-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
