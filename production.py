@@ -1,5 +1,6 @@
 import math
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 import monitor
 from fastapi import HTTPException
@@ -34,22 +35,87 @@ monitor.RULES.update({
     },
 })
 
-# One-time migration from index-based ATH state to ETF-based ATH state. Device
-# registrations and per-level settings are intentionally preserved.
+# One-time migrations from the old index basis and from the first ETF build
+# that did not adjust historical prices for stock splits. Device registrations
+# and per-level settings are intentionally preserved.
 _original_init_db = monitor.init_db
 
 def _init_db_with_etf_migration():
     _original_init_db()
     with monitor.db() as con:
-        done = con.execute("SELECT 1 FROM migrations WHERE name='etf-basis-v1'").fetchone()
-        if not done:
-            ids = ("sp500", "ndx", "djdiv")
+        ids = ("sp500", "ndx", "djdiv")
+        if not con.execute("SELECT 1 FROM migrations WHERE name='etf-basis-v1'").fetchone():
             con.execute("DELETE FROM index_state WHERE id IN (?,?,?)", ids)
             con.execute("DELETE FROM fired WHERE index_id IN (?,?,?)", ids)
             con.execute("DELETE FROM deliveries WHERE index_id IN (?,?,?)", ids)
             con.execute("INSERT INTO migrations(name) VALUES('etf-basis-v1')")
+        if not con.execute("SELECT 1 FROM migrations WHERE name='etf-split-ath-v2'").fetchone():
+            con.execute("DELETE FROM index_state WHERE id IN (?,?,?)", ids)
+            con.execute("DELETE FROM fired WHERE index_id IN (?,?,?)", ids)
+            con.execute("DELETE FROM deliveries WHERE index_id IN (?,?,?)", ids)
+            con.execute("INSERT INTO migrations(name) VALUES('etf-split-ath-v2')")
 
 monitor.init_db = _init_db_with_etf_migration
+
+
+def _split_adjusted_historical_ath(symbol: str) -> float:
+    url = monitor.YAHOO.format(symbol=quote(symbol, safe=""))
+    r = monitor.requests.get(
+        url,
+        params={
+            "range": "max",
+            "interval": "1d",
+            "includePrePost": "false",
+            "events": "splits",
+        },
+        headers=monitor.UA,
+        timeout=20,
+    )
+    r.raise_for_status()
+    result = (r.json().get("chart", {}).get("result") or [None])[0]
+    if not result:
+        raise RuntimeError(f"no Yahoo history for {symbol}")
+
+    timestamps = result.get("timestamp") or []
+    highs = result.get("indicators", {}).get("quote", [{}])[0].get("high", []) or []
+    split_events = (result.get("events") or {}).get("splits") or {}
+
+    splits = []
+    for ev in split_events.values():
+        try:
+            ts = int(ev.get("date") or 0)
+            num = float(ev.get("numerator") or 0)
+            den = float(ev.get("denominator") or 0)
+            if num > 0 and den > 0:
+                ratio = num / den
+            else:
+                raw = str(ev.get("splitRatio") or "")
+                if ":" in raw:
+                    a, b = raw.split(":", 1)
+                    ratio = float(a) / float(b)
+                else:
+                    ratio = float(raw)
+            if ts > 0 and ratio > 0:
+                splits.append((ts, ratio))
+        except Exception:
+            continue
+
+    vals = []
+    for ts, high in zip(timestamps, highs):
+        if high is None:
+            continue
+        h = float(high)
+        if not math.isfinite(h) or h <= 0:
+            continue
+        factor = 1.0
+        for split_ts, ratio in splits:
+            if split_ts > int(ts):
+                factor *= ratio
+        vals.append(h / factor)
+
+    if not vals:
+        raise RuntimeError(f"no ATH history for {symbol}")
+    return max(vals)
 
 
 def _evaluate_etf(index_id: str):
@@ -68,7 +134,7 @@ def _evaluate_etf(index_id: str):
     old_ath = ath
     day = datetime.now(timezone.utc).date().isoformat()
     if ath <= 0 or monitor.ATH_REFRESH.get(index_id) != day:
-        ath = max(ath, monitor.historical_ath(rule["cash"]))
+        ath = max(ath, _split_adjusted_historical_ath(rule["cash"]))
         monitor.ATH_REFRESH[index_id] = day
     ath = max(ath, recent_high)
     if not math.isfinite(ath) or ath <= 0 or not math.isfinite(cash_now) or cash_now <= 0:
