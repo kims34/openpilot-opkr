@@ -90,19 +90,19 @@ data class Rule(
 
 val rules = listOf(
     Rule(
-        "sp500", "S&P 500", "^GSPC", "ES=F",
+        "sp500", "SPY (S&P 500 ETF)", "SPY", "SPY",
         listOf(5 to 10, 10 to 15, 15 to 20, 20 to 25, 25 to 15, 30 to 10, 35 to 5),
-        "현물 S&P 500 · 장외는 S&P 선물 연동 추정"
+        "S&P 500 추종 ETF · SPY 자체 가격 기준"
     ),
     Rule(
-        "ndx", "NASDAQ 100", "^NDX", "NQ=F",
+        "ndx", "QQQ (NASDAQ 100 ETF)", "QQQ", "QQQ",
         listOf(10 to 10, 15 to 15, 20 to 20, 25 to 20, 30 to 20, 35 to 15),
-        "현물 NDX · 장외는 Nasdaq 선물 연동 추정"
+        "NASDAQ-100 추종 ETF · QQQ 자체 가격 기준"
     ),
     Rule(
-        "djdiv", "SCHD 기준지수", "^DJUSDIV", "SCHD",
+        "djdiv", "SCHD", "SCHD", "SCHD",
         listOf(5 to 15, 10 to 20, 15 to 20, 20 to 20, 25 to 15, 30 to 10),
-        "Dow Jones U.S. Dividend 100"
+        "SCHD ETF 자체 가격 기준"
     )
 )
 
@@ -134,17 +134,17 @@ fun Home(
     Column(
         Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("지수 하락 알리미", style = MaterialTheme.typography.headlineMedium)
-        Text("Android · ATH 대비 단계별 매수구간 알림", style = MaterialTheme.typography.bodyMedium)
+        Text("ETF 하락 알리미", style = MaterialTheme.typography.headlineMedium)
+        Text("SPY · QQQ · SCHD / ATH 대비 단계별 매수구간 알림", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(14.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onRefresh, enabled = !loading, modifier = Modifier.weight(1f)) {
-                Text(if (loading) "새로고침 중" else "지수 새로고침")
+                Text(if (loading) "새로고침 중" else "ETF 새로고침")
             }
             OutlinedButton(
                 onClick = {
-                    IndexWorker.notify(ctx, "테스트 알림", "지수 하락 알리미가 정상 작동합니다.")
+                    IndexWorker.notify(ctx, "테스트 알림", "ETF 하락 알리미가 정상 작동합니다.")
                     HistoryStore.add(ctx, "테스트 알림 발송")
                     refreshHistory++
                 },
@@ -199,7 +199,7 @@ fun Home(
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "장외 시간에는 현물지수 자체가 아니라 연동 시장의 움직임으로 환산한 추정치가 표시됩니다. " +
+            "정규장뿐 아니라 프리마켓·애프터마켓에서도 ETF 자체 가격을 기준으로 서버가 감시합니다. " +
                 "무료 프로토타입 데이터가 공식 거래소 실시간 피드와 다를 수 있습니다.",
             style = MaterialTheme.typography.bodySmall
         )
@@ -236,8 +236,6 @@ data class ChartData(val current: Double, val previousClose: Double, val marketS
 object MarketEngine {
     fun snapshot(ctx: Context, rule: Rule): IndexSnapshot {
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
-        // Local fallback uses official cash data only: an ETF price cannot share
-        // an index ATH, and an unanchored futures ratio can create false alerts.
         val baseData = fetchCurrent(rule.cashSymbol)
         val key = "ath_cash_${rule.id}"
         var ath = prefs.getString(key, null)?.toDoubleOrNull() ?: 0.0
@@ -249,7 +247,7 @@ object MarketEngine {
         ath = max(ath, baseData.high)
         prefs.edit().putString(key, ath.toString()).apply()
         val current = baseData.current
-        val source = "현물 마지막 값 · 로컬 보조 조회"
+        val source = "ETF 자체 가격 · 로컬 보조 조회"
 
         val dd = if (ath > 0) (current / ath - 1.0) * 100.0 else 0.0
         val enabledLevels = rule.levels.filter { prefs.getBoolean("enabled_${rule.id}_${it.first}", true) }
@@ -263,7 +261,7 @@ object MarketEngine {
     }
 
     private fun fetchCurrent(symbol: String): ChartData {
-        val result = fetchResult(symbol, "5d", "5m", false)
+        val result = fetchResult(symbol, "5d", "5m", true)
         val meta = result.getJSONObject("meta")
         val quote = result.getJSONObject("indicators").getJSONArray("quote").getJSONObject(0)
         val closes = quote.getJSONArray("close")
@@ -294,12 +292,55 @@ object MarketEngine {
     }
 
     private fun fetchAth(symbol: String): Double {
-        val result = fetchResult(symbol, "max", "1d", false)
+        val enc = URLEncoder.encode(symbol, "UTF-8")
+        val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/$enc?range=max&interval=1d&includePrePost=false&events=splits")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.connectTimeout = 12000
+        conn.readTimeout = 12000
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+        val text = conn.inputStream.bufferedReader().use { it.readText() }
+        conn.disconnect()
+        val chart = JSONObject(text).getJSONObject("chart")
+        val arr = chart.optJSONArray("result") ?: error("result 없음")
+        if (arr.length() == 0 || arr.isNull(0)) error("빈 응답")
+        val result = arr.getJSONObject(0)
+        val timestamps = result.getJSONArray("timestamp")
         val quote = result.getJSONObject("indicators").getJSONArray("quote").getJSONObject(0)
         val highs = quote.getJSONArray("high")
+
+        val splits = mutableListOf<Pair<Long, Double>>()
+        val splitObj = result.optJSONObject("events")?.optJSONObject("splits")
+        if (splitObj != null) {
+            val keys = splitObj.keys()
+            while (keys.hasNext()) {
+                val ev = splitObj.optJSONObject(keys.next()) ?: continue
+                val ts = ev.optLong("date", 0L)
+                var ratio = 0.0
+                val num = ev.optDouble("numerator", 0.0)
+                val den = ev.optDouble("denominator", 0.0)
+                if (num > 0.0 && den > 0.0) {
+                    ratio = num / den
+                } else {
+                    val raw = ev.optString("splitRatio", "")
+                    if (raw.contains(":")) {
+                        val p = raw.split(":", limit = 2)
+                        ratio = (p.getOrNull(0)?.toDoubleOrNull() ?: 0.0) / (p.getOrNull(1)?.toDoubleOrNull() ?: 1.0)
+                    }
+                }
+                if (ts > 0L && ratio > 0.0) splits.add(ts to ratio)
+            }
+        }
+
         var ath = 0.0
-        for (i in 0 until highs.length()) {
-            if (!highs.isNull(i)) ath = max(ath, highs.getDouble(i))
+        val count = minOf(timestamps.length(), highs.length())
+        for (i in 0 until count) {
+            if (highs.isNull(i)) continue
+            val h = highs.optDouble(i, Double.NaN)
+            if (!h.isFinite() || h <= 0.0) continue
+            val ts = timestamps.optLong(i, 0L)
+            var factor = 1.0
+            splits.forEach { (splitTs, ratio) -> if (splitTs > ts) factor *= ratio }
+            ath = max(ath, h / factor)
         }
         if (ath <= 0) error("ATH 계산 실패")
         return ath
@@ -313,6 +354,7 @@ object MarketEngine {
         conn.readTimeout = 12000
         conn.setRequestProperty("User-Agent", "Mozilla/5.0")
         val text = conn.inputStream.bufferedReader().use { it.readText() }
+        conn.disconnect()
         val chart = JSONObject(text).getJSONObject("chart")
         val arr = chart.optJSONArray("result") ?: error("result 없음")
         if (arr.length() == 0 || arr.isNull(0)) error("빈 응답")
@@ -333,27 +375,27 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
     private fun check(rule: Rule) {
         val s = MarketEngine.snapshot(applicationContext, rule)
         synchronized(HistoryStore) {
-        val dd = s.drawdown ?: return
-        val prefs = applicationContext.getSharedPreferences("state", Context.MODE_PRIVATE)
-        val crossed = rule.levels.filter { lv ->
-            prefs.getBoolean("enabled_${rule.id}_${lv.first}", true) &&
-                dd <= -lv.first &&
-                !prefs.getBoolean("delivered_${rule.id}_${s.ath}_${lv.first}", false)
-        }
-        if (crossed.isEmpty()) return
-        val edit = prefs.edit()
-        val deepest = crossed.maxBy { it.first }
-        val next = rule.levels.firstOrNull { it.first > deepest.first }
-        val title = "${rule.name} -${deepest.first}% 매수구간 진입"
-        val body = buildString {
-            append("ATH 대비 ${String.format(Locale.US, "%.2f%%", dd)} · 이번 단계 ${deepest.second}%")
-            append(" · ${s.sourceText}")
-            if (next != null) append(" · 다음 -${next.first}%")
-        }
-        if (!notify(applicationContext, title, body)) return
-        crossed.forEach { edit.putBoolean("delivered_${rule.id}_${s.ath}_${it.first}", true) }
-        edit.apply()
-        HistoryStore.add(applicationContext, "$title / $body")
+            val dd = s.drawdown ?: return
+            val prefs = applicationContext.getSharedPreferences("state", Context.MODE_PRIVATE)
+            val crossed = rule.levels.filter { lv ->
+                prefs.getBoolean("enabled_${rule.id}_${lv.first}", true) &&
+                    dd <= -lv.first &&
+                    !prefs.getBoolean("delivered_${rule.id}_${s.ath}_${lv.first}", false)
+            }
+            if (crossed.isEmpty()) return
+            val edit = prefs.edit()
+            val deepest = crossed.maxBy { it.first }
+            val next = rule.levels.firstOrNull { it.first > deepest.first }
+            val title = "${rule.name} -${deepest.first}% 매수구간 진입"
+            val body = buildString {
+                append("ATH 대비 ${String.format(Locale.US, "%.2f%%", dd)} · 이번 단계 ${deepest.second}%")
+                append(" · ${s.sourceText}")
+                if (next != null) append(" · 다음 -${next.first}%")
+            }
+            if (!notify(applicationContext, title, body)) return
+            crossed.forEach { edit.putBoolean("delivered_${rule.id}_${s.ath}_${it.first}", true) }
+            edit.apply()
+            HistoryStore.add(applicationContext, "$title / $body")
         }
     }
 
@@ -363,8 +405,10 @@ class IndexWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (!nm.areNotificationsEnabled()) return false
             val intent = android.content.Intent(ctx, DashboardActivity::class.java)
-            val pending = android.app.PendingIntent.getActivity(ctx, 0, intent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+            val pending = android.app.PendingIntent.getActivity(
+                ctx, 0, intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
             val n = NotificationCompat.Builder(ctx, "index_alerts")
                 .setContentIntent(pending)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -401,8 +445,8 @@ object HistoryStore {
 fun createChannel(ctx: Context) {
     if (Build.VERSION.SDK_INT >= 26) {
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel("index_alerts", "지수 하락 알림", NotificationManager.IMPORTANCE_HIGH)
-        channel.description = "ATH 대비 단계별 지수 하락 알림"
+        val channel = NotificationChannel("index_alerts", "ETF 하락 알림", NotificationManager.IMPORTANCE_HIGH)
+        channel.description = "ATH 대비 단계별 ETF 하락 알림"
         nm.createNotificationChannel(channel)
     }
 }
