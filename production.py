@@ -1,9 +1,11 @@
 import json
 import math
+import threading
 from datetime import datetime, timezone
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
+import laggards
 import monitor
 from fastapi import HTTPException
 
@@ -72,6 +74,7 @@ def _init_db_with_market_migrations():
             con.execute("DELETE FROM deliveries WHERE index_id='kospi100'")
             con.execute("DELETE FROM fired WHERE index_id='kospi100'")
             con.execute("INSERT INTO migrations(name) VALUES('kospi100-display-v1')")
+    laggards.init_db(monitor)
 
 
 monitor.init_db = _init_db_with_market_migrations
@@ -285,7 +288,6 @@ def register(body: monitor.RegisterBody):
     settings = body.enabled_levels
     if settings is not None:
         settings = dict(settings)
-        # v0.8 and older clients only know the original three monitored assets.
         settings.setdefault("kospi100", [])
         body = monitor.RegisterBody(
             token=body.token,
@@ -315,3 +317,23 @@ def status():
             **extra,
         })
     return {"indices": out}
+
+
+@app.get("/laggards")
+def laggard_status():
+    return laggards.get(monitor)
+
+
+@app.on_event("startup")
+def start_laggard_refresh():
+    laggards.init_db(monitor)
+    threading.Thread(target=laggards.refresh, args=(monitor,), daemon=True).start()
+    if not monitor.scheduler.get_job("laggard-refresh"):
+        monitor.scheduler.add_job(
+            lambda: laggards.refresh(monitor),
+            "interval",
+            hours=24,
+            id="laggard-refresh",
+            max_instances=1,
+            coalesce=True,
+        )
