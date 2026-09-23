@@ -30,6 +30,21 @@ object PushBridge {
         return true
     }
 
+    fun serverFirebaseReady(): Boolean {
+        if (!configured()) return false
+        return runCatching {
+            val base = BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/')
+            val c = URL("$base/health").openConnection() as HttpURLConnection
+            c.requestMethod = "GET"
+            c.connectTimeout = 7000
+            c.readTimeout = 7000
+            c.setRequestProperty("Accept", "application/json")
+            val text = c.inputStream.bufferedReader().use { it.readText() }
+            c.disconnect()
+            JSONObject(text).optBoolean("firebase", false)
+        }.getOrDefault(false)
+    }
+
     fun registerToken(token: String) {
         if (!configured() || token.isBlank()) return
         Thread {
