@@ -240,17 +240,20 @@ def evaluate(index_id: str):
     already = fired_set(index_id)
     crossed = [(thr, pct) for thr, pct in rule["levels"] if dd <= -thr and thr not in already]
     if crossed:
-        mark_fired(index_id, [x[0] for x in crossed])
         thr, pct = max(crossed, key=lambda x: x[0])
         next_level = next((x for x in rule["levels"] if x[0] > thr), None)
         title = f"{rule['name']} -{thr}% 매수구간 진입"
         body = f"ATH 대비 {dd:.2f}% · 이번 단계 {pct}% · {source}"
         if next_level:
             body += f" · 다음 -{next_level[0]}%"
-        send_push(title, body, {
+        sent = send_push(title, body, {
             "index_id": index_id, "drawdown": f"{dd:.4f}",
             "threshold": thr, "allocation": pct, "source": source,
         })
+        # Missing credentials, no devices, and failed sends must not consume
+        # a threshold. Retry while the market remains in the crossed range.
+        if sent > 0:
+            mark_fired(index_id, [x[0] for x in crossed])
 
     save_state(index_id, ath, cash_now, value, source)
     out = {
