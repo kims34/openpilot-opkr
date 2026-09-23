@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from monitor import app, send_push
 
 _TEST_SENT = False
@@ -14,4 +15,6 @@ def test_push_once():
             {"type": "connection_test"},
         )
         print(f"TEST_PUSH_RESULT sent={_TEST_RESULT}", flush=True)
+    if not _TEST_RESULT or _TEST_RESULT < 1:
+        raise HTTPException(status_code=503, detail="FCM test push was not accepted")
     return {"ok": True, "sent": _TEST_RESULT}
