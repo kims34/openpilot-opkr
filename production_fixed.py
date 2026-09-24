@@ -1,194 +1,162 @@
-import html as html_lib
 import math
-import re
-import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import monitor
 import production
+from fastapi import HTTPException
 
-# Preserve the hardened production app/routes and only replace KOSPI100 handling.
 app = production.app
 _original_init_db = monitor.init_db
+_original_evaluate = monitor.evaluate
 
-# Verified 52-week high seen on Naver/KRX-derived public data in 2026.
-# This is a safety floor for ATH, never a ceiling.
-KOSPI100_VERIFIED_ATH_FLOOR = 11932.83
-NAVER_KOSPI100_URL = "https://finance.naver.com/sise/sise_index.naver?code=KPI100"
 NAVER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
     "Referer": "https://finance.naver.com/",
 }
+NAVER_KOSPI_URL = "https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI"
+NAVER_USDKRW_URL = "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW"
+
+# Keep the historical internal id for backward compatibility with already-installed
+# clients, but it now represents the KOSPI composite index, not KOSPI100.
+monitor.RULES["kospi100"] = {
+    "name": "KOSPI",
+    "cash": "^KS11",
+    "proxy": None,
+    "levels": [],
+    "regular_label": "KOSPI · 네이버 증권",
+    "proxy_label": "KOSPI · 네이버 증권",
+    "extended": False,
+    "timezone": "Asia/Seoul",
+}
+monitor.RULES["usdkrw"] = {
+    "name": "USD/KRW 달러 환율",
+    "cash": "KRW=X",
+    "proxy": None,
+    "levels": [],
+    "regular_label": "네이버 증권 · 하나은행 고시",
+    "proxy_label": "네이버 증권 · 하나은행 고시",
+    "extended": False,
+    "timezone": "Asia/Seoul",
+}
 
 
-def _init_db_with_kospi_ath_fix():
+def _init_db_with_naver_market_fix():
     _original_init_db()
     with monitor.db() as con:
-        if not con.execute("SELECT 1 FROM migrations WHERE name='kospi100-naver-primary-v4'").fetchone():
+        if not con.execute("SELECT 1 FROM migrations WHERE name='kospi-naver-v5'").fetchone():
             con.execute("DELETE FROM index_state WHERE id='kospi100'")
             con.execute("DELETE FROM fired WHERE index_id='kospi100'")
             con.execute("DELETE FROM deliveries WHERE index_id='kospi100'")
-            con.execute("INSERT INTO migrations(name) VALUES('kospi100-naver-primary-v4')")
+            con.execute("INSERT INTO migrations(name) VALUES('kospi-naver-v5')")
+        if not con.execute("SELECT 1 FROM migrations WHERE name='usdkrw-display-v1'").fetchone():
+            con.execute("DELETE FROM index_state WHERE id='usdkrw'")
+            con.execute("DELETE FROM fired WHERE index_id='usdkrw'")
+            con.execute("DELETE FROM deliveries WHERE index_id='usdkrw'")
+            con.execute("INSERT INTO migrations(name) VALUES('usdkrw-display-v1')")
 
 
-monitor.init_db = _init_db_with_kospi_ath_fix
-_original_evaluate = monitor.evaluate
+monitor.init_db = _init_db_with_naver_market_fix
 
 
-def _clean_text(raw: str) -> str:
-    text = re.sub(r"<[^>]+>", " ", raw or "")
-    text = html_lib.unescape(text)
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def _number(raw: str):
-    m = re.search(r"[-+]?\d[\d,]*(?:\.\d+)?", raw or "")
-    if not m:
+def _num(value):
+    if value is None:
         return None
     try:
-        return float(m.group(0).replace(",", ""))
+        return float(str(value).replace(",", "").strip())
     except Exception:
         return None
 
 
-def _naver_kospi100_quote():
-    r = monitor.requests.get(NAVER_KOSPI100_URL, headers=NAVER_HEADERS, timeout=15)
+def _signed(value, direction):
+    v = _num(value)
+    if v is None:
+        return 0.0
+    name = str(direction or "").upper()
+    if "FALL" in name or "하락" in name:
+        return -abs(v)
+    if "RIS" in name or "상승" in name:
+        return abs(v)
+    return v
+
+
+def _iso_ts(raw):
+    try:
+        return int(datetime.fromisoformat(str(raw)).timestamp())
+    except Exception:
+        return int(datetime.now(timezone.utc).timestamp())
+
+
+def _naver_kospi_quote():
+    r = monitor.requests.get(NAVER_KOSPI_URL, headers=NAVER_HEADERS, timeout=12)
     r.raise_for_status()
-    # Naver Finance legacy pages are commonly served as euc-kr/cp949.
-    if not r.encoding or r.encoding.lower() in {"iso-8859-1", "ascii"}:
-        r.encoding = "euc-kr"
-    page = r.text
-
-    m = re.search(r'id=["\']now_value["\'][^>]*>(.*?)</', page, re.I | re.S)
-    if not m:
-        raise RuntimeError("naver KOSPI100 now_value missing")
-    current = _number(_clean_text(m.group(1)))
-    if not current or current <= 0:
-        raise RuntimeError("naver KOSPI100 current invalid")
-
-    # Read a bounded chunk around change_value_and_rate. Its child span carries
-    # the absolute move and direction text (상승/하락). Derive previous close so
-    # current, absolute change, and percentage stay internally consistent.
-    change = 0.0
-    cm = re.search(r'id=["\']change_value_and_rate["\']', page, re.I)
-    if cm:
-        chunk = _clean_text(page[cm.start():cm.start() + 900])
-        raw_change = _number(chunk)
-        if raw_change is not None:
-            if "하락" in chunk:
-                change = -abs(raw_change)
-            elif "상승" in chunk:
-                change = abs(raw_change)
-            else:
-                change = raw_change
-    previous_close = current - change
-    if previous_close <= 0:
-        previous_close = current
+    datas = r.json().get("datas") or []
+    if not datas:
+        raise RuntimeError("Naver KOSPI quote unavailable")
+    d = datas[0]
+    current = _num(d.get("closePriceRaw") or d.get("closePrice"))
+    if current is None or current <= 0:
+        raise RuntimeError("Naver KOSPI current invalid")
+    direction = ((d.get("compareToPreviousPrice") or {}).get("name") or
+                 (d.get("compareToPreviousPrice") or {}).get("text"))
+    change = _signed(d.get("compareToPreviousClosePriceRaw") or d.get("compareToPreviousClosePrice"), direction)
+    ratio_raw = _num(d.get("fluctuationsRatioRaw") or d.get("fluctuationsRatio"))
+    ratio = _signed(ratio_raw, direction) if ratio_raw is not None else 0.0
+    previous = current - change
+    if previous <= 0:
+        previous = current
         change = 0.0
-    change_pct = (current / previous_close - 1.0) * 100.0 if previous_close > 0 else 0.0
-
-    flat = _clean_text(page)
-    high52 = None
-    hm = re.search(r"52주최고\s*([0-9][0-9,]*(?:\.\d+)?)", flat)
-    if hm:
-        high52 = _number(hm.group(1))
-
-    # Naver's page is KRX/Koscom-fed. Timestamp the successful fetch rather
-    # than inventing an exchange print timestamp.
-    now_ts = int(time.time())
-    print("kospi100 naver quote", {
-        "current": current,
-        "previous_close": previous_close,
-        "day_change": change,
-        "day_change_percent": change_pct,
-        "high52": high52,
-    }, flush=True)
-    return current, previous_close, change, change_pct, high52, now_ts
+        ratio = 0.0
+    high = _num(d.get("highPriceRaw") or d.get("highPrice")) or current
+    ts = _iso_ts(d.get("localTradedAt"))
+    market_state = "REGULAR" if str(d.get("marketStatus", "")).upper() == "OPEN" else "CLOSED"
+    print("kospi naver quote", {"current": current, "previous": previous, "change": change, "ratio": ratio, "high": high}, flush=True)
+    return current, previous, change, ratio, high, ts, market_state
 
 
-def _history_candidates(symbol: str, naver_high52=None):
-    candidates = [(KOSPI100_VERIFIED_ATH_FLOOR, 0, "verified-52w-floor")]
-    if naver_high52 and math.isfinite(float(naver_high52)) and float(naver_high52) > 0:
-        candidates.append((float(naver_high52), 0, "naver-52w"))
+def _evaluate_kospi(index_id: str):
+    current, previous, change, ratio, day_high, value_ts, market_state = _naver_kospi_quote()
+    tz = ZoneInfo("Asia/Seoul")
+    today = datetime.now(tz).date().isoformat()
+    state = monitor.get_state(index_id)
+    old_ath = float(state[0]) if state and state[0] else 0.0
+    ath = old_ath
+    ath_ts = 0
 
-    try:
-        value, ts = production._history_ath(symbol)
-        if math.isfinite(value) and value > 0:
-            candidates.append((float(value), int(ts or 0), "yahoo-max"))
-    except Exception as exc:
-        print("kospi100 production history failed", type(exc).__name__, flush=True)
+    if ath <= 0 or monitor.ATH_REFRESH.get(index_id) != today:
+        try:
+            hist_ath, hist_ts = production._history_ath("^KS11")
+            if hist_ath >= ath:
+                ath = float(hist_ath)
+                ath_ts = int(hist_ts or 0)
+        except Exception as exc:
+            print("kospi historical ATH failed", type(exc).__name__, flush=True)
+        monitor.ATH_REFRESH[index_id] = today
 
-    try:
-        result = monitor.yahoo_result(symbol, "1y", "1d", False)
-        timestamps = result.get("timestamp") or []
-        highs = result.get("indicators", {}).get("quote", [{}])[0].get("high", []) or []
-        best = 0.0
-        best_ts = 0
-        for ts, high in zip(timestamps, highs):
-            if high is None:
-                continue
-            h = float(high)
-            if math.isfinite(h) and h > 0 and h >= best:
-                best = h
-                best_ts = int(ts)
-        if best > 0:
-            candidates.append((best, best_ts, "yahoo-1y"))
-    except Exception as exc:
-        print("kospi100 1y crosscheck failed", type(exc).__name__, flush=True)
-    return candidates
-
-
-def _kospi100_ath(naver_high52=None):
-    candidates = _history_candidates("KOSPI100.KS", naver_high52)
-    best_value, best_ts, source = max(candidates, key=lambda x: x[0])
-    print("kospi100 ATH crosscheck", {"ath": best_value, "ts": best_ts, "source": source, "candidates": candidates}, flush=True)
-    return best_value, best_ts
-
-
-def _evaluate(index_id: str):
-    if index_id != "kospi100":
-        return _original_evaluate(index_id)
-
-    rule = monitor.RULES[index_id]
-    source = "네이버 증권 KPI100 · KRX/Koscom"
-    market_state = "REGULAR"
-    try:
-        value, previous_close, day_change, day_change_percent, high52, value_ts = _naver_kospi100_quote()
-    except Exception as exc:
-        print("kospi100 naver quote failed", type(exc).__name__, str(exc), flush=True)
-        # Fallback only. Yahoo's Korean index can be delayed or mapped
-        # inconsistently, so make the fallback explicit in the source label.
-        cash_result = monitor.yahoo_result(rule["cash"], prepost=False)
-        points = monitor.series(cash_result)
-        if not points:
-            raise RuntimeError("no KOSPI100 prices")
-        value_ts, value = points[-1]
-        meta = cash_result.get("meta", {})
-        previous_close = production._previous_close(meta, value)
-        day_change = value - previous_close
-        day_change_percent = (value / previous_close - 1.0) * 100.0 if previous_close > 0 else 0.0
-        high52 = None
-        market_state = monitor.session_state(meta)
-        source = "Yahoo KOSPI100 보조 조회"
-
-    ath, ath_ts = _kospi100_ath(high52)
-    ath = max(ath, value)
-    if ath == value and not ath_ts:
+    if day_high >= ath:
+        ath = day_high
+        ath_ts = value_ts
+    if ath <= 0:
+        ath = max(current, day_high)
         ath_ts = value_ts
 
-    if not math.isfinite(ath) or ath <= 0 or not math.isfinite(value) or value <= 0:
-        raise RuntimeError("invalid KOSPI100 data")
+    # Recover ATH date after restart when the stored ATH is still current.
+    if ath_ts == 0:
+        try:
+            hist_ath, hist_ts = production._history_ath("^KS11")
+            if abs(float(hist_ath) - ath) / max(ath, 1.0) < 0.002:
+                ath_ts = int(hist_ts or 0)
+        except Exception:
+            pass
 
-    drawdown = (value / ath - 1.0) * 100.0
-    tz = ZoneInfo("Asia/Seoul")
+    drawdown = (current / ath - 1.0) * 100.0 if ath > 0 else None
     ath_date = datetime.fromtimestamp(ath_ts, tz=timezone.utc).astimezone(tz).date().isoformat() if ath_ts else None
-
-    monitor.save_state(index_id, ath, value, value, source)
+    source = "KOSPI 현재/등락 · 네이버 증권"
+    monitor.save_state(index_id, ath, current, current, source)
     production.EXTRA_STATE[index_id] = {
-        "previous_close": previous_close,
-        "day_change": day_change,
-        "day_change_percent": day_change_percent,
+        "previous_close": previous,
+        "day_change": change,
+        "day_change_percent": ratio,
         "ath_date": ath_date,
         "ath_days": production._days_since(ath_ts, "Asia/Seoul") if ath_ts else None,
         "drawdown": drawdown,
@@ -197,9 +165,9 @@ def _evaluate(index_id: str):
     }
     return {
         "id": index_id,
-        "name": rule["name"],
-        "value": value,
-        "cash": value,
+        "name": "KOSPI",
+        "value": current,
+        "cash": current,
         "ath": ath,
         "drawdown": drawdown,
         "source": source,
@@ -210,4 +178,94 @@ def _evaluate(index_id: str):
     }
 
 
+def _naver_usdkrw_quote():
+    r = monitor.requests.get(NAVER_USDKRW_URL, headers=NAVER_HEADERS, timeout=12)
+    r.raise_for_status()
+    info = r.json().get("exchangeInfo") or {}
+    current = _num(info.get("closePrice"))
+    if current is None or current <= 0:
+        raise RuntimeError("Naver USD/KRW current invalid")
+    direction = ((info.get("fluctuationsType") or {}).get("name") or
+                 (info.get("fluctuationsType") or {}).get("text"))
+    change = _signed(info.get("fluctuations"), direction)
+    ratio = _signed(info.get("fluctuationsRatio"), direction)
+    previous = current - change
+    if previous <= 0:
+        previous = current
+        change = 0.0
+        ratio = 0.0
+    value_ts = _iso_ts(info.get("localTradedAt"))
+    market_state = str(info.get("marketStatus") or "").upper() or "UNKNOWN"
+    print("usdkrw naver quote", {"current": current, "previous": previous, "change": change, "ratio": ratio}, flush=True)
+    return current, previous, change, ratio, value_ts, market_state
+
+
+def _evaluate_usdkrw(index_id: str):
+    current, previous, change, ratio, value_ts, market_state = _naver_usdkrw_quote()
+    source = "네이버 증권 · 하나은행 고시"
+    now = datetime.now(timezone.utc).isoformat()
+    production.EXTRA_STATE[index_id] = {
+        "ath": None,
+        "last_cash": current,
+        "last_value": current,
+        "source": source,
+        "updated_at": now,
+        "previous_close": previous,
+        "day_change": change,
+        "day_change_percent": ratio,
+        "ath_date": None,
+        "ath_days": None,
+        "drawdown": None,
+        "market_state": market_state,
+        "value_ts": value_ts,
+    }
+    return {
+        "id": index_id,
+        "name": "USD/KRW 달러 환율",
+        "value": current,
+        "cash": current,
+        "ath": None,
+        "drawdown": None,
+        "source": source,
+        "market_state": market_state,
+        "cash_ts": value_ts,
+        "value_ts": value_ts,
+        **production.EXTRA_STATE[index_id],
+    }
+
+
+def _evaluate(index_id: str):
+    if index_id == "kospi100":
+        return _evaluate_kospi(index_id)
+    if index_id == "usdkrw":
+        return _evaluate_usdkrw(index_id)
+    return _original_evaluate(index_id)
+
+
 monitor.evaluate = _evaluate
+
+# production.register predates USD/KRW. Replace it so old v1.0 clients and the
+# new client both satisfy monitor.register's exact RULES-key validation.
+app.router.routes = [route for route in app.router.routes if getattr(route, "path", None) != "/register"]
+
+
+@app.post("/register")
+def register(body: monitor.RegisterBody):
+    token = body.token.strip()
+    if not (20 <= len(token) <= 4096):
+        raise HTTPException(400, "invalid token")
+    if body.platform != "android":
+        raise HTTPException(400, "unsupported platform")
+    if body.protocol not in (1, 2):
+        raise HTTPException(400, "unsupported protocol")
+    settings = dict(body.enabled_levels or {}) if body.enabled_levels is not None else None
+    if settings is not None:
+        settings.setdefault("kospi100", [])
+        settings.setdefault("usdkrw", [])
+        body = monitor.RegisterBody(
+            token=body.token,
+            platform=body.platform,
+            enabled_levels=settings,
+            protocol=body.protocol,
+        )
+    return monitor.register(body)
