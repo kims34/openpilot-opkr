@@ -195,6 +195,7 @@ private fun IndexCardV11(s: IndexSnapshot) {
                 else -> s.sourceText
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
+            WeeklyChartSection(s.rule.id)
         }
     }
 }
