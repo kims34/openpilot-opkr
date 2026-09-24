@@ -151,7 +151,7 @@ fun HomeV11(
         Text(
             "SPY · QQQ · SCHD는 ETF 자체 가격으로 단계별 알림을 감시합니다. " +
                 "KOSPI 현재값과 전일 등락은 네이버 증권을 우선 사용하고, USD/KRW는 네이버 증권의 하나은행 고시 환율을 표시합니다. " +
-                "KOSPI와 환율은 알림을 보내지 않습니다.",
+                "모든 시장 카드는 최근 1개월 일봉 차트를 항상 펼쳐서 표시합니다. KOSPI와 환율은 알림을 보내지 않습니다.",
             style = MaterialTheme.typography.bodySmall
         )
         Spacer(Modifier.height(24.dp))
@@ -195,7 +195,7 @@ private fun IndexCardV11(s: IndexSnapshot) {
                 else -> s.sourceText
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
-            WeeklyChartSection(s.rule.id)
+            MonthlyChartSection(s.rule.id)
         }
     }
 }
