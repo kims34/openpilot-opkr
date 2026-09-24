@@ -18,8 +18,8 @@ NAVER_API = "https://stock.naver.com/api/securityFe/api/index/KPI100/basic"
 NAVER_LEGACY = "https://finance.naver.com/sise/sise_index.naver?code=KPI100"
 NAVER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36",
-    "Referer": "https://stock.naver.com/",
-    "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+    "Referer": "https://finance.naver.com/",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.8,*/*;q=0.7",
 }
 
 
@@ -41,7 +41,7 @@ def _pick(obj, *keys):
 
 
 def _naver_api_quote():
-    r = requests.get(NAVER_API, headers=NAVER_HEADERS, timeout=8)
+    r = requests.get(NAVER_API, headers={**NAVER_HEADERS, "Referer": "https://stock.naver.com/", "Accept": "application/json,*/*;q=0.8"}, timeout=8)
     r.raise_for_status()
     data = r.json()
     if isinstance(data, dict) and isinstance(data.get("result"), dict):
@@ -55,8 +55,7 @@ def _naver_api_quote():
     if value is None or value <= 0:
         raise RuntimeError("Naver KPI100 price unavailable")
 
-    if ratio is None:
-        ratio = 0.0
+    ratio = ratio or 0.0
     sign = -1.0 if ratio < 0 else (1.0 if ratio > 0 else 0.0)
     day_change = (change_abs or 0.0) * sign
     previous_close = value - day_change if value - day_change > 0 else value
@@ -75,43 +74,74 @@ def _naver_api_quote():
             pass
 
     print("kospi100 Naver API", {"value": value, "change": day_change, "ratio": ratio, "high52": high52}, flush=True)
-    return value, previous_close, day_change, ratio, high52, high52_date, ts, "네이버 증권 · KPI100"
+    return value, previous_close, day_change, ratio, high52, high52_date, ts, "네이버 증권 API · KPI100"
+
+
+def _decode_naver(content: bytes):
+    for encoding in ("euc-kr", "cp949", "utf-8"):
+        try:
+            return content.decode(encoding)
+        except Exception:
+            pass
+    return content.decode("utf-8", errors="replace")
 
 
 def _naver_legacy_quote():
-    headers = dict(NAVER_HEADERS)
-    headers["Accept"] = "text/html,application/xhtml+xml"
-    r = requests.get(NAVER_LEGACY, headers=headers, timeout=8)
+    r = requests.get(NAVER_LEGACY, headers=NAVER_HEADERS, timeout=8)
     r.raise_for_status()
-    raw = r.text
-    text = re.sub(r"(?is)<script.*?</script>|<style.*?</style>", " ", raw)
-    text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", text))
-    text = re.sub(r"\s+", " ", text)
+    raw = _decode_naver(r.content)
 
-    def find(pattern):
-        m = re.search(pattern, text)
-        return _num(m.group(1)) if m else None
-
-    value = find(r"코스피100\s+([0-9,]+(?:\.[0-9]+)?)")
-    ratio = find(r"등락률\s*([+\-]?[0-9,]+(?:\.[0-9]+)?)\s*%")
-    change_abs = find(r"전일대비(?:\s*(?:상승|하락|보합))?\s*([0-9,]+(?:\.[0-9]+)?)")
-    high52 = find(r"52주최고\s*([0-9,]+(?:\.[0-9]+)?)")
+    # Naver Finance's live index page exposes the live value in #now_value.
+    m = re.search(r'id=["\']now_value["\'][^>]*>\s*([0-9,]+(?:\.[0-9]+)?)', raw, re.I | re.S)
+    if not m:
+        raise RuntimeError("Naver legacy #now_value unavailable")
+    value = _num(m.group(1))
     if value is None or value <= 0:
         raise RuntimeError("Naver legacy KPI100 price unavailable")
-    ratio = ratio or 0.0
-    sign = -1.0 if ratio < 0 else (1.0 if ratio > 0 else 0.0)
+
+    # #change_value_and_rate contains the absolute change and 상승/하락 state.
+    pos = raw.find('id="change_value_and_rate"')
+    if pos < 0:
+        pos = raw.find("id='change_value_and_rate'")
+    snippet = raw[pos:pos + 1800] if pos >= 0 else ""
+    plain = html.unescape(re.sub(r"(?s)<[^>]+>", " ", snippet))
+    plain = re.sub(r"\s+", " ", plain)
+    nums = re.findall(r"[0-9][0-9,]*(?:\.[0-9]+)?", plain)
+    change_abs = _num(nums[0]) if nums else 0.0
+
+    lowered = snippet.lower()
+    if "하락" in plain or "ico_down" in lowered or "minus" in lowered:
+        sign = -1.0
+    elif "상승" in plain or "ico_up" in lowered or "plus" in lowered:
+        sign = 1.0
+    else:
+        sign = 0.0
     day_change = (change_abs or 0.0) * sign
     previous_close = value - day_change if value - day_change > 0 else value
+    ratio = (value / previous_close - 1.0) * 100.0 if previous_close > 0 else 0.0
+
+    # 52-week high is optional here; ATH cross-check has its own safe floor.
+    text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", raw))
+    text = re.sub(r"\s+", " ", text)
+    high52 = None
+    mh = re.search(r"52주최고\s*([0-9,]+(?:\.[0-9]+)?)", text)
+    if mh:
+        high52 = _num(mh.group(1))
+
     print("kospi100 Naver legacy", {"value": value, "change": day_change, "ratio": ratio, "high52": high52}, flush=True)
-    return value, previous_close, day_change, ratio, high52, None, int(time.time()), "네이버 증권 · KPI100"
+    return value, previous_close, day_change, ratio, high52, None, int(time.time()), "네이버 증권 실시간 · KPI100"
 
 
 def _naver_quote():
     try:
+        return _naver_legacy_quote()
+    except Exception as exc:
+        print("kospi100 Naver legacy failed", type(exc).__name__, str(exc), flush=True)
+    try:
         return _naver_api_quote()
     except Exception as exc:
-        print("kospi100 Naver API failed", type(exc).__name__, flush=True)
-    return _naver_legacy_quote()
+        print("kospi100 Naver API failed", type(exc).__name__, str(exc), flush=True)
+        raise
 
 
 def _date_to_ts(value):
@@ -143,6 +173,8 @@ def _evaluate(index_id: str):
         drawdown = (value / ath - 1.0) * 100.0
         tz = ZoneInfo("Asia/Seoul")
         ath_date = datetime.fromtimestamp(ath_ts, tz=timezone.utc).astimezone(tz).date().isoformat() if ath_ts else None
+        now = datetime.now(tz)
+        market_state = "REGULAR" if now.weekday() < 5 and ((9 <= now.hour < 15) or (now.hour == 15 and now.minute <= 30)) else "CLOSED"
 
         monitor.save_state(index_id, ath, value, value, source)
         production.EXTRA_STATE[index_id] = {
@@ -152,7 +184,7 @@ def _evaluate(index_id: str):
             "ath_date": ath_date,
             "ath_days": production._days_since(ath_ts, "Asia/Seoul") if ath_ts else None,
             "drawdown": drawdown,
-            "market_state": "REGULAR" if datetime.now(tz).weekday() < 5 and 9 <= datetime.now(tz).hour < 16 else "CLOSED",
+            "market_state": market_state,
             "value_ts": value_ts,
         }
         result = {
@@ -163,7 +195,7 @@ def _evaluate(index_id: str):
             "ath": ath,
             "drawdown": drawdown,
             "source": source,
-            "market_state": production.EXTRA_STATE[index_id]["market_state"],
+            "market_state": market_state,
             "cash_ts": value_ts,
             "value_ts": value_ts,
             **production.EXTRA_STATE[index_id],
@@ -171,7 +203,7 @@ def _evaluate(index_id: str):
         print("check", result, flush=True)
         return result
     except Exception as exc:
-        print("kospi100 Naver fallback to Yahoo", type(exc).__name__, flush=True)
+        print("kospi100 Naver fallback to Yahoo", type(exc).__name__, str(exc), flush=True)
         return _original_evaluate(index_id)
 
 
