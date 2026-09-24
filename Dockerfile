@@ -8,6 +8,7 @@ COPY production_fixed.py .
 COPY production_naver.py .
 COPY production_naver_live.py .
 COPY production_naver_state.py .
+COPY history_routes.py .
 COPY laggards.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
