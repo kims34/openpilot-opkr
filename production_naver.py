@@ -14,12 +14,13 @@ import production_fixed
 app = production_fixed.app
 _original_evaluate = monitor.evaluate
 
+NAVER_POLLING = "https://polling.finance.naver.com/api/realtime?query=SERVICE_INDEX:KPI100"
 NAVER_API = "https://stock.naver.com/api/securityFe/api/index/KPI100/basic"
 NAVER_LEGACY = "https://finance.naver.com/sise/sise_index.naver?code=KPI100"
 NAVER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36",
     "Referer": "https://finance.naver.com/",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.8,*/*;q=0.7",
+    "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
 }
 
 
@@ -38,6 +39,52 @@ def _pick(obj, *keys):
         if key in obj and obj.get(key) not in (None, ""):
             return obj.get(key)
     return None
+
+
+def _poll_scaled(value):
+    if value is None:
+        return None
+    x = float(value)
+    # Naver realtime SERVICE_INDEX encodes index values with 2 implied decimals.
+    return x / 100.0
+
+
+def _naver_polling_quote():
+    r = requests.get(NAVER_POLLING, headers={**NAVER_HEADERS, "Accept": "application/json,*/*;q=0.8"}, timeout=8)
+    r.raise_for_status()
+    root = r.json()
+    areas = ((root.get("result") or {}).get("areas") or []) if isinstance(root, dict) else []
+    data = None
+    for area in areas:
+        for item in (area.get("datas") or []):
+            if str(item.get("cd") or "").upper() == "KPI100":
+                data = item
+                break
+        if data:
+            break
+    if not data:
+        raise RuntimeError("Naver realtime KPI100 unavailable")
+
+    value = _poll_scaled(data.get("nv"))
+    change_abs = _poll_scaled(data.get("cv"))
+    if value is None or value <= 0:
+        raise RuntimeError("Naver realtime KPI100 price invalid")
+
+    rf = str(data.get("rf") or "")
+    if rf in {"5", "4"}:
+        sign = -1.0
+    elif rf in {"2", "1"}:
+        sign = 1.0
+    else:
+        cr = _num(data.get("cr")) or 0.0
+        sign = -1.0 if cr < 0 else (1.0 if cr > 0 else 0.0)
+    day_change = abs(change_abs or 0.0) * sign
+    previous_close = value - day_change if value - day_change > 0 else value
+    ratio = (value / previous_close - 1.0) * 100.0 if previous_close > 0 else 0.0
+    market_state = str(data.get("ms") or "")
+
+    print("kospi100 Naver polling", {"value": value, "change": day_change, "ratio": ratio, "rf": rf, "ms": market_state}, flush=True)
+    return value, previous_close, day_change, ratio, None, None, int(time.time()), "네이버 증권 실시간 Polling · KPI100"
 
 
 def _naver_api_quote():
@@ -91,7 +138,6 @@ def _naver_legacy_quote():
     r.raise_for_status()
     raw = _decode_naver(r.content)
 
-    # Naver Finance's live index page exposes the live value in #now_value.
     m = re.search(r'id=["\']now_value["\'][^>]*>\s*([0-9,]+(?:\.[0-9]+)?)', raw, re.I | re.S)
     if not m:
         raise RuntimeError("Naver legacy #now_value unavailable")
@@ -99,7 +145,6 @@ def _naver_legacy_quote():
     if value is None or value <= 0:
         raise RuntimeError("Naver legacy KPI100 price unavailable")
 
-    # #change_value_and_rate contains the absolute change and 상승/하락 state.
     pos = raw.find('id="change_value_and_rate"')
     if pos < 0:
         pos = raw.find("id='change_value_and_rate'")
@@ -120,7 +165,6 @@ def _naver_legacy_quote():
     previous_close = value - day_change if value - day_change > 0 else value
     ratio = (value / previous_close - 1.0) * 100.0 if previous_close > 0 else 0.0
 
-    # 52-week high is optional here; ATH cross-check has its own safe floor.
     text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", raw))
     text = re.sub(r"\s+", " ", text)
     high52 = None
@@ -129,19 +173,16 @@ def _naver_legacy_quote():
         high52 = _num(mh.group(1))
 
     print("kospi100 Naver legacy", {"value": value, "change": day_change, "ratio": ratio, "high52": high52}, flush=True)
-    return value, previous_close, day_change, ratio, high52, None, int(time.time()), "네이버 증권 실시간 · KPI100"
+    return value, previous_close, day_change, ratio, high52, None, int(time.time()), "네이버 증권 페이지 · KPI100"
 
 
 def _naver_quote():
-    try:
-        return _naver_legacy_quote()
-    except Exception as exc:
-        print("kospi100 Naver legacy failed", type(exc).__name__, str(exc), flush=True)
-    try:
-        return _naver_api_quote()
-    except Exception as exc:
-        print("kospi100 Naver API failed", type(exc).__name__, str(exc), flush=True)
-        raise
+    for label, fn in (("polling", _naver_polling_quote), ("legacy", _naver_legacy_quote), ("API", _naver_api_quote)):
+        try:
+            return fn()
+        except Exception as exc:
+            print(f"kospi100 Naver {label} failed", type(exc).__name__, str(exc), flush=True)
+    raise RuntimeError("all Naver KPI100 sources unavailable")
 
 
 def _date_to_ts(value):
