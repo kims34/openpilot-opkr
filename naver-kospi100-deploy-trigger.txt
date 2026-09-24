@@ -1,1 +1,0 @@
-Trigger latest IndexAlert server deployment with Naver KOSPI100 primary source.
