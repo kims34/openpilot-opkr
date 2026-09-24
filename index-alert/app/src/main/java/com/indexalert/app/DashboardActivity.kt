@@ -68,7 +68,7 @@ class DashboardActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                Home(
+                HomeV11(
                     ctx = this,
                     snapshots = snapshots.value,
                     loading = loading.value,
@@ -99,13 +99,13 @@ class DashboardActivity : ComponentActivity() {
                 val ready = PushBridge.sync(applicationContext)
                 val data = if (PushBridge.configured()) {
                     runCatching { BackendMarket.snapshots(applicationContext) }.getOrElse {
-                        rules.map { r ->
+                        dashboardRules.map { r ->
                             runCatching { MarketEngine.snapshot(applicationContext, r) }
                                 .getOrElse { e -> IndexSnapshot.error(r, e.message ?: "데이터 확인 실패") }
                         }
                     }
                 } else {
-                    rules.map { r ->
+                    dashboardRules.map { r ->
                         runCatching { MarketEngine.snapshot(applicationContext, r) }
                             .getOrElse { e -> IndexSnapshot.error(r, e.message ?: "데이터 확인 실패") }
                     }
@@ -154,7 +154,7 @@ object BackendMarket {
             byId[o.getString("id")] = o
         }
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
-        return rules.map { rule ->
+        return dashboardRules.map { rule ->
             val o = byId[rule.id] ?: return@map IndexSnapshot.error(rule, "서버 상태 없음")
             val ath = nullableDouble(o, "ath")
             val value = nullableDouble(o, "last_value")
