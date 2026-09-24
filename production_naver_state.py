@@ -1,7 +1,9 @@
 import requests
 
+import history_routes
 import monitor
 import production
+import production_fixed
 import production_naver
 
 app = production_naver.app
@@ -32,7 +34,7 @@ def _naver_market_state():
 
 def _evaluate(index_id: str):
     result = _base_evaluate(index_id)
-    if index_id == "kospi100" and "네이버 증권 실시간 Polling" in str(result.get("source") or ""):
+    if index_id == "kospi100" and "네이버 증권" in str(result.get("source") or ""):
         state = _naver_market_state()
         if state:
             result["market_state"] = state
@@ -43,3 +45,10 @@ def _evaluate(index_id: str):
 
 
 monitor.evaluate = _evaluate
+
+history_routes.attach(
+    app,
+    monitor,
+    production_fixed._naver_kospi_quote,
+    production_fixed._naver_usdkrw_quote,
+)
