@@ -1,1 +1,1 @@
-web: uvicorn production_fixed:app --host 0.0.0.0 --port ${PORT:-8080}
+web: uvicorn production_naver:app --host 0.0.0.0 --port ${PORT:-8080}
