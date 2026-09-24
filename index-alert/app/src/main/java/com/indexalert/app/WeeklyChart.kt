@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -19,17 +18,20 @@ import java.util.Locale
 import kotlin.math.max
 
 
-data class WeeklyPoint(val ts: Long, val value: Double)
+data class MonthlyPoint(val ts: Long, val value: Double)
 
-data class WeeklyHistory(
-    val points: List<WeeklyPoint>,
+data class MonthlyHistory(
+    val points: List<MonthlyPoint>,
     val min: Double,
+    val minTs: Long,
     val max: Double,
-    val changePercent: Double,
+    val maxTs: Long,
+    val current: Double,
+    val fromHighPercent: Double,
     val source: String
 )
 
-fun BackendMarket.weekHistory(indexId: String): WeeklyHistory {
+fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
     val base = BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/')
     val c = URL("$base/history/$indexId").openConnection() as HttpURLConnection
     c.requestMethod = "GET"
@@ -39,7 +41,7 @@ fun BackendMarket.weekHistory(indexId: String): WeeklyHistory {
     if (c.responseCode !in 200..299) {
         val code = c.responseCode
         c.disconnect()
-        throw IllegalStateException("1주 차트 서버 오류 $code")
+        throw IllegalStateException("1개월 차트 서버 오류 $code")
     }
     val text = c.inputStream.bufferedReader().use { it.readText() }
     c.disconnect()
@@ -51,72 +53,81 @@ fun BackendMarket.weekHistory(indexId: String): WeeklyHistory {
             val o = arr.getJSONObject(i)
             val ts = o.optLong("ts", 0L)
             val value = o.optDouble("value", Double.NaN)
-            if (ts > 0 && value.isFinite() && value > 0) add(WeeklyPoint(ts, value))
+            if (ts > 0 && value.isFinite() && value > 0) add(MonthlyPoint(ts, value))
         }
     }
     if (points.size < 2) throw IllegalStateException("차트 데이터 부족")
-    return WeeklyHistory(
+
+    val maxValue = root.optDouble("max", points.maxOf { it.value })
+    val minValue = root.optDouble("min", points.minOf { it.value })
+    val current = root.optDouble("current", points.last().value)
+    val fromHigh = root.optDouble(
+        "from_high_percent",
+        if (maxValue > 0) (current / maxValue - 1.0) * 100.0 else 0.0
+    )
+
+    return MonthlyHistory(
         points = points,
-        min = root.optDouble("min", points.minOf { it.value }),
-        max = root.optDouble("max", points.maxOf { it.value }),
-        changePercent = root.optDouble("change_percent", 0.0),
-        source = root.optString("source", "1주 시세")
+        min = minValue,
+        minTs = root.optLong("min_ts", points.minByOrNull { it.value }?.ts ?: 0L),
+        max = maxValue,
+        maxTs = root.optLong("max_ts", points.maxByOrNull { it.value }?.ts ?: 0L),
+        current = current,
+        fromHighPercent = fromHigh,
+        source = root.optString("source", "최근 1개월 일봉")
     )
 }
 
 @Composable
-fun WeeklyChartSection(indexId: String) {
-    var expanded by remember(indexId) { mutableStateOf(false) }
-    var loading by remember(indexId) { mutableStateOf(false) }
-    var history by remember(indexId) { mutableStateOf<WeeklyHistory?>(null) }
+fun MonthlyChartSection(indexId: String) {
+    var loading by remember(indexId) { mutableStateOf(true) }
+    var history by remember(indexId) { mutableStateOf<MonthlyHistory?>(null) }
     var error by remember(indexId) { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
 
-    Spacer(Modifier.height(8.dp))
-    OutlinedButton(
-        onClick = {
-            expanded = !expanded
-            if (expanded && history == null && !loading) {
-                loading = true
-                error = null
-                scope.launch {
-                    val result = withContext(Dispatchers.IO) {
-                        runCatching { BackendMarket.weekHistory(indexId) }
-                    }
-                    result.onSuccess { history = it }
-                        .onFailure { error = it.message ?: "1주 차트 조회 실패" }
-                    loading = false
-                }
-            }
-        },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(if (expanded) "1주 차트 ▲ 접기" else "1주 차트 ▼ 보기")
+    LaunchedEffect(indexId) {
+        loading = true
+        error = null
+        val result = withContext(Dispatchers.IO) {
+            runCatching { BackendMarket.monthHistory(indexId) }
+        }
+        result.onSuccess { history = it }
+            .onFailure { error = it.message ?: "1개월 차트 조회 실패" }
+        loading = false
     }
 
-    if (!expanded) return
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(10.dp))
+    Text("최근 1개월 · 일봉", style = MaterialTheme.typography.titleSmall)
+    Spacer(Modifier.height(6.dp))
 
     when {
         loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
         error != null -> Text("차트 확인 실패: $error", style = MaterialTheme.typography.bodySmall)
-        history != null -> WeeklyLineChart(history!!)
+        history != null -> MonthlyLineChart(history!!)
     }
 }
 
 @Composable
-private fun WeeklyLineChart(history: WeeklyHistory) {
+private fun MonthlyLineChart(history: MonthlyHistory) {
     val lineColor = MaterialTheme.colorScheme.primary
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val values = history.points.map { it.value }
     val low = values.minOrNull() ?: 0.0
     val high = values.maxOrNull() ?: low
     val span = max(high - low, max(high * 0.002, 0.01))
+    val df = remember { SimpleDateFormat("MM/dd", Locale.KOREA) }
+
+    val highDate = if (history.maxTs > 0) df.format(Date(history.maxTs * 1000L)) else "-"
+    val lowDate = if (history.minTs > 0) df.format(Date(history.minTs * 1000L)) else "-"
+
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("최고 ${fmtMonthly(history.max)} · $highDate", style = MaterialTheme.typography.bodySmall)
+        Text("최저 ${fmtMonthly(history.min)} · $lowDate", style = MaterialTheme.typography.bodySmall)
+    }
 
     Canvas(
         Modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(160.dp)
             .padding(vertical = 8.dp)
     ) {
         drawLine(gridColor, Offset(0f, size.height * 0.25f), Offset(size.width, size.height * 0.25f), 1f)
@@ -135,19 +146,19 @@ private fun WeeklyLineChart(history: WeeklyHistory) {
         }
     }
 
-    val df = remember { SimpleDateFormat("MM/dd", Locale.KOREA) }
     val firstDate = df.format(Date(history.points.first().ts * 1000L))
     val lastDate = df.format(Date(history.points.last().ts * 1000L))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(firstDate, style = MaterialTheme.typography.labelSmall)
         Text(lastDate, style = MaterialTheme.typography.labelSmall)
     }
+
     Text(
-        "1주 최저 ${fmtWeekly(history.min)} · 최고 ${fmtWeekly(history.max)} · ${signedPctWeekly(history.changePercent)}",
-        style = MaterialTheme.typography.bodySmall
+        "현재 ${fmtMonthly(history.current)} · 1개월 최고가 대비 ${signedPctMonthly(history.fromHighPercent)}",
+        style = MaterialTheme.typography.bodyMedium
     )
     Text("차트 기준: ${history.source}", style = MaterialTheme.typography.labelSmall)
 }
 
-private fun fmtWeekly(v: Double): String = String.format(Locale.US, "%,.2f", v)
-private fun signedPctWeekly(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
+private fun fmtMonthly(v: Double): String = String.format(Locale.US, "%,.2f", v)
+private fun signedPctMonthly(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
