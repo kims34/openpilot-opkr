@@ -1,5 +1,4 @@
 import time
-import re
 from xml.etree import ElementTree
 
 import requests
@@ -52,20 +51,19 @@ def _titles(query: str):
         )
         r.raise_for_status()
         root = ElementTree.fromstring(r.content)
-        out = []
-        for item in root.findall(".//item")[:12]:
-            title = (item.findtext("title") or "").strip()
-            if title:
-                out.append(title)
-        return out
+        return [
+            (item.findtext("title") or "").strip()
+            for item in root.findall(".//item")[:12]
+            if (item.findtext("title") or "").strip()
+        ]
     except Exception as exc:
         print("briefing news failed", type(exc).__name__, flush=True)
         return []
 
 
 def _score(text: str, groups):
-    scored = []
     lower = text.lower()
+    scored = []
     for label, keywords in groups:
         count = sum(lower.count(keyword.lower()) for keyword in keywords)
         if count:
@@ -74,7 +72,7 @@ def _score(text: str, groups):
     return scored
 
 
-def _movement(pct):
+def _movement_label(pct):
     try:
         p = float(pct)
     except Exception:
@@ -83,7 +81,7 @@ def _movement(pct):
         return "상승"
     if p < -0.05:
         return "하락"
-    return "보합권 움직임"
+    return "보합"
 
 
 def _make(index_id: str, pct):
@@ -106,13 +104,10 @@ def _make(index_id: str, pct):
         category = "혼합"
         ext = external[0][1] if external else None
         intr = internal[0][1] if internal else None
-        if ext and intr:
-            reason = f"{ext}과 {intr}"
-        else:
-            reason = (ext or intr or DEFAULT_REASON[index_id][1])
+        reason = f"{ext}과 {intr}" if ext and intr else (ext or intr or DEFAULT_REASON[index_id][1])
 
-    move = _movement(pct)
-    text = f"{reason}이(가) 전일 대비 {move}에 영향을 준 것으로 보입니다."
+    move = _movement_label(pct)
+    text = f"전일 대비 {move} 배경: {reason}."
     return {
         "id": index_id,
         "category": category,
@@ -129,8 +124,9 @@ def get_all(extra_state: dict):
 
     items = {}
     for index_id in NEWS_QUERIES:
-        pct = (extra_state.get(index_id) or {}).get("day_change_percent", 0.0)
-        items[index_id] = _make(index_id, pct)
+        state = extra_state.get(index_id) or {}
+        pct = state.get("day_change_percent")
+        items[index_id] = _make(index_id, pct if pct is not None else 0.0)
     CACHE["updated"] = now
     CACHE["items"] = items
     return {"updated_at": now, "items": list(items.values())}
