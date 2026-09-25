@@ -164,12 +164,39 @@ object BackendMarket {
             val reached = if (dd == null) emptyList() else enabled.filter { dd <= -it.first }
             val stage = reached.maxByOrNull { it.first }
             val next = if (dd == null) enabled.firstOrNull() else enabled.firstOrNull { it.first > abs(dd) }
+
+            val firedThresholds = mutableSetOf<Int>()
+            val firedArray = o.optJSONArray("fired")
+            if (firedArray != null) {
+                for (j in 0 until firedArray.length()) {
+                    firedThresholds.add(firedArray.optInt(j))
+                }
+            }
+            val deepestFired = firedThresholds
+                .filter { threshold -> rule.levels.any { it.first == threshold } }
+                .maxOrNull()
+            val firedAllocation = deepestFired?.let { threshold ->
+                rule.levels.firstOrNull { it.first == threshold }?.second
+            }
+            val stageText = when {
+                !alertsEnabled -> ""
+                deepestFired != null -> {
+                    val firedBase = "🔔 알림 발생 · -${deepestFired}% 단계" +
+                        (firedAllocation?.let { " · 추가매수 ${it}%" } ?: "")
+                    if (stage != null && stage.first != deepestFired) {
+                        "$firedBase · 현재 -${stage.first}% 구간"
+                    } else firedBase
+                }
+                stage != null -> "-${stage.first}% 구간 · ${stage.second}%"
+                else -> "대기"
+            }
+
             IndexSnapshot(
                 rule = rule,
                 current = value,
                 ath = ath,
                 drawdown = dd,
-                stageText = if (!alertsEnabled) "" else stage?.let { "-${it.first}% 구간 · ${it.second}%" } ?: "대기",
+                stageText = stageText,
                 nextText = if (!alertsEnabled) "" else next?.let { "-${it.first}%" } ?: if (enabled.isEmpty()) "알림 단계 꺼짐" else "최종 단계 도달",
                 sourceText = o.optString("source", "서버 감시"),
                 dayChange = nullableDouble(o, "day_change"),
