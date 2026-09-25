@@ -7,8 +7,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+
+private val RiseRed = Color(0xFFD32F2F)
+private val FallBlue = Color(0xFF1565C0)
+private val MetricBlue = Color(0xFF1565C0)
 
 val dashboardRules: List<Rule> = buildList {
     rules.forEach { rule ->
@@ -34,7 +40,7 @@ val dashboardRules: List<Rule> = buildList {
                 cashSymbol = "KRW=X",
                 proxySymbol = null,
                 levels = emptyList(),
-                description = "원/달러 환율 · 네이버 증권(하나은행 고시) · 표시 전용",
+                description = "원/달러 환율 · 실시간 우선 · 표시 전용",
                 timezone = "Asia/Seoul"
             )
         )
@@ -77,30 +83,17 @@ fun HomeV11(
 
         Spacer(Modifier.height(10.dp))
         if (snapshots.isEmpty() && loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        snapshots.forEach { IndexCardV11(it) }
-
-        Spacer(Modifier.height(18.dp))
-        Text("개별종목 ATH 하락 TOP 10", style = MaterialTheme.typography.titleLarge)
-        Text("각 그룹별 ATH 대비 하락률이 큰 순 · 중복 편입은 그대로 표시", style = MaterialTheme.typography.bodySmall)
-        val groups = listOf(
-            "sp500" to "S&P500 하락 TOP 10",
-            "nasdaq100" to "NASDAQ100 하락 TOP 10",
-            "schd" to "SCHD 보유종목 하락 TOP 10"
-        )
-        var anyGroup = false
-        groups.forEach { (key, title) ->
-            val group = laggards.filter { it.universe == key }.sortedBy { it.rank }
-            if (group.isNotEmpty()) {
-                anyGroup = true
-                Spacer(Modifier.height(12.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                group.forEach { LaggardCard(it) }
+        snapshots.forEach { snapshot ->
+            val universe = when (snapshot.rule.id) {
+                "sp500" -> "sp500"
+                "ndx" -> "nasdaq100"
+                "djdiv" -> "schd"
+                else -> null
             }
-        }
-        if (!anyGroup) {
-            Text(laggardStatus.ifBlank { "TOP10 순위 계산 중" }, Modifier.padding(top = 8.dp))
-        } else if (laggardStatus.isNotBlank()) {
-            Text(laggardStatus, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall)
+            val movers = if (universe == null) emptyList() else {
+                laggards.filter { it.universe == universe }.sortedBy { it.rank }.take(3)
+            }
+            IndexCardV11(snapshot, movers, laggardStatus)
         }
 
         Spacer(Modifier.height(18.dp))
@@ -149,9 +142,8 @@ fun HomeV11(
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "SPY · QQQ · SCHD는 ETF 자체 가격으로 단계별 알림을 감시합니다. " +
-                "KOSPI 현재값과 전일 등락은 네이버 증권을 우선 사용하고, USD/KRW는 네이버 증권의 하나은행 고시 환율을 표시합니다. " +
-                "모든 시장 카드는 최근 1개월 일봉 차트를 항상 펼쳐서 표시합니다. KOSPI와 환율은 알림을 보내지 않습니다.",
+            "SPY · QQQ · SCHD는 ETF 자체 가격으로 단계별 알림을 감시합니다. 각 ETF 차트 아래에는 ETF가 하락 중이면 당일 하락률이 큰 구성종목 3개, 상승 중이면 당일 상승률이 큰 구성종목 3개를 표시합니다. " +
+                "구성종목 순위는 서버에서 30분 주기로 갱신합니다. KOSPI와 환율은 표시 전용입니다.",
             style = MaterialTheme.typography.bodySmall
         )
         Spacer(Modifier.height(24.dp))
@@ -159,7 +151,7 @@ fun HomeV11(
 }
 
 @Composable
-private fun IndexCardV11(s: IndexSnapshot) {
+private fun IndexCardV11(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
     Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(s.rule.name, style = MaterialTheme.typography.titleLarge)
@@ -175,13 +167,24 @@ private fun IndexCardV11(s: IndexSnapshot) {
                 "  ${signedV11(s.dayChange)} (${signedPctV11(s.dayChangePercent)})"
             } else ""
             val currentLabel = if (s.rule.id == "usdkrw") "현재 환율" else "현재값"
-            Text("$currentLabel  ${fmtV11(s.current)}$change", style = MaterialTheme.typography.titleMedium)
+            val currentColor = movementColorV11(s.dayChangePercent)
+            Text(
+                "$currentLabel  ${fmtV11(s.current)}$change",
+                style = MaterialTheme.typography.titleMedium,
+                color = currentColor,
+                fontWeight = FontWeight.SemiBold
+            )
 
             if (s.rule.id != "usdkrw" && s.ath != null && s.ath > 0.0) {
                 val age = s.athDays?.let { if (it == 0) " · 오늘 최고가" else " · 최고가 후 ${it}일" } ?: ""
                 val date = s.athDate?.let { " ($it)" } ?: ""
                 Text("ATH      ${fmtV11(s.ath)}$age$date")
-                Text("ATH 대비 ${s.drawdown?.let { String.format(Locale.US, "%.2f%%", it) } ?: "-"}")
+                Text(
+                    "ATH 대비 등락률 ${s.drawdown?.let { String.format(Locale.US, "%+.2f%%", it) } ?: "-"}",
+                    color = MetricBlue,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall
+                )
             }
 
             if (s.alertsEnabled) {
@@ -196,8 +199,51 @@ private fun IndexCardV11(s: IndexSnapshot) {
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
             MonthlyChartSection(s.rule.id)
+
+            if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
+                DirectionalMoverSection(s, movers, moverStatus)
+            }
         }
     }
+}
+
+@Composable
+private fun DirectionalMoverSection(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
+    Spacer(Modifier.height(10.dp))
+    val isDown = (s.dayChangePercent ?: 0.0) < 0.0
+    val title = if (isDown) "구성종목 당일 하락률 상위 3개" else "구성종목 당일 상승률 상위 3개"
+    Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    Text(
+        if (isDown) "ETF가 전일 대비 하락 중이므로 가장 많이 하락한 종목을 표시합니다."
+        else "ETF가 전일 대비 상승 중이므로 가장 많이 상승한 종목을 표시합니다.",
+        style = MaterialTheme.typography.labelSmall
+    )
+    Spacer(Modifier.height(4.dp))
+
+    if (movers.isEmpty()) {
+        Text(moverStatus.ifBlank { "구성종목 등락 계산 중" }, style = MaterialTheme.typography.bodySmall)
+        return
+    }
+
+    movers.forEach { item ->
+        val c = movementColorV11(item.dayChangePercent)
+        Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+            Text("${item.rank}. ${item.symbol} · ${item.name}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "현재 ${fmtV11(item.current)}  ${signedV11(item.dayChange)} (${signedPctV11(item.dayChangePercent)})",
+                color = c,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun movementColorV11(percent: Double?): Color = when {
+    percent == null || percent == 0.0 -> MaterialTheme.colorScheme.onSurface
+    percent > 0.0 -> RiseRed
+    else -> FallBlue
 }
 
 private fun fmtV11(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
