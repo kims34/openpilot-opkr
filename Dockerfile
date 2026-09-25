@@ -10,9 +10,11 @@ COPY production_naver_live.py .
 COPY production_naver_state.py .
 COPY production_investing.py .
 COPY production_v14.py .
+COPY production_v17.py .
+COPY briefing.py .
 COPY history_routes.py .
 COPY laggards.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
-CMD ["sh", "-c", "python -m uvicorn production_v14:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "python -m uvicorn production_v17:app --host 0.0.0.0 --port ${PORT:-8080}"]
