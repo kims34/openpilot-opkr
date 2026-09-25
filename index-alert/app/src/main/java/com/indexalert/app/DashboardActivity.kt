@@ -112,9 +112,9 @@ class DashboardActivity : ComponentActivity() {
                 }
                 val feed = if (PushBridge.configured()) {
                     runCatching { BackendMarket.laggards() }
-                        .getOrElse { LaggardFeed(emptyList(), "개별종목 TOP10 서버 계산 대기") }
+                        .getOrElse { LaggardFeed(emptyList(), "구성종목 등락 상위 3개 서버 계산 대기") }
                 } else {
-                    LaggardFeed(emptyList(), "서버 연결 시 개별종목 TOP10 제공")
+                    LaggardFeed(emptyList(), "서버 연결 시 구성종목 등락 상위 3개 제공")
                 }
                 DashboardPayload(data, ready, feed.items, feed.statusText)
             }
