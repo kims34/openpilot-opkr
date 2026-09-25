@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -20,6 +21,8 @@ import java.util.Locale
 import kotlin.math.max
 
 private val MonthlyMetricBlue = Color(0xFF1565C0)
+private val KoreaRiseRed = Color(0xFFD32F2F)
+private val KoreaFallBlue = Color(0xFF1565C0)
 
 data class MonthlyPoint(val ts: Long, val value: Double)
 
@@ -32,6 +35,13 @@ data class MonthlyHistory(
     val current: Double,
     val fromHighPercent: Double,
     val source: String
+)
+
+private data class KoreaLeaderQuote(
+    val code: String,
+    val name: String,
+    val current: Double,
+    val dayChangePercent: Double
 )
 
 fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
@@ -81,6 +91,97 @@ fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
     )
 }
 
+private fun fetchNaverKoreaLeader(code: String): KoreaLeaderQuote {
+    val c = URL("https://m.stock.naver.com/api/stock/$code/basic").openConnection() as HttpURLConnection
+    c.requestMethod = "GET"
+    c.connectTimeout = 8000
+    c.readTimeout = 8000
+    c.setRequestProperty("Accept", "application/json")
+    c.setRequestProperty("Referer", "https://m.stock.naver.com/")
+    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36")
+    try {
+        if (c.responseCode !in 200..299) throw IllegalStateException("네이버 시세 오류 ${c.responseCode}")
+        val root = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+        fun number(key: String): Double? = root.optString(key, "")
+            .replace(",", "")
+            .replace("%", "")
+            .trim()
+            .toDoubleOrNull()
+
+        val current = number("closePrice") ?: throw IllegalStateException("현재가 없음")
+        var pct = number("fluctuationsRatio") ?: 0.0
+        val direction = root.optJSONObject("compareToPreviousPrice")?.optString("name", "")?.uppercase().orEmpty()
+        if (direction.contains("FALL")) pct = -kotlin.math.abs(pct)
+        if (direction.contains("RIS")) pct = kotlin.math.abs(pct)
+
+        return KoreaLeaderQuote(
+            code = code,
+            name = root.optString("stockName", if (code == "005930") "삼성전자" else "SK하이닉스"),
+            current = current,
+            dayChangePercent = pct
+        )
+    } finally {
+        c.disconnect()
+    }
+}
+
+@Composable
+private fun KoreaLeaderSection() {
+    var quotes by remember { mutableStateOf<List<KoreaLeaderQuote>>(emptyList()) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    listOf(
+                        fetchNaverKoreaLeader("005930"),
+                        fetchNaverKoreaLeader("000660")
+                    )
+                }
+            }
+            result.onSuccess {
+                quotes = it
+                error = null
+            }.onFailure {
+                error = it.message ?: "네이버 시세 확인 실패"
+            }
+            delay(60_000L)
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+    Text("코스피 주요 종목", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    Text("네이버 증권 현재가 · 전일 대비", style = MaterialTheme.typography.labelSmall)
+    Spacer(Modifier.height(5.dp))
+
+    if (quotes.isEmpty()) {
+        Text(error ?: "삼성전자·SK하이닉스 시세 확인 중", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+
+    quotes.forEach { q ->
+        val color = when {
+            q.dayChangePercent > 0 -> KoreaRiseRed
+            q.dayChangePercent < 0 -> KoreaFallBlue
+            else -> MaterialTheme.colorScheme.onSurface
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 3.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(q.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                "${fmtKrw(q.current)}  ${signedPctMonthly(q.dayChangePercent)}",
+                color = color,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+    Text("앱이 열려 있는 동안 약 1분마다 갱신", style = MaterialTheme.typography.labelSmall)
+}
+
 @Composable
 fun MonthlyChartSection(indexId: String) {
     var loading by remember(indexId) { mutableStateOf(true) }
@@ -96,6 +197,10 @@ fun MonthlyChartSection(indexId: String) {
         result.onSuccess { history = it }
             .onFailure { error = it.message ?: "1개월 차트 조회 실패" }
         loading = false
+    }
+
+    if (indexId == "kospi100") {
+        KoreaLeaderSection()
     }
 
     Spacer(Modifier.height(10.dp))
@@ -167,4 +272,5 @@ private fun MonthlyLineChart(history: MonthlyHistory) {
 }
 
 private fun fmtMonthly(v: Double): String = String.format(Locale.US, "%,.2f", v)
+private fun fmtKrw(v: Double): String = String.format(Locale.US, "%,.0f원", v)
 private fun signedPctMonthly(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
