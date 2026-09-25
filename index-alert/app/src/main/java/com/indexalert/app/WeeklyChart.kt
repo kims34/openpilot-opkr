@@ -6,6 +6,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +19,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 
+private val MonthlyMetricBlue = Color(0xFF1565C0)
 
 data class MonthlyPoint(val ts: Long, val value: Double)
 
@@ -153,9 +156,12 @@ private fun MonthlyLineChart(history: MonthlyHistory) {
         Text(lastDate, style = MaterialTheme.typography.labelSmall)
     }
 
+    Text("현재 ${fmtMonthly(history.current)}", style = MaterialTheme.typography.bodyMedium)
     Text(
-        "현재 ${fmtMonthly(history.current)} · 1개월 최고가 대비 ${signedPctMonthly(history.fromHighPercent)}",
-        style = MaterialTheme.typography.bodyMedium
+        "1개월 최고가 대비 등락률 ${signedPctMonthly(history.fromHighPercent)}",
+        color = MonthlyMetricBlue,
+        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleSmall
     )
     Text("차트 기준: ${history.source}", style = MaterialTheme.typography.labelSmall)
 }
