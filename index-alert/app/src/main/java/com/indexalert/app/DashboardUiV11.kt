@@ -1,6 +1,7 @@
 package com.indexalert.app
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -81,6 +82,37 @@ fun HomeV11(
         }
         Text(statusText, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall)
 
+        val firedSnapshots = snapshots.filter { it.alertsEnabled && it.stageText.startsWith("🔔") }
+        if (firedSnapshots.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(
+                        "🔔 알림 발생 단계 있음",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                    firedSnapshots.forEach { snapshot ->
+                        Text(
+                            "• ${snapshot.rule.name}  ${snapshot.stageText.removePrefix("🔔 알림 발생 · ")}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        "새 ATH가 형성되어 하락 사이클이 초기화될 때까지 표시됩니다.",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(10.dp))
         if (snapshots.isEmpty() && loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         snapshots.forEach { snapshot ->
@@ -152,9 +184,38 @@ fun HomeV11(
 
 @Composable
 private fun IndexCardV11(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
-    Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+    val alertTriggered = s.alertsEnabled && s.stageText.startsWith("🔔")
+    val cardColor = if (alertTriggered) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
+    val alertBorder = if (alertTriggered) BorderStroke(2.dp, MaterialTheme.colorScheme.error) else null
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        border = alertBorder
+    ) {
         Column(Modifier.padding(16.dp)) {
-            Text(s.rule.name, style = MaterialTheme.typography.titleLarge)
+            if (alertTriggered) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        "🔔 알림 발생",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            Text(
+                s.rule.name,
+                style = MaterialTheme.typography.titleLarge,
+                color = if (alertTriggered) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (alertTriggered) FontWeight.Bold else FontWeight.Normal
+            )
             Text(s.rule.description, style = MaterialTheme.typography.bodySmall)
             if (s.error != null) {
                 Spacer(Modifier.height(6.dp))
@@ -181,15 +242,31 @@ private fun IndexCardV11(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
                 Text("ATH      ${fmtV11(s.ath)}$age$date")
                 Text(
                     "ATH 대비 등락률 ${s.drawdown?.let { String.format(Locale.US, "%+.2f%%", it) } ?: "-"}",
-                    color = MetricBlue,
+                    color = if (alertTriggered) MaterialTheme.colorScheme.error else MetricBlue,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleSmall
                 )
             }
 
             if (s.alertsEnabled) {
-                Text("현재 단계 ${s.stageText}")
-                Text("다음 알림 ${s.nextText}")
+                if (alertTriggered) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        s.stageText,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        "이 하락 사이클에서 실제 알림이 발송된 단계입니다.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Text("다음 알림 ${s.nextText}", fontWeight = FontWeight.SemiBold)
+                } else {
+                    Text("현재 단계 ${s.stageText}")
+                    Text("다음 알림 ${s.nextText}")
+                }
             }
 
             val source = when (s.rule.id) {
