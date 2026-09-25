@@ -77,57 +77,100 @@ def _investing_usdkrw_quote():
                 {"current": current, "previous": previous, "change": change, "ratio": ratio, "url": url},
                 flush=True,
             )
-            return current, previous, change, ratio, value_ts, "REALTIME"
+            return current, previous, change, ratio, value_ts, "REALTIME", "Investing.com · 실시간 FX"
         except Exception as exc:
             errors.append(f"{url}:{type(exc).__name__}")
     raise RuntimeError("Investing USD/KRW unavailable " + ",".join(errors))
 
 
-def _evaluate_usdkrw_investing(index_id: str):
+def _yahoo_usdkrw_quote():
+    result = monitor.yahoo_result("KRW=X", "5d", "1m", True)
+    points = monitor.series(result)
+    if not points:
+        raise RuntimeError("Yahoo USD/KRW unavailable")
+    value_ts, current = points[-1]
+    meta = result.get("meta", {})
+    previous = None
+    for key in ("regularMarketPreviousClose", "previousClose", "chartPreviousClose"):
+        try:
+            v = float(meta.get(key) or 0)
+            if math.isfinite(v) and v > 0:
+                previous = v
+                break
+        except Exception:
+            pass
+    if current is None or not (500.0 <= float(current) <= 2500.0):
+        raise RuntimeError("Yahoo USD/KRW current invalid")
+    current = float(current)
+    if previous is None or previous <= 0:
+        raise RuntimeError("Yahoo USD/KRW previous close invalid")
+    change = current - previous
+    ratio = (current / previous - 1.0) * 100.0
+    if not math.isfinite(ratio) or abs(ratio) > 20:
+        raise RuntimeError("Yahoo USD/KRW percent invalid")
+    print(
+        "usdkrw yahoo quote",
+        {"current": current, "previous": previous, "change": change, "ratio": ratio},
+        flush=True,
+    )
+    return current, previous, change, ratio, int(value_ts), "REALTIME", "Yahoo Finance FX · Investing 대체"
+
+
+def _make_result(index_id, quote):
+    current, previous, change, ratio, value_ts, market_state, source = quote
+    now = datetime.now(timezone.utc).isoformat()
+    production.EXTRA_STATE[index_id] = {
+        "ath": None,
+        "last_cash": current,
+        "last_value": current,
+        "source": source,
+        "updated_at": now,
+        "previous_close": previous,
+        "day_change": change,
+        "day_change_percent": ratio,
+        "ath_date": None,
+        "ath_days": None,
+        "drawdown": None,
+        "market_state": market_state,
+        "value_ts": value_ts,
+    }
+    return {
+        "id": index_id,
+        "name": "USD/KRW 달러 환율",
+        "value": current,
+        "cash": current,
+        "ath": None,
+        "drawdown": None,
+        "source": source,
+        "market_state": market_state,
+        "cash_ts": value_ts,
+        "value_ts": value_ts,
+        **production.EXTRA_STATE[index_id],
+    }
+
+
+def _evaluate_usdkrw(index_id: str):
     try:
-        current, previous, change, ratio, value_ts, market_state = _investing_usdkrw_quote()
-        source = "Investing.com · 실시간 FX"
-        now = datetime.now(timezone.utc).isoformat()
-        production.EXTRA_STATE[index_id] = {
-            "ath": None,
-            "last_cash": current,
-            "last_value": current,
-            "source": source,
-            "updated_at": now,
-            "previous_close": previous,
-            "day_change": change,
-            "day_change_percent": ratio,
-            "ath_date": None,
-            "ath_days": None,
-            "drawdown": None,
-            "market_state": market_state,
-            "value_ts": value_ts,
-        }
-        return {
-            "id": index_id,
-            "name": "USD/KRW 달러 환율",
-            "value": current,
-            "cash": current,
-            "ath": None,
-            "drawdown": None,
-            "source": source,
-            "market_state": market_state,
-            "cash_ts": value_ts,
-            "value_ts": value_ts,
-            **production.EXTRA_STATE[index_id],
-        }
+        return _make_result(index_id, _investing_usdkrw_quote())
     except Exception as exc:
-        print("usdkrw investing failed -> naver fallback", type(exc).__name__, str(exc), flush=True)
-        result = _base_evaluate(index_id)
-        if index_id in production.EXTRA_STATE:
-            production.EXTRA_STATE[index_id]["source"] = "네이버 증권 · 하나은행 고시 (Investing fallback)"
-        result["source"] = "네이버 증권 · 하나은행 고시 (Investing fallback)"
-        return result
+        print("usdkrw investing failed -> yahoo fallback", type(exc).__name__, str(exc), flush=True)
+
+    try:
+        return _make_result(index_id, _yahoo_usdkrw_quote())
+    except Exception as exc:
+        print("usdkrw yahoo failed -> naver fallback", type(exc).__name__, str(exc), flush=True)
+
+    result = _base_evaluate(index_id)
+    source = "네이버 증권 · 하나은행 고시 (2차 fallback)"
+    if index_id in production.EXTRA_STATE:
+        production.EXTRA_STATE[index_id]["source"] = source
+    result["source"] = source
+    return result
 
 
 def _evaluate(index_id: str):
     if index_id == "usdkrw":
-        return _evaluate_usdkrw_investing(index_id)
+        return _evaluate_usdkrw(index_id)
     return _base_evaluate(index_id)
 
 
