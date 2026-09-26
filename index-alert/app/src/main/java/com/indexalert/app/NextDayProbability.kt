@@ -19,6 +19,21 @@ import java.util.Locale
 
 private const val VALIDATED_MODEL = "3.1-causal-adaptive-close"
 
+data class OneMonthEstimate(
+    val up10Probability: Double,
+    val down10Probability: Double,
+    val horizonSessions: Int,
+    val sampleSize: Int,
+    val baselineSampleSize: Int,
+    val baselineUp10Probability: Double,
+    val baselineDown10Probability: Double,
+    val trendRegime: String,
+    val volatilityRegime: String,
+    val annualizedVolatility: Double,
+    val asOf: String,
+    val method: String
+)
+
 data class NextDayEstimate(
     val probability: Double,
     val baseRate: Double,
@@ -40,6 +55,7 @@ data class NextDayEstimate(
     val prospectiveCount: Int,
     val auditStart: String,
     val auditEnd: String,
+    val oneMonth: OneMonthEstimate? = null,
     val cached: Boolean = false
 )
 
@@ -56,7 +72,6 @@ object NextDayProbabilityRepository {
         val fresh = runCatching { fetch() }.getOrNull()
         val parsed = fresh?.let { parse(it, now, false) }.orEmpty()
         if (parsed.isNotEmpty()) {
-            // Save only a response from the supported, audited model.
             prefs.edit().putString("payload", fresh).apply()
         }
         val saved = prefs.getString("payload", null)?.let { parse(it, now, true) }.orEmpty()
@@ -94,6 +109,7 @@ object NextDayProbabilityRepository {
                 val skill = o.optDouble("backtest_skill", Double.NaN)
                 if (count < 252 || !brier.isFinite() || !baseline.isFinite() || !skill.isFinite()) return@forEach
                 val calibration = o.optJSONObject("calibration") ?: JSONObject()
+                val month = parseOneMonth(o.optJSONObject("one_month"))
                 put(id, NextDayEstimate(
                     p, base, o.optString("as_of"), o.optString("target_date"), expires,
                     count, brier, baseline, skill, o.optString("evidence", "예측 우위 미확인"),
@@ -102,11 +118,34 @@ object NextDayProbabilityRepository {
                     calibration.numberOrNull("observed_rise_rate"),
                     calibration.numberOrNull("range_low"), calibration.numberOrNull("range_high"),
                     o.optInt("prospective_count"), o.optString("audit_start"), o.optString("audit_end"),
+                    month,
                     saved || o.optBoolean("cached")
                 ))
             }
         }
     }.getOrDefault(emptyMap())
+
+    private fun parseOneMonth(o: JSONObject?): OneMonthEstimate? {
+        if (o == null || o.has("error")) return null
+        val up = o.optDouble("up_10_probability", Double.NaN)
+        val down = o.optDouble("down_10_probability", Double.NaN)
+        val baseUp = o.optDouble("baseline_up_10_probability", Double.NaN)
+        val baseDown = o.optDouble("baseline_down_10_probability", Double.NaN)
+        val horizon = o.optInt("horizon_sessions", 0)
+        val threshold = o.optInt("threshold_percent", 0)
+        val priceBasis = o.optString("price_basis")
+        val sample = o.optInt("sample_size", 0)
+        val baselineSample = o.optInt("baseline_sample_size", 0)
+        val vol = o.optDouble("annualized_volatility", Double.NaN)
+        if (horizon != 21 || threshold != 10 || priceBasis != "daily_close") return null
+        if (!up.isFinite() || !down.isFinite() || up !in 0.0..100.0 || down !in 0.0..100.0) return null
+        if (!baseUp.isFinite() || !baseDown.isFinite() || baselineSample < 252 || sample <= 0 || !vol.isFinite()) return null
+        return OneMonthEstimate(
+            up, down, horizon, sample, baselineSample, baseUp, baseDown,
+            o.optString("trend_regime"), o.optString("volatility_regime"), vol,
+            o.optString("as_of"), o.optString("method")
+        )
+    }
 
     private fun JSONObject.numberOrNull(key: String): Double? = optDouble(key, Double.NaN).takeIf { it.isFinite() }
 }
@@ -134,7 +173,7 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
         Column(Modifier.padding(12.dp)) {
             val e = estimate
             if (e == null) {
-                Text("다음 거래일 상승 확률", fontWeight = FontWeight.Bold)
+                Text("확률 분석", fontWeight = FontWeight.Bold)
                 Text(if (checked) "검증된 최신 값을 확인하지 못했습니다. 잠시 후 새로고침해 주세요." else "최신 종가와 검증 결과 확인 중…",
                     style = MaterialTheme.typography.bodySmall)
             } else {
@@ -152,6 +191,21 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                 } else {
                     Text("이 확률 구간의 과거 검증 표본이 부족합니다.", style = MaterialTheme.typography.bodySmall)
                 }
+
+                e.oneMonth?.let { m ->
+                    HorizontalDivider(Modifier.padding(vertical = 9.dp))
+                    Text("향후 1개월(21거래일) ±10% 도달 확률",
+                        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("+10% 이상 상승 도달  ${pct(m.up10Probability)}",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("-10% 이상 하락 도달  ${pct(m.down10Probability)}",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${m.asOf} 종가 기준 · 21거래일 안에 종가가 기준가 대비 ±10%를 한 번이라도 터치한 과거 빈도",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("현재 국면 표본 ${m.sampleSize}회 · 전체 완료표본 ${m.baselineSampleSize}회",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+
                 TextButton(onClick = { details = !details }, contentPadding = PaddingValues(0.dp)) {
                     Text(if (details) "검증 근거 접기 ▲" else "검증 근거 보기 ▼")
                 }
@@ -167,8 +221,17 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                     }
                     Text("실제 사전 예측 누적 검증 ${e.prospectiveCount}회 · 새 모델부터 별도 기록",
                         style = MaterialTheme.typography.bodySmall)
+                    e.oneMonth?.let { m ->
+                        Spacer(Modifier.height(6.dp))
+                        val trend = if (m.trendRegime == "up") "20일 상승추세" else "20일 하락추세"
+                        val vol = if (m.volatilityRegime == "high") "고변동" else "저변동"
+                        Text("1개월 모델: $trend · $vol · 연환산 변동성 ${pct(m.annualizedVolatility)}",
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("장기 기본빈도 +10% ${pct(m.baselineUp10Probability)} / -10% ${pct(m.baselineDown10Probability)} · 현재 국면 표본을 장기빈도 쪽으로 수축",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                 }
-                Text("과거 통계에 따른 추정이며 다음 거래일의 상승이나 수익을 보장하지 않습니다.",
+                Text("과거 통계에 따른 추정이며 다음 거래일 또는 향후 1개월의 상승·하락을 보장하지 않습니다.",
                     style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
             }
         }
