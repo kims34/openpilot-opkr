@@ -35,22 +35,33 @@ def estimate(symbol, now=None):
         base.INFERENCE_CACHE[symbol] = (digest, cached_result)
     result.update(meta, symbol=symbol, data_digest=digest, computed_at=int(now))
 
-    # Supplemental 21-session threshold-touch probabilities. Use completed
-    # daily highs/lows when available so an intraday +/-10% touch counts even
-    # when the session later closes back inside the threshold.
     try:
         ohlc = one_month_probability.fetch_ohlc(symbol, rows)
         result["one_month"] = one_month_probability.estimate(rows, ohlc)
     except Exception as exc:
         try:
-            # Conservative availability fallback: retain a close-touch estimate
-            # rather than removing the entire monthly section when OHLC retrieval
-            # is temporarily unavailable. The response tells the client which
-            # price basis was used.
             result["one_month"] = one_month_probability.estimate(rows)
         except Exception:
             result["one_month"] = {"error": "1개월 +/-10% 확률 계산 일시 중단"}
         print("one-month probability OHLC fallback", type(exc).__name__, flush=True)
+
+    month = result.get("one_month") or {}
+    if not month.get("error"):
+        print(
+            "one-month probability ready",
+            symbol,
+            {
+                "up10": month.get("up_10_probability"),
+                "down10": month.get("down_10_probability"),
+                "basis": month.get("price_basis"),
+                "selection_up": month.get("selection_up"),
+                "selection_down": month.get("selection_down"),
+                "skill_up": (month.get("validation_up") or {}).get("skill"),
+                "skill_down": (month.get("validation_down") or {}).get("skill"),
+                "features": month.get("features"),
+            },
+            flush=True,
+        )
 
     try:
         result.update(base.record_forecast(symbol, result, rows, now))
