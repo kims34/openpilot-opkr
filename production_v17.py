@@ -2,6 +2,7 @@ import threading
 import time
 
 import briefing
+import kospi_monthly
 import next_day_probability_v31 as next_day_probability
 import production
 import production_v14
@@ -13,12 +14,13 @@ import production_v14
 # - constituent mover refresh
 # - detailed market briefing
 # - validated next-trading-day probability model 3.1
+# - KOSPI one-month probability analysis
 app = production_v14.app
 
 # Replace stale routes on reload.
 app.router.routes = [
     route for route in app.router.routes
-    if getattr(route, "path", None) not in {"/briefings", "/next-day-probabilities"}
+    if getattr(route, "path", None) not in {"/briefings", "/next-day-probabilities", "/one-month-probabilities"}
 ]
 
 
@@ -30,6 +32,11 @@ def market_briefings():
 @app.get("/next-day-probabilities")
 def next_day_probabilities():
     return next_day_probability.get_all()
+
+
+@app.get("/one-month-probabilities")
+def one_month_probabilities():
+    return kospi_monthly.get_all()
 
 
 @app.on_event("startup")
@@ -66,5 +73,23 @@ def warm_market_features():
         except Exception as exc:
             print("next-day probability warmup failed", type(exc).__name__, str(exc), flush=True)
 
+    def _warm_kospi_monthly():
+        try:
+            payload = kospi_monthly.refresh(True)
+            item = payload.get("item") or {}
+            print(
+                "kospi monthly warmup",
+                {
+                    "as_of": item.get("as_of"),
+                    "up10": item.get("up_10_probability"),
+                    "down10": item.get("down_10_probability"),
+                    "top3": item.get("terminal_return_top3"),
+                },
+                flush=True,
+            )
+        except Exception as exc:
+            print("kospi monthly warmup failed", type(exc).__name__, str(exc), flush=True)
+
     threading.Thread(target=_warm_briefings, daemon=True).start()
     threading.Thread(target=_warm_probability, daemon=True).start()
+    threading.Thread(target=_warm_kospi_monthly, daemon=True).start()
