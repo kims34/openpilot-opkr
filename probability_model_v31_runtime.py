@@ -1,15 +1,18 @@
-"""Runtime adapter for model 3.1.
+"""Runtime adapter for the causal adaptive next-close model.
 
-The historical audit already knows every next-session date.  For the live
-forecast, the target session is supplied by the exchange calendar so the
-weekday challenger can use the actual next trading day's weekday (including
-holiday-shortened weeks) rather than silently falling back to the base rate.
+The historical audit keeps the existing 1,008-session sequential validation.
+This runtime layer adds conservative live guardrails without changing that audit:
+- challengers may be emitted only when the completed audit shows verified skill;
+- otherwise the live forecast falls back to the ETF's causal base rise rate;
+- the candidate forecast is still reported for diagnostics, but is not emitted.
 """
 from datetime import date
 import numpy as np
 import probability_model as core
 
-MODEL_VERSION = core.MODEL_VERSION
+# Runtime behavior changed while the historical audit definition remains unchanged.
+# A new model namespace keeps prospective forecasts from the old behavior separate.
+MODEL_VERSION = "3.2-live-guardrails"
 
 
 def estimate_prices(prices, include_trace=False, dates=None, target_date=None):
@@ -20,7 +23,7 @@ def estimate_prices(prices, include_trace=False, dates=None, target_date=None):
     y, candidates = core._candidate_probabilities(p, dates)
     current_t = n - 1
 
-    # Only the live forecast lacks a t+1 row.  Fill its weekday candidate from
+    # Only the live forecast lacks a t+1 row. Fill its weekday candidate from
     # the exchange-calendar target date. Historical candidates remain untouched.
     if target_date and dates is not None:
         weekdays = core._weekday_codes(n, dates)
@@ -31,6 +34,8 @@ def estimate_prices(prices, include_trace=False, dates=None, target_date=None):
         fixed = float(candidates["fixed"][current_t])
         candidates["weekday"][current_t] = fixed if cond is None else 0.75 * fixed + 0.25 * cond
 
+    # Keep the existing audit window exactly as-is. The user explicitly chose
+    # not to change the historical validation-window design in this revision.
     audit_start = max(core.MIN_TRAIN + core.POLICY_WINDOW, n - 1 - core.AUDIT_DAYS)
     audit, positions, strategies = [], [], []
     for t in range(audit_start, n - 1):
@@ -41,14 +46,43 @@ def estimate_prices(prices, include_trace=False, dates=None, target_date=None):
         positions.append(t)
         strategies.append(strategy)
 
-    current_strategy = core._causal_strategy(y, candidates, current_t)
-    probability = float(candidates[current_strategy][current_t])
+    candidate_strategy = core._causal_strategy(y, candidates, current_t)
+    candidate_probability = float(candidates[candidate_strategy][current_t])
     base = float(candidates["fixed"][current_t])
-    result = core.summarize_audit(audit, probability)
+
+    # Audit the adaptive policy first. A challenger is allowed to affect the
+    # live number only when its completed historical audit has a strictly
+    # positive lower skill bound. Otherwise emit the simpler base rise rate.
+    result = core.summarize_audit(audit, candidate_probability)
+    verified_advantage = (
+        candidate_strategy != "fixed"
+        and result.get("evidence") == "과거 개선 관찰"
+        and float(result.get("backtest_skill") or 0.0) > 0.0
+        and float(result.get("skill_range_low") or 0.0) > 0.0
+    )
+    fallback_to_base = candidate_strategy != "fixed" and not verified_advantage
+    current_strategy = "fixed" if fallback_to_base else candidate_strategy
+    probability = base if fallback_to_base else candidate_probability
+
     counts = {name: strategies.count(name) for name in ("fixed", "adaptive_hl", "prev_sign", "weekday")}
+    if fallback_to_base:
+        fallback_reason = "추가 모델의 검증 우위가 확인되지 않아 기본 상승률 사용"
+        reliability = "기본 상승률 사용"
+    elif current_strategy == "fixed":
+        fallback_reason = None
+        reliability = "기본 상승률 선택"
+    else:
+        fallback_reason = None
+        reliability = "과거 검증 우위 확인"
+
     result.update(
         probability=probability * 100,
         base_rate=base * 100,
+        candidate_probability=candidate_probability * 100,
+        candidate_strategy=candidate_strategy,
+        fallback_to_base=fallback_to_base,
+        fallback_reason=fallback_reason,
+        verified_advantage=verified_advantage,
         sample_size=min(n - 1, 2520),
         neighbor_count=0,
         calibration_alpha=0.0 if current_strategy == "fixed" else 1.0,
@@ -63,8 +97,8 @@ def estimate_prices(prices, include_trace=False, dates=None, target_date=None):
         out_of_domain=False,
         range_low=None,
         range_high=None,
-        reliability="과거 검증" if result["evidence"] == "과거 개선 관찰" else "제한적",
-        method="10년 일별 종가 · 적응형 기본확률/요일/전일방향 · 과거 성적으로만 선택 · 일별 순차 검증",
+        reliability=reliability,
+        method="10년 일별 종가 · 적응형 기본확률/요일/전일방향 · 과거 성적으로만 선택 · 우위 미확인 시 기본 상승률 · 일별 순차 검증",
         nonzero_signal_days=sum(s != "fixed" for s in strategies),
     )
     if include_trace:
