@@ -4,6 +4,7 @@ import json
 import time
 
 import next_day_probability as base
+import probability_milestone
 import probability_shadow
 from probability_model_v31_runtime import MODEL_VERSION, estimate_prices
 
@@ -48,6 +49,17 @@ def estimate(symbol, now=None):
         )
     except Exception as exc:
         print("probability shadow ledger unavailable", type(exc).__name__, flush=True)
+
+    # This milestone is entirely server/app-native. Once 60 matched future
+    # outcomes exist for all three tracked ETFs, the server sends a one-time FCM
+    # notification to each registered IndexAlert device. ChatGPT is not involved.
+    try:
+        result["milestone_60"] = probability_milestone.maybe_notify(
+            base.DB_PATH, MODEL_VERSION, now
+        )
+    except Exception as exc:
+        result["milestone_60"] = {"ready": False, "error": "검증 알림 상태 확인 중"}
+        print("probability milestone unavailable", type(exc).__name__, flush=True)
     return result
 
 
