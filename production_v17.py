@@ -2,20 +2,23 @@ import threading
 import time
 
 import briefing
+import next_day_probability
 import production
 import production_v14
 
-# Preserve the full v1.6 production stack:
+# Preserve the full production stack:
 # - Naver-backed KOSPI
 # - USD/KRW primary/fallback sources
 # - history routes
-# - 30-minute constituent mover refresh
+# - constituent mover refresh
+# - detailed market briefing
+# - calibrated next-trading-day probability model
 app = production_v14.app
 
-# Replace any stale briefing route on reload.
+# Replace stale routes on reload.
 app.router.routes = [
     route for route in app.router.routes
-    if getattr(route, "path", None) != "/briefings"
+    if getattr(route, "path", None) not in {"/briefings", "/next-day-probabilities"}
 ]
 
 
@@ -24,13 +27,15 @@ def market_briefings():
     return briefing.get_all(production.EXTRA_STATE)
 
 
+@app.get("/next-day-probabilities")
+def next_day_probabilities():
+    return next_day_probability.get_all()
+
+
 @app.on_event("startup")
-def warm_market_briefings():
-    def _warm():
+def warm_market_features():
+    def _warm_briefings():
         try:
-            # The market monitor populates EXTRA_STATE immediately after startup.
-            # Wait for all dashboard rows so the first 30-minute cache uses the
-            # real previous-day movement rather than a temporary zero value.
             expected = {"sp500", "ndx", "djdiv", "kospi100", "usdkrw"}
             for _ in range(30):
                 if expected.issubset(set(production.EXTRA_STATE)):
@@ -43,4 +48,22 @@ def warm_market_briefings():
             print("market briefings ready", summary, flush=True)
         except Exception as exc:
             print("market briefings warmup failed", type(exc).__name__, str(exc), flush=True)
-    threading.Thread(target=_warm, daemon=True).start()
+
+    def _warm_probability():
+        try:
+            payload = next_day_probability.refresh(True)
+            summary = {
+                key: {
+                    "p": value.get("probability"),
+                    "range": [value.get("range_low"), value.get("range_high")],
+                    "skill": value.get("backtest_skill"),
+                    "reliability": value.get("reliability"),
+                }
+                for key, value in payload.get("items", {}).items()
+            }
+            print("next-day probability warmup", summary, flush=True)
+        except Exception as exc:
+            print("next-day probability warmup failed", type(exc).__name__, str(exc), flush=True)
+
+    threading.Thread(target=_warm_briefings, daemon=True).start()
+    threading.Thread(target=_warm_probability, daemon=True).start()
