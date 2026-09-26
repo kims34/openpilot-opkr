@@ -1,14 +1,4 @@
-"""Validated 21-session +/-10% barrier-touch probability model.
-
-Production model goals:
-- Interpret "within one month" as the next 21 NYSE sessions.
-- Prefer daily intraday highs/lows for barrier hits when available.
-- Compare the current market with historical analogs using only causal features.
-- Select analogue neighborhood size on an earlier chronological validation slice.
-- Evaluate the selected model on a later untouched validation slice.
-- Serve the analogue estimate only when it beats a causal unconditional baseline;
-  otherwise fall back to the baseline instead of manufacturing confidence.
-"""
+"""Validated 21-session +/-10% barrier-touch probability model."""
 import math
 import statistics
 from datetime import datetime, timezone
@@ -26,19 +16,23 @@ VALIDATION_DAYS = 504
 TUNE_FRACTION = 0.50
 METHOD = "validated-historical-analogs-barrier-touch-v2"
 NY = ZoneInfo("America/New_York")
+SEOUL = ZoneInfo("Asia/Seoul")
 
-# Fixed, economically interpretable scales avoid using future observations to
-# standardize a historical forecast during walk-forward validation.
 FEATURE_SCALES = (0.04, 0.08, 0.15, 0.12, 0.15, 0.08, 0.15)
 FEATURE_WEIGHTS = (1.0, 1.25, 1.0, 1.25, 1.35, 0.85, 0.85)
 
 
-def fetch_ohlc(symbol, close_rows):
-    """Fetch completed daily highs/lows aligned to already-validated close_rows."""
+def fetch_ohlc(symbol, close_rows, timezone_name="America/New_York"):
+    """Fetch completed daily highs/lows aligned to validated close_rows.
+
+    timezone_name is explicit so Korean indices are aligned to Asia/Seoul rather
+    than being shifted to the prior US calendar day.
+    """
+    tz = ZoneInfo(timezone_name)
     response = requests.get(
         f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
         params={"range": "10y", "interval": "1d", "includePrePost": "false", "events": "div,splits"},
-        headers={"User-Agent": "Mozilla/5.0 IndexAlert/2.4"}, timeout=20,
+        headers={"User-Agent": "Mozilla/5.0 IndexAlert/2.9"}, timeout=20,
     )
     response.raise_for_status()
     result = (response.json().get("chart", {}).get("result") or [None])[0]
@@ -55,7 +49,7 @@ def fetch_ohlc(symbol, close_rows):
     for ts, hi, lo, cl in zip(timestamps, highs, lows, closes):
         if hi is None or lo is None or cl is None:
             continue
-        day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(NY).date().isoformat()
+        day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(tz).date().isoformat()
         h, l, c = float(hi), float(lo), float(cl)
         if all(math.isfinite(v) and v > 0 for v in (h, l, c)) and h >= l:
             by_day[day] = (h, l, c)
@@ -119,7 +113,6 @@ def _baseline(records, outcome_pos):
 def _analog_probability(target_features, training, k, outcome_pos):
     base = _baseline(training, outcome_pos)
     ranked = sorted((_distance(target_features, r[1]), r) for r in training)
-    # De-cluster neighbours so a single multi-week episode cannot dominate.
     selected = []
     selected_indices = []
     for distance, record in ranked:
@@ -147,8 +140,6 @@ def _walk_forward(prices, records, k, outcome_pos, targets):
     base_sq = []
     used = 0
     for t in targets:
-        # At forecast date t, only labels whose 21-session horizon has already
-        # completed are eligible for training.
         training = [r for r in records if r[0] <= t - HORIZON - 1]
         if len(training) < 300:
             continue
@@ -189,7 +180,6 @@ def _choose_and_validate(prices, records, outcome_pos):
 
 
 def estimate(rows, ohlc_rows=None):
-    """Estimate validated P(+10% touch) and P(-10% touch) in next 21 sessions."""
     clean = [(str(d), float(p)) for d, p in rows if float(p) > 0]
     if len(clean) < MIN_HISTORY:
         raise ValueError("insufficient history for one-month probability")
