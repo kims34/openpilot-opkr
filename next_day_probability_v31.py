@@ -4,6 +4,7 @@ import json
 import time
 
 import next_day_probability as base
+import probability_shadow
 from probability_model_v31_runtime import MODEL_VERSION, estimate_prices
 
 # Keep all hardened data/calendar/cache/ledger behavior from next_day_probability,
@@ -38,6 +39,15 @@ def estimate(symbol, now=None):
     except Exception as exc:
         result.update(prospective_count=0, prospective_error="실시간 검증 기록 일시 중단")
         print("probability ledger unavailable", type(exc).__name__, flush=True)
+
+    # Shadow challengers are recorded prospectively but never replace the served
+    # v3.1 probability. Any shadow failure is isolated from the live response.
+    try:
+        result["shadow_validation"] = probability_shadow.record_shadow_forecasts(
+            symbol, result, rows, now
+        )
+    except Exception as exc:
+        print("probability shadow ledger unavailable", type(exc).__name__, flush=True)
     return result
 
 
