@@ -29,17 +29,24 @@ jobs:
       - name: Collect Android APK signing tools
         run: |
           BT=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          mkdir -p ../apksigner-tool/lib
+          mkdir -p ../apksigner-tool/lib ../apksigner-tool/lib64
           cp "$BT/apksigner" ../apksigner-tool/
           cp "$BT/zipalign" ../apksigner-tool/
           cp "$BT/lib/apksigner.jar" ../apksigner-tool/lib/
+          if [ -f "$BT/lib64/libc++.so" ]; then
+            cp "$BT/lib64/libc++.so" ../apksigner-tool/lib64/
+          else
+            LIBCPP=$(find "$ANDROID_HOME" -name 'libc++.so' -type f | head -1)
+            test -n "$LIBCPP"
+            cp "$LIBCPP" ../apksigner-tool/lib64/libc++.so
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IndexAlert-v1.6-debug
+          name: IndexAlert-v3.0-debug
           path: index-alert/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: IndexAlert-v1.6-unsigned-release
+          name: IndexAlert-v3.0-unsigned-release
           path: index-alert/app/build/outputs/apk/release/app-release-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
