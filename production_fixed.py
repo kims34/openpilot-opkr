@@ -1,4 +1,5 @@
 import math
+import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -140,7 +141,6 @@ def _evaluate_kospi(index_id: str):
         ath = max(current, day_high)
         ath_ts = value_ts
 
-    # Recover ATH date after restart when the stored ATH is still current.
     if ath_ts == 0:
         try:
             hist_ath, hist_ts = production._history_ath("^KS11")
@@ -243,6 +243,79 @@ def _evaluate(index_id: str):
 
 
 monitor.evaluate = _evaluate
+
+# ---- Next trading day statistical estimate for the three ETF cards ----
+_PREDICTION_CACHE = {"time": 0.0, "items": {}}
+_PREDICTION_SYMBOLS = {"sp500": "SPY", "ndx": "QQQ", "djdiv": "SCHD"}
+
+
+def _adjusted_daily_closes(symbol: str):
+    result = monitor.yahoo_result(symbol, "10y", "1d", False)
+    timestamps = result.get("timestamp") or []
+    quote_closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", []) or []
+    adj_blocks = result.get("indicators", {}).get("adjclose", []) or []
+    adj_closes = adj_blocks[0].get("adjclose", []) if adj_blocks else []
+    closes = adj_closes if len(adj_closes) == len(timestamps) else quote_closes
+    return [(int(ts), float(px)) for ts, px in zip(timestamps, closes) if px is not None and float(px) > 0]
+
+
+def _next_day_probability(symbol: str):
+    points = _adjusted_daily_closes(symbol)
+    if len(points) < 260:
+        raise RuntimeError(f"not enough history for {symbol}")
+    prices = [p for _, p in points]
+    returns = [prices[i] / prices[i - 1] - 1.0 for i in range(1, len(prices))]
+    latest_r1 = returns[-1]
+    latest_r5 = prices[-1] / prices[-6] - 1.0 if len(prices) >= 6 else latest_r1
+
+    # Compare today's 1-day and 5-day momentum with prior days. Start narrow,
+    # then widen only when needed so we keep a useful historical sample.
+    matches = []
+    bands = [(0.004, 0.012), (0.0075, 0.020), (0.012, 0.035), (0.020, 0.060)]
+    for r1_band, r5_band in bands:
+        matches = []
+        for i in range(5, len(prices) - 1):
+            r1 = prices[i] / prices[i - 1] - 1.0
+            r5 = prices[i] / prices[i - 5] - 1.0
+            if abs(r1 - latest_r1) <= r1_band and abs(r5 - latest_r5) <= r5_band:
+                next_up = prices[i + 1] > prices[i]
+                matches.append(1 if next_up else 0)
+        if len(matches) >= 60:
+            break
+
+    all_next = [1 if prices[i + 1] > prices[i] else 0 for i in range(5, len(prices) - 1)]
+    base = sum(all_next) / len(all_next)
+    n = len(matches)
+    raw = (sum(matches) / n) if n else base
+    # Shrink noisy conditional estimates toward the ETF's own long-run base rate.
+    prior_weight = 40.0
+    probability = ((raw * n) + (base * prior_weight)) / (n + prior_weight)
+    return {
+        "probability": round(probability * 100.0, 1),
+        "sample_size": n,
+        "base_rate": round(base * 100.0, 1),
+        "day_return": round(latest_r1 * 100.0, 2),
+        "five_day_return": round(latest_r5 * 100.0, 2),
+        "method": "최근 10년 유사 당일·5일 모멘텀의 다음 거래일 상승 빈도",
+    }
+
+
+@app.get("/next-day-probabilities")
+def next_day_probabilities():
+    now = time.time()
+    if _PREDICTION_CACHE["items"] and now - _PREDICTION_CACHE["time"] < 900:
+        return {"items": _PREDICTION_CACHE["items"], "updated_at": _PREDICTION_CACHE["time"]}
+    items = {}
+    for index_id, symbol in _PREDICTION_SYMBOLS.items():
+        try:
+            items[index_id] = {"symbol": symbol, **_next_day_probability(symbol)}
+        except Exception as exc:
+            print("next-day probability failed", index_id, type(exc).__name__, flush=True)
+            items[index_id] = {"symbol": symbol, "error": "estimate unavailable"}
+    _PREDICTION_CACHE["items"] = items
+    _PREDICTION_CACHE["time"] = now
+    return {"items": items, "updated_at": now}
+
 
 # production.register predates USD/KRW. Replace it so old v1.0 clients and the
 # new client both satisfy monitor.register's exact RULES-key validation.
