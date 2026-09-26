@@ -91,7 +91,7 @@ fun HomeV11(
                 else -> null
             }
             val movers = if (universe == null) emptyList() else laggards.filter { it.universe == universe }.sortedBy { it.rank }.take(3)
-            IndexCardV19(snapshot, movers, laggardStatus)
+            IndexCardV19(snapshot, movers, laggardStatus, statusText)
         }
 
         Spacer(Modifier.height(18.dp))
@@ -144,7 +144,7 @@ fun HomeV11(
 }
 
 @Composable
-private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
+private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String, refreshKey: String) {
     val alertTriggered = s.alertsEnabled && s.stageText.startsWith("🔔")
     val cardColor = if (alertTriggered) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
     val cardBorder = if (alertTriggered) BorderStroke(2.dp, MaterialTheme.colorScheme.error) else BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
@@ -224,7 +224,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
 
-            NextDayProbabilitySection(s.rule.id)
+            NextDayProbabilitySection(s.rule.id, refreshKey)
             MonthlyChartSection(s.rule.id)
 
             if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
@@ -270,3 +270,4 @@ private fun movementColorV19(percent: Double?): Color = when {
 private fun fmtV19(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
 private fun signedV19(v: Double): String = String.format(Locale.US, "%+,.2f", v)
 private fun signedPctV19(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
+
