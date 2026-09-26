@@ -1,0 +1,53 @@
+name: Patch and build IndexAlert v2.3
+on:
+  push:
+    branches: [index-alert-build]
+    paths: ['.github/workflows/index-alert-v23-patch.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: index-alert-build
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Patch v2.3
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index-alert/app/src/main/java/com/indexalert/app/NextDayProbability.kt')
+          s=p.read_text()
+          old='private const val VALIDATED_MODEL = "3.0-prequential-close"'
+          new='private const val VALIDATED_MODEL = "3.1-causal-adaptive-close"'
+          if old not in s and new not in s:
+              raise SystemExit('validated model constant not found')
+          p.write_text(s.replace(old,new))
+          p=Path('index-alert/app/build.gradle.kts')
+          s=p.read_text()
+          s=s.replace('versionCode = 22','versionCode = 23').replace('versionName = "2.2"','versionName = "2.3"')
+          p.write_text(s)
+          PY
+      - name: Build release APK
+        working-directory: index-alert
+        run: gradle assembleRelease --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IndexAlert-v2.3-unsigned-apk
+          path: index-alert/app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Commit v2.3 source and remove one-shot workflow
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add index-alert/app/src/main/java/com/indexalert/app/NextDayProbability.kt index-alert/app/build.gradle.kts
+          git rm .github/workflows/index-alert-v23-patch.yml
+          git commit -m 'Update IndexAlert to v2.3 probability model'
+          git push origin HEAD:index-alert-build
