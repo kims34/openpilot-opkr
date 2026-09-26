@@ -1,21 +1,24 @@
-# Next-close probability contract (model 3.0)
+# Next-close probability contract (model 3.1)
 
 - Target: next US regular-session closing price is strictly greater than the latest completed closing price. Equal closes count as not rising. Uses Yahoo `quote.close`, excluding cash dividends; it does not silently substitute total-return `adjclose`.
 - Universe: SPY, QQQ, SCHD only. Existing alert rules, KOSPI and FX displays are separate.
 - Calendar: XNYS trading sessions, holidays and early closes. Daily bars need a 15-minute closing grace. Missing/duplicate/out-of-order dates, stale histories and obvious split/unit discontinuities suppress output.
-- Features retained: 1/5/20-session momentum, 20-session volatility, distance from the 60-session closing high. Scaling, neighbors and outcomes use only data known at each forecast origin.
-- The neighbor estimate is shrunk toward the ETF's own time-weighted historical rise rate. A prior strength of 80 affects the point estimate only, never an uncertainty interval or an observed sample count.
-- Policy: on each forecast date, the prior 504 known daily predictions choose a shrinkage alpha from {0, .25, .5, .75, 1}. The older two-thirds fit alpha; the newer third must show improvement beyond a fixed conservative HAC-error margin. Otherwise alpha is zero (baseline). These settings are declared in code, not optimized on the reported audit.
-- Evaluation: up to 1,008 later daily predictions apply the entire past-only policy. The current day's unknown outcome is excluded from model selection. Report Brier loss, baseline Brier, log loss, fixed-bin calibration and negative as well as positive skill. The benchmark is the same causal historical rise-rate estimator, not a trading strategy.
-- Uncertainty: removed the previous pseudo-sample-based "80% probability range". A 20-session moving-block resample (400 repetitions) describes historical skill and historical calibration-bin frequencies. These are approximate historical sampling ranges, not a confidence interval for tomorrow's individual probability or a guarantee under regime change.
-- Prospective ledger: save the first prediction before the target session opens; never overwrite it. Score it only after the target session closes. Keep prospective counts separate from reconstructed backtests; updated vendor history and design choices still limit backtest interpretation.
-- Android: accept only this model's validated, unexpired payload. Retain a valid prior response during an outage and label it as cached. Otherwise show unavailable; do not silently replace audited results with a different local heuristic. Show origin and target dates.
+- Baseline: each ETF's past rise frequency is time-weighted with a 1,260-session half-life and a small 50/50 beta prior. Only outcomes known before the forecast are used.
+- Adaptive challengers: (1) a half-life selected from 126/252/504/756/1,260/2,520 sessions, (2) previous-session direction conditioning, and (3) next-session weekday conditioning. Conditional estimates are strongly shrunk toward the baseline.
+- Policy: on each forecast date, a challenger is allowed only when it beat the fixed baseline on Brier loss in both chronological halves of the prior 504 known forecasts. Otherwise the baseline is used. The live weekday candidate uses the actual next XNYS session date, so holidays do not turn it into a generic calendar-weekday guess.
+- Evaluation: the latest 1,008 daily predictions apply the same past-only selection policy. Report Brier loss, baseline Brier, log loss, fixed-bin calibration and negative as well as positive skill. The current day's unknown outcome is excluded from model selection.
+- Research gate: a higher-dimensional ridge model using momentum, volatility, drawdown, VIX, TLT, HYG and IWM was rejected because its final held-out Brier loss was worse than baseline. The simpler adaptive policy was promoted only after lower Brier loss was observed for SPY, QQQ and SCHD, including positive improvement in both chronological halves of the 1,008-day audit. The improvement is small and is not evidence of a guaranteed edge.
+- Uncertainty: a 20-session moving-block resample (400 repetitions) describes historical skill and historical calibration-bin frequencies. These are approximate historical sampling ranges, not a confidence interval for tomorrow's individual probability or a guarantee under regime change.
+- Prospective ledger: save the first prediction before the target session opens; never overwrite it. Score it only after the target session closes. A model-version change starts a separate prospective score series so 3.0 and 3.1 outcomes are not mixed.
+- Android: accept only the validated, unexpired model payload. Retain a valid prior response during an outage and label it as cached. Otherwise show unavailable; do not silently replace audited results with a different local heuristic. Show origin and target dates.
 
 ## Verification
 
 `python -m unittest discover -p test_probability.py -v`
 
-Tests cover future/outcome leakage, selection detecting real signal, truthful negative skill, incomplete/early-close bars, holidays, corrupt and stale data, immutable forecasts, and stale-response suppression.
+The automated research workflow also runs real SPY/QQQ/SCHD smoke inference and the rejected cross-asset challenger side-by-side with the promoted adaptive policy.
+
+Tests cover future/outcome leakage, causal selection, truthful negative skill, incomplete/early-close bars, holidays, corrupt and stale data, immutable forecasts, and stale-response suppression.
 
 ## References
 
