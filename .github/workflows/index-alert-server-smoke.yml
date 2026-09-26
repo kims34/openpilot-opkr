@@ -1,0 +1,49 @@
+name: IndexAlert Server Smoke
+on:
+  push:
+    branches: [ index-alert-server ]
+    paths:
+      - 'monitor.py'
+      - 'production.py'
+      - 'production_fixed.py'
+      - 'Dockerfile'
+      - '.github/workflows/index-alert-server-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m py_compile monitor.py production.py production_fixed.py
+      - name: Wait for production deployment and verify API
+        run: |
+          set -euo pipefail
+          BASE='https://indexalert-runtime-production.up.railway.app'
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 15 "$BASE/health" >/tmp/health.json && \
+               curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
+              python - <<'PY'
+          import json
+          health=json.load(open('/tmp/health.json'))
+          data=json.load(open('/tmp/prob.json'))
+          items=data.get('items', {})
+          assert health.get('ok') is True, health
+          for key in ('sp500','ndx','djdiv'):
+              row=items.get(key) or {}
+              assert isinstance(row.get('probability'), (int,float)), (key,row)
+              assert isinstance(row.get('sample_size'), int), (key,row)
+              assert 0 <= row['probability'] <= 100, (key,row)
+          print(json.dumps(items, ensure_ascii=False, indent=2))
+          PY
+              exit 0
+            fi
+            echo "production not ready yet: attempt $i/30"
+            sleep 20
+          done
+          echo 'production endpoint did not become ready in time' >&2
+          exit 1
