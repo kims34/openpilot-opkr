@@ -29,6 +29,9 @@ data class MarketBriefing(
     val id: String,
     val category: String,
     val text: String,
+    val drivers: List<String>,
+    val balance: String,
+    val watch: String,
     val confidence: String
 )
 
@@ -60,10 +63,21 @@ object MarketBriefingRepository {
                     val o = arr.getJSONObject(i)
                     val id = o.optString("id")
                     if (id.isBlank()) continue
+                    val drivers = mutableListOf<String>()
+                    val driverArray = o.optJSONArray("drivers")
+                    if (driverArray != null) {
+                        for (j in 0 until driverArray.length()) {
+                            val driver = driverArray.optString(j)
+                            if (driver.isNotBlank()) drivers.add(driver)
+                        }
+                    }
                     parsed[id] = MarketBriefing(
                         id = id,
                         category = o.optString("category", "혼합"),
-                        text = o.optString("text", "원인 브리핑을 준비 중입니다."),
+                        text = o.optString("text", "시장 브리핑을 준비 중입니다."),
+                        drivers = drivers,
+                        balance = o.optString("balance", ""),
+                        watch = o.optString("watch", ""),
                         confidence = o.optString("confidence", "뉴스·시세 기반 추정")
                     )
                 }
@@ -91,22 +105,46 @@ fun MarketBriefingSection(indexId: String) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
-        Column(Modifier.padding(10.dp)) {
+        Column(Modifier.padding(12.dp)) {
             Text(
-                "오늘 한줄 브리핑 · ${item.category}",
+                "오늘 시장 브리핑 · ${item.category}",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 item.text,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 3.dp)
+                modifier = Modifier.padding(top = 5.dp)
             )
+
+            if (item.drivers.isNotEmpty()) {
+                Spacer(Modifier.height(7.dp))
+                Text("가능성이 큰 요인", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                item.drivers.take(3).forEach { driver ->
+                    Text("• $driver", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+                }
+            }
+
+            if (item.balance.isNotBlank()) {
+                Text(
+                    item.balance,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+
+            if (item.watch.isNotBlank()) {
+                Spacer(Modifier.height(7.dp))
+                Text("지금 확인할 변수", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(item.watch, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+            }
+
             Text(
                 item.confidence,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 3.dp)
+                modifier = Modifier.padding(top = 7.dp)
             )
         }
     }
