@@ -20,6 +20,8 @@ The automated research workflow also runs real SPY/QQQ/SCHD smoke inference and 
 
 Tests cover future/outcome leakage, causal selection, truthful negative skill, incomplete/early-close bars, holidays, corrupt and stale data, immutable forecasts, and stale-response suppression.
 
+Deployment source trigger: model 3.1 validated on 2026-09-26.
+
 ## References
 
 - https://scikit-learn.org/stable/modules/calibration.html
