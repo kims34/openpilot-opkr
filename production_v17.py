@@ -6,16 +6,17 @@ import kospi_monthly
 import next_day_probability_v31 as next_day_probability
 import production
 import production_v14
+import production_kpi100_mobile
 
 # Preserve the full production stack:
-# - Naver-backed KOSPI
+# - Naver-mobile-backed KOSPI100
 # - USD/KRW primary/fallback sources
 # - history routes
 # - constituent mover refresh
 # - detailed market briefing
 # - validated next-trading-day probability model 3.1
 # - KOSPI one-month probability analysis
-app = production_v14.app
+app = production_kpi100_mobile.app
 
 # Replace stale routes on reload.
 app.router.routes = [
