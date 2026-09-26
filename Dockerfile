@@ -18,6 +18,7 @@ COPY next_day_probability.py .
 COPY next_day_probability_v31.py .
 COPY one_month_probability.py .
 COPY one_month_distribution.py .
+COPY kospi_monthly.py .
 COPY probability_shadow.py .
 COPY probability_milestone.py .
 COPY probability_model.py .
