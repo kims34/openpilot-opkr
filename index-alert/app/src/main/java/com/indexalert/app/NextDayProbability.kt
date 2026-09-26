@@ -17,7 +17,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-private const val VALIDATED_MODEL = "3.1-causal-adaptive-close"
+private const val VALIDATED_MODEL = "3.2-live-guardrails"
 
 data class MonthValidation(
     val count: Int,
@@ -55,7 +55,13 @@ data class OneMonthEstimate(
     val validationDown: MonthValidation?,
     val effectiveSampleUp: Double,
     val effectiveSampleDown: Double,
-    val features: MonthFeatures?
+    val features: MonthFeatures?,
+    val terminalReturnModeLabel: String?,
+    val terminalReturnModeProbability: Double?,
+    val terminalReturnSelection: String?,
+    val terminalReturnValidation: MonthValidation?,
+    val terminalReturnEffectiveSample: Double,
+    val terminalReturnBinWidthPercent: Int
 )
 
 data class NextDayEstimate(
@@ -168,6 +174,8 @@ object NextDayProbabilityRepository {
                 f.optDouble("ma50_gap", 0.0), f.optDouble("ma200_gap", 0.0)
             )
         }
+        val modeLabel = o.optString("terminal_return_mode_label").takeIf { it.isNotBlank() }
+        val modeProbability = o.numberOrNull("terminal_return_mode_probability")?.takeIf { it in 0.0..100.0 }
         return OneMonthEstimate(
             up, down, horizon, sample, baselineSample, baseUp, baseDown,
             o.optString("trend_regime"), o.optString("volatility_regime"), vol,
@@ -176,7 +184,13 @@ object NextDayProbabilityRepository {
             parseMonthValidation(o.optJSONObject("validation_up")),
             parseMonthValidation(o.optJSONObject("validation_down")),
             o.optDouble("effective_sample_up", 0.0), o.optDouble("effective_sample_down", 0.0),
-            features
+            features,
+            modeLabel,
+            modeProbability,
+            o.optString("terminal_return_selection").takeIf { it == "analog" || it == "baseline" },
+            parseMonthValidation(o.optJSONObject("terminal_return_validation")),
+            o.optDouble("terminal_return_effective_sample", 0.0),
+            o.optInt("terminal_return_bin_width_percent", 0)
         )
     }
 
@@ -234,6 +248,14 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                 Text("향후 1개월(21거래일) ±10% 도달 확률", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text("+10% 이상 상승 도달  ${pct1(m.up10Probability)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("-10% 이상 하락 도달  ${pct1(m.down10Probability)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                if (m.terminalReturnModeLabel != null && m.terminalReturnModeProbability != null) {
+                    Spacer(Modifier.height(7.dp))
+                    Text("한 달 뒤 가장 가능성 높은 종가 수익률 구간", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("${m.terminalReturnModeLabel}  ·  확률 ${pct1(m.terminalReturnModeProbability)}",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    val widthText = if (m.terminalReturnBinWidthPercent > 0) "${m.terminalReturnBinWidthPercent}%p 구간" else "수익률 구간"
+                    Text("21거래일 뒤 종가 기준 · $widthText 중 확률이 가장 높은 구간", style = MaterialTheme.typography.bodySmall)
+                }
                 val basis = if (m.priceBasis == "daily_high_low") "장중 고가·저가 터치 기준" else "종가 터치 기준(장중 데이터 임시 미사용)"
                 Text("${m.asOf} 종가 기준 · $basis", style = MaterialTheme.typography.bodySmall)
                 Text("현재와 유사한 과거 장세 + 장기 기본확률을 결합 · 유효표본 상승 ${oneDecimal(m.effectiveSampleUp)} / 하락 ${oneDecimal(m.effectiveSampleDown)}",
@@ -266,7 +288,14 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                         style = MaterialTheme.typography.bodySmall)
                     monthValidationLine("+10%", m.selectionUp, m.validationUp)
                     monthValidationLine("-10%", m.selectionDown, m.validationDown)
-                    Text("검증에서 유사장세 모델이 기본확률보다 낫지 않으면 해당 방향은 자동으로 장기 기본확률을 사용합니다.",
+                    if (m.terminalReturnModeLabel != null && m.terminalReturnModeProbability != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text("[1개월 종가 수익률 분포]", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Text("최빈 구간 ${m.terminalReturnModeLabel} · ${pct1(m.terminalReturnModeProbability)} · 유효표본 ${oneDecimal(m.terminalReturnEffectiveSample)}",
+                            style = MaterialTheme.typography.bodySmall)
+                        monthValidationLine("종가분포", m.terminalReturnSelection ?: "baseline", m.terminalReturnValidation)
+                    }
+                    Text("검증에서 유사장세 모델이 기본확률보다 낫지 않으면 해당 방향·분포는 자동으로 장기 기본확률을 사용합니다.",
                         style = MaterialTheme.typography.labelSmall)
                 }
             }
