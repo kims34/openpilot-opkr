@@ -224,6 +224,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
 
+            NextDayProbabilitySection(s.rule.id)
             MonthlyChartSection(s.rule.id)
 
             if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
