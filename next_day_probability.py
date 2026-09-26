@@ -12,7 +12,7 @@ CACHE_SECONDS = 30 * 60
 CACHE = {"updated": 0.0, "items": {}}
 LOCK = threading.Lock()
 NY = ZoneInfo("America/New_York")
-MODEL_VERSION = "2.1-calibrated-knn"
+MODEL_VERSION = "2.2-walkforward-calibrated"
 
 
 def _fetch_prices(symbol: str):
@@ -44,7 +44,7 @@ def _fetch_prices(symbol: str):
         if math.isfinite(px) and px > 0:
             rows.append((int(ts), px))
 
-    # Never use an unfinished U.S. regular-session daily bar as a completed day.
+    # Do not train on an unfinished U.S. regular-session daily bar.
     meta = result.get("meta", {})
     regular = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
     regular_end = int(regular.get("end") or 0)
@@ -122,7 +122,7 @@ def _core_predict(prices, t):
         base_sy += weight * outcome
     base_rate = base_sy / base_sw if base_sw > 0 else 0.5
 
-    # Bayesian shrinkage keeps noisy similarity samples from producing extreme odds.
+    # First shrink noisy neighbors toward the ETF's own recent long-run rise rate.
     prior_strength = 80.0
     posterior = (raw * effective_n + base_rate * prior_strength) / (effective_n + prior_strength)
     return {
@@ -133,35 +133,93 @@ def _core_predict(prices, t):
     }
 
 
+def _brier(points, alpha):
+    if not points:
+        return None
+    total = 0.0
+    for posterior, base, outcome in points:
+        p = max(0.01, min(0.99, base + alpha * (posterior - base)))
+        total += (p - outcome) ** 2
+    return total / len(points)
+
+
+def _fit_alpha(points):
+    # One-parameter calibration is intentionally simple to reduce overfitting.
+    # alpha=0 means base rate only; 1 means the raw Bayesian KNN signal.
+    best_alpha = 0.0
+    best_score = float("inf")
+    for step in range(0, 26):  # 0.00 .. 1.25
+        alpha = step * 0.05
+        score = _brier(points, alpha)
+        if score is not None and score < best_score:
+            best_score = score
+            best_alpha = alpha
+    return best_alpha, best_score
+
+
 def _walk_forward(prices):
     n = len(prices)
-    start = max(400, n - 1 - 504)  # roughly last two trading years
-    model_sq = base_sq = 0.0
-    count = 0
-    # Every fifth trading day keeps runtime modest while preserving multiple regimes.
-    for t in range(start, n - 1, 5):
+    # About three trading years. Every fourth day keeps runtime reasonable while
+    # giving enough chronologically ordered out-of-sample predictions to calibrate.
+    start = max(400, n - 1 - 756)
+    points = []
+    for t in range(start, n - 1, 4):
         try:
             estimate = _core_predict(prices, t)
         except Exception:
             continue
         outcome = 1.0 if prices[t + 1] > prices[t] else 0.0
-        model_sq += (estimate["posterior"] - outcome) ** 2
-        base_sq += (estimate["base_rate"] - outcome) ** 2
-        count += 1
-    if count < 40:
-        return {"count": count, "model_brier": None, "base_brier": None, "skill": 0.0, "trust": 0.0}
-    model_brier = model_sq / count
-    base_brier = base_sq / count
-    skill = 1.0 - model_brier / base_brier if base_brier > 0 else 0.0
-    # Require actual out-of-sample improvement before allowing the signal to move
-    # materially away from the ETF's own long-run rise rate.
-    trust = max(0.0, min(1.0, skill / 0.05))
+        points.append((estimate["posterior"], estimate["base_rate"], outcome))
+
+    if len(points) < 60:
+        return {
+            "count": len(points), "alpha": 0.0, "model_brier": None,
+            "uncalibrated_brier": None, "base_brier": None,
+            "skill": 0.0, "trust": 0.0, "choice": "base",
+        }
+
+    # Fit calibration on the earlier portion, then decide whether it genuinely
+    # helps on the later holdout. This prevents fitting and judging on the same days.
+    split = max(40, min(len(points) - 30, int(len(points) * 0.65)))
+    fit_points = points[:split]
+    holdout = points[split:]
+    fitted_alpha, _ = _fit_alpha(fit_points)
+
+    base_brier = _brier(holdout, 0.0)
+    raw_brier = _brier(holdout, 1.0)
+    calibrated_brier = _brier(holdout, fitted_alpha)
+
+    choices = [
+        (base_brier if base_brier is not None else float("inf"), 0.0, "base"),
+        (raw_brier if raw_brier is not None else float("inf"), 1.0, "raw"),
+        (calibrated_brier if calibrated_brier is not None else float("inf"), fitted_alpha, "calibrated"),
+    ]
+    best_holdout, selected_alpha, choice = min(choices, key=lambda x: x[0])
+
+    # Only use a non-base signal when it improved on the chronologically later holdout.
+    if base_brier is None or best_holdout >= base_brier:
+        selected_alpha = 0.0
+        choice = "base"
+        best_holdout = base_brier if base_brier is not None else best_holdout
+    elif choice == "calibrated":
+        # Once the calibration approach passes holdout, refit alpha using all
+        # validation points for the live estimate while keeping the same 0..1.25 guardrail.
+        selected_alpha, _ = _fit_alpha(points)
+
+    skill = 1.0 - best_holdout / base_brier if base_brier and base_brier > 0 else 0.0
+    # Validation trust limits how far the live probability may move from the base rate.
+    trust = max(0.0, min(1.0, skill / 0.04))
+
     return {
-        "count": count,
-        "model_brier": model_brier,
+        "count": len(holdout),
+        "total_validation_count": len(points),
+        "alpha": selected_alpha,
+        "model_brier": best_holdout,
+        "uncalibrated_brier": raw_brier,
         "base_brier": base_brier,
         "skill": skill,
         "trust": trust,
+        "choice": choice,
     }
 
 
@@ -171,21 +229,24 @@ def estimate(symbol: str):
     latest_ts = rows[-1][0]
     core = _core_predict(prices, len(prices) - 1)
     validation = _walk_forward(prices)
-    trust = validation["trust"]
-    probability = core["base_rate"] + trust * (core["posterior"] - core["base_rate"])
 
-    # 80% statistical interval around the shrunken estimate. Low validation trust
-    # deliberately widens the interval a little to avoid false precision.
+    alpha = validation["alpha"]
+    calibrated = core["base_rate"] + alpha * (core["posterior"] - core["base_rate"])
+    trust = validation["trust"]
+    probability = core["base_rate"] + trust * (calibrated - core["base_rate"])
+    probability = max(0.01, min(0.99, probability))
+
+    # 80% statistical interval around the calibrated/shrunken estimate.
     information_n = max(30.0, core["effective_n"] + 80.0)
     se = math.sqrt(max(probability * (1.0 - probability), 1e-9) / information_n)
-    half_width = 1.2816 * se + (1.0 - trust) * 0.01
+    half_width = 1.2816 * se + (1.0 - trust) * 0.012
     low = max(0.0, probability - half_width)
     high = min(1.0, probability + half_width)
 
     skill = validation["skill"]
-    if validation["count"] >= 80 and skill >= 0.03 and core["effective_n"] >= 70:
+    if validation["count"] >= 60 and skill >= 0.025 and core["effective_n"] >= 65:
         reliability = "높음"
-    elif validation["count"] >= 60 and skill > 0.0 and core["effective_n"] >= 45:
+    elif validation["count"] >= 40 and skill > 0.0 and core["effective_n"] >= 40:
         reliability = "보통"
     else:
         reliability = "낮음"
@@ -199,14 +260,18 @@ def estimate(symbol: str):
         "neighbor_count": int(core["neighbor_count"]),
         "base_rate": round(core["base_rate"] * 100.0, 2),
         "raw_similarity_probability": round(core["posterior"] * 100.0, 2),
+        "calibration_alpha": round(alpha, 2),
+        "validation_choice": validation["choice"],
         "validation_count": int(validation["count"]),
+        "total_validation_count": int(validation.get("total_validation_count", validation["count"])),
         "backtest_brier": round(validation["model_brier"], 5) if validation["model_brier"] is not None else None,
+        "uncalibrated_brier": round(validation["uncalibrated_brier"], 5) if validation["uncalibrated_brier"] is not None else None,
         "baseline_brier": round(validation["base_brier"], 5) if validation["base_brier"] is not None else None,
         "backtest_skill": round(skill * 100.0, 2),
         "validation_trust": round(trust * 100.0, 1),
         "reliability": reliability,
         "as_of": datetime.fromtimestamp(latest_ts, tz=timezone.utc).astimezone(NY).date().isoformat(),
-        "method": "10년·5요인 유사도 + 최근가중 + 베이지안 수축 + 2년 워크포워드 검증",
+        "method": "10년·5요인 유사도 + 베이지안 수축 + 3년 워크포워드 홀드아웃 캘리브레이션",
         "model_version": MODEL_VERSION,
     }
 
@@ -227,7 +292,8 @@ def refresh(force=False):
         summary = {
             key: (
                 value.get("probability"), value.get("range_low"), value.get("range_high"),
-                value.get("backtest_skill"), value.get("reliability")
+                value.get("backtest_skill"), value.get("calibration_alpha"),
+                value.get("validation_choice"), value.get("reliability")
             ) if "error" not in value else value.get("error")
             for key, value in items.items()
         }
