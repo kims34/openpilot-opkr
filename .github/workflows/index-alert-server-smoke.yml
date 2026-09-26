@@ -9,6 +9,8 @@ on:
       - 'production_v17.py'
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
+      - 'one_month_probability.py'
+      - 'one_month_distribution.py'
       - 'probability_shadow.py'
       - 'probability_milestone.py'
       - 'Dockerfile'
@@ -24,7 +26,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Syntax check
-        run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py probability_shadow.py probability_milestone.py
+        run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
       - name: Wait for production deployment and verify API
         run: |
           set -euo pipefail
@@ -38,12 +40,22 @@ jobs:
           data=json.load(open('/tmp/prob.json'))
           items=data.get('items', {})
           assert health.get('ok') is True, health
-          assert data.get('model_version') == '3.1-causal-adaptive-close', data.get('model_version')
+          assert data.get('model_version') == '3.2-live-guardrails', data.get('model_version')
           for key in ('sp500','ndx','djdiv'):
               row=items.get(key) or {}
               assert isinstance(row.get('probability'), (int,float)), (key,row)
               assert isinstance(row.get('sample_size'), int), (key,row)
               assert 0 <= row['probability'] <= 100, (key,row)
+              month=row.get('one_month') or {}
+              assert isinstance(month.get('up_10_probability'), (int,float)), (key,month)
+              assert isinstance(month.get('down_10_probability'), (int,float)), (key,month)
+              assert 0 <= month['up_10_probability'] <= 100, (key,month)
+              assert 0 <= month['down_10_probability'] <= 100, (key,month)
+              assert isinstance(month.get('terminal_return_mode_label'), str) and month['terminal_return_mode_label'], (key,month)
+              assert isinstance(month.get('terminal_return_mode_probability'), (int,float)), (key,month)
+              assert 0 <= month['terminal_return_mode_probability'] <= 100, (key,month)
+              assert month.get('terminal_return_bin_width_percent') == 2, (key,month)
+              assert month.get('terminal_return_selection') in ('analog','baseline'), (key,month)
               assert isinstance(row.get('shadow_validation'), dict), (key,row)
               assert isinstance(row.get('milestone_60'), dict), (key,row)
               assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
