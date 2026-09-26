@@ -30,20 +30,27 @@ def estimate(symbol, now=None):
         result["audit_start"] = rows[result.pop("audit_start_index")][0]
         result["audit_end"] = rows[result.pop("audit_end_index")][0]
         result.pop("as_of_index")
-        # Store the target date in inference cache so a new exchange session forces
-        # recomputation even if the price-history digest is unchanged over a weekend.
         cached_result = dict(result)
         cached_result["target_date"] = meta["target_date"]
         base.INFERENCE_CACHE[symbol] = (digest, cached_result)
     result.update(meta, symbol=symbol, data_digest=digest, computed_at=int(now))
 
-    # Supplemental 21-session threshold-touch probabilities. This uses only
-    # completed historical 21-session windows and information known at as-of close.
+    # Supplemental 21-session threshold-touch probabilities. Use completed
+    # daily highs/lows when available so an intraday +/-10% touch counts even
+    # when the session later closes back inside the threshold.
     try:
-        result["one_month"] = one_month_probability.estimate(rows)
+        ohlc = one_month_probability.fetch_ohlc(symbol, rows)
+        result["one_month"] = one_month_probability.estimate(rows, ohlc)
     except Exception as exc:
-        result["one_month"] = {"error": "1개월 ±10% 확률 계산 일시 중단"}
-        print("one-month probability unavailable", type(exc).__name__, flush=True)
+        try:
+            # Conservative availability fallback: retain a close-touch estimate
+            # rather than removing the entire monthly section when OHLC retrieval
+            # is temporarily unavailable. The response tells the client which
+            # price basis was used.
+            result["one_month"] = one_month_probability.estimate(rows)
+        except Exception:
+            result["one_month"] = {"error": "1개월 +/-10% 확률 계산 일시 중단"}
+        print("one-month probability OHLC fallback", type(exc).__name__, flush=True)
 
     try:
         result.update(base.record_forecast(symbol, result, rows, now))
@@ -51,8 +58,6 @@ def estimate(symbol, now=None):
         result.update(prospective_count=0, prospective_error="실시간 검증 기록 일시 중단")
         print("probability ledger unavailable", type(exc).__name__, flush=True)
 
-    # Shadow challengers are recorded prospectively but never replace the served
-    # v3.1 probability. Any shadow failure is isolated from the live response.
     try:
         result["shadow_validation"] = probability_shadow.record_shadow_forecasts(
             symbol, result, rows, now
@@ -60,9 +65,6 @@ def estimate(symbol, now=None):
     except Exception as exc:
         print("probability shadow ledger unavailable", type(exc).__name__, flush=True)
 
-    # This milestone is entirely server/app-native. Once 60 matched future
-    # outcomes exist for all three tracked ETFs, the server sends a one-time FCM
-    # notification to each registered IndexAlert device. ChatGPT is not involved.
     try:
         result["milestone_60"] = probability_milestone.maybe_notify(
             base.DB_PATH, MODEL_VERSION, now
@@ -74,8 +76,5 @@ def estimate(symbol, now=None):
 
 
 base.estimate = estimate
-
-# refresh() resolves base.estimate and base.MODEL_VERSION dynamically, so all
-# existing stale-data handling and prospective recording are retained.
 refresh = base.refresh
 get_all = base.get_all
