@@ -14,6 +14,22 @@ NEWS_QUERIES = {
     "usdkrw": "원달러 환율 달러 원화 미국 금리 연준",
 }
 
+DISPLAY_NAMES = {
+    "sp500": "SPY",
+    "ndx": "QQQ",
+    "djdiv": "SCHD",
+    "kospi100": "KOSPI",
+    "usdkrw": "USD/KRW",
+}
+
+WATCH_POINTS = {
+    "sp500": "미 10년물 국채금리 · 연준 발언 · 대형주 실적/가이던스 · 경기·물가 지표",
+    "ndx": "미 10년물 국채금리 · AI/반도체 대형주 흐름 · 메가캡 실적 · 밸류에이션 부담",
+    "djdiv": "미 국채금리 · 금융/산업/에너지 가치주 수급 · 배당주 상대강도 · 경기민감 업종 흐름",
+    "kospi100": "원/달러 환율 · 외국인 현물/선물 수급 · 삼성전자·SK하이닉스 등 반도체 대형주 · 미국 증시",
+    "usdkrw": "달러인덱스 · 미국 국채금리 · 연준 기대 · 외국인 국내주식 수급 · 위안화/엔화 움직임",
+}
+
 EXTERNAL_GROUPS = [
     ("전쟁·지정학적 불확실성", ("전쟁", "중동", "이란", "우크라이나", "러시아", "지정학", "war", "geopolit")),
     ("금리·국채금리 변화", ("연준", "금리", "국채", "수익률", "fed", "rate", "yield", "treasury")),
@@ -33,11 +49,11 @@ INTERNAL_GROUPS = [
 ]
 
 DEFAULT_REASON = {
-    "sp500": ("혼합", "미국 거시 변수와 대형주 수급이 함께 작용"),
-    "ndx": ("혼합", "금리 민감도와 기술주·AI/반도체 수급이 함께 작용"),
-    "djdiv": ("혼합", "금리 흐름과 배당·가치주 수급이 함께 작용"),
-    "kospi100": ("혼합", "환율·외국인 수급과 반도체 대형주 흐름이 함께 작용"),
-    "usdkrw": ("외부요인", "미국 금리·달러 흐름과 원화 수급이 주로 작용"),
+    "sp500": ("혼합", "미국 거시 변수와 대형주 수급"),
+    "ndx": ("혼합", "금리 민감도와 기술주·AI/반도체 수급"),
+    "djdiv": ("혼합", "금리 흐름과 배당·가치주 수급"),
+    "kospi100": ("혼합", "환율·외국인 수급과 반도체 대형주 흐름"),
+    "usdkrw": ("외부요인", "미국 금리·달러 흐름과 원화 수급"),
 }
 
 
@@ -46,14 +62,14 @@ def _titles(query: str):
         r = requests.get(
             "https://news.google.com/rss/search",
             params={"q": query + " when:1d", "hl": "ko", "gl": "KR", "ceid": "KR:ko"},
-            headers={"User-Agent": "Mozilla/5.0 IndexAlert/1.7"},
+            headers={"User-Agent": "Mozilla/5.0 IndexAlert/1.8"},
             timeout=12,
         )
         r.raise_for_status()
         root = ElementTree.fromstring(r.content)
         return [
             (item.findtext("title") or "").strip()
-            for item in root.findall(".//item")[:12]
+            for item in root.findall(".//item")[:15]
             if (item.findtext("title") or "").strip()
         ]
     except Exception as exc:
@@ -84,6 +100,32 @@ def _movement_label(pct):
     return "보합"
 
 
+def _pct_value(pct):
+    try:
+        return float(pct)
+    except Exception:
+        return 0.0
+
+
+def _driver_list(external, internal, fallback):
+    combined = [(score, label, "외부") for score, label in external] + [
+        (score, label, "내부") for score, label in internal
+    ]
+    combined.sort(key=lambda x: x[0], reverse=True)
+    out = []
+    seen = set()
+    for score, label, kind in combined:
+        if label in seen:
+            continue
+        seen.add(label)
+        out.append(f"{label} · {kind}요인 뉴스 언급 강도 {score}")
+        if len(out) == 3:
+            break
+    if not out:
+        out.append(f"{fallback} · 뚜렷한 단일 뉴스 요인보다 복합 수급 가능성")
+    return out
+
+
 def _make(index_id: str, pct):
     titles = _titles(NEWS_QUERIES[index_id])
     joined = " ".join(titles)
@@ -95,25 +137,38 @@ def _make(index_id: str, pct):
     if ext_score == 0 and int_score == 0:
         category, reason = DEFAULT_REASON[index_id]
     elif ext_score >= max(2, int_score * 1.35):
-        category = "외부요인"
+        category = "외부요인 우세"
         reason = external[0][1]
     elif int_score >= max(2, ext_score * 1.35):
-        category = "내부요인"
+        category = "내부요인 우세"
         reason = internal[0][1]
     else:
         category = "혼합"
         ext = external[0][1] if external else None
         intr = internal[0][1] if internal else None
-        reason = f"{ext}과 {intr}" if ext and intr else (ext or intr or DEFAULT_REASON[index_id][1])
+        reason = f"{ext} + {intr}" if ext and intr else (ext or intr or DEFAULT_REASON[index_id][1])
 
-    move = _movement_label(pct)
-    text = f"전일 대비 {move} 배경: {reason}."
+    p = _pct_value(pct)
+    move = _movement_label(p)
+    name = DISPLAY_NAMES[index_id]
+    drivers = _driver_list(external, internal, reason)
+    direction = f"{name}은 전일 대비 {p:+.2f}% {move}했습니다."
+    context = (
+        f"최근 24시간 관련 뉴스에서는 '{reason}'가 상대적으로 두드러졌습니다. "
+        "다만 뉴스 제목과 시세의 동시 움직임을 바탕으로 한 추정이므로 단일 원인으로 단정하지 않습니다."
+    )
+    balance = f"외부요인 신호 {ext_score} / 내부요인 신호 {int_score}"
+
     return {
         "id": index_id,
         "category": category,
-        "text": text,
-        "confidence": "뉴스·시세 기반 추정",
+        "text": f"{direction} {context}",
+        "drivers": drivers,
+        "balance": balance,
+        "watch": WATCH_POINTS[index_id],
+        "confidence": f"최근 24시간 뉴스 제목 {len(titles)}건 + 당일 시세 기반 추정 · 원인 확정 아님",
         "headline_count": len(titles),
+        "day_change_percent": p,
     }
 
 
