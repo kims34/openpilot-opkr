@@ -10,6 +10,7 @@ on:
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
       - 'probability_shadow.py'
+      - 'probability_milestone.py'
       - 'Dockerfile'
       - '.github/workflows/index-alert-server-smoke.yml'
   workflow_dispatch:
@@ -23,7 +24,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Syntax check
-        run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py probability_shadow.py
+        run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py probability_shadow.py probability_milestone.py
       - name: Wait for production deployment and verify API
         run: |
           set -euo pipefail
@@ -44,6 +45,8 @@ jobs:
               assert isinstance(row.get('sample_size'), int), (key,row)
               assert 0 <= row['probability'] <= 100, (key,row)
               assert isinstance(row.get('shadow_validation'), dict), (key,row)
+              assert isinstance(row.get('milestone_60'), dict), (key,row)
+              assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
           print(json.dumps(items, ensure_ascii=False, indent=2))
           PY
               exit 0
