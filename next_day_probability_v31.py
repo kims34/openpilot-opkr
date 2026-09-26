@@ -4,6 +4,7 @@ import json
 import time
 
 import next_day_probability as base
+import one_month_probability
 import probability_milestone
 import probability_shadow
 from probability_model_v31_runtime import MODEL_VERSION, estimate_prices
@@ -35,6 +36,15 @@ def estimate(symbol, now=None):
         cached_result["target_date"] = meta["target_date"]
         base.INFERENCE_CACHE[symbol] = (digest, cached_result)
     result.update(meta, symbol=symbol, data_digest=digest, computed_at=int(now))
+
+    # Supplemental 21-session threshold-touch probabilities. This uses only
+    # completed historical 21-session windows and information known at as-of close.
+    try:
+        result["one_month"] = one_month_probability.estimate(rows)
+    except Exception as exc:
+        result["one_month"] = {"error": "1개월 ±10% 확률 계산 일시 중단"}
+        print("one-month probability unavailable", type(exc).__name__, flush=True)
+
     try:
         result.update(base.record_forecast(symbol, result, rows, now))
     except Exception as exc:
