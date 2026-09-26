@@ -1,6 +1,6 @@
 """KOSPI one-month probability analysis.
 
-Current KOSPI display quotes come from Naver in production_fixed.  This module
+Current KOSPI display quotes come from Naver in production_fixed. This module
 uses ten years of completed KOSPI daily history for the statistical 21-session
 analysis, aligned to Asia/Seoul, and reconciles the latest completed close with
 Naver when available.
@@ -54,7 +54,7 @@ def _history_rows():
         day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(SEOUL).date().isoformat()
         by_day[day] = p
 
-    # Naver is authoritative for the visible current KOSPI card.  When the
+    # Naver is authoritative for the visible current KOSPI card. When the
     # latest Naver trading day is complete, use that same close as the final
     # observation so the probability card and index card share one anchor.
     try:
@@ -92,13 +92,17 @@ def estimate():
         symbol=SYMBOL,
         source="KOSPI 최근 10년 일봉 · 현재 종가 네이버 증권 교차확인",
     )
+    six = month.get("terminal_return_six_bins") or []
     print(
         "kospi one-month probability ready",
         {
             "as_of": month.get("as_of"),
-            "up10": month.get("up_10_probability"),
-            "down10": month.get("down_10_probability"),
-            "top3": month.get("terminal_return_top3"),
+            "six_bins": [(x.get("label"), x.get("probability")) for x in six],
+            "six_total": month.get("terminal_return_six_total_probability"),
+            "six_selection": month.get("terminal_return_six_selection"),
+            "six_skill": (month.get("terminal_return_six_validation") or {}).get("skill"),
+            "up10_touch": month.get("up_10_probability"),
+            "down10_touch": month.get("down_10_probability"),
             "basis": month.get("price_basis"),
         },
         flush=True,
