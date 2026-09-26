@@ -6,7 +6,6 @@ import time
 import next_day_probability as base
 import one_month_distribution
 import one_month_probability
-import one_month_terminal5
 import probability_milestone
 import probability_shadow
 from probability_model_v31_runtime import MODEL_VERSION, estimate_prices
@@ -54,23 +53,13 @@ def estimate(symbol, now=None):
         except Exception as exc:
             print("one-month terminal distribution unavailable", type(exc).__name__, str(exc), flush=True)
 
-        try:
-            month.update(one_month_terminal5.estimate(rows))
-        except Exception as exc:
-            print("one-month terminal +/-5% unavailable", type(exc).__name__, str(exc), flush=True)
-
         print(
             "one-month probability ready",
             symbol,
             {
                 "up10_touch": month.get("up_10_probability"),
                 "down10_touch": month.get("down_10_probability"),
-                "up5_terminal": month.get("terminal_up_5_probability"),
-                "down5_terminal": month.get("terminal_down_5_probability"),
-                "terminal5_selection_up": month.get("terminal_5_selection_up"),
-                "terminal5_selection_down": month.get("terminal_5_selection_down"),
-                "terminal5_skill_up": (month.get("terminal_5_validation_up") or {}).get("skill"),
-                "terminal5_skill_down": (month.get("terminal_5_validation_down") or {}).get("skill"),
+                "top3": month.get("terminal_return_top3"),
                 "mode": month.get("terminal_return_mode_label"),
                 "mode_probability": month.get("terminal_return_mode_probability"),
                 "mode_selection": month.get("terminal_return_selection"),
