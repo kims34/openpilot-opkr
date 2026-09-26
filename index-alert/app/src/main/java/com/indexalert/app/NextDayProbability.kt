@@ -35,6 +35,11 @@ data class MonthFeatures(
     val ma200Gap: Double
 )
 
+data class TerminalReturnRank(
+    val label: String,
+    val probability: Double
+)
+
 data class OneMonthEstimate(
     val up10Probability: Double,
     val down10Probability: Double,
@@ -56,6 +61,7 @@ data class OneMonthEstimate(
     val effectiveSampleUp: Double,
     val effectiveSampleDown: Double,
     val features: MonthFeatures?,
+    val terminalReturnTop3: List<TerminalReturnRank>,
     val terminalReturnModeLabel: String?,
     val terminalReturnModeProbability: Double?,
     val terminalReturnSelection: String?,
@@ -174,6 +180,17 @@ object NextDayProbabilityRepository {
                 f.optDouble("ma50_gap", 0.0), f.optDouble("ma200_gap", 0.0)
             )
         }
+        val top3 = buildList {
+            val arr = o.optJSONArray("terminal_return_top3") ?: return@buildList
+            for (i in 0 until minOf(3, arr.length())) {
+                val item = arr.optJSONObject(i) ?: continue
+                val label = item.optString("label").trim()
+                val probability = item.optDouble("probability", Double.NaN)
+                if (label.isNotBlank() && probability.isFinite() && probability in 0.0..100.0) {
+                    add(TerminalReturnRank(label, probability))
+                }
+            }
+        }
         val modeLabel = o.optString("terminal_return_mode_label").takeIf { it.isNotBlank() }
         val modeProbability = o.numberOrNull("terminal_return_mode_probability")?.takeIf { it in 0.0..100.0 }
         return OneMonthEstimate(
@@ -185,6 +202,7 @@ object NextDayProbabilityRepository {
             parseMonthValidation(o.optJSONObject("validation_down")),
             o.optDouble("effective_sample_up", 0.0), o.optDouble("effective_sample_down", 0.0),
             features,
+            top3,
             modeLabel,
             modeProbability,
             o.optString("terminal_return_selection").takeIf { it == "analog" || it == "baseline" },
@@ -248,14 +266,21 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                 Text("향후 1개월(21거래일) ±10% 도달 확률", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text("+10% 이상 상승 도달  ${pct1(m.up10Probability)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("-10% 이상 하락 도달  ${pct1(m.down10Probability)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                if (m.terminalReturnModeLabel != null && m.terminalReturnModeProbability != null) {
-                    Spacer(Modifier.height(7.dp))
-                    Text("한 달 뒤 가장 가능성 높은 종가 수익률 구간", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Text("${m.terminalReturnModeLabel}  ·  확률 ${pct1(m.terminalReturnModeProbability)}",
-                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                if (m.terminalReturnTop3.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("1개월 뒤 가장 가능성 높은 종가 수익률 구간", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    m.terminalReturnTop3.take(3).forEachIndexed { index, rank ->
+                        Text(
+                            "${index + 1}위  ${rank.label}  ·  확률 ${pct1(rank.probability)}",
+                            style = if (index == 0) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (index == 0) FontWeight.Bold else FontWeight.SemiBold
+                        )
+                    }
                     val widthText = if (m.terminalReturnBinWidthPercent > 0) "${m.terminalReturnBinWidthPercent}%p 구간" else "수익률 구간"
-                    Text("21거래일 뒤 종가 기준 · $widthText 중 확률이 가장 높은 구간", style = MaterialTheme.typography.bodySmall)
+                    Text("21거래일 뒤 종가 기준 · $widthText 확률 순위", style = MaterialTheme.typography.bodySmall)
                 }
+
                 val basis = if (m.priceBasis == "daily_high_low") "장중 고가·저가 터치 기준" else "종가 터치 기준(장중 데이터 임시 미사용)"
                 Text("${m.asOf} 종가 기준 · $basis", style = MaterialTheme.typography.bodySmall)
                 Text("현재와 유사한 과거 장세 + 장기 기본확률을 결합 · 유효표본 상승 ${oneDecimal(m.effectiveSampleUp)} / 하락 ${oneDecimal(m.effectiveSampleDown)}",
@@ -288,11 +313,13 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                         style = MaterialTheme.typography.bodySmall)
                     monthValidationLine("+10%", m.selectionUp, m.validationUp)
                     monthValidationLine("-10%", m.selectionDown, m.validationDown)
-                    if (m.terminalReturnModeLabel != null && m.terminalReturnModeProbability != null) {
+                    if (m.terminalReturnTop3.isNotEmpty()) {
                         Spacer(Modifier.height(6.dp))
                         Text("[1개월 종가 수익률 분포]", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        Text("최빈 구간 ${m.terminalReturnModeLabel} · ${pct1(m.terminalReturnModeProbability)} · 유효표본 ${oneDecimal(m.terminalReturnEffectiveSample)}",
-                            style = MaterialTheme.typography.bodySmall)
+                        m.terminalReturnTop3.take(3).forEachIndexed { index, rank ->
+                            Text("${index + 1}위 ${rank.label} · ${pct1(rank.probability)}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text("분포 유효표본 ${oneDecimal(m.terminalReturnEffectiveSample)}", style = MaterialTheme.typography.bodySmall)
                         monthValidationLine("종가분포", m.terminalReturnSelection ?: "baseline", m.terminalReturnValidation)
                     }
                     Text("검증에서 유사장세 모델이 기본확률보다 낫지 않으면 해당 방향·분포는 자동으로 장기 기본확률을 사용합니다.",
