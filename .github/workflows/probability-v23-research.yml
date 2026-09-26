@@ -4,6 +4,7 @@ on:
     branches: [index-alert-probability-v23]
     paths:
       - 'probability_research_v23.py'
+      - 'probability_research_v23b.py'
       - '.github/workflows/probability-v23-research.yml'
   workflow_dispatch:
 permissions:
@@ -18,8 +19,13 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install numpy pandas requests
-      - run: python probability_research_v23.py | tee probability-v23-result.txt
+      - name: Cross-asset ridge research
+        run: python probability_research_v23.py | tee probability-v23-result.txt
+      - name: Adaptive baseline research
+        run: python probability_research_v23b.py | tee probability-v23b-result.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: probability-v23-result
-          path: probability-v23-result.txt
+          name: probability-v23-results
+          path: |
+            probability-v23-result.txt
+            probability-v23b-result.txt
