@@ -1,11 +1,12 @@
 """Conservative 21-session ±10% close-touch probabilities.
 
 The estimate answers a simple historical question: from a completed close, how
-frequently did any of the next 21 daily closes reach +10% or -10%?  Historical
+frequently did any of the next 21 daily closes reach +10% or -10%? Historical
 conditional rates are calculated only from fully completed forward windows.
 The current regime uses information available at the as-of close only, and the
 conditional rate is shrunk toward the unconditional rate to reduce sparse-bin
-overconfidence.
+overconfidence. This module is part of the production probability response used
+by IndexAlert v2.4 and later.
 """
 import math
 import statistics
@@ -33,7 +34,7 @@ def estimate(rows):
     """Estimate P(+10% close touch) and P(-10% close touch) in next 21 sessions.
 
     rows: chronological sequence of (date, adjusted/close price) pairs.
-    Only fully realized historical windows are used.  Probabilities are returned
+    Only fully realized historical windows are used. Probabilities are returned
     on a 0..100 scale for the Android API.
     """
     clean = [(str(d), float(p)) for d, p in rows if float(p) > 0]
