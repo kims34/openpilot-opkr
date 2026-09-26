@@ -44,7 +44,7 @@ def parse_history(result, now=None):
     for ts, price in zip(timestamps, closes):
         day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(NY).date().isoformat()
         if day > expected_last:
-            continue  # incomplete regular session, even if the vendor meta is absent
+            continue
         if day in seen:
             raise ValueError('중복 거래일')
         seen.add(day)
@@ -58,7 +58,6 @@ def parse_history(result, now=None):
     expected = [d.date().isoformat() for d in cal.sessions_in_range(rows[0][0], expected_last)]
     if [day for day,_ in rows] != expected:
         raise ValueError('최신 종가 지연 또는 중간 거래일 누락')
-    # Detect obvious unadjusted splits/vendor spikes instead of learning fake falls.
     if any(abs(b/a - 1) > 0.40 for (_,a),(_,b) in zip(rows,rows[1:])):
         raise ValueError('가격 단위·분할 조정 확인 필요')
     target = cal.next_session(expected_last)
@@ -71,7 +70,7 @@ def parse_history(result, now=None):
 def fetch_history(symbol, now=None):
     response = requests.get(f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',
         params={'range':'10y','interval':'1d','includePrePost':'false','events':'div,splits'},
-        headers={'User-Agent':'Mozilla/5.0 IndexAlert/2.2'},timeout=20)
+        headers={'User-Agent':'Mozilla/5.0 IndexAlert/2.3'},timeout=20)
     response.raise_for_status()
     result = (response.json().get('chart',{}).get('result') or [None])[0]
     if not result or result.get('meta',{}).get('symbol') != symbol:
@@ -109,7 +108,7 @@ def estimate(symbol, now=None):
     if cached and cached[0] == digest:
         result = dict(cached[1])
     else:
-        result = estimate_prices([p for _,p in rows])
+        result = estimate_prices([p for _,p in rows], dates=[d for d,_ in rows])
         result['audit_start'] = rows[result.pop('audit_start_index')][0]
         result['audit_end'] = rows[result.pop('audit_end_index')][0]
         result.pop('as_of_index')
@@ -134,7 +133,6 @@ def refresh(force=False):
             try:
                 items[index_id] = estimate(symbol)
             except Exception as exc:
-                # A stale probability must never be presented as a current one.
                 previous = CACHE['items'].get(index_id,{})
                 if previous.get('valid_until',0) > time.time() and 'probability' in previous:
                     items[index_id] = dict(previous,cached=True)
