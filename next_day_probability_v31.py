@@ -4,7 +4,7 @@ import json
 import time
 
 import next_day_probability as base
-import one_month_distribution
+import one_month_calibrated
 import one_month_probability
 import probability_milestone
 import probability_shadow
@@ -38,10 +38,10 @@ def estimate(symbol, now=None):
 
     try:
         ohlc = one_month_probability.fetch_ohlc(symbol, rows)
-        result["one_month"] = one_month_probability.estimate(rows, ohlc)
+        result["one_month"] = one_month_calibrated.estimate_probability(rows, ohlc)
     except Exception as exc:
         try:
-            result["one_month"] = one_month_probability.estimate(rows)
+            result["one_month"] = one_month_calibrated.estimate_probability(rows)
         except Exception:
             result["one_month"] = {"error": "1개월 +/-10% 확률 계산 일시 중단"}
         print("one-month probability OHLC fallback", type(exc).__name__, flush=True)
@@ -49,7 +49,7 @@ def estimate(symbol, now=None):
     month = result.get("one_month") or {}
     if not month.get("error"):
         try:
-            month.update(one_month_distribution.estimate(rows))
+            month.update(one_month_calibrated.estimate_distribution(rows))
         except Exception as exc:
             print("one-month terminal distribution unavailable", type(exc).__name__, str(exc), flush=True)
 
@@ -60,14 +60,20 @@ def estimate(symbol, now=None):
             {
                 "up10_touch": month.get("up_10_probability"),
                 "down10_touch": month.get("down_10_probability"),
+                "blend_up": month.get("blend_weight_up"),
+                "blend_down": month.get("blend_weight_down"),
                 "six_bins": [(x.get("label"), x.get("probability")) for x in six],
                 "six_total": month.get("terminal_return_six_total_probability"),
                 "six_selection": month.get("terminal_return_six_selection"),
+                "six_blend": month.get("terminal_return_six_blend_weight"),
                 "six_skill": (month.get("terminal_return_six_validation") or {}).get("skill"),
+                "six_skill_first": (month.get("terminal_return_six_validation_first_half") or {}).get("skill"),
+                "six_skill_second": (month.get("terminal_return_six_validation_second_half") or {}).get("skill"),
                 "top3": month.get("terminal_return_top3"),
                 "mode": month.get("terminal_return_mode_label"),
                 "mode_probability": month.get("terminal_return_mode_probability"),
                 "mode_selection": month.get("terminal_return_selection"),
+                "mode_blend": month.get("terminal_return_blend_weight"),
                 "mode_skill": (month.get("terminal_return_validation") or {}).get("skill"),
                 "basis": month.get("price_basis"),
                 "selection_up": month.get("selection_up"),
