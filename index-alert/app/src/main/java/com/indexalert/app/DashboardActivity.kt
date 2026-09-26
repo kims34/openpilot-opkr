@@ -172,21 +172,14 @@ object BackendMarket {
                     firedThresholds.add(firedArray.optInt(j))
                 }
             }
-            val deepestFired = firedThresholds
-                .filter { threshold -> rule.levels.any { it.first == threshold } }
-                .maxOrNull()
-            val firedAllocation = deepestFired?.let { threshold ->
-                rule.levels.firstOrNull { it.first == threshold }?.second
-            }
+
+            // Emphasize only when the CURRENT drawdown stage itself has actually
+            // produced an alert. A previously fired shallower stage must not keep
+            // the current card highlighted after the market moves to a deeper stage.
+            val currentStageFired = stage?.let { firedThresholds.contains(it.first) } == true
             val stageText = when {
                 !alertsEnabled -> ""
-                deepestFired != null -> {
-                    val firedBase = "🔔 알림 발생 · -${deepestFired}% 단계" +
-                        (firedAllocation?.let { " · 추가매수 ${it}%" } ?: "")
-                    if (stage != null && stage.first != deepestFired) {
-                        "$firedBase · 현재 -${stage.first}% 구간"
-                    } else firedBase
-                }
+                stage != null && currentStageFired -> "🔔 알림 발생 · -${stage.first}% 단계 · 추가매수 ${stage.second}%"
                 stage != null -> "-${stage.first}% 구간 · ${stage.second}%"
                 else -> "대기"
             }
