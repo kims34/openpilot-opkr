@@ -199,10 +199,6 @@ fun MonthlyChartSection(indexId: String) {
         loading = false
     }
 
-    if (indexId in setOf("sp500", "ndx", "djdiv")) {
-        OneMonthTerminal5Section(indexId)
-    }
-
     if (indexId == "kospi100") {
         KoreaLeaderSection()
     }
