@@ -1,0 +1,56 @@
+name: Probability v2.3 held-out research
+on:
+  push:
+    branches: [index-alert-probability-v23]
+    paths:
+      - 'probability_model.py'
+      - 'probability_model_v31_runtime.py'
+      - 'next_day_probability.py'
+      - 'next_day_probability_v31.py'
+      - 'test_probability.py'
+      - 'probability_research_v23.py'
+      - 'probability_research_v23b.py'
+      - 'requirements.txt'
+      - '.github/workflows/probability-v23-research.yml'
+  workflow_dispatch:
+concurrency:
+  group: probability-v23-research
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Probability integrity tests
+        run: python -m unittest discover -p test_probability.py -v
+      - name: Production-model real-data smoke
+        run: |
+          python - <<'PY' | tee probability-v31-smoke.txt
+          import json, time
+          import next_day_probability_v31 as api
+          from probability_model_v31_runtime import MODEL_VERSION
+          out={}
+          for symbol in ('SPY','QQQ','SCHD'):
+              r=api.estimate(symbol,time.time())
+              out[symbol]={k:r.get(k) for k in ('probability','base_rate','backtest_brier','baseline_brier','backtest_skill','validation_choice','current_strategy','validation_count','nonzero_signal_days','as_of','target_date')}
+          print(MODEL_VERSION)
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Cross-asset ridge research
+        run: python probability_research_v23.py | tee probability-v23-result.txt
+      - name: Adaptive baseline research
+        run: python probability_research_v23b.py | tee probability-v23b-result.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probability-v23-results
+          path: |
+            probability-v31-smoke.txt
+            probability-v23-result.txt
+            probability-v23b-result.txt

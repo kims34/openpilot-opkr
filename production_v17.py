@@ -2,7 +2,7 @@ import threading
 import time
 
 import briefing
-import next_day_probability
+import next_day_probability_v31 as next_day_probability
 import production
 import production_v14
 
@@ -12,7 +12,7 @@ import production_v14
 # - history routes
 # - constituent mover refresh
 # - detailed market briefing
-# - calibrated next-trading-day probability model
+# - validated next-trading-day probability model 3.1
 app = production_v14.app
 
 # Replace stale routes on reload.
@@ -55,7 +55,8 @@ def warm_market_features():
             summary = {
                 key: {
                     "p": value.get("probability"),
-                    "range": [value.get("range_low"), value.get("range_high")],
+                    "base": value.get("base_rate"),
+                    "strategy": value.get("current_strategy"),
                     "skill": value.get("backtest_skill"),
                     "reliability": value.get("reliability"),
                 }

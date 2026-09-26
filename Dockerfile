@@ -15,9 +15,10 @@ COPY briefing.py .
 COPY history_routes.py .
 COPY laggards.py .
 COPY next_day_probability.py .
+COPY next_day_probability_v31.py .
 COPY probability_model.py .
+COPY probability_model_v31_runtime.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
 CMD ["sh", "-c", "python -m uvicorn production_v17:app --host 0.0.0.0 --port ${PORT:-8080}"]
-
