@@ -6,6 +6,10 @@ on:
       - 'monitor.py'
       - 'production.py'
       - 'production_fixed.py'
+      - 'production_v17.py'
+      - 'next_day_probability.py'
+      - 'next_day_probability_v31.py'
+      - 'probability_shadow.py'
       - 'Dockerfile'
       - '.github/workflows/index-alert-server-smoke.yml'
   workflow_dispatch:
@@ -19,7 +23,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Syntax check
-        run: python -m py_compile monitor.py production.py production_fixed.py
+        run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py probability_shadow.py
       - name: Wait for production deployment and verify API
         run: |
           set -euo pipefail
@@ -33,11 +37,13 @@ jobs:
           data=json.load(open('/tmp/prob.json'))
           items=data.get('items', {})
           assert health.get('ok') is True, health
+          assert data.get('model_version') == '3.1-causal-adaptive-close', data.get('model_version')
           for key in ('sp500','ndx','djdiv'):
               row=items.get(key) or {}
               assert isinstance(row.get('probability'), (int,float)), (key,row)
               assert isinstance(row.get('sample_size'), int), (key,row)
               assert 0 <= row['probability'] <= 100, (key,row)
+              assert isinstance(row.get('shadow_validation'), dict), (key,row)
           print(json.dumps(items, ensure_ascii=False, indent=2))
           PY
               exit 0
