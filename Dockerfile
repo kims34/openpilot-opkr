@@ -10,6 +10,7 @@ COPY production_naver_live.py .
 COPY production_naver_state.py .
 COPY production_investing.py .
 COPY production_v14.py .
+COPY production_kpi100_mobile.py .
 COPY production_v17.py .
 COPY briefing.py .
 COPY history_routes.py .
