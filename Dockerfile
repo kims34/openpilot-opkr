@@ -14,6 +14,7 @@ COPY production_v17.py .
 COPY briefing.py .
 COPY history_routes.py .
 COPY laggards.py .
+COPY next_day_probability.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
