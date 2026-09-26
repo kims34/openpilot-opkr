@@ -10,7 +10,7 @@ def attach(app, monitor, naver_kospi_quote, naver_usdkrw_quote):
         "sp500": ("SPY", "America/New_York"),
         "ndx": ("QQQ", "America/New_York"),
         "djdiv": ("SCHD", "America/New_York"),
-        "kospi100": ("^KS11", "Asia/Seoul"),
+        "kospi100": ("KOSPI100.KS", "Asia/Seoul"),
         "usdkrw": ("KRW=X", "Asia/Seoul"),
     }
 
@@ -69,7 +69,7 @@ def attach(app, monitor, naver_kospi_quote, naver_usdkrw_quote):
         try:
             if index_id == "kospi100":
                 current, _, _, _, _, current_ts, _ = naver_kospi_quote()
-                source = "KOSPI 최근 1개월 일봉 + 네이버 증권 최신값"
+                source = "KOSPI100 최근 1개월 일봉 + 네이버 증권 최신값"
             elif index_id == "usdkrw":
                 current, _, _, _, current_ts, _ = naver_usdkrw_quote()
                 source = "USD/KRW 최근 1개월 일봉 + 네이버 증권 최신값"
