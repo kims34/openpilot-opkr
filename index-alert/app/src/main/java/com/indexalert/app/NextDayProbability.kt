@@ -17,7 +17,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-private const val VALIDATED_MODEL = "3.0-prequential-close"
+private const val VALIDATED_MODEL = "3.1-causal-adaptive-close"
 
 data class NextDayEstimate(
     val probability: Double,
