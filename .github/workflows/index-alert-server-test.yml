@@ -1,11 +1,12 @@
 name: IndexAlert Server Tests
 on:
   push:
-    branches: [ index-alert-server, index-alert-shadow-ledger, index-alert-app-milestone ]
+    branches: [ index-alert-server, index-alert-shadow-ledger, index-alert-app-milestone, index-alert-monthly-10pct ]
     paths:
       - 'monitor.py'
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
+      - 'one_month_probability.py'
       - 'probability_shadow.py'
       - 'probability_milestone.py'
       - 'test_*.py'
