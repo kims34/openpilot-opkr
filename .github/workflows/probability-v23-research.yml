@@ -3,10 +3,17 @@ on:
   push:
     branches: [index-alert-probability-v23]
     paths:
+      - 'probability_model.py'
+      - 'next_day_probability.py'
+      - 'test_probability.py'
       - 'probability_research_v23.py'
       - 'probability_research_v23b.py'
+      - 'requirements.txt'
       - '.github/workflows/probability-v23-research.yml'
   workflow_dispatch:
+concurrency:
+  group: probability-v23-research
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -18,7 +25,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install numpy pandas requests
+      - run: python -m pip install -r requirements.txt
+      - name: Probability integrity tests
+        run: python -m unittest discover -p test_probability.py -v
+      - name: Production-model real-data smoke
+        run: |
+          python - <<'PY' | tee probability-v31-smoke.txt
+          import json
+          import next_day_probability as api
+          from probability_model import MODEL_VERSION
+          out={}
+          for symbol in ('SPY','QQQ','SCHD'):
+              rows,_=api.fetch_history(symbol)
+              from probability_model import estimate_prices
+              r=estimate_prices([p for _,p in rows],dates=[d for d,_ in rows])
+              out[symbol]={k:r.get(k) for k in ('probability','base_rate','backtest_brier','baseline_brier','backtest_skill','validation_choice','current_strategy','validation_count','nonzero_signal_days')}
+          print(MODEL_VERSION)
+          print(json.dumps(out,ensure_ascii=False))
+          PY
       - name: Cross-asset ridge research
         run: python probability_research_v23.py | tee probability-v23-result.txt
       - name: Adaptive baseline research
@@ -27,5 +51,6 @@ jobs:
         with:
           name: probability-v23-results
           path: |
+            probability-v31-smoke.txt
             probability-v23-result.txt
             probability-v23b-result.txt
