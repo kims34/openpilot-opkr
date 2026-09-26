@@ -16,6 +16,7 @@ COPY history_routes.py .
 COPY laggards.py .
 COPY next_day_probability.py .
 COPY next_day_probability_v31.py .
+COPY probability_shadow.py .
 COPY probability_model.py .
 COPY probability_model_v31_runtime.py .
 COPY sitecustomize.py .
