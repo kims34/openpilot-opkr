@@ -19,28 +19,39 @@ def _naver_market_state():
         )
         r.raise_for_status()
         root = r.json()
+
+        # The current Naver endpoint returns the KOSPI composite directly as
+        # datas[0] (itemCode/symbolCode = KOSPI). Keep compatibility with any
+        # older nested polling response as well, but never use KPI100 here.
+        direct = root.get("datas") or []
+        items = list(direct)
         for area in ((root.get("result") or {}).get("areas") or []):
-            for item in (area.get("datas") or []):
-                if str(item.get("cd") or "").upper() == "KPI100":
-                    ms = str(item.get("ms") or "").upper()
-                    if ms == "OPEN":
-                        return "REGULAR"
-                    if ms:
-                        return "CLOSED"
+            items.extend(area.get("datas") or [])
+
+        for item in items:
+            code = str(item.get("itemCode") or item.get("symbolCode") or item.get("cd") or "").upper()
+            if code == "KOSPI":
+                ms = str(item.get("marketStatus") or item.get("ms") or "").upper()
+                if ms in {"OPEN", "REGULAR"}:
+                    return "REGULAR"
+                if ms:
+                    return "CLOSED"
     except Exception as exc:
-        print("kospi100 Naver market-state failed", type(exc).__name__, flush=True)
+        print("kospi Naver market-state failed", type(exc).__name__, flush=True)
     return None
 
 
 def _evaluate(index_id: str):
     result = _base_evaluate(index_id)
-    if index_id == "kospi100" and "네이버 증권" in str(result.get("source") or ""):
+    # The historical internal id is retained for installed-client compatibility,
+    # but it now represents KOSPI only. No KOSPI100 quote is used.
+    if index_id == "kospi100" and str(result.get("name") or "").upper() == "KOSPI":
         state = _naver_market_state()
         if state:
             result["market_state"] = state
             if index_id in production.EXTRA_STATE:
                 production.EXTRA_STATE[index_id]["market_state"] = state
-            print("kospi100 Naver market_state", state, flush=True)
+            print("kospi Naver market_state", state, flush=True)
     return result
 
 
