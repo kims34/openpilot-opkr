@@ -4,3 +4,5 @@ firebase-admin==6.6.0
 apscheduler==3.11.0
 requests==2.32.3
 beautifulsoup4==4.13.5
+exchange-calendars==4.13.2
+

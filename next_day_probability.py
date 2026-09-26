@@ -1,301 +1,159 @@
+"""Validated daily-close forecasts and an append-only prospective score ledger."""
+import hashlib
+import json
 import math
+import os
+import sqlite3
 import threading
 import time
 from datetime import datetime, timezone
-from urllib.parse import quote
+from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-import monitor
+import exchange_calendars as xcals
+import pandas as pd
+import requests
+from probability_model import MODEL_VERSION, estimate_prices
 
 SYMBOLS = {"sp500": "SPY", "ndx": "QQQ", "djdiv": "SCHD"}
-CACHE_SECONDS = 30 * 60
+CACHE_SECONDS = 15 * 60
 CACHE = {"updated": 0.0, "items": {}}
+INFERENCE_CACHE = {}
 LOCK = threading.Lock()
 NY = ZoneInfo("America/New_York")
-MODEL_VERSION = "2.2.1-holdout-selected"
+CLOSE_GRACE_SECONDS = 15 * 60
+DB_PATH = os.getenv("INDEXALERT_DB", "/tmp/indexalert.db")
 
 
-def _fetch_prices(symbol: str):
-    url = monitor.YAHOO.format(symbol=quote(symbol, safe=""))
-    r = monitor.requests.get(
-        url,
-        params={"range": "10y", "interval": "1d", "includePrePost": "false", "events": "div,splits"},
-        headers=monitor.UA,
-        timeout=20,
-    )
-    r.raise_for_status()
-    result = (r.json().get("chart", {}).get("result") or [None])[0]
-    if not result:
-        raise RuntimeError(f"no probability history for {symbol}")
-    timestamps = result.get("timestamp") or []
-    indicators = result.get("indicators", {})
-    quote_data = (indicators.get("quote") or [{}])[0]
-    closes = quote_data.get("close") or []
-    adj_blocks = indicators.get("adjclose") or []
-    adj = (adj_blocks[0].get("adjclose") if adj_blocks else None) or []
-    use_adj = len(adj) == len(timestamps)
-
-    rows = []
-    for i, ts in enumerate(timestamps):
-        source = adj if use_adj else closes
-        if i >= len(source) or source[i] is None:
-            continue
-        px = float(source[i])
-        if math.isfinite(px) and px > 0:
-            rows.append((int(ts), px))
-
-    # Do not train on an unfinished U.S. regular-session daily bar.
-    meta = result.get("meta", {})
-    regular = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
-    regular_end = int(regular.get("end") or 0)
-    if rows and regular_end and int(time.time()) < regular_end:
-        last_day = datetime.fromtimestamp(rows[-1][0], tz=timezone.utc).astimezone(NY).date()
-        today = datetime.now(NY).date()
-        if last_day == today:
-            rows.pop()
-
-    if len(rows) < 520:
-        raise RuntimeError(f"insufficient probability history for {symbol}")
-    return rows
+@lru_cache(maxsize=2)
+def calendar(year):
+    return xcals.get_calendar("XNYS", start=f"{year-11}-01-01", end=f"{year+2}-12-31")
 
 
-def _feature(prices, i):
-    r1 = prices[i] / prices[i - 1] - 1.0
-    r5 = prices[i] / prices[i - 5] - 1.0
-    r20 = prices[i] / prices[i - 20] - 1.0
-    returns = [prices[j] / prices[j - 1] - 1.0 for j in range(i - 19, i + 1)]
-    mean = sum(returns) / len(returns)
-    vol20 = math.sqrt(sum((x - mean) ** 2 for x in returns) / len(returns))
-    high60 = max(prices[i - 59:i + 1])
-    dd60 = prices[i] / high60 - 1.0
-    return (r1, r5, r20, vol20, dd60)
+def parse_history(result, now=None):
+    now = time.time() if now is None else now
+    cal = calendar(datetime.fromtimestamp(now, timezone.utc).year)
+    schedule = cal.schedule
+    completed = schedule[schedule['close'] <= pd.Timestamp(now - CLOSE_GRACE_SECONDS, unit='s', tz='UTC')]
+    expected_last = completed.index[-1].date().isoformat()
+    timestamps = result.get('timestamp') or []
+    closes = (result.get('indicators', {}).get('quote') or [{}])[0].get('close') or []
+    if len(timestamps) != len(closes):
+        raise ValueError('가격·날짜 개수 불일치')
+    rows, seen = [], set()
+    for ts, price in zip(timestamps, closes):
+        day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(NY).date().isoformat()
+        if day > expected_last:
+            continue  # incomplete regular session, even if the vendor meta is absent
+        if day in seen:
+            raise ValueError('중복 거래일')
+        seen.add(day)
+        if not cal.is_session(day):
+            raise ValueError('거래일 아닌 가격')
+        if price is None or not math.isfinite(float(price)) or float(price) <= 0:
+            raise ValueError('누락·비정상 종가')
+        rows.append((day, float(price)))
+    if len(rows) < 1100 or rows != sorted(rows):
+        raise ValueError('거래일 이력 부족 또는 순서 오류')
+    expected = [d.date().isoformat() for d in cal.sessions_in_range(rows[0][0], expected_last)]
+    if [day for day,_ in rows] != expected:
+        raise ValueError('최신 종가 지연 또는 중간 거래일 누락')
+    # Detect obvious unadjusted splits/vendor spikes instead of learning fake falls.
+    if any(abs(b/a - 1) > 0.40 for (_,a),(_,b) in zip(rows,rows[1:])):
+        raise ValueError('가격 단위·분할 조정 확인 필요')
+    target = cal.next_session(expected_last)
+    return rows, dict(as_of=expected_last, target_date=target.date().isoformat(),
+        target_open=int(cal.session_open(target).timestamp()),
+        target_close=int(cal.session_close(target).timestamp()),
+        valid_until=int(cal.session_close(target).timestamp()) + CLOSE_GRACE_SECONDS)
 
 
-def _stdev(values):
-    if len(values) < 2:
-        return 1.0
-    mean = sum(values) / len(values)
-    variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
-    return math.sqrt(max(variance, 1e-12))
+def fetch_history(symbol, now=None):
+    response = requests.get(f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',
+        params={'range':'10y','interval':'1d','includePrePost':'false','events':'div,splits'},
+        headers={'User-Agent':'Mozilla/5.0 IndexAlert/2.2'},timeout=20)
+    response.raise_for_status()
+    result = (response.json().get('chart',{}).get('result') or [None])[0]
+    if not result or result.get('meta',{}).get('symbol') != symbol:
+        raise ValueError('종목 데이터 불일치')
+    return parse_history(result, now)
 
 
-def _core_predict(prices, t):
-    # Predict t+1 using only outcomes known through t.
-    rows = []
-    for i in range(60, t):
-        rows.append((i, _feature(prices, i), 1.0 if prices[i + 1] > prices[i] else 0.0))
-    if len(rows) < 260:
-        raise RuntimeError("probability training history too short")
-
-    current = _feature(prices, t)
-    floors = (0.003, 0.010, 0.020, 0.003, 0.020)
-    scales = []
-    for k in range(5):
-        scales.append(max(_stdev([row[1][k] for row in rows]), floors[k]))
-
-    ranked = []
-    for i, feat, outcome in rows:
-        d2 = sum(((feat[k] - current[k]) / scales[k]) ** 2 for k in range(5)) / 5.0
-        ranked.append((d2, i, outcome))
-    ranked.sort(key=lambda x: x[0])
-
-    k_neighbors = min(180, max(80, int(math.sqrt(len(rows)) * 2.5)))
-    neighbors = ranked[:k_neighbors]
-    sw = sy = sw2 = 0.0
-    for d2, i, outcome in neighbors:
-        similarity = math.exp(-0.5 * d2)
-        age_years = (t - i) / 252.0
-        recency = 0.5 ** (age_years / 4.0)
-        weight = max(similarity, 1e-8) * recency
-        sw += weight
-        sy += weight * outcome
-        sw2 += weight * weight
-
-    raw = sy / sw if sw > 0 else 0.5
-    effective_n = (sw * sw / sw2) if sw2 > 0 else 0.0
-
-    base_sw = base_sy = 0.0
-    for i, _feat, outcome in rows:
-        age_years = (t - i) / 252.0
-        weight = 0.5 ** (age_years / 5.0)
-        base_sw += weight
-        base_sy += weight * outcome
-    base_rate = base_sy / base_sw if base_sw > 0 else 0.5
-
-    # First shrink noisy neighbors toward the ETF's own recent long-run rise rate.
-    prior_strength = 80.0
-    posterior = (raw * effective_n + base_rate * prior_strength) / (effective_n + prior_strength)
-    return {
-        "posterior": posterior,
-        "base_rate": base_rate,
-        "effective_n": effective_n,
-        "neighbor_count": k_neighbors,
-    }
+def record_forecast(symbol, result, rows, now):
+    """Record only forecasts made before target open; never replace a forecast."""
+    with sqlite3.connect(DB_PATH, timeout=10) as con:
+        con.execute('''CREATE TABLE IF NOT EXISTS probability_forecasts(
+            model TEXT,symbol TEXT,as_of TEXT,target TEXT,p REAL,base REAL,
+            created REAL,outcome INTEGER,scored_at REAL,
+            PRIMARY KEY(model,symbol,as_of))''')
+        prices = dict(rows)
+        pending = con.execute('SELECT model,as_of,target FROM probability_forecasts WHERE symbol=? AND outcome IS NULL',(symbol,)).fetchall()
+        for model,as_of,target in pending:
+            if as_of in prices and target in prices:
+                con.execute('UPDATE probability_forecasts SET outcome=?,scored_at=? WHERE model=? AND symbol=? AND as_of=? AND outcome IS NULL',
+                    (int(prices[target] > prices[as_of]),now,model,symbol,as_of))
+        if now < result['target_open']:
+            con.execute('INSERT OR IGNORE INTO probability_forecasts VALUES(?,?,?,?,?,?,?,NULL,NULL)',
+                (MODEL_VERSION,symbol,result['as_of'],result['target_date'],result['probability']/100,result['base_rate']/100,now))
+        scores = con.execute('SELECT p,base,outcome FROM probability_forecasts WHERE model=? AND symbol=? AND outcome IS NOT NULL',(MODEL_VERSION,symbol)).fetchall()
+    return dict(prospective_count=len(scores),
+        prospective_brier=sum((p-y)**2 for p,b,y in scores)/len(scores) if scores else None,
+        prospective_baseline_brier=sum((b-y)**2 for p,b,y in scores)/len(scores) if scores else None)
 
 
-def _brier(points, alpha):
-    if not points:
-        return None
-    total = 0.0
-    for posterior, base, outcome in points:
-        p = max(0.01, min(0.99, base + alpha * (posterior - base)))
-        total += (p - outcome) ** 2
-    return total / len(points)
-
-
-def _fit_alpha(points):
-    # One-parameter calibration is intentionally simple to reduce overfitting.
-    # alpha=0 means base rate only; 1 means the raw Bayesian KNN signal.
-    best_alpha = 0.0
-    best_score = float("inf")
-    for step in range(0, 26):  # 0.00 .. 1.25
-        alpha = step * 0.05
-        score = _brier(points, alpha)
-        if score is not None and score < best_score:
-            best_score = score
-            best_alpha = alpha
-    return best_alpha, best_score
-
-
-def _walk_forward(prices):
-    n = len(prices)
-    # About three trading years. Every fourth day keeps runtime reasonable while
-    # giving enough chronologically ordered out-of-sample predictions to calibrate.
-    start = max(400, n - 1 - 756)
-    points = []
-    for t in range(start, n - 1, 4):
-        try:
-            estimate = _core_predict(prices, t)
-        except Exception:
-            continue
-        outcome = 1.0 if prices[t + 1] > prices[t] else 0.0
-        points.append((estimate["posterior"], estimate["base_rate"], outcome))
-
-    if len(points) < 60:
-        return {
-            "count": len(points), "alpha": 0.0, "model_brier": None,
-            "uncalibrated_brier": None, "base_brier": None,
-            "skill": 0.0, "trust": 0.0, "choice": "base",
-        }
-
-    # Fit calibration on the earlier portion, then choose among base/raw/calibrated
-    # on the chronologically later holdout. The selected alpha is exactly the alpha
-    # used for the live probability, so the reported validation matches the model.
-    split = max(40, min(len(points) - 30, int(len(points) * 0.65)))
-    fit_points = points[:split]
-    holdout = points[split:]
-    fitted_alpha, _ = _fit_alpha(fit_points)
-
-    base_brier = _brier(holdout, 0.0)
-    raw_brier = _brier(holdout, 1.0)
-    calibrated_brier = _brier(holdout, fitted_alpha)
-
-    choices = [
-        (base_brier if base_brier is not None else float("inf"), 0.0, "base"),
-        (raw_brier if raw_brier is not None else float("inf"), 1.0, "raw"),
-        (calibrated_brier if calibrated_brier is not None else float("inf"), fitted_alpha, "calibrated"),
-    ]
-    best_holdout, selected_alpha, choice = min(choices, key=lambda x: x[0])
-
-    if base_brier is None or best_holdout >= base_brier:
-        selected_alpha = 0.0
-        choice = "base"
-        best_holdout = base_brier if base_brier is not None else best_holdout
-
-    skill = 1.0 - best_holdout / base_brier if base_brier and base_brier > 0 else 0.0
-    # Trust is now descriptive only. It widens/narrows the interval but does not
-    # alter the selected probability a second time.
-    trust = max(0.0, min(1.0, skill / 0.04))
-
-    return {
-        "count": len(holdout),
-        "total_validation_count": len(points),
-        "alpha": selected_alpha,
-        "model_brier": best_holdout,
-        "uncalibrated_brier": raw_brier,
-        "base_brier": base_brier,
-        "skill": skill,
-        "trust": trust,
-        "choice": choice,
-    }
-
-
-def estimate(symbol: str):
-    rows = _fetch_prices(symbol)
-    prices = [p for _ts, p in rows]
-    latest_ts = rows[-1][0]
-    core = _core_predict(prices, len(prices) - 1)
-    validation = _walk_forward(prices)
-
-    alpha = validation["alpha"]
-    probability = core["base_rate"] + alpha * (core["posterior"] - core["base_rate"])
-    probability = max(0.01, min(0.99, probability))
-    trust = validation["trust"]
-
-    # 80% statistical interval around the holdout-selected estimate.
-    information_n = max(30.0, core["effective_n"] + 80.0)
-    se = math.sqrt(max(probability * (1.0 - probability), 1e-9) / information_n)
-    half_width = 1.2816 * se + (1.0 - trust) * 0.012
-    low = max(0.0, probability - half_width)
-    high = min(1.0, probability + half_width)
-
-    skill = validation["skill"]
-    if validation["count"] >= 60 and skill >= 0.03 and core["effective_n"] >= 65:
-        reliability = "높음"
-    elif validation["count"] >= 40 and skill >= 0.01 and core["effective_n"] >= 40:
-        reliability = "보통"
+def estimate(symbol, now=None):
+    now = time.time() if now is None else now
+    rows, meta = fetch_history(symbol, now)
+    digest = hashlib.sha256(json.dumps(rows,separators=(',',':')).encode()).hexdigest()
+    cached = INFERENCE_CACHE.get(symbol)
+    if cached and cached[0] == digest:
+        result = dict(cached[1])
     else:
-        reliability = "낮음"
-
-    return {
-        "symbol": symbol,
-        "probability": round(probability * 100.0, 2),
-        "range_low": round(low * 100.0, 2),
-        "range_high": round(high * 100.0, 2),
-        "sample_size": int(round(core["effective_n"])),
-        "neighbor_count": int(core["neighbor_count"]),
-        "base_rate": round(core["base_rate"] * 100.0, 2),
-        "raw_similarity_probability": round(core["posterior"] * 100.0, 2),
-        "calibration_alpha": round(alpha, 2),
-        "validation_choice": validation["choice"],
-        "validation_count": int(validation["count"]),
-        "total_validation_count": int(validation.get("total_validation_count", validation["count"])),
-        "backtest_brier": round(validation["model_brier"], 5) if validation["model_brier"] is not None else None,
-        "uncalibrated_brier": round(validation["uncalibrated_brier"], 5) if validation["uncalibrated_brier"] is not None else None,
-        "baseline_brier": round(validation["base_brier"], 5) if validation["base_brier"] is not None else None,
-        "backtest_skill": round(skill * 100.0, 2),
-        "validation_trust": round(trust * 100.0, 1),
-        "reliability": reliability,
-        "as_of": datetime.fromtimestamp(latest_ts, tz=timezone.utc).astimezone(NY).date().isoformat(),
-        "method": "10년·5요인 유사도 + 베이지안 수축 + 3년 워크포워드 홀드아웃 선택",
-        "model_version": MODEL_VERSION,
-    }
+        result = estimate_prices([p for _,p in rows])
+        result['audit_start'] = rows[result.pop('audit_start_index')][0]
+        result['audit_end'] = rows[result.pop('audit_end_index')][0]
+        result.pop('as_of_index')
+        INFERENCE_CACHE[symbol] = (digest,dict(result))
+    result.update(meta,symbol=symbol,data_digest=digest,computed_at=int(now))
+    try:
+        result.update(record_forecast(symbol,result,rows,now))
+    except Exception as exc:
+        result.update(prospective_count=0,prospective_error='실시간 검증 기록 일시 중단')
+        print('probability ledger unavailable',type(exc).__name__,flush=True)
+    return result
 
 
 def refresh(force=False):
-    with LOCK:
-        now = time.time()
-        if not force and CACHE["items"] and now - CACHE["updated"] < CACHE_SECONDS:
-            return {"items": CACHE["items"], "updated_at": CACHE["updated"], "model_version": MODEL_VERSION}
+    if not LOCK.acquire(blocking=False):
+        return dict(CACHE,model_version=MODEL_VERSION)
+    try:
+        if not force and CACHE['items'] and time.time() - CACHE['updated'] < CACHE_SECONDS:
+            return dict(CACHE,model_version=MODEL_VERSION)
         items = {}
-        for index_id, symbol in SYMBOLS.items():
+        for index_id,symbol in SYMBOLS.items():
             try:
                 items[index_id] = estimate(symbol)
             except Exception as exc:
-                items[index_id] = {"symbol": symbol, "error": f"{type(exc).__name__}: {exc}"}
-        CACHE["items"] = items
-        CACHE["updated"] = now
-        summary = {
-            key: (
-                value.get("probability"), value.get("range_low"), value.get("range_high"),
-                value.get("backtest_skill"), value.get("calibration_alpha"),
-                value.get("validation_choice"), value.get("reliability")
-            ) if "error" not in value else value.get("error")
-            for key, value in items.items()
-        }
-        print("next-day probabilities ready", summary, flush=True)
-        return {"items": items, "updated_at": now, "model_version": MODEL_VERSION}
+                # A stale probability must never be presented as a current one.
+                previous = CACHE['items'].get(index_id,{})
+                if previous.get('valid_until',0) > time.time() and 'probability' in previous:
+                    items[index_id] = dict(previous,cached=True)
+                else:
+                    items[index_id] = dict(symbol=symbol,error='완료된 최신 종가 데이터 확인 중')
+                print('probability unavailable',symbol,type(exc).__name__,flush=True)
+        CACHE.update(items=items,updated=time.time())
+        print('probability audit ready',MODEL_VERSION,{k:(v.get('probability'),v.get('backtest_skill'),v.get('validation_choice')) for k,v in items.items()},flush=True)
+        return dict(CACHE,model_version=MODEL_VERSION)
+    finally:
+        LOCK.release()
 
 
 def get_all():
-    return refresh(False)
+    now = time.time()
+    if now - CACHE['updated'] >= CACHE_SECONDS:
+        threading.Thread(target=refresh,daemon=True).start()
+    items = {}
+    for index_id,symbol in SYMBOLS.items():
+        value = CACHE['items'].get(index_id,{})
+        items[index_id] = value if value.get('valid_until',0) > now else dict(symbol=symbol,error='최신 검증값 계산 중')
+    return dict(items=items,updated_at=CACHE['updated'],model_version=MODEL_VERSION)
