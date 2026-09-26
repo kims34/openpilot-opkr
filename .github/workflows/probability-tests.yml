@@ -2,7 +2,18 @@ name: Probability integrity tests
 on:
   push:
     branches: [index-alert-server]
-    paths: ['probability_model.py', 'next_day_probability.py', 'test_probability.py', 'requirements.txt', '.github/workflows/probability-tests.yml']
+    paths:
+      - 'probability_model.py'
+      - 'probability_model_v31_runtime.py'
+      - 'next_day_probability.py'
+      - 'next_day_probability_v31.py'
+      - 'one_month_probability.py'
+      - 'one_month_distribution.py'
+      - 'test_probability.py'
+      - 'test_one_month_probability.py'
+      - 'test_one_month_distribution.py'
+      - 'requirements.txt'
+      - '.github/workflows/probability-tests.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,4 +26,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - run: python -m unittest discover -p test_probability.py -v
+      - run: python -m unittest test_probability.py test_one_month_probability.py test_one_month_distribution.py -v
