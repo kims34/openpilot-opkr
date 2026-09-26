@@ -12,7 +12,7 @@ CACHE_SECONDS = 30 * 60
 CACHE = {"updated": 0.0, "items": {}}
 LOCK = threading.Lock()
 NY = ZoneInfo("America/New_York")
-MODEL_VERSION = "2.2-walkforward-calibrated"
+MODEL_VERSION = "2.2.1-holdout-selected"
 
 
 def _fetch_prices(symbol: str):
@@ -178,8 +178,9 @@ def _walk_forward(prices):
             "skill": 0.0, "trust": 0.0, "choice": "base",
         }
 
-    # Fit calibration on the earlier portion, then decide whether it genuinely
-    # helps on the later holdout. This prevents fitting and judging on the same days.
+    # Fit calibration on the earlier portion, then choose among base/raw/calibrated
+    # on the chronologically later holdout. The selected alpha is exactly the alpha
+    # used for the live probability, so the reported validation matches the model.
     split = max(40, min(len(points) - 30, int(len(points) * 0.65)))
     fit_points = points[:split]
     holdout = points[split:]
@@ -196,18 +197,14 @@ def _walk_forward(prices):
     ]
     best_holdout, selected_alpha, choice = min(choices, key=lambda x: x[0])
 
-    # Only use a non-base signal when it improved on the chronologically later holdout.
     if base_brier is None or best_holdout >= base_brier:
         selected_alpha = 0.0
         choice = "base"
         best_holdout = base_brier if base_brier is not None else best_holdout
-    elif choice == "calibrated":
-        # Once the calibration approach passes holdout, refit alpha using all
-        # validation points for the live estimate while keeping the same 0..1.25 guardrail.
-        selected_alpha, _ = _fit_alpha(points)
 
     skill = 1.0 - best_holdout / base_brier if base_brier and base_brier > 0 else 0.0
-    # Validation trust limits how far the live probability may move from the base rate.
+    # Trust is now descriptive only. It widens/narrows the interval but does not
+    # alter the selected probability a second time.
     trust = max(0.0, min(1.0, skill / 0.04))
 
     return {
@@ -231,12 +228,11 @@ def estimate(symbol: str):
     validation = _walk_forward(prices)
 
     alpha = validation["alpha"]
-    calibrated = core["base_rate"] + alpha * (core["posterior"] - core["base_rate"])
-    trust = validation["trust"]
-    probability = core["base_rate"] + trust * (calibrated - core["base_rate"])
+    probability = core["base_rate"] + alpha * (core["posterior"] - core["base_rate"])
     probability = max(0.01, min(0.99, probability))
+    trust = validation["trust"]
 
-    # 80% statistical interval around the calibrated/shrunken estimate.
+    # 80% statistical interval around the holdout-selected estimate.
     information_n = max(30.0, core["effective_n"] + 80.0)
     se = math.sqrt(max(probability * (1.0 - probability), 1e-9) / information_n)
     half_width = 1.2816 * se + (1.0 - trust) * 0.012
@@ -244,9 +240,9 @@ def estimate(symbol: str):
     high = min(1.0, probability + half_width)
 
     skill = validation["skill"]
-    if validation["count"] >= 60 and skill >= 0.025 and core["effective_n"] >= 65:
+    if validation["count"] >= 60 and skill >= 0.03 and core["effective_n"] >= 65:
         reliability = "높음"
-    elif validation["count"] >= 40 and skill > 0.0 and core["effective_n"] >= 40:
+    elif validation["count"] >= 40 and skill >= 0.01 and core["effective_n"] >= 40:
         reliability = "보통"
     else:
         reliability = "낮음"
@@ -271,7 +267,7 @@ def estimate(symbol: str):
         "validation_trust": round(trust * 100.0, 1),
         "reliability": reliability,
         "as_of": datetime.fromtimestamp(latest_ts, tz=timezone.utc).astimezone(NY).date().isoformat(),
-        "method": "10년·5요인 유사도 + 베이지안 수축 + 3년 워크포워드 홀드아웃 캘리브레이션",
+        "method": "10년·5요인 유사도 + 베이지안 수축 + 3년 워크포워드 홀드아웃 선택",
         "model_version": MODEL_VERSION,
     }
 
