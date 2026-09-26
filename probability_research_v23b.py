@@ -1,7 +1,7 @@
 """Causal adaptive-baseline research.
 
 Every forecast chooses among simple challengers using only outcomes already
-known at that forecast time.  There is no look-ahead model selection.
+known at that forecast time. There is no look-ahead model selection.
 """
 import json, math
 from datetime import datetime, timezone
@@ -32,58 +32,53 @@ def weighted_rate(y,t,hl,mask=None):
     if mask is not None: idx=idx[mask[idx]]
     if len(idx)<30: return None
     age=t-1-idx; w=0.5**(age/hl)
-    # Beta prior of 20 pseudo-observations centered at 0.5 prevents extremes.
     return float((w@y[idx]+10)/(w.sum()+20))
 
 
 def candidate_probs(prices,dates):
     n=len(prices); y=(prices[1:]>prices[:-1]).astype(float)
-    # Forecast t predicts t -> t+1, so newest known label is y[t-1].
-    out={name:np.full(n-1,np.nan) for name in ['fixed','adaptive_hl','prev_sign','weekday']}
     rets=np.zeros(n); rets[1:]=prices[1:]/prices[:-1]-1
     weekdays=np.array([datetime.fromisoformat(d).weekday() for d in dates])
+
+    # Precompute every half-life series once. This is mathematically identical
+    # to recomputing inside each selector window but far faster.
+    hl_probs={hl:np.full(n-1,np.nan) for hl in HALF_LIVES}
+    for hl in HALF_LIVES:
+        for t in range(300,n-1): hl_probs[hl][t]=weighted_rate(y,t,hl)
+
+    out={name:np.full(n-1,np.nan) for name in ['fixed','adaptive_hl','prev_sign','weekday']}
+    out['fixed'][:]=hl_probs[1260.]
+
     for t in range(300,n-1):
-        fixed=weighted_rate(y,t,1260.)
-        out['fixed'][t]=fixed
-        # Causally select the half-life with lowest Brier over prior LOOKBACK forecasts.
+        fixed=out['fixed'][t]
         hist=np.arange(max(300,t-LOOKBACK),t)
         best=(1e9,1260.)
         for hl in HALF_LIVES:
-            ps=[]; ys=[]
-            for j in hist:
-                p=weighted_rate(y,j,hl)
-                if p is not None: ps.append(p); ys.append(y[j])
-            if len(ps)>=126:
-                loss=float(np.mean((np.array(ps)-np.array(ys))**2))
+            p=hl_probs[hl][hist]; valid=~np.isnan(p)
+            if valid.sum()>=126:
+                loss=float(np.mean((p[valid]-y[hist][valid])**2))
                 if loss<best[0]: best=(loss,hl)
-        out['adaptive_hl'][t]=weighted_rate(y,t,best[1])
+        out['adaptive_hl'][t]=hl_probs[best[1]][t]
 
-        # Previous-day direction condition, strongly shrunk toward fixed.
         sign=rets[t]>0
-        mask=np.zeros(n-1,dtype=bool)
-        for j in range(1,t): mask[j]=(rets[j]>0)==sign
+        mask=np.zeros(n-1,dtype=bool); mask[1:t]=((rets[1:t]>0)==sign)
         cond=weighted_rate(y,t,756.,mask)
         out['prev_sign'][t]=fixed if cond is None else 0.75*fixed+0.25*cond
 
-        # Target next-session weekday condition, also strongly shrunk.
         target_wd=weekdays[t+1]
-        mask=np.zeros(n-1,dtype=bool)
-        for j in range(0,t): mask[j]=(weekdays[j+1]==target_wd)
+        mask=np.zeros(n-1,dtype=bool); mask[:t]=(weekdays[1:t+1]==target_wd)
         cond=weighted_rate(y,t,1260.,mask)
         out['weekday'][t]=fixed if cond is None else 0.75*fixed+0.25*cond
     return y,out
 
 
 def causal_selector(y,preds,t):
-    """Select challenger using only prior realized losses, requiring both half-windows improve."""
-    fixed=preds['fixed']
-    start=max(300,t-LOOKBACK); mid=start+(t-start)//2
+    fixed=preds['fixed']; start=max(300,t-LOOKBACK); mid=start+(t-start)//2
     best=('fixed',0.0)
     for name in ['adaptive_hl','prev_sign','weekday']:
         p=preds[name]
         if np.isnan(p[t]): continue
-        adv=[]
-        okay=True
+        adv=[]; okay=True
         for a,b in ((start,mid),(mid,t)):
             idx=np.arange(a,b); idx=idx[~np.isnan(p[idx]) & ~np.isnan(fixed[idx])]
             if len(idx)<60: okay=False; break
