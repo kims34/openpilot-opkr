@@ -53,12 +53,17 @@ def estimate(symbol, now=None):
         except Exception as exc:
             print("one-month terminal distribution unavailable", type(exc).__name__, str(exc), flush=True)
 
+        six = month.get("terminal_return_six_bins") or []
         print(
             "one-month probability ready",
             symbol,
             {
                 "up10_touch": month.get("up_10_probability"),
                 "down10_touch": month.get("down_10_probability"),
+                "six_bins": [(x.get("label"), x.get("probability")) for x in six],
+                "six_total": month.get("terminal_return_six_total_probability"),
+                "six_selection": month.get("terminal_return_six_selection"),
+                "six_skill": (month.get("terminal_return_six_validation") or {}).get("skill"),
                 "top3": month.get("terminal_return_top3"),
                 "mode": month.get("terminal_return_mode_label"),
                 "mode_probability": month.get("terminal_return_mode_probability"),
