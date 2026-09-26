@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-import one_month_distribution
+import one_month_calibrated
 import one_month_probability
 import production_fixed
 
@@ -29,7 +29,7 @@ def _history_rows():
     response = requests.get(
         f"https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}",
         params={"range": "10y", "interval": "1d", "includePrePost": "false", "events": "div,splits"},
-        headers={"User-Agent": "Mozilla/5.0 IndexAlert/2.9"},
+        headers={"User-Agent": "Mozilla/5.0 IndexAlert/3.1"},
         timeout=20,
     )
     response.raise_for_status()
@@ -80,12 +80,12 @@ def estimate():
     rows = _history_rows()
     try:
         ohlc = one_month_probability.fetch_ohlc(SYMBOL, rows, "Asia/Seoul")
-        month = one_month_probability.estimate(rows, ohlc)
+        month = one_month_calibrated.estimate_probability(rows, ohlc)
     except Exception as exc:
         print("kospi monthly OHLC fallback", type(exc).__name__, flush=True)
-        month = one_month_probability.estimate(rows)
+        month = one_month_calibrated.estimate_probability(rows)
 
-    month.update(one_month_distribution.estimate(rows))
+    month.update(one_month_calibrated.estimate_distribution(rows))
     month.update(
         index_id=INDEX_ID,
         name="KOSPI",
@@ -97,12 +97,17 @@ def estimate():
         "kospi one-month probability ready",
         {
             "as_of": month.get("as_of"),
+            "up10": month.get("up_10_probability"),
+            "down10": month.get("down_10_probability"),
+            "blend_up": month.get("blend_weight_up"),
+            "blend_down": month.get("blend_weight_down"),
             "six_bins": [(x.get("label"), x.get("probability")) for x in six],
             "six_total": month.get("terminal_return_six_total_probability"),
             "six_selection": month.get("terminal_return_six_selection"),
+            "six_blend": month.get("terminal_return_six_blend_weight"),
             "six_skill": (month.get("terminal_return_six_validation") or {}).get("skill"),
-            "up10_touch": month.get("up_10_probability"),
-            "down10_touch": month.get("down_10_probability"),
+            "six_skill_first": (month.get("terminal_return_six_validation_first_half") or {}).get("skill"),
+            "six_skill_second": (month.get("terminal_return_six_validation_second_half") or {}).get("skill"),
             "basis": month.get("price_basis"),
         },
         flush=True,
