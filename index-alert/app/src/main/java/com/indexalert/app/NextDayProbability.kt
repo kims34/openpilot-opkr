@@ -40,6 +40,12 @@ data class TerminalReturnRank(
     val probability: Double
 )
 
+data class MonthReturnBucket(
+    val key: String,
+    val label: String,
+    val probability: Double
+)
+
 data class OneMonthEstimate(
     val up10Probability: Double,
     val down10Probability: Double,
@@ -67,7 +73,12 @@ data class OneMonthEstimate(
     val terminalReturnSelection: String?,
     val terminalReturnValidation: MonthValidation?,
     val terminalReturnEffectiveSample: Double,
-    val terminalReturnBinWidthPercent: Int
+    val terminalReturnBinWidthPercent: Int,
+    val terminalReturnSixBins: List<MonthReturnBucket> = emptyList(),
+    val terminalReturnSixTotalProbability: Double? = null,
+    val terminalReturnSixSelection: String? = null,
+    val terminalReturnSixValidation: MonthValidation? = null,
+    val terminalReturnSixEffectiveSample: Double = 0.0
 )
 
 data class NextDayEstimate(
@@ -158,7 +169,7 @@ object NextDayProbabilityRepository {
         }
     }.getOrDefault(emptyMap())
 
-    private fun parseOneMonth(o: JSONObject?): OneMonthEstimate? {
+    fun parseOneMonth(o: JSONObject?): OneMonthEstimate? {
         if (o == null || o.has("error")) return null
         val up = o.optDouble("up_10_probability", Double.NaN)
         val down = o.optDouble("down_10_probability", Double.NaN)
@@ -191,6 +202,24 @@ object NextDayProbabilityRepository {
                 }
             }
         }
+        val sixBins = buildList {
+            val arr = o.optJSONArray("terminal_return_six_bins") ?: return@buildList
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                val key = item.optString("key").trim()
+                val label = item.optString("label").trim()
+                val probability = item.optDouble("probability", Double.NaN)
+                if (key.isNotBlank() && label.isNotBlank() && probability.isFinite() && probability in 0.0..100.0) {
+                    add(MonthReturnBucket(key, label, probability))
+                }
+            }
+        }
+        val validSixBins = if (
+            sixBins.size == 6 &&
+            sixBins.map { it.key } == listOf("up10_plus", "up5_10", "up0_5", "down0_5", "down5_10", "down10_minus") &&
+            kotlin.math.abs(sixBins.sumOf { it.probability } - 100.0) <= 0.11
+        ) sixBins else emptyList()
+
         val modeLabel = o.optString("terminal_return_mode_label").takeIf { it.isNotBlank() }
         val modeProbability = o.numberOrNull("terminal_return_mode_probability")?.takeIf { it in 0.0..100.0 }
         return OneMonthEstimate(
@@ -208,7 +237,12 @@ object NextDayProbabilityRepository {
             o.optString("terminal_return_selection").takeIf { it == "analog" || it == "baseline" },
             parseMonthValidation(o.optJSONObject("terminal_return_validation")),
             o.optDouble("terminal_return_effective_sample", 0.0),
-            o.optInt("terminal_return_bin_width_percent", 0)
+            o.optInt("terminal_return_bin_width_percent", 0),
+            validSixBins,
+            o.numberOrNull("terminal_return_six_total_probability")?.takeIf { it in 99.9..100.1 },
+            o.optString("terminal_return_six_selection").takeIf { it == "analog" || it == "baseline" },
+            parseMonthValidation(o.optJSONObject("terminal_return_six_validation")),
+            o.optDouble("terminal_return_six_effective_sample", 0.0)
         )
     }
 
@@ -263,28 +297,9 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
 
             e.oneMonth?.let { m ->
                 HorizontalDivider(Modifier.padding(vertical = 9.dp))
-                Text("향후 1개월(21거래일) ±10% 도달 확률", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text("+10% 이상 상승 도달  ${pct1(m.up10Probability)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("-10% 이상 하락 도달  ${pct1(m.down10Probability)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-                if (m.terminalReturnTop3.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("1개월 뒤 가장 가능성 높은 종가 수익률 구간", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    m.terminalReturnTop3.take(3).forEachIndexed { index, rank ->
-                        Text(
-                            "${index + 1}위  ${rank.label}  ·  확률 ${pct1(rank.probability)}",
-                            style = if (index == 0) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (index == 0) FontWeight.Bold else FontWeight.SemiBold
-                        )
-                    }
-                    val widthText = if (m.terminalReturnBinWidthPercent > 0) "${m.terminalReturnBinWidthPercent}%p 구간" else "수익률 구간"
-                    Text("21거래일 뒤 종가 기준 · $widthText 확률 순위", style = MaterialTheme.typography.bodySmall)
-                }
-
-                val basis = if (m.priceBasis == "daily_high_low") "장중 고가·저가 터치 기준" else "종가 터치 기준(장중 데이터 임시 미사용)"
-                Text("${m.asOf} 종가 기준 · $basis", style = MaterialTheme.typography.bodySmall)
-                Text("현재와 유사한 과거 장세 + 장기 기본확률을 결합 · 유효표본 상승 ${oneDecimal(m.effectiveSampleUp)} / 하락 ${oneDecimal(m.effectiveSampleDown)}",
-                    style = MaterialTheme.typography.bodySmall)
+                OneMonthSixBucketTable(m)
+                Text("${m.asOf} 종가 기준 · 21거래일 뒤 종가 수익률 기준", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
+                Text("현재와 유사한 과거 장세와 장기 기본분포를 검증 후 선택", style = MaterialTheme.typography.bodySmall)
             }
 
             TextButton(onClick = { details = !details }, contentPadding = PaddingValues(0.dp)) {
@@ -301,7 +316,7 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
 
                 e.oneMonth?.let { m ->
                     Spacer(Modifier.height(8.dp))
-                    Text("[1개월 ±10% 모델]", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Text("[1개월 6구간 모델]", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     val trend = if (m.trendRegime == "up") "21일 상승추세" else "21일 하락추세"
                     val vol = if (m.volatilityRegime == "high") "고변동" else "저변동"
                     Text("현재 국면: $trend · $vol · 연환산 변동성 ${pct1(m.annualizedVolatility)}", style = MaterialTheme.typography.bodySmall)
@@ -309,26 +324,43 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                         Text("수익률: 5일 ${signedPct1(f.r5)} · 21일 ${signedPct1(f.r21)} · 63일 ${signedPct1(f.r63)}", style = MaterialTheme.typography.bodySmall)
                         Text("1년 고점 대비 ${signedPct1(f.drawdown252)} · 50일선 ${signedPct1(f.ma50Gap)} · 200일선 ${signedPct1(f.ma200Gap)}", style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("장기 기본빈도: +10% ${pct1(m.baselineUp10Probability)} / -10% ${pct1(m.baselineDown10Probability)} · 완료표본 ${m.baselineSampleSize}회",
-                        style = MaterialTheme.typography.bodySmall)
-                    monthValidationLine("+10%", m.selectionUp, m.validationUp)
-                    monthValidationLine("-10%", m.selectionDown, m.validationDown)
-                    if (m.terminalReturnTop3.isNotEmpty()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text("[1개월 종가 수익률 분포]", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        m.terminalReturnTop3.take(3).forEachIndexed { index, rank ->
-                            Text("${index + 1}위 ${rank.label} · ${pct1(rank.probability)}", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Text("분포 유효표본 ${oneDecimal(m.terminalReturnEffectiveSample)}", style = MaterialTheme.typography.bodySmall)
-                        monthValidationLine("종가분포", m.terminalReturnSelection ?: "baseline", m.terminalReturnValidation)
+                    if (m.terminalReturnSixBins.isNotEmpty()) {
+                        Text("6구간 확률 합계 ${pct1(m.terminalReturnSixBins.sumOf { it.probability })} · 구간 중복 없음", style = MaterialTheme.typography.bodySmall)
+                        Text("분포 유효표본 ${oneDecimal(m.terminalReturnSixEffectiveSample)}", style = MaterialTheme.typography.bodySmall)
+                        monthValidationLine("6구간 종가분포", m.terminalReturnSixSelection ?: "baseline", m.terminalReturnSixValidation)
                     }
-                    Text("검증에서 유사장세 모델이 기본확률보다 낫지 않으면 해당 방향·분포는 자동으로 장기 기본확률을 사용합니다.",
+                    Text("검증에서 유사장세 모델이 장기 기본분포보다 낫지 않으면 자동으로 장기 기본확률을 사용합니다.",
                         style = MaterialTheme.typography.labelSmall)
                 }
             }
             Text("과거 통계에 따른 추정이며 향후 상승·하락이나 수익을 보장하지 않습니다.", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
         }
     }
+}
+
+@Composable
+fun OneMonthSixBucketTable(m: OneMonthEstimate) {
+    Text("향후 1개월(21거래일) 도달 구간 확률", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    if (m.terminalReturnSixBins.size != 6) {
+        Text("6구간 확률 계산 중…", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    Spacer(Modifier.height(4.dp))
+    m.terminalReturnSixBins.forEachIndexed { index, bucket ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                bucket.label,
+                style = if (index == 0 || index == 5) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge,
+                fontWeight = if (index == 0 || index == 5) FontWeight.Bold else FontWeight.SemiBold
+            )
+            Text(
+                pct1(bucket.probability),
+                style = if (index == 0 || index == 5) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+    Text("서로 겹치지 않는 6개 구간 · 합계 ${pct1(m.terminalReturnSixBins.sumOf { it.probability })}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 3.dp))
 }
 
 @Composable
