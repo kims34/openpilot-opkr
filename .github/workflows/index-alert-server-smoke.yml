@@ -29,12 +29,12 @@ jobs:
         run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
       - name: Wait for production deployment and verify API
         run: |
-          set -euo pipefail
+          set -u -o pipefail
           BASE='https://indexalert-runtime-production.up.railway.app'
           for i in $(seq 1 30); do
             if curl -fsS --max-time 15 "$BASE/health" >/tmp/health.json && \
                curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
-              python - <<'PY'
+              if python - <<'PY'
           import json
           health=json.load(open('/tmp/health.json'))
           data=json.load(open('/tmp/prob.json'))
@@ -61,10 +61,12 @@ jobs:
               assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
           print(json.dumps(items, ensure_ascii=False, indent=2))
           PY
-              exit 0
+              then
+                exit 0
+              fi
             fi
-            echo "production not ready yet: attempt $i/30"
+            echo "production validation not ready yet: attempt $i/30"
             sleep 20
           done
-          echo 'production endpoint did not become ready in time' >&2
+          echo 'production endpoint did not pass validation in time' >&2
           exit 1
