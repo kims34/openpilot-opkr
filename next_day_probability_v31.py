@@ -4,6 +4,7 @@ import json
 import time
 
 import next_day_probability as base
+import one_month_distribution
 import one_month_probability
 import probability_milestone
 import probability_shadow
@@ -47,12 +48,21 @@ def estimate(symbol, now=None):
 
     month = result.get("one_month") or {}
     if not month.get("error"):
+        try:
+            month.update(one_month_distribution.estimate(rows))
+        except Exception as exc:
+            print("one-month terminal distribution unavailable", type(exc).__name__, str(exc), flush=True)
+
         print(
             "one-month probability ready",
             symbol,
             {
                 "up10": month.get("up_10_probability"),
                 "down10": month.get("down_10_probability"),
+                "mode": month.get("terminal_return_mode_label"),
+                "mode_probability": month.get("terminal_return_mode_probability"),
+                "mode_selection": month.get("terminal_return_selection"),
+                "mode_skill": (month.get("terminal_return_validation") or {}).get("skill"),
                 "basis": month.get("price_basis"),
                 "selection_up": month.get("selection_up"),
                 "selection_down": month.get("selection_down"),
