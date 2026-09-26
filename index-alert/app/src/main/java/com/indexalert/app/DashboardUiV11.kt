@@ -30,9 +30,7 @@ val dashboardRules: List<Rule> = buildList {
                     timezone = "Asia/Seoul"
                 )
             )
-        } else {
-            add(rule)
-        }
+        } else add(rule)
     }
     if (none { it.id == "usdkrw" }) {
         add(
@@ -83,25 +81,6 @@ fun HomeV11(
         }
         Text(statusText, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall)
 
-        val firedSnapshots = snapshots.filter { it.alertsEnabled && it.stageText.startsWith("🔔") }
-        if (firedSnapshots.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("🔔 알림 발생 단계 있음", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                    firedSnapshots.forEach { snapshot ->
-                        Text("• ${snapshot.rule.name}  ${snapshot.stageText.removePrefix("🔔 알림 발생 · ")}", fontWeight = FontWeight.SemiBold)
-                    }
-                    Text("새 ATH가 형성되어 하락 사이클이 초기화될 때까지 표시됩니다.", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-        }
-
         Spacer(Modifier.height(10.dp))
         if (snapshots.isEmpty() && loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         snapshots.forEach { snapshot ->
@@ -112,7 +91,7 @@ fun HomeV11(
                 else -> null
             }
             val movers = if (universe == null) emptyList() else laggards.filter { it.universe == universe }.sortedBy { it.rank }.take(3)
-            IndexCardV17(snapshot, movers, laggardStatus)
+            IndexCardV19(snapshot, movers, laggardStatus)
         }
 
         Spacer(Modifier.height(18.dp))
@@ -157,8 +136,7 @@ fun HomeV11(
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "각 시장 카드의 한줄 브리핑은 최신 뉴스 제목과 당일 등락을 바탕으로 외부요인·내부요인·혼합으로 분류한 추정입니다. " +
-                "SPY · QQQ · SCHD는 ETF 자체 가격으로 알림을 감시하고, KOSPI와 USD/KRW는 표시 전용입니다.",
+            "SPY · QQQ · SCHD는 ETF 자체 가격으로 알림을 감시하고, KOSPI와 USD/KRW는 표시 전용입니다.",
             style = MaterialTheme.typography.bodySmall
         )
         Spacer(Modifier.height(24.dp))
@@ -166,14 +144,10 @@ fun HomeV11(
 }
 
 @Composable
-private fun IndexCardV17(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
+private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
     val alertTriggered = s.alertsEnabled && s.stageText.startsWith("🔔")
     val cardColor = if (alertTriggered) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
-    val cardBorder = if (alertTriggered) {
-        BorderStroke(2.dp, MaterialTheme.colorScheme.error)
-    } else {
-        BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
-    }
+    val cardBorder = if (alertTriggered) BorderStroke(2.dp, MaterialTheme.colorScheme.error) else BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
@@ -182,13 +156,6 @@ private fun IndexCardV17(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
-            if (alertTriggered) {
-                Surface(color = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError, shape = MaterialTheme.shapes.small) {
-                    Text("🔔 알림 발생", modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(8.dp))
-            }
-
             Text(
                 s.rule.name,
                 style = MaterialTheme.typography.titleLarge,
@@ -203,19 +170,19 @@ private fun IndexCardV17(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
 
             Spacer(Modifier.height(8.dp))
-            val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signedV17(s.dayChange)} (${signedPctV17(s.dayChangePercent)})" else ""
+            val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signedV19(s.dayChange)} (${signedPctV19(s.dayChangePercent)})" else ""
             val currentLabel = if (s.rule.id == "usdkrw") "현재 환율" else "현재값"
             Text(
-                "$currentLabel  ${fmtV17(s.current)}$change",
+                "$currentLabel  ${fmtV19(s.current)}$change",
                 style = MaterialTheme.typography.titleMedium,
-                color = movementColorV17(s.dayChangePercent),
+                color = movementColorV19(s.dayChangePercent),
                 fontWeight = FontWeight.SemiBold
             )
 
             if (s.rule.id != "usdkrw" && s.ath != null && s.ath > 0.0) {
                 val age = s.athDays?.let { if (it == 0) " · 오늘 최고가" else " · 최고가 후 ${it}일" } ?: ""
                 val date = s.athDate?.let { " ($it)" } ?: ""
-                Text("ATH      ${fmtV17(s.ath)}$age$date")
+                Text("ATH      ${fmtV19(s.ath)}$age$date")
                 Text(
                     "ATH 대비 등락률 ${s.drawdown?.let { String.format(Locale.US, "%+.2f%%", it) } ?: "-"}",
                     color = if (alertTriggered) MaterialTheme.colorScheme.error else MetricBlue,
@@ -225,11 +192,25 @@ private fun IndexCardV17(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
 
             if (s.alertsEnabled) {
+                Spacer(Modifier.height(8.dp))
                 if (alertTriggered) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(s.stageText, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("이 하락 사이클에서 실제 알림이 발송된 단계입니다.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-                    Text("다음 알림 ${s.nextText}", fontWeight = FontWeight.SemiBold)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                            Text("🔔 실제 알림 발송됨", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                s.stageText.removePrefix("🔔 알림 발생 · "),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                    Text("다음 알림 ${s.nextText}", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 5.dp))
                 } else {
                     Text("현재 단계 ${s.stageText}")
                     Text("다음 알림 ${s.nextText}")
@@ -243,27 +224,21 @@ private fun IndexCardV17(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
 
-            MarketBriefingSection(s.rule.id)
             MonthlyChartSection(s.rule.id)
 
             if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
-                DirectionalMoverSectionV17(s, movers, moverStatus)
+                DirectionalMoverSectionV19(s, movers, moverStatus)
             }
         }
     }
 }
 
 @Composable
-private fun DirectionalMoverSectionV17(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
+private fun DirectionalMoverSectionV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatus: String) {
     Spacer(Modifier.height(10.dp))
     val isDown = (s.dayChangePercent ?: 0.0) < 0.0
     val title = if (isDown) "구성종목 당일 하락률 상위 3개" else "구성종목 당일 상승률 상위 3개"
     Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-    Text(
-        if (isDown) "ETF가 전일 대비 하락 중이므로 가장 많이 하락한 종목을 표시합니다."
-        else "ETF가 전일 대비 상승 중이므로 가장 많이 상승한 종목을 표시합니다.",
-        style = MaterialTheme.typography.labelSmall
-    )
     Spacer(Modifier.height(4.dp))
 
     if (movers.isEmpty()) {
@@ -275,8 +250,8 @@ private fun DirectionalMoverSectionV17(s: IndexSnapshot, movers: List<LaggardIte
         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
             Text("${item.rank}. ${item.symbol} · ${item.name}", style = MaterialTheme.typography.bodyMedium)
             Text(
-                "현재 ${fmtV17(item.current)}  ${signedV17(item.dayChange)} (${signedPctV17(item.dayChangePercent)})",
-                color = movementColorV17(item.dayChangePercent),
+                "현재 ${fmtV19(item.current)}  ${signedV19(item.dayChange)} (${signedPctV19(item.dayChangePercent)})",
+                color = movementColorV19(item.dayChangePercent),
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -285,12 +260,12 @@ private fun DirectionalMoverSectionV17(s: IndexSnapshot, movers: List<LaggardIte
 }
 
 @Composable
-private fun movementColorV17(percent: Double?): Color = when {
+private fun movementColorV19(percent: Double?): Color = when {
     percent == null || percent == 0.0 -> MaterialTheme.colorScheme.onSurface
     percent > 0.0 -> RiseRed
     else -> FallBlue
 }
 
-private fun fmtV17(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
-private fun signedV17(v: Double): String = String.format(Locale.US, "%+,.2f", v)
-private fun signedPctV17(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
+private fun fmtV19(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
+private fun signedV19(v: Double): String = String.format(Locale.US, "%+,.2f", v)
+private fun signedPctV19(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
