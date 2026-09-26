@@ -1,9 +1,12 @@
 name: IndexAlert Server Tests
 on:
   push:
-    branches: [ index-alert-server ]
+    branches: [ index-alert-server, index-alert-shadow-ledger ]
     paths:
       - 'monitor.py'
+      - 'next_day_probability.py'
+      - 'next_day_probability_v31.py'
+      - 'probability_shadow.py'
       - 'test_*.py'
       - 'requirements.txt'
       - '.github/workflows/index-alert-server-test.yml'
