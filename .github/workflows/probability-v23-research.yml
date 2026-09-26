@@ -12,6 +12,7 @@ on:
       - 'probability_research_v23b.py'
       - 'probability_research_v32.py'
       - 'probability_research_v32b.py'
+      - 'probability_research_v33.py'
       - 'requirements.txt'
       - '.github/workflows/probability-v23-research.yml'
   workflow_dispatch:
@@ -53,6 +54,8 @@ jobs:
         run: python probability_research_v32.py | tee probability-v32-result.txt
       - name: Conservative model 3.2b overlay vs deployed 3.1
         run: python probability_research_v32b.py | tee probability-v32b-result.txt
+      - name: OHLCV model 3.3 research vs deployed 3.1
+        run: python probability_research_v33.py | tee probability-v33-result.txt
       - uses: actions/upload-artifact@v4
         with:
           name: probability-v23-results
@@ -62,3 +65,4 @@ jobs:
             probability-v23b-result.txt
             probability-v32-result.txt
             probability-v32b-result.txt
+            probability-v33-result.txt
