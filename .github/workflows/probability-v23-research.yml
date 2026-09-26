@@ -4,7 +4,9 @@ on:
     branches: [index-alert-probability-v23]
     paths:
       - 'probability_model.py'
+      - 'probability_model_v31_runtime.py'
       - 'next_day_probability.py'
+      - 'next_day_probability_v31.py'
       - 'test_probability.py'
       - 'probability_research_v23.py'
       - 'probability_research_v23b.py'
@@ -31,15 +33,13 @@ jobs:
       - name: Production-model real-data smoke
         run: |
           python - <<'PY' | tee probability-v31-smoke.txt
-          import json
-          import next_day_probability as api
-          from probability_model import MODEL_VERSION
+          import json, time
+          import next_day_probability_v31 as api
+          from probability_model_v31_runtime import MODEL_VERSION
           out={}
           for symbol in ('SPY','QQQ','SCHD'):
-              rows,_=api.fetch_history(symbol)
-              from probability_model import estimate_prices
-              r=estimate_prices([p for _,p in rows],dates=[d for d,_ in rows])
-              out[symbol]={k:r.get(k) for k in ('probability','base_rate','backtest_brier','baseline_brier','backtest_skill','validation_choice','current_strategy','validation_count','nonzero_signal_days')}
+              r=api.estimate(symbol,time.time())
+              out[symbol]={k:r.get(k) for k in ('probability','base_rate','backtest_brier','baseline_brier','backtest_skill','validation_choice','current_strategy','validation_count','nonzero_signal_days','as_of','target_date')}
           print(MODEL_VERSION)
           print(json.dumps(out,ensure_ascii=False))
           PY
