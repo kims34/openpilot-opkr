@@ -1,0 +1,41 @@
+name: IndexAlert v4.0 production smoke
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'firsthour_nowcast_v40.py'
+      - 'probability_v40_firsthour.py'
+      - 'production_v23.py'
+      - '.github/workflows/index-alert-v40-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify production endpoint and pre-first-hour gate
+        run: |
+          python - <<'PY'
+          import json, time, urllib.request
+          base = 'https://indexalert-runtime-production.up.railway.app'
+          with urllib.request.urlopen(base + '/health', timeout=30) as r:
+              assert r.status == 200
+          with urllib.request.urlopen(base + '/next-day-probabilities', timeout=120) as r:
+              assert r.status == 200
+              payload = json.load(r)
+          assert payload.get('first_hour_model_version') == '4.0-first-hour', payload.keys()
+          now = time.time()
+          for index_id in ('sp500','ndx','djdiv'):
+              item = payload['items'][index_id]
+              first = item.get('first_hour') or {}
+              assert first.get('model_version') == '4.0-first-hour', (index_id, first)
+              target_open = int(item.get('target_open') or 0)
+              available_from = int(first.get('available_from') or 0)
+              assert available_from == target_open + 65*60, (index_id, target_open, available_from)
+              if now < available_from:
+                  assert first.get('available') is False, (index_id, first)
+              print(index_id, first.get('available'), first.get('status'), item.get('target_date'))
+          print('v4.0 production smoke passed')
+          PY
