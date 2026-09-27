@@ -16,6 +16,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.lifecycleScope
@@ -282,8 +286,16 @@ fun IndexCard(s: IndexSnapshot) {
                 Text("데이터 확인 실패: ${s.error}")
             } else {
                 Spacer(Modifier.height(8.dp))
-                val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signed(s.dayChange)} (${signedPct(s.dayChangePercent)})" else ""
-                Text("현재값  ${fmt(s.current)}$change", style = MaterialTheme.typography.titleMedium)
+                val currentLine = buildAnnotatedString {
+                    append("현재값  ${fmt(s.current)}")
+                    if (s.dayChange != null && s.dayChangePercent != null) {
+                        append("  ")
+                        withStyle(SpanStyle(color = changeColor(s.dayChange))) {
+                            append("${signed(s.dayChange)} (${signedPct(s.dayChangePercent)})")
+                        }
+                    }
+                }
+                Text(currentLine, style = MaterialTheme.typography.titleMedium)
                 val age = s.athDays?.let { if (it == 0) " · 오늘 최고가" else " · 최고가 후 ${it}일" } ?: ""
                 val date = s.athDate?.let { " ($it)" } ?: ""
                 Text("ATH      ${fmt(s.ath)}$age$date")
@@ -303,7 +315,13 @@ fun LaggardCard(item: LaggardItem) {
     Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(Modifier.padding(12.dp)) {
             Text("${item.rank}. ${item.symbol} · ${item.name}", style = MaterialTheme.typography.titleMedium)
-            Text("현재 ${fmt(item.current)}  ${signed(item.dayChange)} (${signedPct(item.dayChangePercent)})")
+            val currentLine = buildAnnotatedString {
+                append("현재 ${fmt(item.current)}  ")
+                withStyle(SpanStyle(color = changeColor(item.dayChange))) {
+                    append("${signed(item.dayChange)} (${signedPct(item.dayChangePercent)})")
+                }
+            }
+            Text(currentLine)
             val age = if (item.athDays == 0) "오늘 최고가" else "최고가 후 ${item.athDays}일"
             Text("ATH ${fmt(item.ath)} · $age · ATH 대비 ${String.format(Locale.US, "%.2f%%", item.drawdown)}")
             val memberships = buildList {
@@ -319,6 +337,11 @@ fun LaggardCard(item: LaggardItem) {
 private fun fmt(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
 private fun signed(v: Double): String = String.format(Locale.US, "%+,.2f", v)
 private fun signedPct(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
+private fun changeColor(v: Double): Color = when {
+    v > 0.0 -> Color(0xFFD32F2F)
+    v < 0.0 -> Color(0xFF1976D2)
+    else -> Color.Unspecified
+}
 
 data class ChartData(val current: Double, val previousClose: Double, val marketState: String, val high: Double, val highTs: Long)
 data class AthData(val value: Double, val timestamp: Long)
