@@ -1,10 +1,9 @@
 """Production live wrapper for the validated v3.12 09:05 ET overlay.
 
-Important: v3.12 was researched and validated against the frozen v3.2
-next-session baseline.  This wrapper therefore recomputes that exact v3.2
-baseline before applying the futures/risk adjustment, even when the outer API
-also exposes a later guarded calibration model.  This preserves research/live
-parity and prevents the baseline definition from drifting after validation.
+v3.12 is researched against the frozen v3.2 fixed/base rise rate.  This wrapper
+recomputes that exact base before applying the futures/risk adjustment, even
+when the outer API also exposes a later guarded calibration model.  That keeps
+research/live parity and prevents the reference probability from drifting.
 """
 from __future__ import annotations
 
@@ -17,13 +16,13 @@ import probability_model_v31_runtime as v32
 import preopen_futures_v312 as core
 
 MODEL_VERSION = "3.12-preopen-futures"
-BASELINE_MODEL_VERSION = "3.2-live-guardrails"
+BASELINE_MODEL_VERSION = "3.2-live-guardrails:fixed-base-rate"
 CONFIGS = core.CONFIGS
 VALIDATION = core.VALIDATION
 
 
 def _display_baseline(item: dict):
-    for key in ("previous_model_probability", "probability"):
+    for key in ("base_rate", "previous_model_base_rate", "previous_model_probability", "probability"):
         value = item.get(key)
         try:
             value = float(value)
@@ -58,7 +57,7 @@ def _fit_from_rows(symbol: str, rows, meta: dict, hourly, daily):
         dates=dates,
         target_date=meta["target_date"],
     )
-    baseline_probability = float(baseline["probability"])
+    baseline_probability = float(baseline["base_rate"])
     result = core._fit_live(
         symbol,
         baseline_probability,
