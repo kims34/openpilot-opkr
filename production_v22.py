@@ -1,7 +1,7 @@
 """IndexAlert runtime: safe daily baseline + validated pre/open timing overlays."""
 import next_day_probability_v33 as next_day_probability
 import open_nowcast_v39
-import preopen_futures_v312
+import preopen_futures_v312_live as preopen_futures_v312
 import production_v20
 
 app = production_v20.app
