@@ -129,26 +129,49 @@ def _schd_from_generic_table(url: str, label: str):
     r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
     print(label, r.status_code, len(r.text), flush=True)
     r.raise_for_status()
-    out = _symbols_from_html_table(r.text, ("symbol", "ticker"))
-    if len(out) >= 80:
-        return out
+    # Only accept a semantic holdings table. A previous loose whole-page text
+    # parser accidentally treated navigation/menu tickers as SCHD holdings.
+    return _symbols_from_html_table(r.text, ("symbol", "ticker"))
 
-    # Some full-list pages render simple text rows rather than semantic tables.
-    text = BeautifulSoup(r.text, "html.parser").get_text("\n", strip=True)
-    candidates = set()
-    for line in text.splitlines():
-        token = _clean(line.split()[0]) if line.split() else ""
-        token = token.replace(":PR", "")
-        if _valid_equity_symbol(token):
-            candidates.add(token)
-    # Restrict the loose text fallback to plausible portfolio sizes.
-    if 80 <= len(candidates) <= 180:
-        return candidates
-    return out
+
+def _embedded_symbol_sets(html: str):
+    patterns = (
+        r'"ticker"\s*:\s*"([A-Z][A-Z0-9.\-]{0,7})"',
+        r'"symbol"\s*:\s*"([A-Z][A-Z0-9.\-]{0,7})"',
+        r'\\"ticker\\"\s*:\s*\\"([A-Z][A-Z0-9.\-]{0,7})\\"',
+        r'\\"symbol\\"\s*:\s*\\"([A-Z][A-Z0-9.\-]{0,7})\\"',
+        r'&quot;ticker&quot;\s*:\s*&quot;([A-Z][A-Z0-9.\-]{0,7})&quot;',
+        r'&quot;symbol&quot;\s*:\s*&quot;([A-Z][A-Z0-9.\-]{0,7})&quot;',
+    )
+    sets = []
+    for pattern in patterns:
+        out = {_clean(x) for x in re.findall(pattern, html)}
+        out = {x for x in out if _valid_equity_symbol(x) and x != "SCHD"}
+        if out:
+            sets.append(out)
+    return sets
 
 
 def _schd_from_stockmarketwatch():
-    return _schd_from_generic_table("https://stockmarketwatch.com/etf/schd/holdings", "schd stockmarketwatch source")
+    url = "https://stockmarketwatch.com/etf/schd/holdings"
+    r = requests.get(url, headers=BROWSER_HEADERS, timeout=30)
+    print("schd stockmarketwatch source", r.status_code, len(r.text), flush=True)
+    r.raise_for_status()
+
+    table = _symbols_from_html_table(r.text, ("ticker", "symbol"))
+    if 80 <= len(table) <= 110:
+        print("schd stockmarketwatch semantic table", len(table), flush=True)
+        return table
+
+    candidates = [s for s in _embedded_symbol_sets(r.text) if 80 <= len(s) <= 110]
+    if candidates:
+        # Current SCHD normally has about 100 equity constituents. Choose the
+        # embedded set nearest that expected size rather than merging unrelated
+        # JSON objects from the page.
+        chosen = min(candidates, key=lambda s: abs(len(s) - 100))
+        print("schd stockmarketwatch embedded", [len(x) for x in candidates], "chosen", len(chosen), flush=True)
+        return chosen
+    return set()
 
 
 def _schd_from_marketxls():
@@ -174,11 +197,11 @@ def robust_schd_symbols():
             print("schd parsed", loader.__name__, len(out), flush=True)
             if len(out) > len(best):
                 best = out
-            if len(out) >= 80:
+            if 80 <= len(out) <= 110:
                 return out
         except Exception as exc:
             print("schd source failed", loader.__name__, type(exc).__name__, flush=True)
-    return best if len(best) >= 80 else set()
+    return best if 80 <= len(best) <= 110 else set()
 
 
 if laggards is not None:
