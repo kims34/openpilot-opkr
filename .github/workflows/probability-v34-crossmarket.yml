@@ -1,0 +1,26 @@
+name: Probability v3.4 cross-market research
+on:
+  push:
+    branches: [index-alert-probability-v34-research]
+    paths:
+      - 'probability_research_v34e.py'
+      - '.github/workflows/probability-v34-crossmarket.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Run cross-market challenger audit
+        run: python probability_research_v34e.py | tee probability-v34e-result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probability-v34e-result
+          path: probability-v34e-result.json
