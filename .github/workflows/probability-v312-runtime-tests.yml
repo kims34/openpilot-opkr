@@ -80,13 +80,13 @@ jobs:
               got=float(runtime['probability'])
               if abs(got-expected)>1e-8:
                   raise RuntimeError(f'{symbol} parity mismatch expected={expected} got={got}')
-              if abs(float(runtime['baseline_probability'])-float(base_result['probability']))>1e-10:
-                  raise RuntimeError(f'{symbol} v3.2 baseline mismatch')
+              if abs(float(runtime['baseline_probability'])-float(base_result['base_rate']))>1e-10:
+                  raise RuntimeError(f'{symbol} fixed-base mismatch')
               print('V312_RUNTIME_PARITY',symbol,target,expected,got)
 
           # Availability gate must not fetch/compute before 09:05 ET.
           item={'as_of':'2026-09-25','target_date':'2026-09-28','probability':55.0,
-                'previous_model_probability':54.8}
+                'base_rate':54.8}
           before=datetime(2026,9,28,9,4,tzinfo=NY).timestamp()
           gated=live.estimate('SPY',item,before)
           assert gated['available'] is False and '09:05' in gated['status']
