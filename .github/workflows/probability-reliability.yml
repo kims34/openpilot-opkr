@@ -1,0 +1,36 @@
+name: Probability prospective reliability
+on:
+  push:
+    branches: [index-alert-probability-reliability]
+    paths:
+      - 'probability_prospective_guardrail.py'
+      - 'next_day_probability_v33.py'
+      - 'probability_milestone.py'
+      - 'Dockerfile'
+      - 'test_probability_prospective_guardrail.py'
+      - 'test_probability.py'
+      - 'test_probability_v33.py'
+      - 'test_probability_shadow.py'
+      - 'test_probability_milestone.py'
+      - '.github/workflows/probability-reliability.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Run probability regression tests
+        run: |
+          python -m unittest -v \
+            test_probability_prospective_guardrail.py \
+            test_probability.py \
+            test_probability_v33.py \
+            test_probability_shadow.py \
+            test_probability_milestone.py
