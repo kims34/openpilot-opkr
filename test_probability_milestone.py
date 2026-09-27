@@ -7,7 +7,7 @@ from unittest.mock import patch
 import probability_milestone as milestone
 from probability_shadow import SHADOW_MODELS
 
-MODEL = "3.1-causal-adaptive-close"
+MODEL = "3.3-calibration-gated"
 SYMBOLS = ("SPY", "QQQ", "SCHD")
 
 
@@ -77,12 +77,20 @@ class ProbabilityMilestoneTest(unittest.TestCase):
         report = milestone.build_comparison(self.path, MODEL)
         self.assertTrue(report["ready"])
         self.assertEqual(report["min_count"], 60)
+        self.assertEqual(report["model_version"], MODEL)
         self.assertEqual(report["best_candidate"], "shadow-fixed75-v1")
         self.assertEqual(report["verdict"], "shadow_improved")
         best = report["models"]["shadow-fixed75-v1"]
         self.assertEqual(best["improved_symbols"], 3)
         self.assertAlmostEqual(best["base_brier"], 0.16, places=10)
         self.assertAlmostEqual(best["shadow_brier"], 0.09, places=10)
+
+    def test_notification_text_uses_deployed_model_version(self):
+        self.seed(60)
+        report = milestone.build_comparison(self.path, MODEL)
+        _, body = milestone._notification_text(report)
+        self.assertIn(MODEL, body)
+        self.assertNotIn("3.1 Brier", body)
 
     def test_push_is_sent_once_per_registered_device(self):
         self.seed(60)
@@ -106,7 +114,9 @@ class ProbabilityMilestoneTest(unittest.TestCase):
         self.assertEqual(args[0], token)
         self.assertEqual(args[1], 2)
         self.assertIn("60회", args[2])
+        self.assertIn(MODEL, args[3])
         self.assertEqual(args[4]["event_type"], "probability_milestone")
+        self.assertEqual(args[4]["model_version"], MODEL)
 
 
 if __name__ == "__main__":
