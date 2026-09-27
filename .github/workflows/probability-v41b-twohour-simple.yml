@@ -1,0 +1,32 @@
+name: Probability v4.1b two-hour simple research
+on:
+  push:
+    branches: [ index-alert-v41-research ]
+    paths:
+      - 'probability_v41b_twohour_simple.py'
+      - '.github/workflows/probability-v41b-twohour-simple.yml'
+      - 'probability_v41_twohour_research.py'
+      - 'probability_v40_firsthour.py'
+      - 'probability_v39_open_nowcast.py'
+      - 'next_day_probability.py'
+  workflow_dispatch:
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: index-alert-v41-research
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install research dependencies
+        run: pip install numpy requests pandas
+      - name: Run v4.1b research
+        run: python probability_v41b_twohour_simple.py | tee v41b-result.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probability-v41b-twohour-result
+          path: v41b-result.txt
