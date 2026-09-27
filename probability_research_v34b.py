@@ -61,7 +61,7 @@ def build_states(rows,ohlc,vix):
 def candidate(base,y,state,valid,blend):
     n=len(base); q=np.full(n,np.nan)
     for t in range(300,n):
-        if not valid[t] or not np.isfinite(base[t]): continue
+        if not bool(valid[t]) or not np.isfinite(base[t]): continue
         m=np.zeros(n-1,dtype=bool); upto=min(t,n-1)
         m[:upto]=valid[1:upto+1] & (state[1:upto+1]==state[t])
         cond=core._weighted_rate(y,t,core.BASE_HALF_LIFE,m)
@@ -73,16 +73,17 @@ def overlay(vprob,q,y,pos):
     out=[]; used=[]
     for i,t in enumerate(pos):
         use=False; idx=np.arange(max(0,i-WINDOW),i)
-        idx=idx[np.isfinite(q[np.array([pos[j] for j in idx],int)])]
+        idx=idx[np.isfinite(q[np.array([pos[int(j)] for j in idx],int)])]
         if len(idx)>=2*MIN_HALF:
             mid=len(idx)//2; gains=[]
             for h in (idx[:mid],idx[mid:]):
-                ts=np.array([pos[j] for j in h],int); b=vprob[h]; c=q[ts]
+                h=np.asarray(h,dtype=int); ts=np.array([pos[int(j)] for j in h],int); b=vprob[h]; c=q[ts]
                 gains.append(float(np.mean((b-y[ts])**2-(c-y[ts])**2)))
-            rr=idx[-RECENT_GATE:]; ts=np.array([pos[j] for j in rr],int)
+            rr=np.asarray(idx[-RECENT_GATE:],dtype=int); ts=np.array([pos[int(j)] for j in rr],int)
             rg=float(np.mean((vprob[rr]-y[ts])**2-(q[ts]-y[ts])**2)) if len(rr)>=60 else -1
-            use=min(gains)>0 and rg>0
-        out.append(float(q[t]) if use and np.isfinite(q[t]) else float(vprob[i])); used.append(use and np.isfinite(q[t]))
+            use=bool(min(gains)>0 and rg>0)
+        active=bool(use and np.isfinite(q[t]))
+        out.append(float(q[t]) if active else float(vprob[i])); used.append(active)
     return np.array(out),used
 
 
@@ -102,10 +103,10 @@ def main():
         bl=parts(vp,yy); tests=[]
         for name in states:
             for blend in BLENDS:
-                q=candidate(base,core_y,states[name],valid[name],blend); served,used=overlay(vp,q,core_y,pos); lp=parts(served,yy); gain={k:bl[k]-lp[k] for k in bl}
-                passed=all(gain[k]>0 for k in ("full","first","second","recent252"))
-                tests.append({"signal":name,"blend":blend,"passed":passed,"used_days":sum(used),"gain":gain,"current_candidate":None if not np.isfinite(q[-1]) else float(q[-1])*100})
+                q=candidate(base,core_y,states[name],valid[name],blend); served,used=overlay(vp,q,core_y,pos); lp=parts(served,yy); gain={k:float(bl[k]-lp[k]) for k in bl}
+                passed=bool(all(gain[k]>0 for k in ("full","first","second","recent252")))
+                tests.append({"signal":str(name),"blend":float(blend),"passed":passed,"used_days":int(sum(bool(x) for x in used)),"gain":gain,"current_candidate":None if not np.isfinite(q[-1]) else float(q[-1])*100})
         tests.sort(key=lambda x:x["gain"]["full"],reverse=True)
-        result[sym]={"as_of":meta["as_of"],"target_date":meta["target_date"],"v33_probability":old["probability"],"passes":[x for x in tests if x["passed"]],"best":tests[:10]}
+        result[str(sym)]={"as_of":str(meta["as_of"]),"target_date":str(meta["target_date"]),"v33_probability":float(old["probability"]),"passes":[x for x in tests if x["passed"]],"best":tests[:10]}
     print(json.dumps(result,ensure_ascii=False,indent=2))
 if __name__=="__main__": main()
