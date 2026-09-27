@@ -185,4 +185,6 @@ fun AfterOpenProbabilitySection(indexId: String, refreshKey: String = "") {
             }
         }
     }
+
+    FirstHourProbabilitySection(indexId, refreshKey)
 }
