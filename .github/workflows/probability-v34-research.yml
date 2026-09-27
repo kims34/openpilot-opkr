@@ -4,6 +4,7 @@ on:
     branches: [index-alert-probability-v34-research]
     paths:
       - 'probability_research_v34.py'
+      - 'probability_research_v34b.py'
       - 'probability_model.py'
       - 'probability_model_v33_runtime.py'
       - 'next_day_probability.py'
@@ -25,9 +26,13 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - name: Run causal regime overlay research
+      - name: Run causal price-regime overlay research
         run: python probability_research_v34.py | tee probability-v34-result.json
+      - name: Run OHLC and VIX overlay research
+        run: python probability_research_v34b.py | tee probability-v34b-result.json
       - uses: actions/upload-artifact@v4
         with:
           name: probability-v34-results
-          path: probability-v34-result.json
+          path: |
+            probability-v34-result.json
+            probability-v34b-result.json
