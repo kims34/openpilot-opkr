@@ -4,6 +4,7 @@ on:
     branches: [index-alert-server]
     paths:
       - 'preopen_futures_v312.py'
+      - 'preopen_futures_v312_live.py'
       - 'probability_v312_futures_preopen.py'
       - 'production_v22.py'
       - 'Dockerfile'
@@ -30,9 +31,9 @@ jobs:
           import numpy as np
           import requests
           import next_day_probability as base
-          import probability_model_v33_runtime as v33
+          import probability_model_v31_runtime as v32
           import probability_v312_futures_preopen as research
-          import preopen_futures_v312 as live
+          import preopen_futures_v312_live as live
 
           NY=ZoneInfo('America/New_York')
           UA={'User-Agent':'Mozilla/5.0 IndexAlert/3.12-runtime-test'}
@@ -60,7 +61,6 @@ jobs:
           for symbol in ('SPY','QQQ'):
               rows,meta=base.fetch_history(symbol,time.time())
               dates=[d for d,_ in rows]; prices=[p for _,p in rows]
-              # Full-history research prediction for the last scored target.
               trace=research._served_trace(prices,dates,meta['target_date'])
               prev=np.asarray([float(z['probability']) for z in trace])
               out=np.asarray([float(z['outcome']) for z in trace])
@@ -74,19 +74,23 @@ jobs:
               cut=rows[:-1]
               cut_dates=[d for d,_ in cut]; cut_prices=[p for _,p in cut]
               target=dates[-1]
-              base_result=v33.estimate_prices(cut_prices,dates=cut_dates,target_date=target)
+              base_result=v32.estimate_prices(cut_prices,dates=cut_dates,target_date=target)
               cut_meta={'as_of':cut_dates[-1],'target_date':target}
-              runtime=live._fit_live(symbol,float(base_result['probability']),cut,cut_meta,hourly,daily)
+              runtime=live._fit_from_rows(symbol,cut,cut_meta,hourly,daily)
               got=float(runtime['probability'])
               if abs(got-expected)>1e-8:
                   raise RuntimeError(f'{symbol} parity mismatch expected={expected} got={got}')
+              if abs(float(runtime['baseline_probability'])-float(base_result['probability']))>1e-10:
+                  raise RuntimeError(f'{symbol} v3.2 baseline mismatch')
               print('V312_RUNTIME_PARITY',symbol,target,expected,got)
 
           # Availability gate must not fetch/compute before 09:05 ET.
-          item={'as_of':'2026-09-25','target_date':'2026-09-28','probability':55.0}
+          item={'as_of':'2026-09-25','target_date':'2026-09-28','probability':55.0,
+                'previous_model_probability':54.8}
           before=datetime(2026,9,28,9,4,tzinfo=NY).timestamp()
           gated=live.estimate('SPY',item,before)
           assert gated['available'] is False and '09:05' in gated['status']
+          assert abs(gated['baseline_probability']-54.8)<1e-10
           rejected=live.estimate('SCHD',item,before)
           assert rejected['available'] is False and '검증 통과 종목 아님' in rejected['status']
           print('V312_RUNTIME_GATES passed')
