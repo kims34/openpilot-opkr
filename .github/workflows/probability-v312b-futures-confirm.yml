@@ -1,0 +1,113 @@
+name: Probability v3.12b futures robustness confirmation
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'probability_v312_futures_preopen.py'
+      - '.github/workflows/probability-v312b-futures-confirm.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Fixed-config chronology and timing checks
+        run: |
+          python - <<'PY'
+          import copy,json,time
+          from datetime import datetime,timezone,timedelta
+          from zoneinfo import ZoneInfo
+          import numpy as np
+          import requests
+          import next_day_probability as base
+          import probability_v312_futures_preopen as r
+
+          NY=ZoneInfo('America/New_York')
+          UA={'User-Agent':'Mozilla/5.0 IndexAlert/3.12b-confirm'}
+          FIXED={
+              'SPY':(252,30.0,0.05),
+              'QQQ':(126,30.0,0.05),
+          }
+
+          def yahoo(symbol,range_,interval):
+              u=requests.utils.quote(symbol,safe='')
+              x=requests.get(
+                  f'https://query1.finance.yahoo.com/v8/finance/chart/{u}',
+                  params={'range':range_,'interval':interval,'includePrePost':'true','events':'div,splits'},
+                  headers=UA,timeout=30,
+              )
+              x.raise_for_status(); chart=x.json().get('chart',{})
+              if chart.get('error'): raise RuntimeError(f'{symbol}: {chart["error"]}')
+              result=(chart.get('result') or [None])[0]
+              if not result: raise RuntimeError(f'no data {symbol}')
+              ts=result.get('timestamp') or []
+              closes=(result.get('indicators',{}).get('quote') or [{}])[0].get('close') or []
+              return [(int(t),float(c)) for t,c in zip(ts,closes) if c is not None and float(c)>0]
+
+          daily={}
+          for s in ('^VIX','^TNX'):
+              vals={}
+              for ts,c in yahoo(s,'5y','1d'):
+                  vals[datetime.fromtimestamp(ts,timezone.utc).astimezone(NY).date().isoformat()]=c
+              daily[s]=vals
+          hourly={}
+          for s in r.FUTURES:
+              hourly[s]=[(datetime.fromtimestamp(ts,timezone.utc).astimezone(NY),c) for ts,c in yahoo(s,'2y','1h')]
+
+          def brier(p,y): return float(np.mean((np.asarray(p)-np.asarray(y))**2))
+          def gain(prev,cand,out,idx):
+              idx=np.asarray(idx,int)
+              return brier(prev[idx],out[idx])-brier(cand[idx],out[idx])
+
+          summary={}
+          for symbol,cfg in FIXED.items():
+              rows,meta=base.fetch_history(symbol,time.time())
+              dates=[d for d,_ in rows]; prices=[p for _,p in rows]
+              trace=r._served_trace(prices,dates,meta['target_date'])
+              prev=np.asarray([float(z['probability']) for z in trace])
+              out=np.asarray([float(z['outcome']) for z in trace])
+              x,m=r._feature_rows(prices,dates,trace,hourly,daily)
+              pred,adjusted=r._predict(x,out,prev,cfg)
+              complete=np.where(np.all(np.isfinite(x),axis=1)&adjusted)[0]
+              blocks=[a for a in np.array_split(complete,6) if len(a)]
+              gains=[gain(prev,pred,out,a) for a in blocks]
+              overall=gain(prev,pred,out,complete)
+              passed=(len(blocks)==6 and min(gains)>0 and overall>0)
+              summary[symbol]={
+                  'config':cfg,'eligible':int(len(complete)),'overall_gain':overall,
+                  'block_gains':gains,'positive_blocks':sum(v>0 for v in gains),
+                  'passed':passed,
+              }
+              if not passed: raise RuntimeError(f'{symbol} fixed-config robustness failed: {summary[symbol]}')
+
+          # Timing integrity: a bar after the 09:05 decision cutoff must not alter
+          # that same forecast's overnight feature. Choose the latest historical
+          # forecast with a valid feature and inject a huge 12:00 ET observation
+          # only into its target day. _overnight_return must ignore it.
+          spy_rows,spy_meta=base.fetch_history('SPY',time.time())
+          spy_dates=[d for d,_ in spy_rows]; spy_prices=[p for _,p in spy_rows]
+          spy_trace=r._served_trace(spy_prices,spy_dates,spy_meta['target_date'])
+          x0,m0=r._feature_rows(spy_prices,spy_dates,spy_trace,hourly,daily)
+          valid=np.where(np.all(np.isfinite(x0),axis=1))[0]
+          j=int(valid[-1]); target=m0[j]['target']; asof=m0[j]['as_of']
+          for s in r.FUTURES:
+              by=r._by_day(hourly[s])
+              original=r._overnight_return(by,asof,target)
+              mutated=copy.deepcopy(by)
+              noon=datetime.fromisoformat(target).replace(tzinfo=NY,hour=12)
+              mutated.setdefault(target,[]).append((noon,999999.0))
+              mutated[target].sort(key=lambda z:z[0])
+              changed=r._overnight_return(mutated,asof,target)
+              if abs(original-changed)>1e-15:
+                  raise RuntimeError(f'post-cutoff leakage {s}: {original} {changed}')
+
+          print('V312B_CONFIRM',json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          print('V312B_TIMING_INTEGRITY','passed',asof,target)
+          PY
