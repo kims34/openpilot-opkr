@@ -1,9 +1,9 @@
 """App-native milestone notification for prospective probability validation.
 
 This module compares the deployed model with frozen shadow challengers only on
-matching, prospectively-recorded sessions.  Once every challenger has at least
+matching, prospectively-recorded sessions. Once every challenger has at least
 60 matched outcomes for SPY, QQQ and SCHD, IndexAlert sends a durable one-time
-FCM notification per registered device.  ChatGPT is not involved.
+FCM notification per registered device. ChatGPT is not involved.
 """
 import json
 import os
@@ -26,7 +26,7 @@ def _table_exists(con, name):
 
 
 def build_comparison(db_path, model_version, threshold=THRESHOLD):
-    """Return a fair matched-session comparison of v3.1 and each shadow model."""
+    """Return a fair matched-session comparison of the deployed and shadow models."""
     with sqlite3.connect(db_path, timeout=10) as con:
         if not _table_exists(con, "probability_forecasts") or not _table_exists(
             con, "probability_shadow_forecasts"
@@ -108,6 +108,7 @@ def build_comparison(db_path, model_version, threshold=THRESHOLD):
         and best["shadow_brier"] < best["base_brier"]
         and best["improved_symbols"] >= 2
     )
+    # Keep this legacy machine-readable value stable for already-installed apps.
     verdict = "shadow_improved" if eligible else "keep_3_1"
     return {
         "ready": ready,
@@ -138,19 +139,20 @@ def _init_firebase():
 def _notification_text(report):
     best_name = report.get("best_candidate")
     best = (report.get("models") or {}).get(best_name) or {}
+    model_version = str(report.get("model_version") or "현재 모델")
     if report.get("verdict") == "shadow_improved":
         body = (
-            f"3.1 Brier {best['base_brier']:.4f} → {best_name} {best['shadow_brier']:.4f} · "
+            f"{model_version} Brier {best['base_brier']:.4f} → {best_name} {best['shadow_brier']:.4f} · "
             f"{best['improved_symbols']}/3 지수 개선. 자동 승격 없이 검증 결과만 알립니다."
         )
     else:
         if best and best.get("base_brier") is not None:
             body = (
-                f"동일 실전 구간에서 3.1 Brier {best['base_brier']:.4f}, 최저 Shadow "
-                f"{best_name} {best['shadow_brier']:.4f}. 3.1을 유지합니다."
+                f"동일 실전 구간에서 {model_version} Brier {best['base_brier']:.4f}, 최저 Shadow "
+                f"{best_name} {best['shadow_brier']:.4f}. {model_version}을 유지합니다."
             )
         else:
-            body = "실전 예측 60회 비교가 완료됐습니다. 현재 3.1을 유지합니다."
+            body = f"실전 예측 60회 비교가 완료됐습니다. 현재 {model_version}을 유지합니다."
     return "IndexAlert 실전 예측 60회 검증 완료", body
 
 
