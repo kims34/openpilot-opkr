@@ -7,6 +7,7 @@ import next_day_probability as base
 import one_month_calibrated
 import one_month_probability
 import probability_milestone
+import probability_prospective_guardrail
 import probability_shadow
 from probability_model_v33_runtime import MODEL_VERSION, estimate_prices
 
@@ -56,6 +57,17 @@ def estimate(symbol, now=None):
     except Exception as exc:
         result.update(prospective_count=0, prospective_error="실시간 검증 기록 일시 중단")
         print("probability ledger unavailable", type(exc).__name__, flush=True)
+
+    try:
+        result["prospective_guardrail"] = probability_prospective_guardrail.summarize(
+            base.DB_PATH, MODEL_VERSION, symbol
+        )
+    except Exception as exc:
+        result["prospective_guardrail"] = {
+            "state": "unavailable",
+            "served_probability_unchanged": True,
+        }
+        print("probability prospective guardrail unavailable", type(exc).__name__, flush=True)
 
     try:
         result["shadow_validation"] = probability_shadow.record_shadow_forecasts(
