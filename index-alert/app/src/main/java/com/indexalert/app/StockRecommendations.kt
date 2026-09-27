@@ -38,7 +38,9 @@ private data class StockPick(
     val schd: Boolean,
     val reliability: String,
     val strategy: String,
-    val sixBins: List<StockSixBin>
+    val sixBins: List<StockSixBin>,
+    val sixBinSelection: String,
+    val analogSampleSize: Int
 )
 
 private data class StockPickFeed(
@@ -76,8 +78,10 @@ private object StockRecommendationRepository {
                 val probability = o.optDouble("probability", Double.NaN)
                 val baseRate = o.optDouble("base_rate", Double.NaN)
                 if (!probability.isFinite() || probability !in 0.0..100.0 || !baseRate.isFinite()) continue
-                val month = o.optJSONObject("one_month")
-                val binsArray = month?.optJSONArray("terminal_return_six_bins")
+
+                val nextDay = o.optJSONObject("next_day_distribution") ?: continue
+                if (nextDay.optInt("horizon_sessions", 0) != 1) continue
+                val binsArray = nextDay.optJSONArray("six_bins")
                 val bins = mutableListOf<StockSixBin>()
                 if (binsArray != null) {
                     for (j in 0 until binsArray.length()) {
@@ -88,8 +92,12 @@ private object StockRecommendationRepository {
                         }
                     }
                 }
-                val expected = listOf("up10_plus", "up5_10", "up0_5", "down0_5", "down5_10", "down10_minus")
-                if (bins.size != 6 || bins.map { it.key } != expected || kotlin.math.abs(bins.sumOf { it.probability } - 100.0) > 0.2) continue
+                val expected = listOf("up2_plus", "up1_2", "up0_1", "down0_1", "down1_2", "down2_minus")
+                val total = bins.sumOf { it.probability }
+                val upTotal = bins.take(3).sumOf { it.probability }
+                if (bins.size != 6 || bins.map { it.key } != expected || kotlin.math.abs(total - 100.0) > 0.2) continue
+                if (kotlin.math.abs(upTotal - probability) > 0.2) continue
+
                 out.add(
                     StockPick(
                         rank = o.optInt("rank", i + 1),
@@ -107,7 +115,9 @@ private object StockRecommendationRepository {
                         schd = o.optBoolean("schd", false),
                         reliability = o.optString("reliability"),
                         strategy = o.optString("current_strategy"),
-                        sixBins = bins
+                        sixBins = bins,
+                        sixBinSelection = nextDay.optString("selection", "long_run"),
+                        analogSampleSize = nextDay.optInt("analog_sample_size", 0)
                     )
                 )
             }
@@ -204,14 +214,20 @@ private fun StockRecommendationCard(item: StockPick) {
             )
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            Text("향후 1개월(21거래일) 6구간", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("다음 거래일 수익률 6구간 확률", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             item.sixBins.forEach { bin ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(bin.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text(stockPct1(bin.probability), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
             }
-            Text("서로 겹치지 않는 6구간 · 합계 ${stockPct1(item.sixBins.sumOf { it.probability })}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 3.dp))
+            val upTotal = item.sixBins.take(3).sumOf { it.probability }
+            Text("상승 3구간 합계 ${stockPct1(upTotal)} · 전체 6구간 합계 ${stockPct1(item.sixBins.sumOf { it.probability })}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 3.dp))
+            Text(
+                if (item.sixBinSelection == "similar_market") "유사 장세 표본 ${item.analogSampleSize}개로 변동폭 분포 계산"
+                else "유사 표본 부족 · 장기 변동폭 분포 사용",
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 }
