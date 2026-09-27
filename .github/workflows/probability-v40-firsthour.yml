@@ -4,6 +4,7 @@ on:
     branches: [index-alert-probability-v34-research]
     paths:
       - 'probability_v40_firsthour_research.py'
+      - 'probability_v40_firsthour_robustness.py'
       - 'probability_v39_open_nowcast.py'
       - 'probability_model_v31_runtime.py'
       - 'probability_model_v33_runtime.py'
@@ -31,7 +32,14 @@ jobs:
         run: |
           set -o pipefail
           python probability_v40_firsthour_research.py | tee probability-v40-firsthour-result.json
+      - name: Run frozen first-hour robustness audit
+        shell: bash
+        run: |
+          set -o pipefail
+          python probability_v40_firsthour_robustness.py | tee probability-v40-firsthour-robustness.json
       - uses: actions/upload-artifact@v4
         with:
-          name: probability-v40-firsthour-result
-          path: probability-v40-firsthour-result.json
+          name: probability-v40-firsthour-results
+          path: |
+            probability-v40-firsthour-result.json
+            probability-v40-firsthour-robustness.json
