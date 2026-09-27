@@ -11,15 +11,17 @@ The target remains:
 
 Reference model
 ---------------
-v3.12 is deliberately calibrated against the frozen, validated v3.2 safety
-model rather than whichever later calibration gate happens to be active at the
-end of a backtest. This keeps every historical reference forecast causal and
-reproducible, and it matches the 55%-style validated baseline shown by the app.
+v3.12 is calibrated against the frozen causal *fixed/base rise rate* from the
+validated v3.2 safety model. This is the same 55%-style baseline the app shows
+when extra conditions have not demonstrated a robust advantage. Using the
+fixed/base trace makes every historical reference forecast causal,
+reproducible, and exactly reproducible in live runtime without a hindsight
+selection gate.
 
-The production next-session probability is NOT changed by this module. A
-configuration is eligible for promotion only if it beats v3.2 on development
-chronology blocks and on an untouched final 126-session holdout overall and in
-both halves.
+The daily baseline itself is never overwritten by this research module. A
+configuration is eligible for promotion only if it beats that frozen base on
+development chronology blocks and on an untouched final 126-session holdout
+overall and in both halves.
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ import numpy as np
 import probability_model_v31_runtime as v32
 
 MODEL_VERSION = "3.12-futures-preopen-research"
+REFERENCE_MODEL = "3.2-live-guardrails:fixed-base-rate"
 HOLDOUT = 126
 MIN_TRAIN = 126
 CONFIGS = [
@@ -43,10 +46,27 @@ FUTURES = ("ES=F", "NQ=F", "CL=F", "DX-Y.NYB")
 
 
 def _served_trace(prices, dates, target_date):
-    """Frozen v3.2 causal reference trace used by research and live fitting."""
-    return v32.estimate_prices(
+    """Return the frozen v3.2 fixed/base-rate trace.
+
+    v3.2's historical audit contains both the selected historical challenger
+    probability and its causal fixed base. v3.12 intentionally learns residuals
+    from the base column so research and live runtime use the exact same
+    reference definition.
+    """
+    raw = v32.estimate_prices(
         prices, include_trace=True, dates=dates, target_date=target_date
     )["audit_trace"]
+    return [
+        dict(
+            t=int(row["t"]),
+            probability=float(row["base"]),
+            base=float(row["base"]),
+            outcome=float(row["outcome"]),
+            alpha=0.0,
+            strategy="fixed",
+        )
+        for row in raw
+    ]
 
 
 def _by_day(hourly_rows):
@@ -95,7 +115,9 @@ def _feature_rows(prices, dates, trace, hourly, daily):
     for item in trace:
         t = int(item["t"])
         if t < 5 or t + 1 >= len(dates):
-            rows.append([np.nan] * 10); meta.append(None); continue
+            rows.append([np.nan] * 10)
+            meta.append(None)
+            continue
         as_of, target = dates[t], dates[t + 1]
         futures = []
         for symbol in FUTURES:
@@ -105,24 +127,36 @@ def _feature_rows(prices, dates, trace, hourly, daily):
                 break
             futures.append(value)
         if not futures:
-            rows.append([np.nan] * 10); meta.append(None); continue
+            rows.append([np.nan] * 10)
+            meta.append(None)
+            continue
         previous_day = dates[t - 1]
         v0, v1 = _daily_value(vix, as_of), _daily_value(vix, previous_day)
         y0, y1 = _daily_value(tnx, as_of), _daily_value(tnx, previous_day)
         if None in (v0, v1, y0, y1):
-            rows.append([np.nan] * 10); meta.append(None); continue
-        rows.append(futures + [
-            math.log(v0), v0 / v1 - 1.0, y0, y0 - y1,
-            prices[t] / prices[t - 1] - 1.0,
-            prices[t] / prices[t - 5] - 1.0,
-        ])
+            rows.append([np.nan] * 10)
+            meta.append(None)
+            continue
+        rows.append(
+            futures
+            + [
+                math.log(v0),
+                v0 / v1 - 1.0,
+                y0,
+                y0 - y1,
+                prices[t] / prices[t - 1] - 1.0,
+                prices[t] / prices[t - 5] - 1.0,
+            ]
+        )
         meta.append({"as_of": as_of, "target": target})
     return np.asarray(rows, float), meta
 
 
 def _predict(x, outcomes, previous, config):
+    """Causal rolling ridge residual forecast on feature-complete rows."""
     window, ridge, cap = config
-    outcomes, previous = np.asarray(outcomes, float), np.asarray(previous, float)
+    outcomes = np.asarray(outcomes, float)
+    previous = np.asarray(previous, float)
     pred = previous.copy()
     adjusted = np.zeros(len(outcomes), dtype=bool)
     for j in range(len(outcomes)):
@@ -148,7 +182,8 @@ def _predict(x, outcomes, previous, config):
 
 
 def _brier(probabilities, outcomes):
-    probabilities, outcomes = np.asarray(probabilities, float), np.asarray(outcomes, float)
+    probabilities = np.asarray(probabilities, float)
+    outcomes = np.asarray(outcomes, float)
     return float(np.mean((probabilities - outcomes) ** 2))
 
 
@@ -168,12 +203,20 @@ def evaluate(prices, dates, target_date, hourly, daily):
     x, meta = _feature_rows(prices, dates, trace, hourly, daily)
     complete = np.where(np.all(np.isfinite(x), axis=1))[0]
     if len(complete) < HOLDOUT + MIN_TRAIN + 60:
-        return {"selected": None, "reason": "aligned pre-open history too short", "complete_rows": int(len(complete))}
+        return {
+            "selected": None,
+            "reason": "aligned pre-open history too short",
+            "complete_rows": int(len(complete)),
+        }
     test_idx = complete[-HOLDOUT:]
     split_position = int(test_idx[0])
     dev_idx = complete[complete < split_position]
     if len(dev_idx) < MIN_TRAIN + 60:
-        return {"selected": None, "reason": "development history too short", "complete_rows": int(len(complete))}
+        return {
+            "selected": None,
+            "reason": "development history too short",
+            "complete_rows": int(len(complete)),
+        }
     stable = []
     for config in CONFIGS:
         pred, adjusted = _predict(x, outcomes, previous, config)
@@ -181,26 +224,51 @@ def evaluate(prices, dates, target_date, hourly, daily):
         if len(usable_dev) < 90:
             continue
         gains = [_gain(previous, pred, outcomes, usable_dev)]
-        gains += [_gain(previous, pred, outcomes, block) for block in _three_blocks(usable_dev)]
+        gains += [
+            _gain(previous, pred, outcomes, block)
+            for block in _three_blocks(usable_dev)
+        ]
         if min(gains) > 0.00025:
-            stable.append((_brier(pred[usable_dev], outcomes[usable_dev]), config, pred, adjusted, gains))
+            stable.append(
+                (_brier(pred[usable_dev], outcomes[usable_dev]), config, pred, adjusted, gains)
+            )
     if not stable:
-        return {"selected": None, "reason": "no stable development winner", "complete_rows": int(len(complete)), "development_rows": int(len(dev_idx)), "holdout_rows": int(len(test_idx))}
+        return {
+            "selected": None,
+            "reason": "no stable development winner",
+            "complete_rows": int(len(complete)),
+            "development_rows": int(len(dev_idx)),
+            "holdout_rows": int(len(test_idx)),
+        }
     _, config, pred, adjusted, dev_gains = min(stable, key=lambda row: row[0])
     usable_test = test_idx[adjusted[test_idx]]
     if len(usable_test) != len(test_idx):
-        return {"selected": {"window": config[0], "ridge": config[1], "cap": config[2]}, "reason": "selected model lacks full holdout coverage", "holdout_rows": int(len(usable_test))}
+        return {
+            "selected": {"window": config[0], "ridge": config[1], "cap": config[2]},
+            "reason": "selected model lacks full holdout coverage",
+            "holdout_rows": int(len(usable_test)),
+        }
     halves = np.array_split(usable_test, 2)
-    test_gains = [_gain(previous, pred, outcomes, usable_test)] + [_gain(previous, pred, outcomes, half) for half in halves]
+    test_gains = [_gain(previous, pred, outcomes, usable_test)] + [
+        _gain(previous, pred, outcomes, half) for half in halves
+    ]
     passed = min(test_gains) > 0.0
     latest = int(complete[-1])
     return {
         "selected": {"window": config[0], "ridge": config[1], "cap": config[2]},
-        "complete_rows": int(len(complete)), "development_rows": int(len(dev_idx)), "holdout_rows": int(len(usable_test)),
-        "development_gain_all": float(dev_gains[0]), "development_gain_block1": float(dev_gains[1]),
-        "development_gain_block2": float(dev_gains[2]), "development_gain_block3": float(dev_gains[3]),
+        "complete_rows": int(len(complete)),
+        "development_rows": int(len(dev_idx)),
+        "holdout_rows": int(len(usable_test)),
+        "development_gain_all": float(dev_gains[0]),
+        "development_gain_block1": float(dev_gains[1]),
+        "development_gain_block2": float(dev_gains[2]),
+        "development_gain_block3": float(dev_gains[3]),
         "previous_holdout_brier": _brier(previous[usable_test], outcomes[usable_test]),
         "candidate_holdout_brier": _brier(pred[usable_test], outcomes[usable_test]),
-        "holdout_gain_all": float(test_gains[0]), "holdout_gain_first": float(test_gains[1]), "holdout_gain_second": float(test_gains[2]),
-        "holdout_passed": bool(passed), "latest_feature_date": meta[latest]["target"] if meta[latest] else None,
+        "holdout_gain_all": float(test_gains[0]),
+        "holdout_gain_first": float(test_gains[1]),
+        "holdout_gain_second": float(test_gains[2]),
+        "holdout_passed": bool(passed),
+        "latest_feature_date": meta[latest]["target"] if meta[latest] else None,
+        "reference_model": REFERENCE_MODEL,
     }
