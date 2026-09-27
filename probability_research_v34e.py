@@ -12,6 +12,7 @@ import probability_research_v34c as c
 NY=ZoneInfo('America/New_York'); SYMBOLS=('SPY','QQQ','SCHD'); BLEND=.15; RIDGE=20.; TRAIN=1260; MIN_TRAIN=504
 CROSS=('^VIX','^TNX','DX-Y.NYB','HYG','TLT','SPY','QQQ')
 
+
 def close_map(symbol):
     r=requests.get(f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',params={'range':'10y','interval':'1d','includePrePost':'false','events':'div,splits'},headers={'User-Agent':'Mozilla/5.0 IndexAlert/research'},timeout=20); r.raise_for_status()
     z=(r.json().get('chart',{}).get('result') or [None])[0]
@@ -23,9 +24,12 @@ def close_map(symbol):
         if np.isfinite(x) and x>0: out[d]=x
     return out
 
+
 def build(rows,maps):
     dates=[d for d,_ in rows]; p=np.array([x for _,x in rows],float); n=len(p); r=np.full(n,np.nan); r[1:]=p[1:]/p[:-1]-1
-    X=np.full((n,11),np.nan)
+    # 4 own-market features + 8 cross-market features:
+    # VIX level/change (2), TNX change (1), DXY/HYG/TLT/SPY/QQQ returns (5).
+    X=np.full((n,12),np.nan)
     for t in range(21,n):
         d=dates[t]; prev=dates[t-1]
         vals=[]; ok=True
@@ -38,6 +42,7 @@ def build(rows,maps):
         if not ok: continue
         X[t]=[np.clip(r[t],-.08,.08),np.clip(p[t]/p[t-5]-1,-.2,.2),np.clip(p[t]/p[t-20]-1,-.35,.35),np.clip(float(np.std(r[t-19:t+1],ddof=1)),0,.1),*vals]
     return p,X
+
 
 def fit(X,y,t):
     lo=max(21,t-TRAIN); A=X[lo:t]; yy=y[lo:t]; ok=np.all(np.isfinite(A),axis=1)&np.isfinite(yy); A=A[ok]; yy=yy[ok]
@@ -52,8 +57,10 @@ def fit(X,y,t):
         if np.max(np.abs(step))<1e-6: break
     return float(c.sigmoid(xt@b))
 
+
 def parts(p,y):
     z=(p-y)**2;m=len(z)//2;return {'full':float(z.mean()),'first':float(z[:m].mean()),'second':float(z[m:].mean()),'recent252':float(z[-252:].mean())}
+
 
 def main():
     maps={s:close_map(s) for s in CROSS}; out={}
@@ -61,6 +68,7 @@ def main():
         rows,meta=data.fetch_history(sym,time.time()); dates=[d for d,_ in rows]; p,X=build(rows,maps); yf=(p[1:]>p[:-1]).astype(float)
         old=v33(p,include_trace=True,dates=dates,target_date=meta['target_date']); tr=old['audit_trace']; pos=np.array([int(x['t']) for x in tr]); base=np.array([float(x['probability']) for x in tr]); yy=np.array([float(x['outcome']) for x in tr])
         raw=np.array([fit(X,yf,int(t)) for t in pos]); cand=np.where(np.isfinite(raw),(1-BLEND)*base+BLEND*raw,np.nan); served,used=c.causal_gate(base,cand,yy); bl=parts(base,yy); lp=parts(served,yy); gain={k:float(bl[k]-lp[k]) for k in bl}
-        out[sym]={'as_of':meta['as_of'],'v33_probability':float(old['probability']),'passed':bool(all(gain[k]>0 for k in gain)),'active_days':int(sum(used)),'gain':gain,'raw_current':None if not np.isfinite(fit(X,yf,len(p)-1)) else float(fit(X,yf,len(p)-1)*100)}
+        current=fit(X,yf,len(p)-1)
+        out[sym]={'as_of':meta['as_of'],'v33_probability':float(old['probability']),'passed':bool(all(gain[k]>0 for k in gain)),'active_days':int(sum(used)),'gain':gain,'raw_current':None if not np.isfinite(current) else float(current*100)}
     print(json.dumps(out,ensure_ascii=False,indent=2))
 if __name__=='__main__': main()
