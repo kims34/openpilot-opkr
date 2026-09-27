@@ -1,14 +1,35 @@
 """Production guardrails for the individual-stock probability screener.
 
 The constituent sources occasionally contain fund/security tickers from page
-metadata.  A stock recommendation must be an actual equity, so validate the
-Yahoo instrument type while fetching the same 10-year history used by the
-model.  This does not add another network request.
+metadata. A stock recommendation must be an actual equity, so validate Yahoo's
+instrument type while fetching the same 10-year history used by the model.
+The v3.1 cache is invalidated once so stale ETF candidates cannot survive an
+upgrade through the persistent Railway volume.
 """
 import math
 import requests
 
+import monitor
 import stock_recommendations as screener
+
+CACHE_SCHEMA = "equity-only-v1"
+_original_init_db = screener.init_db
+
+
+def _guarded_init_db():
+    _original_init_db()
+    with monitor.db() as con:
+        row = con.execute(
+            "SELECT value FROM stock_recommendation_meta WHERE key='cache_schema'"
+        ).fetchone()
+        if not row or row[0] != CACHE_SCHEMA:
+            con.execute("DELETE FROM stock_recommendation_cache")
+            con.execute("DELETE FROM stock_recommendation_meta")
+            con.execute(
+                "INSERT INTO stock_recommendation_meta(key,value) VALUES('cache_schema',?)",
+                (CACHE_SCHEMA,),
+            )
+            print("stock recommendation cache invalidated", CACHE_SCHEMA, flush=True)
 
 
 def _completed_equity_history(symbol, now=None):
@@ -45,4 +66,5 @@ def _completed_equity_history(symbol, now=None):
     return rows, session_meta
 
 
+screener.init_db = _guarded_init_db
 screener._completed_history = _completed_equity_history
