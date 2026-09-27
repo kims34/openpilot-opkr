@@ -33,7 +33,8 @@ COPY probability_model.py .
 COPY probability_model_v31_runtime.py .
 COPY probability_model_v33_runtime.py .
 COPY probability_model_v34_runtime.py .
+COPY probability_v35_research.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
-CMD ["sh", "-c", "python -m uvicorn production_v21:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "python -m uvicorn production_v20:app --host 0.0.0.0 --port ${PORT:-8080}"]
