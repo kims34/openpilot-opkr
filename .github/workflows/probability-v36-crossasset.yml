@@ -21,15 +21,36 @@ jobs:
         run: |
           python - <<'PY'
           import json, time
+          from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
+          import requests
           import next_day_probability as base
           import probability_v36_crossasset as research
 
           raw = {}
           metas = {}
-          for symbol in ('SPY','QQQ','SCHD','^VIX'):
+          for symbol in ('SPY','QQQ','SCHD'):
               rows, meta = base.fetch_history(symbol, time.time())
               raw[symbol] = dict(rows)
               metas[symbol] = meta
+
+          response = requests.get(
+              'https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX',
+              params={'range':'10y','interval':'1d','includePrePost':'false','events':'div,splits'},
+              headers={'User-Agent':'Mozilla/5.0 IndexAlert/3.6'}, timeout=20,
+          )
+          response.raise_for_status()
+          result = (response.json().get('chart',{}).get('result') or [None])[0]
+          timestamps = result.get('timestamp') or []
+          closes = (result.get('indicators',{}).get('quote') or [{}])[0].get('close') or []
+          ny = ZoneInfo('America/New_York')
+          vix = {}
+          for ts, close in zip(timestamps, closes):
+              if close is None or float(close) <= 0:
+                  continue
+              day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(ny).date().isoformat()
+              vix[day] = float(close)
+          raw['^VIX'] = vix
 
           common = sorted(set.intersection(*(set(x) for x in raw.values())))
           if len(common) < 1800:
