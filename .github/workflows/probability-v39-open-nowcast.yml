@@ -1,0 +1,58 @@
+name: Probability v3.9 open-aware nowcast research
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'probability_v39_open_nowcast.py'
+      - '.github/workflows/probability-v39-open-nowcast.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Open-aware untouched holdout
+        run: |
+          python - <<'PY'
+          import json, time
+          from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
+          import requests
+          import next_day_probability as base
+          import probability_v39_open_nowcast as research
+
+          ny = ZoneInfo('America/New_York')
+          for symbol in ('SPY','QQQ','SCHD'):
+              rows, meta = base.fetch_history(symbol, time.time())
+              base_map = dict(rows)
+              response = requests.get(
+                  f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',
+                  params={'range':'10y','interval':'1d','includePrePost':'false','events':'div,splits'},
+                  headers={'User-Agent':'Mozilla/5.0 IndexAlert/3.9'}, timeout=20,
+              )
+              response.raise_for_status()
+              result = (response.json().get('chart',{}).get('result') or [None])[0]
+              timestamps = result.get('timestamp') or []
+              quote = (result.get('indicators',{}).get('quote') or [{}])[0]
+              opens_raw = quote.get('open') or []
+              closes_raw = quote.get('close') or []
+              ohlc = {}
+              for ts, op, cl in zip(timestamps, opens_raw, closes_raw):
+                  if op is None or cl is None or float(op) <= 0 or float(cl) <= 0:
+                      continue
+                  day = datetime.fromtimestamp(int(ts), timezone.utc).astimezone(ny).date().isoformat()
+                  ohlc[day] = (float(op), float(cl))
+              common = [d for d, _ in rows if d in ohlc]
+              if len(common) < 1800:
+                  raise RuntimeError(f'{symbol} aligned OHLC too short: {len(common)}')
+              opens = [ohlc[d][0] for d in common]
+              closes = [base_map[d] for d in common]
+              result = research.evaluate(opens, closes, common, meta['target_date'])
+              print('V39_RESEARCH', symbol, json.dumps(result, ensure_ascii=False, sort_keys=True))
+          PY
