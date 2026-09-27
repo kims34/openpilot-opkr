@@ -227,6 +227,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
 
             NextDayProbabilitySection(s.rule.id, refreshKey)
+            ExtendedSessionProbabilitySection(s.rule.id, refreshKey)
             AfterOpenProbabilitySection(s.rule.id, refreshKey)
             if (s.rule.id == "kospi100") {
                 KospiOneMonthProbabilitySection(refreshKey)
