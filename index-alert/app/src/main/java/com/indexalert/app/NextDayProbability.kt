@@ -358,7 +358,7 @@ fun OneMonthSixBucketTable(m: OneMonthEstimate) {
                     pct1(upTotal),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = androidx.compose.ui.graphics.Color(0xFFD32F2F)
                 )
             }
         }
@@ -369,7 +369,7 @@ fun OneMonthSixBucketTable(m: OneMonthEstimate) {
                     pct1(downTotal),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
+                    color = androidx.compose.ui.graphics.Color(0xFF1565C0)
                 )
             }
         }
