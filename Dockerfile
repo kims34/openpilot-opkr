@@ -29,6 +29,8 @@ COPY one_month_probability.py .
 COPY one_month_distribution.py .
 COPY one_month_calibrated.py .
 COPY kospi_monthly.py .
+COPY kospi_nextday_probability.py .
+COPY extended_session_probability.py .
 COPY probability_shadow.py .
 COPY probability_milestone.py .
 COPY probability_model.py .
