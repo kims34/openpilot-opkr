@@ -15,12 +15,14 @@ COPY production_v17.py .
 COPY production_v18.py .
 COPY production_v19.py .
 COPY production_v20.py .
+COPY production_v21.py .
 COPY briefing.py .
 COPY history_routes.py .
 COPY laggards.py .
 COPY next_day_probability.py .
 COPY next_day_probability_v31.py .
 COPY next_day_probability_v33.py .
+COPY next_day_probability_v34.py .
 COPY one_month_probability.py .
 COPY one_month_distribution.py .
 COPY one_month_calibrated.py .
@@ -30,7 +32,8 @@ COPY probability_milestone.py .
 COPY probability_model.py .
 COPY probability_model_v31_runtime.py .
 COPY probability_model_v33_runtime.py .
+COPY probability_model_v34_runtime.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
-CMD ["sh", "-c", "python -m uvicorn production_v20:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "python -m uvicorn production_v21:app --host 0.0.0.0 --port ${PORT:-8080}"]
