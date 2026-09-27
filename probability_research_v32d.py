@@ -6,6 +6,7 @@ separately using the first 756 forecasts of the latest 1,008. The most recent
 eligible only if it improves both Brier and log loss on the final holdout,
 improves full-period Brier, and had non-negative skill in at least 2 of the 3
 252-day development blocks. Otherwise that ETF remains exactly model 3.1.
+This research branch never changes production unless the promotion gate passes.
 """
 import json
 import numpy as np
