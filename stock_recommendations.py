@@ -1,32 +1,41 @@
 """Daily constituent screener for IndexAlert.
 
 Ranks the union of current S&P 500, NASDAQ-100 and SCHD holdings by the
-validated next-session close-rise model, then computes the existing mutually
-exclusive six-bin 21-session terminal-return distribution for the top three.
+validated next-session close-rise model. For each top-three stock it also
+returns a mutually exclusive six-bin distribution for the NEXT trading day's
+close-to-close return.
 
-The job is intentionally server-side and cached by completed US trading session
-so the phone does no constituent scanning and the upstream market-data load is
-bounded to roughly one pass per trading day.
+The job is server-side and cached by completed US trading session so the phone
+does no constituent scanning and upstream market-data load is bounded.
 """
 import json
 import math
+import statistics
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
 
 import requests
 
 import laggards
 import monitor
 import next_day_probability as base
-import one_month_calibrated
 from probability_model_v31_runtime import MODEL_VERSION, estimate_prices
 
 LOCK = threading.Lock()
 MAX_WORKERS = 6
 MIN_COVERAGE_RATIO = 0.80
 UA = {"User-Agent": "Mozilla/5.0 IndexAlert/3.1"}
+
+SIX_KEYS = ["up2_plus", "up1_2", "up0_1", "down0_1", "down1_2", "down2_minus"]
+SIX_LABELS = {
+    "up2_plus": "+2% 이상",
+    "up1_2": "+1% ~ +2%",
+    "up0_1": "0% ~ +1%",
+    "down0_1": "-1% ~ 0%",
+    "down1_2": "-2% ~ -1%",
+    "down2_minus": "-2% 이하",
+}
 
 
 def init_db():
@@ -65,8 +74,8 @@ def _yahoo_symbol(symbol):
     return str(symbol).strip().upper().replace(".", "-")
 
 
-def _split_adjusted_history(symbol, now=None):
-    """Return split-adjusted, dividend-unadjusted completed daily closes."""
+def _completed_history(symbol, now=None):
+    """Completed regular-session closes, split-adjusted by Yahoo, dividends excluded."""
     ys = _yahoo_symbol(symbol)
     r = requests.get(
         f"https://query1.finance.yahoo.com/v8/finance/chart/{ys}",
@@ -81,54 +90,7 @@ def _split_adjusted_history(symbol, now=None):
     result = (chart.get("result") or [None])[0]
     if not result:
         raise ValueError("history unavailable")
-    timestamps = result.get("timestamp") or []
-    closes = (result.get("indicators", {}).get("quote") or [{}])[0].get("close") or []
-    if len(timestamps) != len(closes):
-        raise ValueError("history length mismatch")
-
-    split_events = (result.get("events") or {}).get("splits") or {}
-    splits = []
-    for ev in split_events.values():
-        try:
-            ts = int(ev.get("date") or 0)
-            num = float(ev.get("numerator") or 0)
-            den = float(ev.get("denominator") or 0)
-            if num > 0 and den > 0:
-                ratio = num / den
-            else:
-                raw = str(ev.get("splitRatio") or "")
-                if ":" in raw:
-                    a, b = raw.split(":", 1)
-                    ratio = float(a) / float(b)
-                else:
-                    ratio = float(raw)
-            if ts > 0 and math.isfinite(ratio) and ratio > 0:
-                splits.append((ts, ratio))
-        except Exception:
-            continue
-    splits.sort()
-
-    adjusted = []
-    for ts, close in zip(timestamps, closes):
-        if close is None:
-            adjusted.append(None)
-            continue
-        px = float(close)
-        factor = 1.0
-        for split_ts, ratio in splits:
-            if split_ts > int(ts):
-                factor *= ratio
-        adjusted.append(px / factor if factor > 0 else px)
-
-    fake = dict(result)
-    indicators = dict(result.get("indicators") or {})
-    quote_blocks = list(indicators.get("quote") or [{}])
-    quote0 = dict(quote_blocks[0] if quote_blocks else {})
-    quote0["close"] = adjusted
-    quote_blocks = [quote0]
-    indicators["quote"] = quote_blocks
-    fake["indicators"] = indicators
-    return base.parse_history(fake, now)
+    return base.parse_history(result, now)
 
 
 def _universe():
@@ -142,7 +104,7 @@ def _universe():
 
 
 def _score(symbol, now):
-    rows, meta = _split_adjusted_history(symbol, now)
+    rows, meta = _completed_history(symbol, now)
     result = estimate_prices(
         [p for _, p in rows],
         dates=[d for d, _ in rows],
@@ -173,26 +135,113 @@ def _score(symbol, now):
     }
 
 
-def _six_bins(rows):
-    dist = one_month_calibrated.estimate_distribution(rows)
-    bins = dist.get("terminal_return_six_bins") or []
-    expected = ["up10_plus", "up5_10", "up0_5", "down0_5", "down5_10", "down10_minus"]
-    if len(bins) != 6 or [x.get("key") for x in bins] != expected:
-        raise ValueError("six-bin distribution unavailable")
-    total = sum(float(x.get("probability") or 0) for x in bins)
-    if abs(total - 100.0) > 0.2:
-        raise ValueError("six-bin probability total invalid")
+def _bucket_key(r):
+    if r >= 0.02:
+        return "up2_plus"
+    if r >= 0.01:
+        return "up1_2"
+    if r > 0.0:
+        return "up0_1"
+    if r > -0.01:
+        return "down0_1"
+    if r > -0.02:
+        return "down1_2"
+    return "down2_minus"
+
+
+def _vol(values):
+    if len(values) < 2:
+        return 0.0
+    return statistics.pstdev(values)
+
+
+def _next_day_six_bins(rows, rise_probability):
+    """Estimate next-session magnitude buckets and force positive mass to binary P(up).
+
+    Shape is estimated from historical days with similar 1d/5d momentum and 20d
+    realized volatility. Sparse conditional shapes are shrunk toward the stock's
+    own long-run positive/negative magnitude distribution. This keeps all six
+    buckets exhaustive while making the first three sum exactly to the validated
+    binary next-close rise probability used for the TOP3 ranking.
+    """
+    prices = [float(p) for _, p in rows]
+    if len(prices) < 260:
+        raise ValueError("not enough history for next-day six bins")
+    returns = [prices[i] / prices[i - 1] - 1.0 for i in range(1, len(prices))]
+    cur_r1 = returns[-1]
+    cur_r5 = prices[-1] / prices[-6] - 1.0
+    cur_vol = _vol(returns[-20:])
+
+    candidates = []
+    for t in range(20, len(prices) - 1):
+        hist_r1 = prices[t] / prices[t - 1] - 1.0
+        hist_r5 = prices[t] / prices[t - 5] - 1.0
+        hist_vol = _vol([prices[j] / prices[j - 1] - 1.0 for j in range(t - 19, t + 1)])
+        next_r = prices[t + 1] / prices[t] - 1.0
+        candidates.append((hist_r1, hist_r5, hist_vol, next_r))
+
+    analog = []
+    for b1, b5, bv in [
+        (0.004, 0.012, 0.003),
+        (0.0075, 0.020, 0.005),
+        (0.012, 0.035, 0.008),
+        (0.020, 0.060, 0.015),
+        (0.035, 0.100, 0.025),
+    ]:
+        analog = [x[3] for x in candidates if abs(x[0] - cur_r1) <= b1 and abs(x[1] - cur_r5) <= b5 and abs(x[2] - cur_vol) <= bv]
+        if len(analog) >= 80:
+            break
+    if len(analog) < 30:
+        analog = [x[3] for x in candidates]
+        selection = "long_run"
+    else:
+        selection = "similar_market"
+
+    all_next = [x[3] for x in candidates]
+    base_counts = {k: 0.0 for k in SIX_KEYS}
+    analog_counts = {k: 0.0 for k in SIX_KEYS}
+    for r in all_next:
+        base_counts[_bucket_key(r)] += 1.0
+    for r in analog:
+        analog_counts[_bucket_key(r)] += 1.0
+
+    pos_keys = SIX_KEYS[:3]
+    neg_keys = SIX_KEYS[3:]
+
+    def side_shape(keys):
+        base_total = sum(base_counts[k] for k in keys)
+        analog_total = sum(analog_counts[k] for k in keys)
+        if base_total <= 0:
+            return {k: 1.0 / len(keys) for k in keys}
+        base_shape = {k: base_counts[k] / base_total for k in keys}
+        if analog_total <= 0:
+            return base_shape
+        prior = 40.0
+        weighted = {k: analog_counts[k] + prior * base_shape[k] for k in keys}
+        total = sum(weighted.values())
+        return {k: weighted[k] / total for k in keys}
+
+    pos_shape = side_shape(pos_keys)
+    neg_shape = side_shape(neg_keys)
+    p_up = max(0.0, min(100.0, float(rise_probability)))
+    p_not_up = 100.0 - p_up
+    probs = {k: p_up * pos_shape[k] for k in pos_keys}
+    probs.update({k: p_not_up * neg_shape[k] for k in neg_keys})
+
+    # Remove tiny floating drift while preserving the positive-side sum.
+    total = sum(probs.values())
+    probs["down2_minus"] += 100.0 - total
+    bins = [{"key": k, "label": SIX_LABELS[k], "probability": probs[k]} for k in SIX_KEYS]
     return {
-        "horizon_sessions": 21,
-        "terminal_return_six_bins": bins,
-        "terminal_return_six_total_probability": total,
-        "terminal_return_six_selection": dist.get("terminal_return_six_selection"),
-        "terminal_return_six_validation": dist.get("terminal_return_six_validation"),
-        "terminal_return_six_effective_sample": dist.get("terminal_return_six_effective_sample"),
-        "trend_regime": dist.get("trend_regime"),
-        "volatility_regime": dist.get("volatility_regime"),
-        "annualized_volatility": dist.get("annualized_volatility"),
-        "features": dist.get("features"),
+        "horizon_sessions": 1,
+        "price_basis": "next_regular_close_vs_completed_regular_close",
+        "selection": selection,
+        "analog_sample_size": len(analog),
+        "baseline_sample_size": len(all_next),
+        "rise_probability": p_up,
+        "six_bins": bins,
+        "six_total_probability": sum(x["probability"] for x in bins),
+        "method": "검증된 다음날 상승확률 + 유사 1일·5일 모멘텀·20일 변동성의 다음날 변동폭 분포",
     }
 
 
@@ -218,7 +267,10 @@ def refresh(force=False):
         now = time.time()
         _, expected_last, target = base.completed_session_info(now)
         if not force and _existing_as_of() == expected_last:
-            return get()
+            existing = get()
+            # Invalidate the previous 21-session payload after this schema change.
+            if existing.get("items") and all((x.get("next_day_distribution") or {}).get("horizon_sessions") == 1 for x in existing["items"]):
+                return existing
 
         _set_meta("status", "building")
         _set_meta("expected_as_of", expected_last)
@@ -240,8 +292,6 @@ def refresh(force=False):
             _set_meta("status", "insufficient_coverage")
             raise RuntimeError(f"stock screener coverage {coverage}/{total}")
 
-        # Highest emitted next-day probability first. Historical skill is used
-        # only as a deterministic tie-breaker; it never overrides probability.
         def rank_key(x):
             skill = x.get("backtest_skill")
             skill = float(skill) if skill is not None and math.isfinite(float(skill)) else -999.0
@@ -251,8 +301,9 @@ def refresh(force=False):
         payloads = []
         for rank, item in enumerate(top, 1):
             symbol = item["symbol"]
+            rows = item.pop("rows")
             quote = _quote(symbol)
-            month = _six_bins(item.pop("rows"))
+            next_day_distribution = _next_day_six_bins(rows, item["probability"])
             payload = {
                 **item,
                 "rank": rank,
@@ -264,7 +315,7 @@ def refresh(force=False):
                 "sp500": symbol in sp500,
                 "nasdaq100": symbol in ndx,
                 "schd": symbol in schd,
-                "one_month": month,
+                "next_day_distribution": next_day_distribution,
             }
             payloads.append(payload)
 
@@ -283,7 +334,11 @@ def refresh(force=False):
             "coverage": f"{coverage}/{total}",
             "as_of": expected_last,
             "target": str(target.date()),
-            "top3": [(x["symbol"], round(x["probability"], 2)) for x in payloads],
+            "top3": [
+                (x["symbol"], round(x["probability"], 2),
+                 round((x["next_day_distribution"]["six_total_probability"]), 4))
+                for x in payloads
+            ],
         }, flush=True)
         return get()
     except Exception as exc:
