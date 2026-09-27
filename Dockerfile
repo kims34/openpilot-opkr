@@ -27,6 +27,7 @@ COPY one_month_calibrated.py .
 COPY kospi_monthly.py .
 COPY probability_shadow.py .
 COPY probability_milestone.py .
+COPY probability_prospective_guardrail.py .
 COPY probability_model.py .
 COPY probability_model_v31_runtime.py .
 COPY probability_model_v33_runtime.py .
