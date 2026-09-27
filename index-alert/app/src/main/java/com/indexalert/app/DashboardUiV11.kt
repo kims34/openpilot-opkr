@@ -94,6 +94,8 @@ fun HomeV11(
             IndexCardV19(snapshot, movers, laggardStatus, statusText)
         }
 
+        StockRecommendationSection(statusText)
+
         Spacer(Modifier.height(18.dp))
         OutlinedButton(
             onClick = { alertSettingsExpanded = !alertSettingsExpanded },
@@ -273,4 +275,3 @@ private fun movementColorV19(percent: Double?): Color = when {
 private fun fmtV19(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
 private fun signedV19(v: Double): String = String.format(Locale.US, "%+,.2f", v)
 private fun signedPctV19(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
-
