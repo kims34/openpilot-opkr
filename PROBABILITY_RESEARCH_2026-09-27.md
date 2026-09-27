@@ -117,5 +117,52 @@ Promotion rule:
 - Expose v3.9 only as a clearly separate `after_open` probability after target-session open + 5 minutes.
 - Freeze the first live after-open forecast in a separate prospective ledger and score it after the target close. Prospective evidence must accumulate before treating the historical gain as durable live evidence.
 
+## v3.10 — direct Treasury-yield models
+Tested prior completed-session Treasury information rather than bond-ETF proxies.
+
+Rich-rate model features: 10Y (^TNX), 5Y (^FVX), 13-week (^IRX) levels, 1d changes, 5d changes, curve shape and equity/yield interaction.
+- SPY: holdout total improved only +0.00001969 but second half worsened -0.00028719 — reject.
+- QQQ: total improved +0.00061254 but second half worsened -0.00042377 — reject.
+- SCHD: total worsened -0.00023103 — reject.
+
+Simple 10Y-only confirmation:
+- SPY: total improved +0.00022405 but second half worsened -0.00019305 — reject.
+- QQQ: no stable development winner — reject.
+- SCHD: total worsened -0.00152892 — reject.
+
+Result: prior-day Treasury yields contain some episodic signal, especially for SPY/QQQ, but not enough stable out-of-sample evidence for production promotion.
+
+## v3.11 — non-chart market-regime indicator groups
+To avoid a single oversized model, economically distinct indicator families were tested independently using only prior completed-session information.
+
+Groups:
+- `credit_vol`: VIX + HYG + LQD, including HYG-vs-LQD risk appetite.
+- `rates_fx`: 10Y yield + dollar proxy UUP.
+- `commodities`: oil USO + copper CPER + gold GLD.
+- `leadership`: IWM + SMH + XLF + XLU, including cyclicals/risk vs defensive relative strength.
+
+Results:
+- `credit_vol` SPY passed the initial development and untouched 252-session holdout gate.
+  - previous Brier: 0.24950161
+  - candidate Brier: 0.24787953
+  - total gain: +0.00162208
+  - first-half gain: +0.00069454
+  - second-half gain: +0.00254962
+- `credit_vol` QQQ/SCHD: no stable development winner.
+- `rates_fx`: all three rejected; QQQ had positive total holdout gain but negative second half.
+- `commodities`: SPY/QQQ no stable winner; SCHD failed holdout.
+- `leadership`: all three rejected.
+
+Because 12 group/asset challenges were examined, the lone SPY credit/volatility pass received an additional fixed-configuration robustness check (`window=504, ridge=300, cap=0.03`) over the most recent 1,008 sessions split into eight consecutive 126-session blocks.
+- overall 1,008-session gain: +0.00126204
+- positive blocks: 5 / 8
+- unchanged blocks: 2 / 8 (early periods before sufficient rolling training)
+- negative blocks: 1 / 8
+- decision: reject production promotion because all eligible blocks were not consistently positive.
+
+Result: VIX/credit information appears more promising for SPY than rates, commodities or sector leadership, but the evidence is not yet stable enough to alter the pre-open production probability. Keep it as a research/shadow candidate and accumulate prospective evidence.
+
 ## Current conclusion
-More model complexity did not improve the pre-open forecast under strict chronology. The first robust improvement came from genuinely new information that becomes available after the market opens. Therefore the safe architecture is two-timing: retain the guarded 3.3/3.2 next-session probability before the open, and add v3.9 only as a separately labeled after-open nowcast once timing and data-quality gates are satisfied.
+More model complexity did not reliably improve the pre-open forecast under strict chronology. Direct Treasury yields, dollar, commodities and sector leadership were not stable enough for promotion. VIX + credit-risk information showed the strongest pre-open challenger for SPY but failed the stricter multi-block robustness gate, so it remains shadow-only.
+
+The first robust improvement came from genuinely new information that becomes available after the market opens. Therefore the safe architecture is two-timing: retain the guarded 3.3/3.2 next-session probability before the open, and use v3.9 only as a separately labeled after-open nowcast once timing and data-quality gates are satisfied.
