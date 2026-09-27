@@ -3,10 +3,12 @@ import time
 
 import briefing
 import kospi_monthly
+import monitor
 import next_day_probability_v31 as next_day_probability
 import production
 import production_v14
 import production_kpi100_mobile
+import stock_recommendations
 
 # Preserve the full production stack:
 # - Naver-mobile-backed KOSPI100
@@ -16,12 +18,15 @@ import production_kpi100_mobile
 # - detailed market briefing
 # - validated next-trading-day probability model 3.1
 # - KOSPI one-month probability analysis
+# - daily constituent next-session probability TOP3 + six-bin distribution
 app = production_kpi100_mobile.app
 
 # Replace stale routes on reload.
 app.router.routes = [
     route for route in app.router.routes
-    if getattr(route, "path", None) not in {"/briefings", "/next-day-probabilities", "/one-month-probabilities"}
+    if getattr(route, "path", None) not in {
+        "/briefings", "/next-day-probabilities", "/one-month-probabilities", "/stock-recommendations"
+    }
 ]
 
 
@@ -38,6 +43,11 @@ def next_day_probabilities():
 @app.get("/one-month-probabilities")
 def one_month_probabilities():
     return kospi_monthly.get_all()
+
+
+@app.get("/stock-recommendations")
+def stock_recommendation_top3():
+    return stock_recommendations.get()
 
 
 @app.on_event("startup")
@@ -91,6 +101,32 @@ def warm_market_features():
         except Exception as exc:
             print("kospi monthly warmup failed", type(exc).__name__, str(exc), flush=True)
 
+    def _warm_stock_recommendations():
+        try:
+            payload = stock_recommendations.refresh(False)
+            print(
+                "stock recommendation warmup",
+                {
+                    "status": payload.get("status"),
+                    "coverage": payload.get("coverage"),
+                    "top3": [(x.get("symbol"), x.get("probability")) for x in payload.get("items", [])],
+                },
+                flush=True,
+            )
+        except Exception as exc:
+            print("stock recommendation warmup failed", type(exc).__name__, str(exc), flush=True)
+
     threading.Thread(target=_warm_briefings, daemon=True).start()
     threading.Thread(target=_warm_probability, daemon=True).start()
     threading.Thread(target=_warm_kospi_monthly, daemon=True).start()
+    threading.Thread(target=_warm_stock_recommendations, daemon=True).start()
+
+    if not monitor.scheduler.get_job("stock-recommendation-refresh"):
+        monitor.scheduler.add_job(
+            lambda: stock_recommendations.refresh(False),
+            "interval",
+            hours=4,
+            id="stock-recommendation-refresh",
+            max_instances=1,
+            coalesce=True,
+        )
