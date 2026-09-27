@@ -1,0 +1,21 @@
+name: Probability v3.9 runtime timing safety
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'open_nowcast_v39.py'
+      - 'test_open_nowcast_v39.py'
+      - '.github/workflows/probability-v39-runtime-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt pytest
+      - run: pytest -q test_open_nowcast_v39.py
