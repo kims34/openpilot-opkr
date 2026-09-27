@@ -1,0 +1,89 @@
+name: Probability v3.12 pre-open futures research
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'probability_v312_futures_preopen.py'
+      - '.github/workflows/probability-v312-futures-preopen.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Timing-safe 09:05 ET futures holdout
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
+
+          import requests
+
+          import next_day_probability as base
+          import probability_v312_futures_preopen as research
+
+          NY = ZoneInfo('America/New_York')
+          UA = {'User-Agent': 'Mozilla/5.0 IndexAlert/3.12-research'}
+
+          def yahoo(symbol, range_, interval):
+              encoded = requests.utils.quote(symbol, safe='')
+              r = requests.get(
+                  f'https://query1.finance.yahoo.com/v8/finance/chart/{encoded}',
+                  params={
+                      'range': range_,
+                      'interval': interval,
+                      'includePrePost': 'true',
+                      'events': 'div,splits',
+                  },
+                  headers=UA,
+                  timeout=30,
+              )
+              r.raise_for_status()
+              chart = r.json().get('chart', {})
+              if chart.get('error'):
+                  raise RuntimeError(f'{symbol}: {chart["error"]}')
+              result = (chart.get('result') or [None])[0]
+              if not result:
+                  raise RuntimeError(f'{symbol}: no data')
+              ts = result.get('timestamp') or []
+              closes = (result.get('indicators', {}).get('quote') or [{}])[0].get('close') or []
+              return [(int(t), c) for t, c in zip(ts, closes) if c is not None and float(c) > 0]
+
+          daily = {}
+          for symbol in ('^VIX', '^TNX'):
+              rows = yahoo(symbol, '5y', '1d')
+              values = {}
+              for ts, close in rows:
+                  day = datetime.fromtimestamp(ts, timezone.utc).astimezone(NY).date().isoformat()
+                  values[day] = float(close)
+              daily[symbol] = values
+              print('V312_DAILY', symbol, len(values), min(values), max(values))
+
+          hourly = {}
+          for symbol in research.FUTURES:
+              rows = yahoo(symbol, '2y', '1h')
+              values = []
+              for ts, close in rows:
+                  stamp = datetime.fromtimestamp(ts, timezone.utc).astimezone(NY)
+                  values.append((stamp, float(close)))
+              hourly[symbol] = values
+              print('V312_HOURLY', symbol, len(values), values[0][0].isoformat(), values[-1][0].isoformat())
+
+          for symbol in ('SPY', 'QQQ', 'SCHD'):
+              rows, meta = base.fetch_history(symbol, time.time())
+              dates = [d for d, _ in rows]
+              prices = [p for _, p in rows]
+              result = research.evaluate(
+                  prices, dates, meta['target_date'], hourly, daily
+              )
+              print('V312_RESEARCH', symbol, json.dumps(result, ensure_ascii=False, sort_keys=True))
+          PY
