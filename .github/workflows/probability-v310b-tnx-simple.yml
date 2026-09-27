@@ -1,0 +1,46 @@
+name: Probability v3.10b simple 10Y yield research
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'probability_v310b_tnx_simple.py'
+      - '.github/workflows/probability-v310b-tnx-simple.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Simple 10Y yield untouched holdout
+        run: |
+          python - <<'PY'
+          import json,time
+          from datetime import datetime,timezone
+          from zoneinfo import ZoneInfo
+          import requests
+          import next_day_probability as base
+          import probability_v310b_tnx_simple as research
+
+          raw={}; metas={}
+          for symbol in ('SPY','QQQ','SCHD'):
+              rows,meta=base.fetch_history(symbol,time.time())
+              raw[symbol]=dict(rows); metas[symbol]=meta
+          r=requests.get('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX',params={'range':'10y','interval':'1d','includePrePost':'false','events':'div,splits'},headers={'User-Agent':'Mozilla/5.0 IndexAlert/3.10b'},timeout=20)
+          r.raise_for_status(); result=(r.json().get('chart',{}).get('result') or [None])[0]
+          ny=ZoneInfo('America/New_York'); rows={}
+          for t,c in zip(result.get('timestamp') or [],(result.get('indicators',{}).get('quote') or [{}])[0].get('close') or []):
+              if c is None or float(c)<=0: continue
+              d=datetime.fromtimestamp(int(t),timezone.utc).astimezone(ny).date().isoformat(); rows[d]=float(c)
+          raw['^TNX']=rows
+          common=sorted(set.intersection(*(set(v) for v in raw.values())))
+          aligned={s:(common,[raw[s][d] for d in common]) for s in raw}
+          print('V310B_ALIGNMENT',len(common),common[0],common[-1])
+          for symbol in ('SPY','QQQ','SCHD'):
+              print('V310B_RESEARCH',symbol,json.dumps(research.evaluate(aligned,symbol,metas[symbol]['target_date']),ensure_ascii=False,sort_keys=True))
+          PY
