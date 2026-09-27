@@ -22,10 +22,26 @@ jobs:
           base = 'https://indexalert-runtime-production.up.railway.app'
           with urllib.request.urlopen(base + '/health', timeout=30) as r:
               assert r.status == 200
-          with urllib.request.urlopen(base + '/next-day-probabilities', timeout=120) as r:
-              assert r.status == 200
-              payload = json.load(r)
+
+          payload = None
+          for attempt in range(10):
+              with urllib.request.urlopen(base + '/next-day-probabilities', timeout=120) as r:
+                  assert r.status == 200
+                  candidate = json.load(r)
+              items = candidate.get('items') or {}
+              ready = all(
+                  not (items.get(i) or {}).get('error')
+                  and int((items.get(i) or {}).get('target_open') or 0) > 0
+                  for i in ('sp500','ndx','djdiv')
+              )
+              if ready:
+                  payload = candidate
+                  break
+              print('probability cache warming', attempt + 1)
+              time.sleep(15)
+          assert payload is not None, 'probability cache did not become ready'
           assert payload.get('first_hour_model_version') == '4.0-first-hour', payload.keys()
+
           now = time.time()
           for index_id in ('sp500','ndx','djdiv'):
               item = payload['items'][index_id]
