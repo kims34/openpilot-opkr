@@ -1,0 +1,45 @@
+name: Probability v3.4 live audit
+on:
+  push:
+    branches: [index-alert-server]
+    paths:
+      - 'probability_model_v34_runtime.py'
+      - 'next_day_probability_v34.py'
+      - 'test_probability_v34.py'
+      - '.github/workflows/probability-v34-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Integrity tests
+        run: python -m unittest test_probability_v34.py -v
+      - name: Live SPY QQQ SCHD audit
+        run: |
+          python - <<'PY'
+          import json, time
+          import next_day_probability as base
+          import probability_model_v34_runtime as v34
+          for symbol in ('SPY','QQQ','SCHD'):
+              rows, meta = base.fetch_history(symbol, time.time())
+              out = v34.estimate_prices(
+                  [p for _,p in rows],
+                  dates=[d for d,_ in rows],
+                  target_date=meta['target_date'],
+              )
+              keys = [
+                  'probability','feature_candidate_probability','feature_strategy',
+                  'feature_gate_passed','feature_audit_brier','previous_audit_brier',
+                  'feature_first_half_brier','previous_first_half_brier',
+                  'feature_second_half_brier','previous_second_half_brier',
+                  'reliability','fallback_reason'
+              ]
+              print('V34_AUDIT', symbol, json.dumps({k:out.get(k) for k in keys}, ensure_ascii=False, sort_keys=True))
+          PY
