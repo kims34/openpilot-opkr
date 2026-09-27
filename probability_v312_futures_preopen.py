@@ -3,13 +3,13 @@
 Forecast timing
 ---------------
 This challenger is evaluated at 09:05 America/New_York on the *target* U.S.
-trading day.  It may use only completed 60-minute bars whose timestamps are at
+trading day. It may use only completed 60-minute bars whose timestamps are at
 or before 08:00 ET (the 08:00-09:00 bar), plus information from the previous
-completed cash session.  The target remains:
+completed cash session. The target remains:
 
     close(target_session) > close(previous_completed_session)
 
-The production next-session probability is NOT changed by this module.  A
+The production next-session probability is NOT changed by this module. A
 configuration is eligible for promotion only if it beats the currently served
 3.3/3.2 forecast on development chronology blocks and on an untouched final
 126-session holdout overall and in both halves.
@@ -17,7 +17,6 @@ configuration is eligible for promotion only if it beats the currently served
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
 import math
 
 import numpy as np
@@ -29,7 +28,7 @@ MODEL_VERSION = "3.12-futures-preopen-research"
 HOLDOUT = 126
 MIN_TRAIN = 126
 
-# Deliberately compact grid.  Hyperparameters are selected only on development
+# Deliberately compact grid. Hyperparameters are selected only on development
 # data; the final HOLDOUT rows are never consulted during selection.
 CONFIGS = [
     (window, ridge, cap)
@@ -72,11 +71,11 @@ def _completed_price(day_rows, max_hour):
 
 
 def _overnight_return(hourly_by_day, as_of_day, target_day):
-    """16:00 cash-close aligned anchor -> 09:00 target-day completed futures bar.
+    """16:00 cash-close anchor -> target-day 09:00 completed futures bar.
 
-    Yahoo 1h timestamps are bar starts.  The 15:00 ET bar is complete by
-    16:00; the 08:00 ET bar is complete by 09:00.  Runtime availability is
-    therefore delayed until 09:05 ET.
+    Yahoo 1h timestamps are bar starts. The 15:00 ET bar is complete by 16:00;
+    the 08:00 ET bar is complete by 09:00. Runtime availability is therefore
+    delayed until 09:05 ET.
     """
     prev_rows = hourly_by_day.get(as_of_day) or []
     target_rows = hourly_by_day.get(target_day) or []
@@ -84,10 +83,10 @@ def _overnight_return(hourly_by_day, as_of_day, target_day):
     snap = _completed_price(target_rows, 8)
     if anchor is None or snap is None:
         return None
-    r = snap / anchor - 1.0
-    if not math.isfinite(r) or abs(r) > 0.25:
+    value = snap / anchor - 1.0
+    if not math.isfinite(value) or abs(value) > 0.25:
         return None
-    return float(r)
+    return float(value)
 
 
 def _daily_value(series, day):
@@ -106,14 +105,13 @@ def _feature_rows(prices, dates, trace, hourly, daily):
       previous-close VIX level/change, 10Y level/change,
       target ETF previous 1d and 5d momentum.
     """
-    p = np.asarray(prices, float)
+    prices = np.asarray(prices, float)
     hourly_day = {symbol: _by_day(rows) for symbol, rows in hourly.items()}
     vix = daily["^VIX"]
     tnx = daily["^TNX"]
 
     rows = []
     meta = []
-    date_to_index = {d: i for i, d in enumerate(dates)}
     for item in trace:
         t = int(item["t"])
         if t < 5 or t + 1 >= len(dates):
@@ -122,46 +120,51 @@ def _feature_rows(prices, dates, trace, hourly, daily):
             continue
         as_of = dates[t]
         target = dates[t + 1]
-        fut = []
-        ok = True
+        futures = []
         for symbol in FUTURES:
             value = _overnight_return(hourly_day[symbol], as_of, target)
             if value is None:
-                ok = False
+                futures = []
                 break
-            fut.append(value)
-        if not ok:
+            futures.append(value)
+        if not futures:
             rows.append([np.nan] * 10)
             meta.append(None)
             continue
 
+        previous_day = dates[t - 1]
         v0 = _daily_value(vix, as_of)
+        v1 = _daily_value(vix, previous_day)
         y0 = _daily_value(tnx, as_of)
-        prev_i = t - 1
-        prev_day = dates[prev_i]
-        v1 = _daily_value(vix, prev_day)
-        y1 = _daily_value(tnx, prev_day)
+        y1 = _daily_value(tnx, previous_day)
         if None in (v0, v1, y0, y1):
             rows.append([np.nan] * 10)
             meta.append(None)
             continue
 
-        ret1 = p[t] / p[t - 1] - 1.0
-        mom5 = p[t] / p[t - 5] - 1.0
-        feature = fut + [
-            math.log(v0),
-            v0 / v1 - 1.0,
-            y0,
-            y0 - y1,
-            ret1,
-            mom5,
-        ]
-        rows.append(feature)
+        rows.append(
+            futures
+            + [
+                math.log(v0),
+                v0 / v1 - 1.0,
+                y0,
+                y0 - y1,
+                prices[t] / prices[t - 1] - 1.0,
+                prices[t] / prices[t - 5] - 1.0,
+            ]
+        )
         meta.append({"as_of": as_of, "target": target})
     return np.asarray(rows, float), meta
 
 
 def _predict(x, outcomes, previous, config):
+    """Causal rolling ridge residual forecast.
+
+    `window` means the last N *feature-complete* forecasts, rather than the
+    last N raw trace rows. This keeps training coverage stable around exchange
+    holidays and occasional missing vendor bars without ever using a future
+    row or outcome.
+    """
     window, ridge, cap = config
     outcomes = np.asarray(outcomes, float)
     previous = np.asarray(previous, float)
@@ -171,29 +174,31 @@ def _predict(x, outcomes, previous, config):
     for j in range(len(outcomes)):
         if not np.all(np.isfinite(x[j])):
             continue
-        lo = max(0, j - window)
-        idx = np.arange(lo, j)
+        idx = np.arange(0, j)
         idx = idx[np.all(np.isfinite(x[idx]), axis=1)]
         if len(idx) < MIN_TRAIN:
             continue
+        idx = idx[-window:]
+        if len(idx) < MIN_TRAIN:
+            continue
         train = x[idx]
-        mu = train.mean(axis=0)
+        mean = train.mean(axis=0)
         sd = np.maximum(train.std(axis=0, ddof=1), 1e-6)
-        z = (train - mu) / sd
+        z = (train - mean) / sd
         residual = outcomes[idx] - previous[idx]
         beta = np.linalg.solve(
             z.T @ z + ridge * np.eye(z.shape[1]), z.T @ residual
         )
-        adjustment = float(np.clip(((x[j] - mu) / sd) @ beta, -cap, cap))
+        adjustment = float(np.clip(((x[j] - mean) / sd) @ beta, -cap, cap))
         pred[j] = float(np.clip(previous[j] + adjustment, 0.35, 0.70))
         adjusted[j] = True
     return pred, adjusted
 
 
-def _brier(p, y):
-    p = np.asarray(p, float)
-    y = np.asarray(y, float)
-    return float(np.mean((p - y) ** 2))
+def _brier(probabilities, outcomes):
+    probabilities = np.asarray(probabilities, float)
+    outcomes = np.asarray(outcomes, float)
+    return float(np.mean((probabilities - outcomes) ** 2))
 
 
 def _gain(previous, candidate, outcomes, idx):
@@ -202,14 +207,13 @@ def _gain(previous, candidate, outcomes, idx):
 
 
 def _three_blocks(indices):
-    parts = np.array_split(np.asarray(indices, int), 3)
-    return [p for p in parts if len(p)]
+    return [block for block in np.array_split(np.asarray(indices, int), 3) if len(block)]
 
 
 def evaluate(prices, dates, target_date, hourly, daily):
     trace = _served_trace(prices, dates, target_date)
-    previous = np.asarray([float(r["probability"]) for r in trace], float)
-    outcomes = np.asarray([float(r["outcome"]) for r in trace], float)
+    previous = np.asarray([float(row["probability"]) for row in trace], float)
+    outcomes = np.asarray([float(row["outcome"]) for row in trace], float)
     x, meta = _feature_rows(prices, dates, trace, hourly, daily)
 
     complete = np.where(np.all(np.isfinite(x), axis=1))[0]
@@ -220,8 +224,8 @@ def evaluate(prices, dates, target_date, hourly, daily):
             "complete_rows": int(len(complete)),
         }
 
-    # Holdout is the latest 126 *feature-complete* forecasts.  It is never used
-    # to select a configuration.
+    # The latest 126 feature-complete forecasts are an untouched outcome
+    # holdout. Hyperparameters see only the earlier development outcomes.
     test_idx = complete[-HOLDOUT:]
     split_position = int(test_idx[0])
     dev_idx = complete[complete < split_position]
@@ -239,11 +243,15 @@ def evaluate(prices, dates, target_date, hourly, daily):
         if len(usable_dev) < 90:
             continue
         gains = [_gain(previous, pred, outcomes, usable_dev)]
-        gains += [_gain(previous, pred, outcomes, block) for block in _three_blocks(usable_dev)]
-        # Pre-register a meaningful floor, not merely > 0, to reduce selection
-        # noise across the small 2-year intraday sample.
+        gains += [
+            _gain(previous, pred, outcomes, block)
+            for block in _three_blocks(usable_dev)
+        ]
+        # Meaningful positive floor in every chronological development block.
         if min(gains) > 0.00025:
-            stable.append((_brier(pred[usable_dev], outcomes[usable_dev]), config, pred, adjusted, gains))
+            stable.append(
+                (_brier(pred[usable_dev], outcomes[usable_dev]), config, pred, adjusted, gains)
+            )
 
     if not stable:
         return {
@@ -256,16 +264,16 @@ def evaluate(prices, dates, target_date, hourly, daily):
 
     _, config, pred, adjusted, dev_gains = min(stable, key=lambda row: row[0])
     usable_test = test_idx[adjusted[test_idx]]
-    if len(usable_test) < 90:
+    if len(usable_test) != len(test_idx):
         return {
             "selected": {"window": config[0], "ridge": config[1], "cap": config[2]},
-            "reason": "insufficient adjusted holdout rows",
+            "reason": "selected model lacks full holdout coverage",
             "holdout_rows": int(len(usable_test)),
         }
 
     halves = np.array_split(usable_test, 2)
     test_gains = [_gain(previous, pred, outcomes, usable_test)] + [
-        _gain(previous, pred, outcomes, h) for h in halves
+        _gain(previous, pred, outcomes, half) for half in halves
     ]
     passed = min(test_gains) > 0.0
     latest = int(complete[-1])
