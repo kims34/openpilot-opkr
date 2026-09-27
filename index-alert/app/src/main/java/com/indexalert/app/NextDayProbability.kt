@@ -345,7 +345,37 @@ fun OneMonthSixBucketTable(m: OneMonthEstimate) {
         Text("6구간 확률 계산 중…", style = MaterialTheme.typography.bodySmall)
         return
     }
-    Spacer(Modifier.height(4.dp))
+
+    val upTotal = m.terminalReturnSixBins.take(3).sumOf { it.probability }
+    val downTotal = m.terminalReturnSixBins.drop(3).sumOf { it.probability }
+
+    Spacer(Modifier.height(7.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Card(Modifier.weight(1f)) {
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                Text("상승 3구간 합계", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    pct1(upTotal),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        Card(Modifier.weight(1f)) {
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                Text("하락 3구간 합계", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    pct1(downTotal),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(7.dp))
     m.terminalReturnSixBins.forEachIndexed { index, bucket ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
