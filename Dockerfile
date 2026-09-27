@@ -36,6 +36,8 @@ COPY probability_model_v33_runtime.py .
 COPY probability_model_v34_runtime.py .
 COPY probability_v35_research.py .
 COPY probability_v39_open_nowcast.py .
+COPY probability_v312_futures_preopen.py .
+COPY preopen_futures_v312.py .
 COPY open_nowcast_v39.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
