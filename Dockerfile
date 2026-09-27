@@ -25,6 +25,7 @@ COPY probability_shadow.py .
 COPY probability_milestone.py .
 COPY probability_model.py .
 COPY probability_model_v31_runtime.py .
+COPY stock_recommendations.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
