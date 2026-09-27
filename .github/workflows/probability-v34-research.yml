@@ -5,6 +5,7 @@ on:
     paths:
       - 'probability_research_v34.py'
       - 'probability_research_v34b.py'
+      - 'probability_research_v34c.py'
       - 'probability_model.py'
       - 'probability_model_v33_runtime.py'
       - 'next_day_probability.py'
@@ -30,9 +31,12 @@ jobs:
         run: python probability_research_v34.py | tee probability-v34-result.json
       - name: Run OHLC and VIX overlay research
         run: python probability_research_v34b.py | tee probability-v34b-result.json
+      - name: Run regularized multifeature challenger research
+        run: python probability_research_v34c.py | tee probability-v34c-result.json
       - uses: actions/upload-artifact@v4
         with:
           name: probability-v34-results
           path: |
             probability-v34-result.json
             probability-v34b-result.json
+            probability-v34c-result.json
