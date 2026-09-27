@@ -1,8 +1,8 @@
 """Production live wrapper for the validated v3.12 09:05 ET overlay.
 
-v3.12 is researched against the frozen v3.2 fixed/base rise rate.  This wrapper
+v3.12 is researched against the frozen v3.2 fixed/base rise rate. This wrapper
 recomputes that exact base before applying the futures/risk adjustment, even
-when the outer API also exposes a later guarded calibration model.  That keeps
+when the outer API also exposes a later guarded calibration model. That keeps
 research/live parity and prevents the reference probability from drifting.
 """
 from __future__ import annotations
@@ -18,11 +18,45 @@ import preopen_futures_v312 as core
 MODEL_VERSION = "3.12-preopen-futures"
 BASELINE_MODEL_VERSION = "3.2-live-guardrails:fixed-base-rate"
 CONFIGS = core.CONFIGS
-VALIDATION = core.VALIDATION
+
+# Final metrics from the frozen-base 126-session untouched holdout. Lower
+# Brier is better. Both promoted symbols also passed all six chronological
+# robustness blocks and the post-cutoff leakage test. SCHD failed and is not
+# present in CONFIGS.
+VALIDATION = {
+    "SPY": {
+        "holdout_count": 126,
+        "previous_brier": 0.24945158265604636,
+        "candidate_brier": 0.23206214015275825,
+        "holdout_gain": 0.01738944250328811,
+        "holdout_first_half_gain": 0.01141690832802833,
+        "holdout_second_half_gain": 0.02336197667854778,
+        "robustness_positive_blocks": 6,
+        "robustness_total_blocks": 6,
+    },
+    "QQQ": {
+        "holdout_count": 126,
+        "previous_brier": 0.24709912265872647,
+        "candidate_brier": 0.2333199940719976,
+        "holdout_gain": 0.013779128586728862,
+        "holdout_first_half_gain": 0.013160355283508507,
+        "holdout_second_half_gain": 0.014397901889949188,
+        "robustness_positive_blocks": 6,
+        "robustness_total_blocks": 6,
+    },
+}
+# core._fit_live serializes core.VALIDATION, so pin it to the same frozen audit
+# values used by this wrapper.
+core.VALIDATION = VALIDATION
 
 
 def _display_baseline(item: dict):
-    for key in ("base_rate", "previous_model_base_rate", "previous_model_probability", "probability"):
+    for key in (
+        "base_rate",
+        "previous_model_base_rate",
+        "previous_model_probability",
+        "probability",
+    ):
         value = item.get(key)
         try:
             value = float(value)
@@ -85,7 +119,12 @@ def estimate(symbol: str, item: dict, now: float | None = None):
     if now_et < decision:
         return _unavailable(symbol, item, "미 동부 09:05 이후 선물 반영")
 
-    cache_key = (symbol, str(item["as_of"]), str(item["target_date"]), BASELINE_MODEL_VERSION)
+    cache_key = (
+        symbol,
+        str(item["as_of"]),
+        str(item["target_date"]),
+        BASELINE_MODEL_VERSION,
+    )
     with core.RESULT_LOCK:
         cached = core.RESULT_CACHE.get(cache_key)
         if cached:
@@ -98,7 +137,13 @@ def estimate(symbol: str, item: dict, now: float | None = None):
         hourly, daily = core._market_data(now)
         result = _fit_from_rows(symbol, rows, meta, hourly, daily)
     except Exception as exc:
-        print("v3.12 preopen unavailable", symbol, type(exc).__name__, str(exc), flush=True)
+        print(
+            "v3.12 preopen unavailable",
+            symbol,
+            type(exc).__name__,
+            str(exc),
+            flush=True,
+        )
         return _unavailable(symbol, item, "선물·위험지표 최신값 확인 중")
 
     with core.RESULT_LOCK:
