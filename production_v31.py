@@ -87,6 +87,18 @@ def _align_us_basis(index_id: str, out: dict):
             day_change_percent=percent,
             basis_verified=True,
         )
+        print(
+            "aligned regular-close basis",
+            {
+                "id": index_id,
+                "current": current,
+                "previous_close": previous,
+                "previous_close_date": previous_date,
+                "day_change": change,
+                "day_change_percent": percent,
+            },
+            flush=True,
+        )
     except Exception as exc:
         # Never display a stale/wrong day-change basis. The Android v4.3 client
         # will show a temporary verification state rather than contradictory data.
