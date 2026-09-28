@@ -1,27 +1,25 @@
-"""Reusable PIT supervised-label cache for IndexAlert research.
+"""Reusable PIT supervised cache with explicit version validation.
 
-The expensive daily path labelling step is deterministic for a fixed raw panel,
-horizon/barriers and cost policy.  Persist both model rows and the exact economic
-DecisionRecord fields so feature/model challengers can reuse the same labels
-without rebuilding ~600k paths every run.
+The cache contains expensive feature/legacy-label rows and exact DecisionRecord
+fields.  A cache is reusable only when its schema/version matches the current
+corporate-action-safe PIT policy; stale caches fail closed and are rebuilt.
 """
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from research_v1_core import DecisionRecord
 from research_v1_pit_labels import make_pit_supervised
 
-RECORD_COLUMNS = [
-    "rec_entry_day", "rec_entry_price", "rec_horizon", "rec_target_return",
-    "rec_stop_return", "rec_cost_return", "rec_outcome", "rec_gross_return",
-    "rec_net_return", "rec_exit_day", "rec_exit_price",
-]
+CACHE_VERSION = "pit-supervised-cache-v2-ca-safe"
+REQUIRED_FEATURE_RETURN_POLICY = "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS"
+
+
+class StaleSupervisedCache(RuntimeError):
+    pass
 
 
 def build_cache(
@@ -64,7 +62,8 @@ def build_cache(
     cache_dir.mkdir(parents=True, exist_ok=True)
     merged.to_parquet(cache_dir / "supervised.parquet", index=False)
     meta = {
-        "version": "pit-supervised-cache-v1",
+        "version": CACHE_VERSION,
+        "feature_return_policy": diagnostics.get("feature_return_policy"),
         "horizon": int(horizon),
         "target_return": float(target_return),
         "stop_return": float(stop_return),
@@ -78,11 +77,24 @@ def build_cache(
     return merged, record_map, diagnostics
 
 
+def _validate_meta(meta: dict, cache_dir: Path) -> None:
+    if meta.get("version") != CACHE_VERSION:
+        raise StaleSupervisedCache(
+            f"stale supervised cache version in {cache_dir}: {meta.get('version')} != {CACHE_VERSION}"
+        )
+    if meta.get("feature_return_policy") != REQUIRED_FEATURE_RETURN_POLICY:
+        raise StaleSupervisedCache(
+            f"stale feature return policy in {cache_dir}: {meta.get('feature_return_policy')}"
+        )
+
+
 def load_cache(cache_dir: Path):
     p = cache_dir / "supervised.parquet"
     m = cache_dir / "meta.json"
     if not p.exists() or not m.exists():
         raise FileNotFoundError(cache_dir)
+    meta = json.loads(m.read_text(encoding="utf-8"))
+    _validate_meta(meta, cache_dir)
     frame = pd.read_parquet(p)
     frame["decision_date"] = pd.to_datetime(frame["decision_date"])
     record_map = {}
@@ -105,14 +117,18 @@ def load_cache(cache_dir: Path):
             exit_price=float(row.rec_exit_price),
         )
         record_map[(rec.decision_day, rec.symbol)] = rec
-    meta = json.loads(m.read_text(encoding="utf-8"))
     return frame, record_map, meta.get("diagnostics", {}), meta
 
 
 def load_or_build(raw: pd.DataFrame, cache_dir: Path, **kwargs):
     try:
         return load_cache(cache_dir)
-    except FileNotFoundError:
+    except (FileNotFoundError, StaleSupervisedCache):
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        for name in ("supervised.parquet", "meta.json"):
+            p = cache_dir / name
+            if p.exists():
+                p.unlink()
         frame, record_map, diag = build_cache(raw, cache_dir, **kwargs)
         meta = json.loads((cache_dir / "meta.json").read_text(encoding="utf-8"))
         return frame, record_map, diag, meta
