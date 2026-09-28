@@ -14,6 +14,8 @@ on:
       - 'probability_shadow.py'
       - 'probability_milestone.py'
       - 'Dockerfile'
+      - 'probability_pipeline.py'
+      - 'production_v23.py'
       - '.github/workflows/index-alert-server-smoke.yml'
   workflow_dispatch:
 
@@ -40,7 +42,7 @@ jobs:
           data=json.load(open('/tmp/prob.json'))
           items=data.get('items', {})
           assert health.get('ok') is True, health
-          assert data.get('model_version') == '3.2-live-guardrails', data.get('model_version')
+          assert data.get('model_version') == '3.3-calibration-gated', data.get('model_version')
           for key in ('sp500','ndx','djdiv'):
               row=items.get(key) or {}
               assert isinstance(row.get('probability'), (int,float)), (key,row)

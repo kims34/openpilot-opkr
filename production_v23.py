@@ -16,6 +16,8 @@ import preopen_futures_v312_live as preopen_futures_v312
 import probability_live_gate_patch  # installs prospective safety gates
 import production_v20
 import extended_market_display
+from probability_pipeline import ProbabilityPipeline, install_scheduler
+import monitor
 
 # Install only after the full production evaluation chain has been imported so
 # this wrapper is outermost and can enrich the final market-card payload.
@@ -28,10 +30,18 @@ app.router.routes = [
 ]
 
 
+probability_pipeline = ProbabilityPipeline(next_day_probability.get_all, (
+    preopen_futures_v312.enrich, extended_session_probability.enrich,
+    open_nowcast_v39.enrich, firsthour_nowcast_v40.enrich,
+))
+
+
 @app.get("/next-day-probabilities")
 def next_day_probabilities():
-    safe = next_day_probability.get_all()
-    preopen = preopen_futures_v312.enrich(safe)
-    extended = extended_session_probability.enrich(preopen)
-    after_open = open_nowcast_v39.enrich(extended)
-    return firsthour_nowcast_v40.enrich(after_open)
+    return probability_pipeline.get()
+
+
+@app.on_event("startup")
+def start_probability_recording():
+    install_scheduler(monitor.scheduler, probability_pipeline)
+    probability_pipeline.get()

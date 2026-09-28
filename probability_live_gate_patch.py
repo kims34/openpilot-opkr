@@ -57,18 +57,21 @@ def _score_preopen(symbol, item, result, now):
                         target,
                     ),
                 )
-        con.execute(
-            "INSERT OR IGNORE INTO preopen_futures_forecasts VALUES(?,?,?,?,?,?,?,NULL,NULL)",
-            (
-                preopen_futures_v312_live.MODEL_VERSION,
-                symbol,
-                item.get("as_of"),
-                item.get("target_date"),
-                float(result["probability"]) / 100.0,
-                float(result["baseline_probability"]) / 100.0,
-                now,
-            ),
-        )
+        # A reconstructed 09:05 estimate first requested after the open is not
+        # a prospective pre-open forecast. Continue scoring older rows only.
+        if now < float(item.get("target_open") or 0):
+            con.execute(
+                "INSERT OR IGNORE INTO preopen_futures_forecasts VALUES(?,?,?,?,?,?,?,NULL,NULL)",
+                (
+                    preopen_futures_v312_live.MODEL_VERSION,
+                    symbol,
+                    item.get("as_of"),
+                    item.get("target_date"),
+                    float(result["probability"]) / 100.0,
+                    float(result["baseline_probability"]) / 100.0,
+                    now,
+                ),
+            )
         rows = con.execute(
             "SELECT probability,baseline_probability,outcome FROM preopen_futures_forecasts "
             "WHERE model=? AND symbol=? AND outcome IS NOT NULL ORDER BY target",

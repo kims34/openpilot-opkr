@@ -134,6 +134,7 @@ def _prospective_metrics(scores):
 
 def record_forecast(symbol, result, rows, now):
     """Record first pre-open forecast immutably, then score it after the target close."""
+    forecast_model = result.get('model_version') or MODEL_VERSION
     with sqlite3.connect(DB_PATH, timeout=10) as con:
         con.execute('''CREATE TABLE IF NOT EXISTS probability_forecasts(
             model TEXT,symbol TEXT,as_of TEXT,target TEXT,p REAL,base REAL,
@@ -153,14 +154,14 @@ def record_forecast(symbol, result, rows, now):
         # Only the first forecast made before target open is preserved.
         if now < result['target_open']:
             con.execute('INSERT OR IGNORE INTO probability_forecasts VALUES(?,?,?,?,?,?,?,NULL,NULL)',
-                (MODEL_VERSION,symbol,result['as_of'],result['target_date'],result['probability']/100,result['base_rate']/100,now))
+                (forecast_model,symbol,result['as_of'],result['target_date'],result['probability']/100,result['base_rate']/100,now))
         scores = con.execute(
             'SELECT p,base,outcome FROM probability_forecasts WHERE model=? AND symbol=? AND outcome IS NOT NULL ORDER BY target',
-            (MODEL_VERSION,symbol)
+            (forecast_model,symbol)
         ).fetchall()
         last_scored = con.execute(
             'SELECT MAX(target) FROM probability_forecasts WHERE model=? AND symbol=? AND outcome IS NOT NULL',
-            (MODEL_VERSION,symbol)
+            (forecast_model,symbol)
         ).fetchone()[0]
     metrics = _prospective_metrics(scores)
     metrics['prospective_last_scored_target'] = last_scored

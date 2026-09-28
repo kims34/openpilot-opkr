@@ -9,3 +9,11 @@ After at least 30 paired prospective outcomes for a serving stage, the candidate
 The 60-session milestone report is informational only; it compares the current production model with frozen shadows and never auto-promotes a challenger.
 
 The ledger uses `INDEXALERT_DB`; production persists it on the Railway `/data` volume.
+
+## v4.0 delivery hardening (2026-09-28)
+
+- The probability pipeline refreshes every 60 seconds on the server, independently of phone requests. Existing first-forecast immutability and the 60-session Firebase milestone remain active.
+- HTTP reads return current daily probabilities immediately; one coalesced background worker updates timing-specific layers. Overlay caches expire after 120 seconds and are invalidated immediately at target, base-probability, and market-session boundaries.
+- Forecast ledger model identity comes from each forecast payload, so concurrent KOSPI and US work never temporarily changes a shared global model identifier.
+- A pre-open forecast first computed after its target open is excluded from prospective scoring.
+- Smoke validation now checks the actually served 3.3 model instead of the obsolete 3.2 identifier.

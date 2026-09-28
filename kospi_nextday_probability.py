@@ -78,12 +78,7 @@ def estimate(now: float | None = None):
     # Keep a prospective ledger exactly like the US cards.  The ledger helper
     # does not depend on the NYSE calendar once target timestamps are supplied.
     try:
-        previous_model = ledger.MODEL_VERSION
-        ledger.MODEL_VERSION = MODEL_VERSION
-        try:
-            result.update(ledger.record_forecast(SYMBOL, result, rows, now))
-        finally:
-            ledger.MODEL_VERSION = previous_model
+        result.update(ledger.record_forecast(SYMBOL, result, rows, now))
     except Exception as exc:
         result.update(prospective_count=0, prospective_error="KOSPI 실시간 검증 기록 일시 중단")
         print("kospi next-day ledger unavailable", type(exc).__name__, flush=True)

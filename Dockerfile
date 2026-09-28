@@ -55,6 +55,7 @@ COPY open_nowcast_v39.py .
 COPY firsthour_nowcast_v40.py .
 COPY probability_live_gate.py .
 COPY probability_live_gate_patch.py .
+COPY probability_pipeline.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
