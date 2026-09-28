@@ -1,1 +1,1 @@
-web: python -m uvicorn production_v29:app --host 0.0.0.0 --port ${PORT:-8080}
+web: /app/.venv/bin/python -m uvicorn production_v30:app --host 0.0.0.0 --port ${PORT:-8080}
