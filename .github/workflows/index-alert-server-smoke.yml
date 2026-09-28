@@ -7,6 +7,11 @@ on:
       - 'production.py'
       - 'production_fixed.py'
       - 'production_v17.py'
+      - 'production_v31.py'
+      - 'market_basis.py'
+      - 'laggards.py'
+      - 'test_market_basis.py'
+      - 'test_laggards_direction.py'
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
       - 'one_month_probability.py'
@@ -27,21 +32,46 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Syntax check
-        run: python -m py_compile monitor.py production.py production_fixed.py production_v17.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
+      - name: Install test dependencies
+        run: pip install requests beautifulsoup4
+      - name: Syntax and regression checks
+        run: |
+          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v31.py market_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
+          python -m unittest -v test_market_basis.py test_laggards_direction.py
       - name: Wait for production deployment and verify API
         run: |
           set -u -o pipefail
           BASE='https://indexalert-runtime-production.up.railway.app'
           for i in $(seq 1 30); do
             if curl -fsS --max-time 15 "$BASE/health" >/tmp/health.json && \
+               curl -fsS --max-time 30 "$BASE/status" >/tmp/status.json && \
+               curl -fsS --max-time 30 "$BASE/laggards" >/tmp/laggards.json && \
                curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
               if python - <<'PY'
           import json
           health=json.load(open('/tmp/health.json'))
+          status=json.load(open('/tmp/status.json'))
+          movers=json.load(open('/tmp/laggards.json'))
           data=json.load(open('/tmp/prob.json'))
-          items=data.get('items', {})
           assert health.get('ok') is True, health
+
+          by_id={row.get('id'): row for row in status.get('indices', [])}
+          for key in ('sp500','ndx','djdiv'):
+              row=by_id.get(key) or {}
+              assert row.get('basis_verified') is True, (key,row)
+              assert isinstance(row.get('previous_close'), (int,float)) and row['previous_close'] > 0, (key,row)
+              assert isinstance(row.get('previous_close_date'), str) and row['previous_close_date'], (key,row)
+
+          for universe, section in (movers.get('sections') or {}).items():
+              direction=section.get('direction')
+              for item in section.get('items') or []:
+                  pct=float(item.get('day_change_percent'))
+                  if direction == 'down':
+                      assert pct < 0, (universe,direction,item)
+                  elif direction == 'up':
+                      assert pct > 0, (universe,direction,item)
+
+          items=data.get('items', {})
           assert data.get('model_version') == '3.3-calibration-gated', data.get('model_version')
           for key in ('sp500','ndx','djdiv'):
               row=items.get(key) or {}
@@ -61,7 +91,7 @@ jobs:
               assert isinstance(row.get('shadow_validation'), dict), (key,row)
               assert isinstance(row.get('milestone_60'), dict), (key,row)
               assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
-          print(json.dumps(items, ensure_ascii=False, indent=2))
+          print(json.dumps({'status': by_id, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
           PY
               then
                 exit 0
