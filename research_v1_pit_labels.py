@@ -1,15 +1,17 @@
-"""PIT-specific supervised label construction for IndexAlert Research v1.
+"""PIT-specific label construction for IndexAlert Research v1.
 
-Key property: a security is never removed from training/selection because we
-learned from the future that one of its later daily bars disappeared. Entry-day
-absence is a genuine no-fill. If a bar disappears *after* entry, the preliminary
-research path records a conservative stop-like loss on the first missing market
-session and surfaces the count explicitly. Final Judge work must later replace
-this approximation with security-master delisting/halt economics.
+Decision-time candidates are retained even when the next regular open later turns
+out to be unavailable. Such rows have features and `entry_fillable=False` but no
+training label. This prevents future knowledge of a no-fill from changing the
+ranking that existed on the decision day. Training uses labelled rows only;
+replay ranks all decision-time rows and leaves a slot empty when a selected name
+cannot fill.
+
+If a bar disappears after a successful entry, PIT Preliminary books a
+conservative planned-stop loss at the first missing market session. Final Judge
+work must replace that approximation with exact delisting/halt economics.
 """
 from __future__ import annotations
-
-from dataclasses import replace
 
 import numpy as np
 import pandas as pd
@@ -33,12 +35,6 @@ def _synthetic_missing_future_stop(
     *, decision_day, entry_day, missing_day, symbol, score, entry_price,
     horizon, target_return, stop_return, cost_return,
 ) -> DecisionRecord:
-    """Conservative preliminary treatment for an unresolved post-entry data gap.
-
-    The economic exit is booked at the planned stop, not at zero. This avoids
-    future-information deletion while remaining explicitly preliminary. A final
-    Judge must replace this approximation with actual delisting/halt economics.
-    """
     exit_price = float(entry_price) * (1.0 + float(stop_return))
     gross = float(stop_return)
     return DecisionRecord(
@@ -57,6 +53,15 @@ def _synthetic_missing_future_stop(
         exit_day=missing_day,
         exit_price=exit_price,
     )
+
+
+def _feature_item(row, decision_ts, symbol: str) -> dict:
+    item = {
+        "decision_date": decision_ts,
+        "symbol": symbol,
+    }
+    item.update({f: float(getattr(row, f)) for f in FEATURES})
+    return item
 
 
 def make_pit_supervised(
@@ -80,10 +85,13 @@ def make_pit_supervised(
     diagnostics = {
         "ambiguous_same_bar": 0,
         "entry_no_fill": 0,
+        "entry_no_fill_retained_in_decision_universe": 0,
         "post_entry_missing_future_bar_conservative_stop": 0,
         "insufficient_global_future_horizon": 0,
         "eligible_rows_with_labels": 0,
+        "eligible_rows_without_label_no_fill": 0,
         "ambiguity_policy": "stop_first_conservative",
+        "entry_no_fill_policy": "retain_for_ranking_leave_slot_empty_no_retroactive_backfill",
         "post_entry_gap_policy": "planned_stop_on_first_missing_market_session_preliminary",
     }
 
@@ -98,16 +106,31 @@ def make_pit_supervised(
             diagnostics["insufficient_global_future_horizon"] += 1
             continue
 
+        symbol = str(row.symbol)
+        item = _feature_item(row, decision_ts, symbol)
         hist = by_symbol.get(row.symbol)
-        if hist is None:
-            diagnostics["entry_no_fill"] += 1
-            continue
         entry_ts = pd.Timestamp(future_dates[0])
-        try:
-            entry_row = hist.loc[entry_ts]
-        except KeyError:
-            # If it cannot trade at the planned next-open entry, there is no fill.
+        if hist is None:
+            entry_row = None
+        else:
+            try:
+                entry_row = hist.loc[entry_ts]
+            except KeyError:
+                entry_row = None
+
+        if entry_row is None:
             diagnostics["entry_no_fill"] += 1
+            diagnostics["entry_no_fill_retained_in_decision_universe"] += 1
+            diagnostics["eligible_rows_without_label_no_fill"] += 1
+            item.update({
+                "label_positive_net": np.nan,
+                "net_return": np.nan,
+                "label_available": False,
+                "entry_fillable": False,
+                "ambiguous_same_bar": False,
+                "post_entry_missing_future": False,
+            })
+            rows.append(item)
             continue
 
         cost = cost_model_return(
@@ -131,7 +154,6 @@ def make_pit_supervised(
 
         decision_day = decision_ts.date()
         entry_day = entry_ts.date()
-        symbol = str(row.symbol)
         score = 0.0
         if first_missing_ts is not None:
             diagnostics["post_entry_missing_future_bar_conservative_stop"] += 1
@@ -165,15 +187,14 @@ def make_pit_supervised(
 
         key = (decision_day, symbol)
         record_map[key] = rec
-        item = {
-            "decision_date": decision_ts,
-            "symbol": symbol,
+        item.update({
             "label_positive_net": int(rec.net_return > 0),
             "net_return": float(rec.net_return),
+            "label_available": True,
+            "entry_fillable": True,
             "ambiguous_same_bar": bool(was_ambiguous),
             "post_entry_missing_future": bool(first_missing_ts is not None),
-        }
-        item.update({f: float(getattr(row, f)) for f in FEATURES})
+        })
         rows.append(item)
         diagnostics["eligible_rows_with_labels"] += 1
 
