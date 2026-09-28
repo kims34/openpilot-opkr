@@ -1,10 +1,15 @@
-"""Fixed-horizon label challenger for IndexAlert PIT research.
+"""Fixed-horizon learning target for IndexAlert PIT research.
 
-The live/execution outcome map is unchanged: selected names are still evaluated
-with the existing executable target/stop/time policy.  Only the learning target
-changes.  Instead of learning whether +4% beats -2.5% first, this challenger
-learns next-open -> D+5 close cost-adjusted return (classification and Ridge).
-This isolates label choice from execution-policy choice.
+Core distributional research learns executable next-open -> D+5 cost-adjusted
+return.  Raw OHLC remains execution evidence, but fixed-horizon economic return
+uses a corporate-action-safe price index built from KRX's reported daily
+fluctuation rate versus the applicable adjusted base price.
+
+For a position entered at the regular-session open:
+  entry economic price = adjusted close index on entry day * raw open/raw close
+  exit economic price  = adjusted close index on the exit day
+This preserves within-day open->close movement while removing mechanical
+close-to-close price jumps from splits/consolidations/rights-base adjustments.
 """
 from __future__ import annotations
 
@@ -28,7 +33,31 @@ from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
 
+def build_economic_mark_panel(raw: pd.DataFrame) -> pd.DataFrame:
+    """Return raw rows plus a per-symbol corporate-action-safe close index.
+
+    The level is arbitrary within each symbol; only within-symbol ratios are used.
+    """
+    if "krx_change_return" not in raw.columns:
+        raise RuntimeError("krx_change_return required for corporate-action-safe fixed-horizon labels")
+    x = raw.copy().sort_values(["symbol", "decision_date"]).reset_index(drop=True)
+    x["krx_change_return"] = pd.to_numeric(x["krx_change_return"], errors="coerce")
+    gross_factor = 1.0 + x["krx_change_return"]
+    gross_factor = gross_factor.where(gross_factor > 0)
+    x["economic_close"] = gross_factor.groupby(x["symbol"], sort=False).cumprod()
+    x["economic_open"] = x["economic_close"] * (x["open"] / x["close"])
+    return x
+
+
+def economic_mark_panel_for_portfolio(raw: pd.DataFrame) -> pd.DataFrame:
+    x = build_economic_mark_panel(raw)
+    out = x.copy()
+    out["close"] = out["economic_close"]
+    return out
+
+
 def add_fixed_horizon_target(raw: pd.DataFrame, frame: pd.DataFrame, record_map: dict, horizon: int) -> pd.DataFrame:
+    econ = build_economic_mark_panel(raw)
     dates = sorted(pd.Timestamp(x) for x in raw["decision_date"].drop_duplicates())
     pairs = []
     for i, d in enumerate(dates):
@@ -38,8 +67,16 @@ def add_fixed_horizon_target(raw: pd.DataFrame, frame: pd.DataFrame, record_map:
     pair_df = pd.DataFrame(pairs)
     z = frame.merge(pair_df, on="decision_date", how="left", validate="many_to_one")
 
-    entry = raw[["decision_date", "symbol", "open"]].rename(columns={"decision_date": "entry_date", "open": "fh_entry_open"})
-    exit_ = raw[["decision_date", "symbol", "close"]].rename(columns={"decision_date": "exit_date", "close": "fh_exit_close"})
+    entry = econ[["decision_date", "symbol", "open", "economic_open"]].rename(columns={
+        "decision_date": "entry_date",
+        "open": "fh_entry_open",
+        "economic_open": "fh_entry_economic_price",
+    })
+    exit_ = econ[["decision_date", "symbol", "close", "economic_close"]].rename(columns={
+        "decision_date": "exit_date",
+        "close": "fh_exit_close",
+        "economic_close": "fh_exit_economic_price",
+    })
     z = z.merge(entry, on=["entry_date", "symbol"], how="left", validate="many_to_one")
     z = z.merge(exit_, on=["exit_date", "symbol"], how="left", validate="many_to_one")
 
@@ -49,10 +86,18 @@ def add_fixed_horizon_target(raw: pd.DataFrame, frame: pd.DataFrame, record_map:
     ]
     cost_df = pd.DataFrame(cost_rows)
     z = z.merge(cost_df, on=["decision_date", "symbol"], how="left", validate="one_to_one")
-    z["fh_gross_return"] = z["fh_exit_close"] / z["fh_entry_open"] - 1.0
+
+    z["fh_raw_price_ratio_return"] = z["fh_exit_close"] / z["fh_entry_open"] - 1.0
+    z["fh_gross_return"] = z["fh_exit_economic_price"] / z["fh_entry_economic_price"] - 1.0
     z["fh_net_return"] = z["fh_gross_return"] - z["fh_cost"]
-    z["fh_label_available"] = z[["fh_entry_open", "fh_exit_close", "fh_cost"]].notna().all(axis=1)
-    z["fh_positive_net"] = np.where(z["fh_label_available"], (z["fh_net_return"] > 0).astype(int), np.nan)
+    z["fh_label_available"] = z[[
+        "fh_entry_economic_price", "fh_exit_economic_price", "fh_cost"
+    ]].notna().all(axis=1)
+    z["fh_positive_net"] = np.where(
+        z["fh_label_available"], (z["fh_net_return"] > 0).astype(int), np.nan
+    )
+    z["fh_corporate_action_gap"] = z["fh_raw_price_ratio_return"] - z["fh_gross_return"]
+    z["fh_return_policy"] = "KRX_FLUC_RT_ECONOMIC_INDEX_FROM_ENTRY_OPEN_TO_EXIT_CLOSE"
     return z
 
 
@@ -132,7 +177,7 @@ def view(result: dict) -> dict:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit")
-    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_v1")
+    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_v2_ca")
     ap.add_argument("--result-dir", default="research_results/marcap_pit_fixed_horizon")
     ap.add_argument("--horizon", type=int, default=5)
     ap.add_argument("--top-k", type=int, default=3)
@@ -174,11 +219,12 @@ def main():
     base = view(baseline_result)
     cls = view(cls_result)
     reg = view(reg_result)
+    gap = pd.to_numeric(z["fh_corporate_action_gap"], errors="coerce").dropna().abs()
     report = {
         "evaluation_stage": "PIT_PRELIMINARY_PURGED_FIXED_HORIZON_LABEL_CHALLENGER",
         "purge_days": args.horizon,
-        "execution_outcome_policy_unchanged": True,
-        "learning_target": "next_open_to_Dplus5_close_cost_adjusted_return",
+        "learning_target": "corporate_action_safe_next_open_to_Dplus5_close_cost_adjusted_return",
+        "fixed_horizon_return_policy": "KRX_FLUC_RT_ECONOMIC_INDEX_FROM_ENTRY_OPEN_TO_EXIT_CLOSE",
         "hyperparameter_search": False,
         "supervised_cache": cache_meta,
         "barrier_label_baseline": base,
@@ -188,13 +234,15 @@ def main():
         "delta_ridge_vs_barrier": {k: reg[k] - base[k] for k in reg if k in base and isinstance(reg[k], (int, float))},
         "fixed_horizon_training_rows": int(z["fh_label_available"].fillna(False).sum()),
         "fixed_horizon_missing_rows": int((~z["fh_label_available"].fillna(False)).sum()),
+        "fh_raw_vs_economic_gap": {
+            "abs_gt_1pct": int((gap > 0.01).sum()),
+            "abs_gt_5pct": int((gap > 0.05).sum()),
+            "abs_gt_10pct": int((gap > 0.10).sum()),
+            "max_abs_gap": float(gap.max()) if len(gap) else 0.0,
+        },
         "classification_selected_rows": int(len(cls_selected)),
         "regression_selected_rows": int(len(reg_selected)),
         "label_diagnostics": diag,
-        "interpretation": (
-            "Adopt a fixed-horizon learning target only if it improves executable barrier-policy OOS economics. "
-            "The execution policy itself has not been relaxed."
-        ),
     }
     out = Path(args.result_dir)
     out.mkdir(parents=True, exist_ok=True)
