@@ -18,6 +18,7 @@ on:
       - 'research_v1_commonlike.py'
       - 'research_v1_gap_diagnostics.py'
       - 'research_v1_ambiguity_sensitivity.py'
+      - 'research_v1_cost_sensitivity.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
       - 'test_research_v1_portfolio.py'
@@ -80,6 +81,9 @@ jobs:
       - name: Bound same-bar target-stop ambiguity with purged scores
         run: |
           python research_v1_ambiguity_sensitivity.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_ambiguity --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Run fixed-selection cost sensitivity
+        run: |
+          python research_v1_cost_sensitivity.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_cost_sensitivity --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
       - name: Show compact results
         if: always()
         run: |
@@ -88,6 +92,7 @@ jobs:
           test -f research_results/marcap_pit_commonlike/summary.json && cat research_results/marcap_pit_commonlike/summary.json || true
           test -f research_results/marcap_pit_gap_diagnostics/summary.json && cat research_results/marcap_pit_gap_diagnostics/summary.json || true
           test -f research_results/marcap_pit_ambiguity/summary.json && cat research_results/marcap_pit_ambiguity/summary.json || true
+          test -f research_results/marcap_pit_cost_sensitivity/summary.json && cat research_results/marcap_pit_cost_sensitivity/summary.json || true
       - name: Upload purged PIT artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -98,6 +103,7 @@ jobs:
             research_results/marcap_pit_commonlike/
             research_results/marcap_pit_gap_diagnostics/
             research_results/marcap_pit_ambiguity/
+            research_results/marcap_pit_cost_sensitivity/
             research_data/marcap_kospi_pit/build_stats.json
             research_data/marcap_kospi_pit/limitations.json
             research_data/marcap_kospi_pit/rejected_invalid_bars.parquet
