@@ -38,11 +38,16 @@ jobs:
           python -m py_compile research_kospi_model_v1.py
           python -m py_compile research_kospi_full_v1.py
 
-      - name: Fetch immutable-style historical KRX cross-sections
+      - name: Fetch required historical KRX cross-sections
         run: |
-          git clone --depth 1 https://github.com/FinanceData/marcap.git /tmp/marcap
-          test -d /tmp/marcap/data
-          ls -lh /tmp/marcap/data | tail -n 12
+          mkdir -p /tmp/marcap/data
+          for y in 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
+            echo "downloading marcap-$y.csv.gz"
+            curl -fL --retry 3 --retry-delay 2 \
+              "https://raw.githubusercontent.com/FinanceData/marcap/master/data/marcap-$y.csv.gz" \
+              -o "/tmp/marcap/data/marcap-$y.csv.gz"
+          done
+          ls -lh /tmp/marcap/data
 
       - name: Run KOSPI PIT data build + baseline + walk-forward model tournament
         run: |
