@@ -8,7 +8,12 @@ on:
       - 'research_v1_distributional_netev.py'
       - 'research_v1_distributional_ablation.py'
       - 'research_v1_distributional_recency.py'
+      - 'research_v1_pit_features.py'
+      - 'research_v1_pit_labels.py'
+      - 'research_v1_marcap.py'
       - 'test_research_v1_distributional_netev.py'
+      - 'test_research_v1_corporate_action_returns.py'
+      - 'test_research_v1_pit_tax.py'
       - 'research_v1_supervised_cache.py'
       - 'research_v1_fixed_horizon_label.py'
       - 'research_v1_context.py'
@@ -18,7 +23,7 @@ on:
 jobs:
   distributional-netev:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
@@ -31,10 +36,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
-      - name: Compile and run Distributional regression tests
+      - name: Compile and run integrity tests
         run: |
-          python -m py_compile research_v1_distributional_netev.py research_v1_distributional_ablation.py research_v1_distributional_recency.py
-          python -m unittest test_research_v1_distributional_netev.py
+          python -m py_compile research_v1_distributional_netev.py research_v1_distributional_ablation.py research_v1_distributional_recency.py research_v1_pit_features.py research_v1_pit_labels.py research_v1_fixed_horizon_label.py
+          python -m unittest test_research_v1_distributional_netev.py test_research_v1_corporate_action_returns.py test_research_v1_pit_tax.py
       - name: Restore marcap source
         uses: actions/cache@v4
         with:
@@ -43,17 +48,17 @@ jobs:
           restore-keys: |
             marcap-pit-v2-
             marcap-pit-v1-
-      - name: Restore supervised PIT labels
+      - name: Restore corporate-action-safe supervised PIT labels
         uses: actions/cache@v4
         with:
-          path: research_data/pit_supervised_v1
-          key: pit-supervised-v1-2024-01-01-2026-09-28-h5-t040-s025-c3
-      - name: Build PIT panel
+          path: research_data/pit_supervised_v2_ca
+          key: pit-supervised-v2-ca-2024-01-01-2026-09-28-h5-c3
+      - name: Build PIT panel v3
         run: |
           python research_v1_marcap.py --start 2024-01-01 --end 2026-09-28 --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
-      - name: Run distributional executable NetEV
+      - name: Run corporate-action-safe distributional executable NetEV
         run: |
-          python research_v1_distributional_netev.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_distributional --horizon 5 --top-k 3 --train-days 160 --cal-days 40 --test-days 40
+          python research_v1_distributional_netev.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v2_ca --result-dir research_results/marcap_pit_distributional --horizon 5 --top-k 3 --train-days 160 --cal-days 40 --test-days 40
           cat research_results/marcap_pit_distributional/summary.json
       - name: Upload result
         if: always()
