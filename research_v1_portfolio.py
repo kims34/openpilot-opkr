@@ -54,6 +54,32 @@ def _mdd_from_equity(values: Sequence[float]) -> float:
     return float(worst)
 
 
+def filter_executable_records(
+    records: Sequence[DecisionRecord],
+    suppress_duplicate_symbols: bool = True,
+) -> tuple[list[DecisionRecord], int]:
+    """Return the exact signal records eligible to become portfolio entries.
+
+    A symbol already open at the start of an entry day cannot be pyramided. If
+    the existing lot exits later on that same day, the new entry is still
+    suppressed because the portfolio simulator enters before processing exits.
+    """
+    ordered = sorted(records, key=lambda r: (r.entry_day, -float(r.score), r.symbol))
+    if not suppress_duplicate_symbols:
+        return list(ordered), 0
+    active_until: dict[str, date] = {}
+    kept: list[DecisionRecord] = []
+    skipped = 0
+    for rec in ordered:
+        prev_exit = active_until.get(rec.symbol)
+        if prev_exit is not None and prev_exit >= rec.entry_day:
+            skipped += 1
+            continue
+        kept.append(rec)
+        active_until[rec.symbol] = rec.exit_day
+    return kept, skipped
+
+
 def simulate_portfolio(
     panel: pd.DataFrame,
     records: Sequence[DecisionRecord],
@@ -61,6 +87,8 @@ def simulate_portfolio(
     initial_equity: float = 1.0,
     daily_cohort_fraction: float | None = None,
     suppress_duplicate_symbols: bool = True,
+    evaluation_start: date | None = None,
+    evaluation_end: date | None = None,
 ) -> tuple[pd.DataFrame, PortfolioSummary]:
     if horizon <= 0:
         raise ValueError("horizon must be positive")
@@ -70,24 +98,35 @@ def simulate_portfolio(
         daily_cohort_fraction = 1.0 / horizon
     if not 0 < daily_cohort_fraction <= 1:
         raise ValueError("daily_cohort_fraction must be in (0,1]")
-    if not records:
-        empty = pd.DataFrame(columns=["date", "equity", "cash", "cash_weight", "gross_exposure", "positions", "daily_return"])
-        summary = PortfolioSummary(0, initial_equity, initial_equity, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0, 0, 0, 0)
-        return empty, summary
 
     p = panel.copy()
     p["decision_date"] = pd.to_datetime(p["decision_date"])
+    all_sessions = sorted({pd.Timestamp(x).date() for x in p["decision_date"].unique()})
+    if not all_sessions:
+        raise RuntimeError("panel has no sessions")
+
+    filtered_records, prefiltered_duplicates = filter_executable_records(
+        records, suppress_duplicate_symbols=suppress_duplicate_symbols
+    )
+
+    if evaluation_start is None:
+        evaluation_start = min((r.entry_day for r in filtered_records), default=all_sessions[0])
+    if evaluation_end is None:
+        evaluation_end = max((r.exit_day for r in filtered_records), default=evaluation_start)
+    if evaluation_end < evaluation_start:
+        raise ValueError("evaluation_end precedes evaluation_start")
+    sessions = [d for d in all_sessions if evaluation_start <= d <= evaluation_end]
+    if not sessions:
+        empty = pd.DataFrame(columns=["date", "equity", "cash", "cash_weight", "gross_exposure", "positions", "daily_return"])
+        summary = PortfolioSummary(0, initial_equity, initial_equity, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0, 0, prefiltered_duplicates, 0)
+        return empty, summary
+
     close_map = {
         (pd.Timestamp(r.decision_date).date(), str(r.symbol)): float(r.close)
         for r in p.itertuples(index=False)
     }
-    sessions = sorted({pd.Timestamp(x).date() for x in p["decision_date"].unique()})
-    first_day = min(r.entry_day for r in records)
-    last_day = max(r.exit_day for r in records)
-    sessions = [d for d in sessions if first_day <= d <= last_day]
-
     entries: dict[date, list[DecisionRecord]] = {}
-    for rec in records:
+    for rec in filtered_records:
         entries.setdefault(rec.entry_day, []).append(rec)
     for d in entries:
         entries[d].sort(key=lambda r: r.score, reverse=True)
@@ -96,20 +135,12 @@ def simulate_portfolio(
     active: list[_Lot] = []
     path: list[dict] = []
     prev_equity = float(initial_equity)
-    duplicate_skips = 0
     cash_skips = 0
     entries_executed = 0
     max_positions = 0
 
     for day in sessions:
-        active_symbols = {lot.record.symbol for lot in active}
-        todays = []
-        for rec in entries.get(day, []):
-            if suppress_duplicate_symbols and rec.symbol in active_symbols:
-                duplicate_skips += 1
-                continue
-            todays.append(rec)
-            active_symbols.add(rec.symbol)
+        todays = entries.get(day, [])
 
         # One daily sleeve, equal-weighted across today's accepted candidates.
         cohort_budget = prev_equity * daily_cohort_fraction
@@ -162,8 +193,6 @@ def simulate_portfolio(
         prev_equity = equity
 
     df = pd.DataFrame(path)
-    if df.empty:
-        raise RuntimeError("portfolio path unexpectedly empty")
     end_equity = float(df.iloc[-1]["equity"])
     total_return = end_equity / initial_equity - 1.0
     n = len(df)
@@ -185,7 +214,7 @@ def simulate_portfolio(
         average_gross_exposure=float(df["gross_exposure"].mean()),
         max_concurrent_positions=int(max_positions),
         entries_executed=int(entries_executed),
-        duplicate_entries_suppressed=int(duplicate_skips),
+        duplicate_entries_suppressed=int(prefiltered_duplicates),
         insufficient_cash_entries=int(cash_skips),
     )
     return df, summary
