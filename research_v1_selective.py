@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from research_v1_core import date_cluster_bootstrap_mean, summarize
-from research_v1_ml import FEATURES, _pipeline, make_supervised, stateful_select_records
+from research_v1_ml import FEATURES, _classification_pipeline, make_supervised, stateful_select_records
 from research_v1_portfolio import simulate_portfolio, summary_dict
 from run_research_v1 import load_panel
 
@@ -26,9 +26,9 @@ def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trade
         return None, {"reason": "empty_calibration"}
     coverages = [0.05, 0.10, 0.20, 0.30, 0.40]
     candidates = []
-    probs = cal["prob"].to_numpy(dtype=float)
+    scores = cal["score"].to_numpy(dtype=float)
     for cov in coverages:
-        threshold = float(np.quantile(probs, 1.0 - cov))
+        threshold = float(np.quantile(scores, 1.0 - cov))
         recs, _, state_diag = stateful_select_records(
             cal, record_map, top_k=top_k, threshold=threshold, active_until={}
         )
@@ -46,8 +46,6 @@ def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trade
             "bootstrap_low": lo,
             "bootstrap_high": hi,
         })
-    # Fail closed: admission is allowed only when the calibration-window lower
-    # confidence bound is above zero. Otherwise the engine chooses NO TRADE.
     valid = [x for x in candidates if x["bootstrap_low"] > 0]
     if not valid:
         return None, {"reason": "no_positive_lower_bound_policy", "candidates": candidates}
@@ -83,10 +81,10 @@ def run_selective(
         if train.empty or cal.empty or test.empty or train["label_positive_net"].nunique() < 2:
             start += test_days
             continue
-        model = _pipeline("logistic_l2")
+        model = _classification_pipeline("logistic_l2")
         model.fit(train[FEATURES], train["label_positive_net"])
-        cal["prob"] = model.predict_proba(cal[FEATURES])[:, 1]
-        test["prob"] = model.predict_proba(test[FEATURES])[:, 1]
+        cal["score"] = model.predict_proba(cal[FEATURES])[:, 1]
+        test["score"] = model.predict_proba(test[FEATURES])[:, 1]
         threshold, threshold_info = _choose_threshold(cal, record_map, top_k)
         if threshold is None:
             selected = []
@@ -101,7 +99,7 @@ def run_selective(
         test["trade_allowed"] = bool(threshold is not None)
         all_test_rows.append(test[[
             "decision_date", "symbol", "label_positive_net", "net_return",
-            "ambiguous_same_bar", "prob", "threshold", "trade_allowed",
+            "ambiguous_same_bar", "score", "threshold", "trade_allowed",
         ]])
         fold_log.append({
             "train_end": str(train_block[-1].date()),
@@ -180,7 +178,7 @@ def main():
         "selection_rule": (
             "For each fold, choose among fixed probability-coverage candidates on the prior "
             "40-day calibration block; require positive date-cluster bootstrap lower bound, "
-            "else NO TRADE. Candidate admission is stateful and backfills blocked active names."
+            "else NO TRADE. Candidate admission is stateful and threshold-limited backfill is used."
         ),
         "diagnostics": diag,
         "result": result,
