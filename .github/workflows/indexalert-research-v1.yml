@@ -7,6 +7,7 @@ on:
       - 'research_v1_core.py'
       - 'research_v1_portfolio.py'
       - 'research_v1_data_policy.py'
+      - 'research_v1_security_scope.py'
       - 'research_v1_krx.py'
       - 'research_v1_public.py'
       - 'research_v1_marcap.py'
@@ -16,10 +17,12 @@ on:
       - 'research_v1_holdaware.py'
       - 'research_v1_context.py'
       - 'research_v1_pit_run.py'
+      - 'research_v1_commonlike.py'
       - 'research_v1_assess.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
       - 'test_research_v1_portfolio.py'
+      - 'test_research_v1_security_scope.py'
       - '.github/workflows/indexalert-research-v1.yml'
   workflow_dispatch:
     inputs:
@@ -61,7 +64,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest==9.1.1 pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
       - name: Unit tests
-        run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py
+        run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py test_research_v1_security_scope.py
       - name: Build public real-price smoke panel
         env:
           START_DATE: ${{ github.event.inputs.start || '2025-01-01' }}
@@ -146,11 +149,15 @@ jobs:
       - name: Run PIT preliminary model tournament
         run: |
           python research_v1_pit_run.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Run common-like security-scope challenger
+        run: |
+          python research_v1_commonlike.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_commonlike --full-pit-result research_results/marcap_pit/compact.json --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
       - name: Show compact PIT preliminary assessment
         if: always()
         run: |
           test -f research_results/marcap_pit/compact.json && cat research_results/marcap_pit/compact.json || true
           test -f research_results/marcap_pit/candidate_comparison.csv && cat research_results/marcap_pit/candidate_comparison.csv || true
+          test -f research_results/marcap_pit_commonlike/summary.json && cat research_results/marcap_pit_commonlike/summary.json || true
       - name: Upload PIT preliminary artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,6 +165,7 @@ jobs:
           name: indexalert-research-v1-marcap-pit-preliminary
           path: |
             research_results/marcap_pit/
+            research_results/marcap_pit_commonlike/
             research_data/marcap_kospi_pit/build_stats.json
             research_data/marcap_kospi_pit/limitations.json
             research_data/marcap_kospi_pit/rejected_invalid_bars.parquet
