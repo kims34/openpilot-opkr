@@ -21,6 +21,7 @@ COPY production_v23.py .
 COPY production_v24.py .
 COPY production_v25.py .
 COPY production_v26.py .
+COPY production_v27.py .
 COPY briefing.py .
 COPY history_routes.py .
 COPY laggards.py .
@@ -55,4 +56,4 @@ COPY probability_live_gate_patch.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
-CMD ["sh", "-c", "python -m uvicorn production_v26:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "python -m uvicorn production_v27:app --host 0.0.0.0 --port ${PORT:-8080}"]
