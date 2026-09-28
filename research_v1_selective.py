@@ -17,7 +17,7 @@ import pandas as pd
 
 from research_v1_core import date_cluster_bootstrap_mean, summarize
 from research_v1_ml import FEATURES, _pipeline, make_supervised
-from research_v1_portfolio import simulate_portfolio, summary_dict
+from research_v1_portfolio import filter_executable_records, simulate_portfolio, summary_dict
 from run_research_v1 import load_panel
 
 
@@ -44,7 +44,8 @@ def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trade
     probs = cal["prob"].to_numpy(dtype=float)
     for cov in coverages:
         threshold = float(np.quantile(probs, 1.0 - cov))
-        recs = _select_records(cal, record_map, threshold, top_k)
+        signal_recs = _select_records(cal, record_map, threshold, top_k)
+        recs, dup = filter_executable_records(signal_recs, True)
         if len(recs) < min_trades:
             continue
         m = summarize(recs)
@@ -52,19 +53,21 @@ def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trade
         candidates.append({
             "coverage_target": cov,
             "threshold": threshold,
-            "trades": len(recs),
+            "signal_trades": len(signal_recs),
+            "executable_trades": len(recs),
+            "duplicates_suppressed": dup,
             "mean_net_return": m.mean_net_return,
             "bootstrap_point": point,
             "bootstrap_low": lo,
             "bootstrap_high": hi,
         })
-    # Conservative rule: calibration mean must be positive. Prefer the highest
-    # lower bound, then the higher mean. If nothing is positive, choose NO TRADE.
-    valid = [x for x in candidates if x["mean_net_return"] > 0]
+    # Fail-closed rule: a candidate admission threshold is eligible only when
+    # the date-clustered lower confidence bound is above zero on calibration.
+    valid = [x for x in candidates if x["bootstrap_low"] > 0]
     if not valid:
-        return None, {"reason": "no_positive_calibration_policy", "candidates": candidates}
+        return None, {"reason": "no_positive_lower_bound_policy", "candidates": candidates}
     best = max(valid, key=lambda x: (x["bootstrap_low"], x["mean_net_return"]))
-    return float(best["threshold"]), {"reason": "selected_on_calibration_only", "selected": best, "candidates": candidates}
+    return float(best["threshold"]), {"reason": "selected_on_calibration_lower_bound", "selected": best, "candidates": candidates}
 
 
 def run_selective(
@@ -78,7 +81,7 @@ def run_selective(
     horizon: int = 5,
 ):
     dates = sorted(pd.Timestamp(x) for x in frame["decision_date"].drop_duplicates())
-    test_records = []
+    test_signal_records = []
     all_test_rows = []
     fold_log = []
     start = train_days + calibration_days
@@ -99,8 +102,9 @@ def run_selective(
         cal["prob"] = model.predict_proba(cal[FEATURES])[:, 1]
         test["prob"] = model.predict_proba(test[FEATURES])[:, 1]
         threshold, threshold_info = _choose_threshold(cal, record_map, top_k)
-        selected = _select_records(test, record_map, threshold, top_k)
-        test_records.extend(selected)
+        selected_signals = _select_records(test, record_map, threshold, top_k)
+        selected_exec, dup = filter_executable_records(selected_signals, True)
+        test_signal_records.extend(selected_signals)
         test["threshold"] = threshold if threshold is not None else np.nan
         test["trade_allowed"] = bool(threshold is not None)
         all_test_rows.append(test[["decision_date", "symbol", "label_positive_net", "net_return", "prob", "threshold", "trade_allowed"]])
@@ -111,32 +115,50 @@ def run_selective(
             "test_start": str(test_block[0].date()),
             "test_end": str(test_block[-1].date()),
             "threshold": threshold,
-            "test_selected": len(selected),
+            "test_signal_selected": len(selected_signals),
+            "test_executable_selected_within_fold": len(selected_exec),
+            "test_duplicates_suppressed_within_fold": dup,
             "threshold_selection": threshold_info,
         })
         start += test_days
 
     pred = pd.concat(all_test_rows, ignore_index=True) if all_test_rows else pd.DataFrame()
-    metrics = summarize(test_records)
-    point, lo, hi = date_cluster_bootstrap_mean(test_records) if test_records else (0.0, 0.0, 0.0)
+    executable_records, dup_total = filter_executable_records(test_signal_records, True)
+    metrics_signal = summarize(test_signal_records)
+    metrics_exec = summarize(executable_records)
+    point, lo, hi = date_cluster_bootstrap_mean(executable_records) if executable_records else (0.0, 0.0, 0.0)
+
+    if pred.empty:
+        eval_start = eval_end = None
+    else:
+        eval_start = pd.Timestamp(pred["decision_date"].min()).date()
+        eval_end = max(
+            pd.Timestamp(pred["decision_date"].max()).date(),
+            max((r.exit_day for r in executable_records), default=eval_start),
+        )
     path, portfolio = simulate_portfolio(
-        raw_panel, test_records, horizon=horizon, initial_equity=1.0,
-        daily_cohort_fraction=1.0 / horizon, suppress_duplicate_symbols=True,
+        raw_panel, executable_records, horizon=horizon, initial_equity=1.0,
+        daily_cohort_fraction=1.0 / horizon, suppress_duplicate_symbols=False,
+        evaluation_start=eval_start, evaluation_end=eval_end,
     )
     test_dates = int(pred["decision_date"].nunique()) if not pred.empty else 0
-    trade_days = len({r.decision_day for r in test_records})
+    trade_days = len({r.decision_day for r in executable_records})
     return {
-        **asdict(metrics),
-        "cluster_bootstrap_mean_net_return": point,
-        "cluster_bootstrap_95_low": lo,
-        "cluster_bootstrap_95_high": hi,
+        "signal_set": asdict(metrics_signal),
+        "executable_set": {
+            **asdict(metrics_exec),
+            "cluster_bootstrap_mean_net_return": point,
+            "cluster_bootstrap_95_low": lo,
+            "cluster_bootstrap_95_high": hi,
+        },
+        "duplicate_signals_suppressed": int(dup_total),
         "portfolio": summary_dict(portfolio),
         "test_dates": test_dates,
         "trade_days": trade_days,
         "trade_day_coverage": float(trade_days / test_dates) if test_dates else 0.0,
-        "avg_trades_per_test_day": float(len(test_records) / test_dates) if test_dates else 0.0,
+        "avg_executable_trades_per_test_day": float(len(executable_records) / test_dates) if test_dates else 0.0,
         "folds": fold_log,
-    }, pred, pd.DataFrame([asdict(r) for r in test_records]), path
+    }, pred, pd.DataFrame([asdict(r) for r in executable_records]), path
 
 
 def main():
@@ -166,7 +188,8 @@ def main():
         "policy": "logistic_l2_plus_calibration_selected_abstention",
         "selection_rule": (
             "For each fold, choose among fixed probability-coverage candidates on the prior "
-            "40-day calibration block; require positive calibration mean net return, else NO TRADE."
+            "40-day calibration block; require positive date-cluster bootstrap lower bound, "
+            "else NO TRADE."
         ),
         "diagnostics": diag,
         "result": result,
@@ -177,7 +200,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     pred.to_csv(out / "predictions.csv", index=False)
-    trades.to_csv(out / "selected_trades.csv", index=False)
+    trades.to_csv(out / "executable_trades.csv", index=False)
     path.to_csv(out / "portfolio.csv", index=False)
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
