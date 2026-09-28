@@ -7,6 +7,10 @@ on:
       - 'research_v1_fast_purged_candidate.py'
       - 'research_v1_path_context.py'
       - 'research_v1_fixed_horizon_label.py'
+      - 'research_v1_combined_challenger.py'
+      - 'research_v1_cross_sectional_label.py'
+      - 'research_v1_volatility_veto.py'
+      - 'research_v1_stage2_compare.py'
       - 'research_v1_supervised_cache.py'
       - 'research_v1_pit_labels.py'
       - 'research_v1_pit_run_purged.py'
@@ -65,23 +69,37 @@ jobs:
       - name: Run fast purged candidate
         run: |
           python research_v1_fast_purged_candidate.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_fast --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-          cat research_results/marcap_pit_fast/summary.json
       - name: Run PIT-safe path-context challenger
         run: |
           python research_v1_path_context.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_path_context --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-          cat research_results/marcap_pit_path_context/summary.json
       - name: Run fixed-horizon label challenger
         run: |
           python research_v1_fixed_horizon_label.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_fixed_horizon --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-          cat research_results/marcap_pit_fixed_horizon/summary.json
+      - name: Run combined path + fixed-horizon challenger
+        run: |
+          python research_v1_combined_challenger.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_combined --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Run cross-sectional label challenger
+        run: |
+          python research_v1_cross_sectional_label.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_cross_sectional --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Run volatility risk veto
+        run: |
+          python research_v1_volatility_veto.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_vol_veto --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Compare stage2 challengers
+        run: |
+          python research_v1_stage2_compare.py --root research_results --out research_results/stage2_compare.json
+          cat research_results/stage2_compare.json
       - name: Upload fast results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: indexalert-research-v1-fast-purged
+          name: indexalert-research-v1-fast-purged-stage2
           path: |
             research_results/marcap_pit_fast/
             research_results/marcap_pit_path_context/
             research_results/marcap_pit_fixed_horizon/
+            research_results/marcap_pit_combined/
+            research_results/marcap_pit_cross_sectional/
+            research_results/marcap_pit_vol_veto/
+            research_results/stage2_compare.json
           if-no-files-found: warn
           retention-days: 30
