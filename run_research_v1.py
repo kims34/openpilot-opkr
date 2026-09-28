@@ -20,7 +20,7 @@ from research_v1_core import (
     economic_outcome,
     summarize,
 )
-from research_v1_portfolio import filter_executable_records, simulate_portfolio, summary_dict
+from research_v1_portfolio import simulate_portfolio, summary_dict
 
 DEFAULT_CACHE = Path("research_data/krx_daily")
 RESULT_DIR = Path("research_results")
@@ -75,6 +75,61 @@ def build_lookup(panel: pd.DataFrame):
     return dates, date_to_pos, by_symbol
 
 
+def _record_for_row(
+    row,
+    decision_date,
+    dates,
+    date_to_pos,
+    by_symbol,
+    horizon,
+    target_return,
+    stop_return,
+    half_spread_bps,
+    explicit_bps,
+    participation,
+    impact_coefficient,
+):
+    symbol = row["symbol"]
+    pos = date_to_pos[pd.Timestamp(decision_date)]
+    future_dates = dates[pos + 1: pos + 1 + horizon]
+    if len(future_dates) < horizon:
+        return None, False, "short_future"
+    hist = by_symbol.get(symbol)
+    if hist is None:
+        return None, False, "missing_symbol"
+    try:
+        entry_row = hist.loc[pd.Timestamp(future_dates[0])]
+    except KeyError:
+        return None, False, "missing_entry"
+    future = []
+    for d in future_dates:
+        try:
+            r = hist.loc[pd.Timestamp(d)]
+        except KeyError:
+            return None, False, "missing_future_bar"
+        future.append(Bar(
+            day=pd.Timestamp(d).date(), open=float(r.open), high=float(r.high),
+            low=float(r.low), close=float(r.close), volume=float(r.volume), value=float(r.value),
+        ))
+    cost = cost_model_return(
+        half_spread_bps=half_spread_bps,
+        tax_commission_bps=explicit_bps,
+        volatility=float(row["vol20"]),
+        participation=participation,
+        impact_coefficient=impact_coefficient,
+    )
+    kwargs = dict(
+        decision_day=pd.Timestamp(decision_date).date(), symbol=symbol,
+        score=float(row["score"]), entry_price=float(entry_row.open), future_bars=future,
+        target_return=target_return, stop_return=stop_return,
+        round_trip_cost_return=cost,
+    )
+    try:
+        return economic_outcome(**kwargs), False, None
+    except AmbiguousFirstHit:
+        return economic_outcome(**kwargs, ambiguous_policy="stop_first"), True, None
+
+
 def run_strategy(
     panel: pd.DataFrame,
     strategy: str,
@@ -88,70 +143,76 @@ def run_strategy(
     impact_coefficient: float = 0.10,
 ):
     dates, date_to_pos, by_symbol = build_lookup(panel)
-    records = []
-    ambiguous = skipped = considered = 0
+    signal_records = []
+    executable_records = []
+    active_until = {}
+    ambiguous_keys = set()
+    skipped_keys = set()
+    signal_candidates = 0
+    execution_candidates_scanned = 0
+    blocked = 0
+    backfilled = 0
+
     for decision_date, day in panel.groupby("decision_date", sort=True):
         ranked = _rank_day(day, strategy)
         if ranked.empty:
             continue
-        for _, row in ranked.head(top_k).iterrows():
-            considered += 1
-            symbol = row["symbol"]
-            pos = date_to_pos[pd.Timestamp(decision_date)]
-            future_dates = dates[pos + 1: pos + 1 + horizon]
-            if len(future_dates) < horizon:
-                continue
-            hist = by_symbol.get(symbol)
-            if hist is None:
-                skipped += 1
-                continue
-            try:
-                entry_row = hist.loc[pd.Timestamp(future_dates[0])]
-            except KeyError:
-                skipped += 1
-                continue
-            future = []
-            valid = True
-            for d in future_dates:
-                try:
-                    r = hist.loc[pd.Timestamp(d)]
-                except KeyError:
-                    valid = False
-                    break
-                future.append(Bar(
-                    day=pd.Timestamp(d).date(), open=float(r.open), high=float(r.high),
-                    low=float(r.low), close=float(r.close), volume=float(r.volume), value=float(r.value),
-                ))
-            if not valid:
-                skipped += 1
-                continue
-            cost = cost_model_return(
-                half_spread_bps=half_spread_bps,
-                tax_commission_bps=explicit_bps,
-                volatility=float(row["vol20"]),
-                participation=participation,
-                impact_coefficient=impact_coefficient,
-            )
-            try:
-                rec = economic_outcome(
-                    decision_day=pd.Timestamp(decision_date).date(), symbol=symbol,
-                    score=float(row["score"]), entry_price=float(entry_row.open),
-                    future_bars=future, target_return=target_return, stop_return=stop_return,
-                    round_trip_cost_return=cost,
+        cache = {}
+
+        def get_rec(idx, row):
+            key = (pd.Timestamp(decision_date).date(), str(row["symbol"]))
+            if key not in cache:
+                rec, amb, skip_reason = _record_for_row(
+                    row, decision_date, dates, date_to_pos, by_symbol, horizon,
+                    target_return, stop_return, half_spread_bps, explicit_bps,
+                    participation, impact_coefficient,
                 )
-            except AmbiguousFirstHit:
-                ambiguous += 1
+                cache[key] = rec
+                if amb:
+                    ambiguous_keys.add(key)
+                if skip_reason:
+                    skipped_keys.add(key)
+            return cache[key]
+
+        # Diagnostic signal set: unadjusted top-K ranking.
+        for idx, row in ranked.head(top_k).iterrows():
+            signal_candidates += 1
+            rec = get_rec(idx, row)
+            if rec is not None:
+                signal_records.append(rec)
+
+        # Executable set: respect already-open positions and backfill with the
+        # next eligible rank instead of shrinking the daily cohort.
+        picked = 0
+        for rank, (idx, row) in enumerate(ranked.iterrows(), start=1):
+            if picked >= top_k:
+                break
+            execution_candidates_scanned += 1
+            rec = get_rec(idx, row)
+            if rec is None:
                 continue
-            records.append(rec)
-    denom = len(records) + ambiguous
-    decision_days = len({r.decision_day for r in records})
-    return records, {
-        "considered": considered,
-        "ambiguous": ambiguous,
-        "ambiguous_rate": float(ambiguous / denom) if denom else 0.0,
-        "skipped": skipped,
-        "decision_days_with_records": decision_days,
-        "avg_records_per_decision_day": float(len(records) / decision_days) if decision_days else 0.0,
+            prev_exit = active_until.get(rec.symbol)
+            if prev_exit is not None and prev_exit >= rec.entry_day:
+                blocked += 1
+                continue
+            executable_records.append(rec)
+            active_until[rec.symbol] = rec.exit_day
+            if rank > top_k:
+                backfilled += 1
+            picked += 1
+
+    decision_days = len({r.decision_day for r in signal_records})
+    return signal_records, executable_records, {
+        "signal_candidates_considered": signal_candidates,
+        "execution_candidates_scanned": execution_candidates_scanned,
+        "ambiguous": len(ambiguous_keys),
+        "ambiguous_rate_signal": float(len(ambiguous_keys) / max(1, len(signal_records))),
+        "ambiguous_primary_policy": "stop_first_conservative_no_future_filter",
+        "skipped": len(skipped_keys),
+        "active_position_candidates_blocked": blocked,
+        "backfill_selections": backfilled,
+        "decision_days_with_signal_records": decision_days,
+        "avg_signal_records_per_decision_day": float(len(signal_records) / decision_days) if decision_days else 0.0,
     }
 
 
@@ -200,7 +261,7 @@ def main() -> None:
             "initial_equity": 1.0,
             "daily_cohort_fraction": 1.0 / args.horizon,
             "allocation_within_cohort": "equal_weight",
-            "duplicate_symbol_while_open": "suppress",
+            "active_symbol_selection": "exclude_then_backfill_next_rank",
             "cost_timing": "round_trip_cost_split_50_50_entry_exit",
             "marking": "daily_close_until_realized_exit_price",
         },
@@ -211,17 +272,16 @@ def main() -> None:
             "stop_return": args.stop,
             "bottom_liquidity_excluded": 0.20,
             "participation_ADV": args.participation,
-            "ambiguous_same_day_target_stop": "exclude_primary",
+            "ambiguous_same_day_target_stop": "stop_first_conservative_primary",
             "gap_through_stop": "next/open executable price",
         },
     }
 
     for strategy in ["momentum5", "momentum20", "momentum20_liquidity"]:
-        signal_records, diag = run_strategy(
+        signal_records, executable_records, diag = run_strategy(
             panel, strategy, top_k=args.top_k, horizon=args.horizon,
             target_return=args.target, stop_return=args.stop, participation=args.participation,
         )
-        executable_records, dup = filter_executable_records(signal_records, True)
         eval_start = min((r.entry_day for r in executable_records), default=None)
         eval_end = max((r.exit_day for r in executable_records), default=None)
         portfolio_path, portfolio_summary = simulate_portfolio(
@@ -232,7 +292,6 @@ def main() -> None:
         report["strategies"][strategy] = {
             "signal_set": _metric_block(signal_records),
             "executable_set": _metric_block(executable_records),
-            "duplicate_signals_suppressed": dup,
             "portfolio": summary_dict(portfolio_summary),
             **diag,
         }
