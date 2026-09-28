@@ -22,8 +22,8 @@ from sklearn.metrics import brier_score_loss, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from research_v1_core import AmbiguousFirstHit, Bar, cost_model_return, economic_outcome, summarize
-from research_v1_portfolio import filter_executable_records, simulate_portfolio, summary_dict
+from research_v1_core import AmbiguousFirstHit, Bar, cost_model_return, date_cluster_bootstrap_mean, economic_outcome, summarize
+from research_v1_portfolio import simulate_portfolio, summary_dict
 from run_research_v1 import add_features, build_lookup, load_panel
 
 FEATURES = [
@@ -87,16 +87,22 @@ def make_supervised(
         cost = cost_model_return(
             half_spread_bps, explicit_bps, float(row.vol20), participation, impact_coefficient
         )
+        kwargs = dict(
+            decision_day=decision_ts.date(), symbol=str(row.symbol), score=0.0,
+            entry_price=float(entry_row.open), future_bars=future,
+            target_return=target_return, stop_return=stop_return,
+            round_trip_cost_return=cost,
+        )
         try:
-            rec = economic_outcome(
-                decision_day=decision_ts.date(), symbol=str(row.symbol), score=0.0,
-                entry_price=float(entry_row.open), future_bars=future,
-                target_return=target_return, stop_return=stop_return,
-                round_trip_cost_return=cost,
-            )
+            rec = economic_outcome(**kwargs)
+            was_ambiguous = False
         except AmbiguousFirstHit:
             ambiguous += 1
-            continue
+            was_ambiguous = True
+            # Do not remove a candidate using future path information. The
+            # primary smoke/Judge sensitivity scores unknown same-bar ordering
+            # pessimistically as STOP-first until intraday data resolves it.
+            rec = economic_outcome(**kwargs, ambiguous_policy="stop_first")
         key = (decision_ts.date(), str(row.symbol))
         record_map[key] = rec
         item = {
@@ -104,11 +110,16 @@ def make_supervised(
             "symbol": str(row.symbol),
             "label_positive_net": int(rec.net_return > 0),
             "net_return": rec.net_return,
+            "ambiguous_same_bar": bool(was_ambiguous),
         }
         item.update({f: float(getattr(row, f)) for f in FEATURES})
         rows.append(item)
     frame = pd.DataFrame(rows).sort_values(["decision_date", "symbol"]).reset_index(drop=True)
-    return frame, record_map, {"ambiguous": ambiguous, "skipped": skipped}
+    return frame, record_map, {
+        "ambiguous": ambiguous,
+        "skipped": skipped,
+        "ambiguous_primary_policy": "stop_first_conservative_no_future_filter",
+    }
 
 
 def _pipeline(kind: str) -> Pipeline:
@@ -146,27 +157,85 @@ def walk_forward_predictions(frame: pd.DataFrame, kind: str, train_days: int = 2
         test["prob"] = pipe.predict_proba(test[FEATURES])[:, 1]
         test["model"] = kind
         test["train_end"] = train_block[-1]
-        out.append(test[["decision_date", "symbol", "label_positive_net", "net_return", "prob", "model", "train_end"]])
+        out.append(test[["decision_date", "symbol", "label_positive_net", "net_return", "ambiguous_same_bar", "prob", "model", "train_end"]])
         start += test_days
     if not out:
-        return pd.DataFrame(columns=["decision_date", "symbol", "label_positive_net", "net_return", "prob", "model", "train_end"])
+        return pd.DataFrame(columns=["decision_date", "symbol", "label_positive_net", "net_return", "ambiguous_same_bar", "prob", "model", "train_end"])
     return pd.concat(out, ignore_index=True).sort_values(["decision_date", "prob"], ascending=[True, False])
 
 
-def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame, horizon: int, top_k: int = 3):
-    if pred.empty:
-        return {}, pd.DataFrame(), pd.DataFrame()
+def _records_from_top_signal(pred: pd.DataFrame, record_map: dict, top_k: int):
     selected = pred.groupby("decision_date", group_keys=False).head(top_k).copy()
-    signal_records = []
+    records = []
     for row in selected.itertuples(index=False):
         key = (pd.Timestamp(row.decision_date).date(), str(row.symbol))
         base = record_map.get(key)
         if base is None:
             continue
-        signal_records.append(base.__class__(**{**asdict(base), "score": float(row.prob)}))
-    executable_records, dup = filter_executable_records(signal_records, True)
+        records.append(base.__class__(**{**asdict(base), "score": float(row.prob)}))
+    return records, selected
+
+
+def stateful_select_records(
+    scored: pd.DataFrame,
+    record_map: dict,
+    top_k: int = 3,
+    threshold: float | None = None,
+    active_until: dict[str, object] | None = None,
+):
+    """Select up to K executable names per day and backfill blocked top ranks.
+
+    Availability is determined only from positions that would already be known
+    open at that point in the replay. A blocked rank is replaced by the next
+    eligible scored name rather than silently shrinking the portfolio.
+    """
+    state = active_until if active_until is not None else {}
+    records = []
+    selected_rows = []
+    blocked = 0
+    backfilled = 0
+    for day, d in scored.groupby("decision_date", sort=True):
+        ranked = d.sort_values("prob", ascending=False)
+        picked = 0
+        for rank, (_, row) in enumerate(ranked.iterrows(), start=1):
+            prob = float(row["prob"])
+            if threshold is not None and prob < threshold:
+                break
+            symbol = str(row["symbol"])
+            key = (pd.Timestamp(day).date(), symbol)
+            base = record_map.get(key)
+            if base is None:
+                continue
+            prev_exit = state.get(symbol)
+            if prev_exit is not None and prev_exit >= base.entry_day:
+                blocked += 1
+                continue
+            rec = base.__class__(**{**asdict(base), "score": prob})
+            records.append(rec)
+            state[symbol] = rec.exit_day
+            out_row = row.to_dict()
+            out_row["selection_rank"] = rank
+            out_row["backfill"] = bool(rank > top_k)
+            selected_rows.append(out_row)
+            if rank > top_k:
+                backfilled += 1
+            picked += 1
+            if picked >= top_k:
+                break
+    return records, pd.DataFrame(selected_rows), {
+        "active_position_candidates_blocked": int(blocked),
+        "backfill_selections": int(backfilled),
+    }
+
+
+def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame, horizon: int, top_k: int = 3):
+    if pred.empty:
+        return {}, pd.DataFrame(), pd.DataFrame()
+    signal_records, _ = _records_from_top_signal(pred, record_map, top_k)
+    executable_records, selected_exec, state_diag = stateful_select_records(pred, record_map, top_k=top_k)
     metrics_signal = summarize(signal_records)
     metrics_exec = summarize(executable_records)
+    point, lo, hi = date_cluster_bootstrap_mean(executable_records) if executable_records else (0.0, 0.0, 0.0)
     eval_start = pd.Timestamp(pred["decision_date"].min()).date()
     eval_end = max(
         pd.Timestamp(pred["decision_date"].max()).date(),
@@ -184,8 +253,13 @@ def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame
     frac_pos, mean_pred = calibration_curve(y, p, n_bins=8, strategy="quantile")
     report = {
         "signal_set": asdict(metrics_signal),
-        "executable_set": asdict(metrics_exec),
-        "duplicate_signals_suppressed": int(dup),
+        "executable_set": {
+            **asdict(metrics_exec),
+            "cluster_bootstrap_mean_net_return": point,
+            "cluster_bootstrap_95_low": lo,
+            "cluster_bootstrap_95_high": hi,
+        },
+        **state_diag,
         "brier": brier,
         "roc_auc_diagnostic": auc,
         "calibration_points": [
@@ -196,9 +270,10 @@ def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame
         "prediction_rows": int(len(pred)),
         "selected_signal_rows": int(len(signal_records)),
         "selected_executable_rows": int(len(executable_records)),
+        "selected_ambiguous_rows": int(selected_exec.get("ambiguous_same_bar", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()) if not selected_exec.empty else 0,
         "test_dates": int(pred["decision_date"].nunique()),
     }
-    return report, selected, portfolio_path
+    return report, selected_exec, portfolio_path
 
 
 def main():
@@ -232,6 +307,7 @@ def main():
             "test_days": args.test_days,
             "preprocessing": "fit_inside_each_fold",
         },
+        "selection_policy": "stateful_top_k_with_active_position_exclusion_and_rank_backfill",
         "features": FEATURES,
         "dataset_rows": int(len(frame)),
         "dataset_dates": int(frame["decision_date"].nunique()) if not frame.empty else 0,
@@ -243,7 +319,7 @@ def main():
         model_report, selected, portfolio_path = evaluate_model(pred, record_map, raw, args.horizon, args.top_k)
         report["models"][kind] = model_report
         pred.to_csv(out_dir / f"{kind}_predictions.csv", index=False)
-        selected.to_csv(out_dir / f"{kind}_selected.csv", index=False)
+        selected.to_csv(out_dir / f"{kind}_selected_executable.csv", index=False)
         portfolio_path.to_csv(out_dir / f"{kind}_portfolio.csv", index=False)
     if not pit:
         report["warning"] = "Non-PIT smoke result. Engineering validation only; forbidden for model promotion or profitability claims."
