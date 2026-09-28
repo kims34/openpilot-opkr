@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,6 +81,12 @@ class DashboardActivity : ComponentActivity() {
             }
         }
         refreshNow()
+        lifecycleScope.launch {
+            while (true) {
+                delay(60_000L)
+                if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) refreshNow()
+            }
+        }
     }
 
     private fun ensureLocalWatch() {
@@ -97,18 +104,8 @@ class DashboardActivity : ComponentActivity() {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 val ready = PushBridge.sync(applicationContext)
-                val data = if (PushBridge.configured()) {
-                    runCatching { BackendMarket.snapshots(applicationContext) }.getOrElse {
-                        dashboardRules.map { r ->
-                            runCatching { MarketEngine.snapshot(applicationContext, r) }
-                                .getOrElse { e -> IndexSnapshot.error(r, e.message ?: "데이터 확인 실패") }
-                        }
-                    }
-                } else {
-                    dashboardRules.map { r ->
-                        runCatching { MarketEngine.snapshot(applicationContext, r) }
-                            .getOrElse { e -> IndexSnapshot.error(r, e.message ?: "데이터 확인 실패") }
-                    }
+                val data = runCatching { BackendMarket.snapshots(applicationContext) }.getOrElse {
+                    dashboardRules.map { r -> IndexSnapshot.error(r, "서버 시세 확인 실패 · 새로고침 필요") }
                 }
                 val feed = if (PushBridge.configured()) {
                     runCatching { BackendMarket.laggards() }
@@ -158,6 +155,15 @@ object BackendMarket {
             val o = byId[rule.id] ?: return@map IndexSnapshot.error(rule, "서버 상태 없음")
             val ath = nullableDouble(o, "ath")
             val value = nullableDouble(o, "last_value")
+            if (value == null || value <= 0) return@map IndexSnapshot.error(rule, "최신 시세 확인 중")
+            val previous = nullableDouble(o, "previous_close")
+            val change = nullableDouble(o, "day_change")
+            val percent = nullableDouble(o, "day_change_percent")
+            if (previous == null || previous <= 0 || change == null || percent == null ||
+                abs((value - previous) - change) > 0.011 ||
+                abs((value / previous - 1.0) * 100.0 - percent) > 0.011) {
+                return@map IndexSnapshot.error(rule, "전일 종가 기준 확인 중")
+            }
             val dd = nullableDouble(o, "drawdown") ?: if (ath != null && value != null && ath > 0) (value / ath - 1.0) * 100.0 else null
             val alertsEnabled = o.optBoolean("alerts_enabled", rule.levels.isNotEmpty())
             val enabled = if (alertsEnabled) rule.levels.filter { prefs.getBoolean("enabled_${rule.id}_${it.first}", true) } else emptyList()
@@ -196,7 +202,10 @@ object BackendMarket {
                 dayChangePercent = nullableDouble(o, "day_change_percent"),
                 athDate = nullableString(o, "ath_date"),
                 athDays = nullableInt(o, "ath_days"),
-                alertsEnabled = alertsEnabled
+                alertsEnabled = alertsEnabled,
+                previousClose = previous,
+                previousCloseDate = nullableString(o, "previous_close_date"),
+                marketSnapshotId = o.optString("snapshot_id", "")
             )
         }
     }

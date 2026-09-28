@@ -182,6 +182,11 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
                 fontWeight = FontWeight.SemiBold
             )
 
+            if (s.previousClose != null) {
+                val basisDate = s.previousCloseDate?.let { " · $it" } ?: ""
+                Text("전일 종가 ${fmtV19(s.previousClose)}$basisDate", style = MaterialTheme.typography.labelSmall)
+            }
+
             if (s.rule.id != "usdkrw" && s.ath != null && s.ath > 0.0) {
                 val age = s.athDays?.let { if (it == 0) " · 오늘 최고가" else " · 최고가 후 ${it}일" } ?: ""
                 val date = s.athDate?.let { " ($it)" } ?: ""
@@ -247,7 +252,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
                 }
             }
 
-            MonthlyChartSection(s.rule.id, refreshKey)
+            MonthlyChartSection(s.rule.id, refreshKey, s.marketSnapshotId)
 
             if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
                 DirectionalMoverSectionV19(s, movers, moverStatus)

@@ -138,7 +138,10 @@ data class IndexSnapshot(
     val athDate: String? = null,
     val athDays: Int? = null,
     val alertsEnabled: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val previousClose: Double? = null,
+    val previousCloseDate: String? = null,
+    val marketSnapshotId: String = ""
 ) {
     companion object {
         fun error(rule: Rule, msg: String) = IndexSnapshot(
@@ -335,34 +338,9 @@ data class AthData(val value: Double, val timestamp: Long)
 
 object MarketEngine {
     fun snapshot(ctx: Context, rule: Rule): IndexSnapshot {
-        val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
-        val baseData = fetchCurrent(rule.cashSymbol)
-        val key = "ath_cash_${rule.id}"
-        var ath = prefs.getString(key, null)?.toDoubleOrNull() ?: 0.0
-        var athTs = prefs.getLong("ath_ts_${rule.id}", 0L)
-        val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-        if (ath <= 0 || prefs.getString("ath_day_${rule.id}", null) != day) {
-            val hist = fetchAth(rule.cashSymbol)
-            if (hist.value >= ath) { ath = hist.value; athTs = hist.timestamp }
-            prefs.edit().putString("ath_day_${rule.id}", day).apply()
-        }
-        if (baseData.high >= ath) { ath = baseData.high; athTs = baseData.highTs }
-        prefs.edit().putString(key, ath.toString()).putLong("ath_ts_${rule.id}", athTs).apply()
-        val current = baseData.current
-        val source = if (rule.id == "kospi100") "KOSPI 종합지수 · 로컬 보조 조회" else "ETF 자체 가격 · 로컬 보조 조회"
-        val dd = if (ath > 0) (current / ath - 1.0) * 100.0 else 0.0
-        val dayChange = current - baseData.previousClose
-        val dayChangePct = if (baseData.previousClose > 0) (current / baseData.previousClose - 1.0) * 100.0 else 0.0
-        val enabledLevels = rule.levels.filter { prefs.getBoolean("enabled_${rule.id}_${it.first}", true) }
-        val reached = enabledLevels.filter { dd <= -it.first }
-        val stage = reached.maxByOrNull { it.first }
-        val next = enabledLevels.firstOrNull { it.first > abs(dd) }
-        val stageText = if (rule.levels.isEmpty()) "" else stage?.let { "-${it.first}% 구간 · ${it.second}%" } ?: "대기"
-        val nextText = if (rule.levels.isEmpty()) "" else next?.let { "-${it.first}%" } ?: "최종 단계 도달"
-        val zone = ZoneId.of(rule.timezone)
-        val athDate = if (athTs > 0) Instant.ofEpochSecond(athTs).atZone(zone).toLocalDate() else null
-        val athDays = athDate?.let { ChronoUnit.DAYS.between(it, java.time.LocalDate.now(zone)).toInt().coerceAtLeast(0) }
-        return IndexSnapshot(rule, current, ath, dd, stageText, nextText, source, dayChange, dayChangePct, athDate?.toString(), athDays, rule.levels.isNotEmpty())
+        return BackendMarket.snapshots(ctx).firstOrNull { it.rule.id == rule.id }
+            ?.also { if (it.error != null) error(it.error) }
+            ?: error("검증된 서버 시세 없음")
     }
 
     private fun fetchCurrent(symbol: String): ChartData {

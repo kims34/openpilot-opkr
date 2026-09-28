@@ -14,6 +14,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.URLEncoder
+import java.util.TimeZone
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,7 +41,8 @@ data class MonthlyHistory(
     val latestSource: String,
     val latestSession: String,
     val latestLabel: String,
-    val latestEstimated: Boolean
+    val latestEstimated: Boolean,
+    val priceTimezone: String
 )
 
 private data class KoreaLeaderQuote(
@@ -49,9 +52,10 @@ private data class KoreaLeaderQuote(
     val dayChangePercent: Double
 )
 
-fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
+fun BackendMarket.monthHistory(indexId: String, snapshotId: String = ""): MonthlyHistory {
     val base = BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/')
-    val c = URL("$base/history/$indexId").openConnection() as HttpURLConnection
+    val suffix = if (snapshotId.isNotBlank()) "?snapshot_id=${URLEncoder.encode(snapshotId, "UTF-8")}" else ""
+    val c = URL("$base/history/$indexId$suffix").openConnection() as HttpURLConnection
     c.requestMethod = "GET"
     c.connectTimeout = 10000
     c.readTimeout = 15000
@@ -98,7 +102,8 @@ fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
         latestSource = root.optString("latest_source", ""),
         latestSession = root.optString("latest_session", ""),
         latestLabel = root.optString("latest_label", "현재가"),
-        latestEstimated = root.optBoolean("latest_estimated", false)
+        latestEstimated = root.optBoolean("latest_estimated", false),
+        priceTimezone = root.optString("price_timezone", if (indexId in setOf("sp500", "ndx", "djdiv")) "America/New_York" else "Asia/Seoul")
     )
 }
 
@@ -194,17 +199,18 @@ private fun KoreaLeaderSection() {
 }
 
 @Composable
-fun MonthlyChartSection(indexId: String, refreshKey: String = "") {
+fun MonthlyChartSection(indexId: String, refreshKey: String = "", snapshotId: String = "") {
     var loading by remember(indexId) { mutableStateOf(true) }
     var history by remember(indexId) { mutableStateOf<MonthlyHistory?>(null) }
     var error by remember(indexId) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(indexId, refreshKey) {
+    LaunchedEffect(indexId, refreshKey, snapshotId) {
         while (true) {
-            loading = history == null
+            loading = true
+            history = null
             error = null
             val result = withContext(Dispatchers.IO) {
-                runCatching { BackendMarket.monthHistory(indexId) }
+                runCatching { BackendMarket.monthHistory(indexId, snapshotId) }
             }
             result.onSuccess {
                 history = it
@@ -213,7 +219,8 @@ fun MonthlyChartSection(indexId: String, refreshKey: String = "") {
                 error = it.message ?: "1개월 차트 조회 실패"
             }
             loading = false
-            delay(60_000L)
+            // The parent refreshes the quote and chart together every minute.
+            break
         }
     }
 
@@ -243,7 +250,7 @@ private fun MonthlyLineChart(history: MonthlyHistory) {
     val low = values.minOrNull() ?: 0.0
     val high = values.maxOrNull() ?: low
     val span = max(high - low, max(high * 0.002, 0.01))
-    val df = remember { SimpleDateFormat("MM/dd", Locale.KOREA) }
+    val df = remember(history.priceTimezone) { SimpleDateFormat("MM/dd", Locale.KOREA).apply { timeZone = TimeZone.getTimeZone(history.priceTimezone) } }
     val dtf = remember { SimpleDateFormat("MM/dd HH:mm", Locale.KOREA) }
 
     val highDate = if (history.maxTs > 0) df.format(Date(history.maxTs * 1000L)) else "-"
