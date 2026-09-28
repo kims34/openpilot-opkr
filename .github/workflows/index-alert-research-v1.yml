@@ -5,6 +5,7 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_kospi_clean_v2.py'
+      - 'research_kospi_abstention_v3.py'
       - '.github/workflows/index-alert-research-v1.yml'
   workflow_dispatch:
 
@@ -12,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  kospi-research-v2:
+  kospi-abstention-v3:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -28,19 +29,10 @@ jobs:
       - name: Install minimal research dependencies
         run: pip install pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.2 numpy==2.4.6
 
-      - name: Apply audited one-line v2 fix and syntax check
+      - name: Syntax checks
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('research_kospi_clean_v2.py')
-          s = p.read_text(encoding='utf-8')
-          old = 'base_cols = ["date", "day_idx", "code", "name"] + FEATURES + list(BASELINES)'
-          new = 'base_cols = list(dict.fromkeys(["date", "day_idx", "code", "name"] + FEATURES + list(BASELINES)))'
-          if old not in s:
-              raise SystemExit('expected v2 patch target not found')
-          p.write_text(s.replace(old, new), encoding='utf-8')
-          PY
           python -m py_compile research_kospi_clean_v2.py
+          python -m py_compile research_kospi_abstention_v3.py
 
       - name: Fetch historical KRX cross-sections
         run: |
@@ -51,49 +43,48 @@ jobs:
               -o "/tmp/marcap/data/marcap-$y.parquet"
           done
 
-      - name: Run clean KOSPI walk-forward tournament
+      - name: Run frozen-threshold abstention challenger
         run: |
           mkdir -p research_results
-          python research_kospi_clean_v2.py \
+          python research_kospi_abstention_v3.py \
             --from-date 2018-01-02 \
             --to-date 2026-09-25 \
             --marcap-dir /tmp/marcap/data \
-            --output research_results/kospi_clean_v2.json
+            --output research_results/kospi_abstention_v3.json
 
-      - name: Create compact v2 summary
+      - name: Create compact v3 summary
         run: |
           python - <<'PY'
           import json, pathlib
-          p = pathlib.Path('research_results/kospi_clean_v2.json')
+          p = pathlib.Path('research_results/kospi_abstention_v3.json')
           d = json.loads(p.read_text(encoding='utf-8'))
-          wf = d.get('walk_forward') or {}
-          s = {
-            'research_version': d.get('research_version'),
-            'model_version': d.get('model_version'),
-            'universe_version': d.get('universe_version'),
-            'data_source': d.get('data_source'),
-            'from_date': d.get('from_date'),
-            'to_date': d.get('to_date'),
-            'trading_days': d.get('trading_days'),
-            'raw_filtered_rows': d.get('raw_filtered_rows'),
-            'observation_rows': d.get('observation_rows'),
-            'common_share_rule': d.get('common_share_rule'),
-            'cost_scenarios': d.get('cost_scenarios'),
-            'research_status': d.get('research_status'),
-            'profitability_validated': d.get('profitability_validated'),
-            'models': wf.get('models'),
-            'calibration': wf.get('calibration'),
-            'folds': wf.get('folds'),
-            'limitations': d.get('limitations'),
+          result = d.get('result') or {}
+          summary = {
+              'research_version': d.get('research_version'),
+              'parent_model': d.get('parent_model'),
+              'universe_version': d.get('universe_version'),
+              'from_date': d.get('from_date'),
+              'to_date': d.get('to_date'),
+              'trading_days': d.get('trading_days'),
+              'observation_rows': d.get('observation_rows'),
+              'coverages_predeclared': d.get('coverages_predeclared'),
+              'threshold_rule': d.get('threshold_rule'),
+              'daily_admission_rule': d.get('daily_admission_rule'),
+              'coverage_matched_controls': d.get('coverage_matched_controls'),
+              'cost_scenarios': d.get('cost_scenarios'),
+              'policies': result.get('policies'),
+              'research_status': d.get('research_status'),
+              'profitability_validated': d.get('profitability_validated'),
+              'limitations': d.get('limitations'),
           }
-          pathlib.Path('research_results/kospi_clean_v2_summary.json').write_text(
-              json.dumps(s, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+          pathlib.Path('research_results/kospi_abstention_v3_summary.json').write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
           PY
 
-      - name: Persist reproducible v2 results and audited fix
+      - name: Persist reproducible v3 result
         run: |
           git config user.name 'indexalert-research-bot'
           git config user.email 'indexalert-research-bot@users.noreply.github.com'
-          git add research_kospi_clean_v2.py research_results/kospi_clean_v2.json research_results/kospi_clean_v2_summary.json
-          git commit -m 'Store KOSPI clean v2 research result' || exit 0
+          git add research_results/kospi_abstention_v3.json research_results/kospi_abstention_v3_summary.json
+          git commit -m 'Store KOSPI abstention v3 research result' || exit 0
           git push origin HEAD:index-alert-research-v1
