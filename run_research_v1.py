@@ -1,4 +1,8 @@
-"""Run IndexAlert KR-KOSPI Judge v1 baseline research on cached PIT KRX data."""
+"""Run IndexAlert baseline research on a cached KOSPI-like daily panel.
+
+The report propagates data-lineage eligibility. A non-PIT smoke dataset can
+exercise the same engine, but its metrics are never labeled Judge-eligible.
+"""
 from __future__ import annotations
 
 import argparse
@@ -17,29 +21,27 @@ RESULT_DIR = Path("research_results")
 
 
 def add_features(panel: pd.DataFrame) -> pd.DataFrame:
-    x = panel.copy().sort_values(["symbol", "decision_date"])
-    g = x.groupby("symbol", group_keys=False)
+    x = panel.copy().sort_values(["symbol", "decision_date"]).reset_index(drop=True)
+    g = x.groupby("symbol", sort=False, group_keys=False)
+    x["ret1"] = g["close"].pct_change(1)
     x["ret5"] = g["close"].pct_change(5)
     x["ret20"] = g["close"].pct_change(20)
-    x["vol20"] = g["close"].pct_change().groupby(x["symbol"]).rolling(20).std(ddof=0).reset_index(level=0, drop=True)
-    x["adv20"] = g["value"].rolling(20).median().reset_index(level=0, drop=True)
+    x["vol20"] = x.groupby("symbol", sort=False)["ret1"].transform(lambda s: s.rolling(20, min_periods=20).std(ddof=0))
+    x["adv20"] = x.groupby("symbol", sort=False)["value"].transform(lambda s: s.rolling(20, min_periods=20).median())
     return x
 
 
 def _rank_day(day: pd.DataFrame, strategy: str) -> pd.DataFrame:
-    d = day.copy()
-    d = d.dropna(subset=["ret5", "ret20", "adv20", "vol20"])
+    d = day.copy().dropna(subset=["ret5", "ret20", "adv20", "vol20"])
     if d.empty:
         return d
-    # Primary universe rule: exclude bottom 20% by trailing median value.
     liq_cut = d["adv20"].quantile(0.20)
-    d = d[d["adv20"] >= liq_cut]
+    d = d[d["adv20"] >= liq_cut].copy()
     if strategy == "momentum5":
         d["score"] = d["ret5"]
     elif strategy == "momentum20":
         d["score"] = d["ret20"]
     elif strategy == "momentum20_liquidity":
-        # Preserve simple interpretability: average cross-sectional percentile ranks.
         d["score"] = 0.8 * d["ret20"].rank(pct=True) + 0.2 * d["adv20"].rank(pct=True)
     else:
         raise ValueError(strategy)
@@ -76,8 +78,6 @@ def run_strategy(
         for _, row in ranked.head(top_k).iterrows():
             symbol = row["symbol"]
             pos = date_to_pos[pd.Timestamp(decision_date)]
-            if pos + 1 >= len(dates):
-                continue
             future_dates = dates[pos + 1: pos + 1 + horizon]
             if len(future_dates) < horizon:
                 continue
@@ -85,7 +85,6 @@ def run_strategy(
             if hist is None:
                 skipped += 1
                 continue
-            # Entry is next regular-session open; no same-close fantasy fill.
             try:
                 entry_row = hist.loc[pd.Timestamp(future_dates[0])]
             except KeyError:
@@ -137,15 +136,24 @@ def main() -> None:
     ap.add_argument("--participation", type=float, default=0.0005)
     args = ap.parse_args()
 
-    panel = add_features(load_panel(Path(args.cache)))
+    raw_panel = load_panel(Path(args.cache))
+    pit = bool(raw_panel.get("point_in_time_universe", pd.Series([False])).fillna(False).astype(bool).all())
+    source_values = sorted(set(raw_panel["source"].dropna().astype(str))) if "source" in raw_panel else ["unknown"]
+    panel = add_features(raw_panel)
     out_dir = Path(args.result_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     report = {
         "judge_version": "KR-KOSPI-JUDGE-v1.0",
+        "judge_eligible": pit,
+        "result_class": "JUDGE" if pit else "SMOKE_NONPIT",
+        "point_in_time_universe": pit,
+        "survivorship_bias_possible": not pit,
+        "source": source_values,
         "data_start": str(panel["decision_date"].min().date()),
         "data_end": str(panel["decision_date"].max().date()),
         "rows": int(len(panel)),
+        "symbols": int(panel["symbol"].nunique()),
         "strategies": {},
         "assumptions": {
             "entry": "next_regular_open",
@@ -175,6 +183,8 @@ def main() -> None:
         }
         pd.DataFrame([asdict(r) for r in records]).to_csv(out_dir / f"{strategy}_trades.csv", index=False)
 
+    if not pit:
+        report["warning"] = "Smoke metrics are pipeline diagnostics only; do not use for strategy selection or performance claims."
     (out_dir / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
