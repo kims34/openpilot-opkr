@@ -23,7 +23,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from research_v1_core import AmbiguousFirstHit, Bar, cost_model_return, economic_outcome, summarize
-from research_v1_portfolio import simulate_portfolio, summary_dict
+from research_v1_portfolio import filter_executable_records, simulate_portfolio, summary_dict
 from run_research_v1 import add_features, build_lookup, load_panel
 
 FEATURES = [
@@ -157,17 +157,25 @@ def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame
     if pred.empty:
         return {}, pd.DataFrame(), pd.DataFrame()
     selected = pred.groupby("decision_date", group_keys=False).head(top_k).copy()
-    records = []
+    signal_records = []
     for row in selected.itertuples(index=False):
         key = (pd.Timestamp(row.decision_date).date(), str(row.symbol))
         base = record_map.get(key)
         if base is None:
             continue
-        records.append(base.__class__(**{**asdict(base), "score": float(row.prob)}))
-    metrics = summarize(records)
+        signal_records.append(base.__class__(**{**asdict(base), "score": float(row.prob)}))
+    executable_records, dup = filter_executable_records(signal_records, True)
+    metrics_signal = summarize(signal_records)
+    metrics_exec = summarize(executable_records)
+    eval_start = pd.Timestamp(pred["decision_date"].min()).date()
+    eval_end = max(
+        pd.Timestamp(pred["decision_date"].max()).date(),
+        max((r.exit_day for r in executable_records), default=eval_start),
+    )
     portfolio_path, portfolio_summary = simulate_portfolio(
-        raw_panel, records, horizon=horizon, initial_equity=1.0,
-        daily_cohort_fraction=1.0 / horizon, suppress_duplicate_symbols=True,
+        raw_panel, executable_records, horizon=horizon, initial_equity=1.0,
+        daily_cohort_fraction=1.0 / horizon, suppress_duplicate_symbols=False,
+        evaluation_start=eval_start, evaluation_end=eval_end,
     )
     y = pred["label_positive_net"].to_numpy(dtype=int)
     p = pred["prob"].to_numpy(dtype=float)
@@ -175,7 +183,9 @@ def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame
     auc = float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else None
     frac_pos, mean_pred = calibration_curve(y, p, n_bins=8, strategy="quantile")
     report = {
-        **asdict(metrics),
+        "signal_set": asdict(metrics_signal),
+        "executable_set": asdict(metrics_exec),
+        "duplicate_signals_suppressed": int(dup),
         "brier": brier,
         "roc_auc_diagnostic": auc,
         "calibration_points": [
@@ -184,7 +194,8 @@ def evaluate_model(pred: pd.DataFrame, record_map: dict, raw_panel: pd.DataFrame
         ],
         "portfolio": summary_dict(portfolio_summary),
         "prediction_rows": int(len(pred)),
-        "selected_rows": int(len(records)),
+        "selected_signal_rows": int(len(signal_records)),
+        "selected_executable_rows": int(len(executable_records)),
         "test_dates": int(pred["decision_date"].nunique()),
     }
     return report, selected, portfolio_path
