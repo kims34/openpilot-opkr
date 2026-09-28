@@ -1,10 +1,9 @@
 """Fast repeatable evaluation of the current best simple PIT candidate.
 
-This is intentionally narrower than the full tournament.  It builds PIT labels
-once, trains only the purged market-context logistic model, replays the original
-top-3 without backfill, and evaluates cost sensitivity on the exact same selected
-trades.  It is for rapid iteration after data/policy fixes; full tournament
-results remain the promotion authority.
+This is intentionally narrower than the full tournament. It reuses a deterministic
+PIT supervised-label cache when available, trains only the purged market-context
+logistic model, replays the original top-3 without backfill, and evaluates cost
+sensitivity on the exact same selected trades.
 """
 from __future__ import annotations
 
@@ -18,9 +17,10 @@ import pandas as pd
 from research_v1_context import add_context
 from research_v1_core import date_cluster_bootstrap_mean, summarize
 from research_v1_holdaware import evaluate_topk_only
-from research_v1_pit_labels import kospi_statutory_sell_tax_bps, make_pit_supervised
+from research_v1_pit_labels import kospi_statutory_sell_tax_bps
 from research_v1_pit_run_purged import _walk_forward_pit
 from research_v1_portfolio import simulate_portfolio, summary_dict
+from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
 PRIMARY_COMMISSION_BPS = 3.0
@@ -81,6 +81,7 @@ def _scenario(raw, pred, records, horizon: int, name: str, *, commission_bps=Non
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit")
+    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_v1")
     ap.add_argument("--result-dir", default="research_results/marcap_pit_fast")
     ap.add_argument("--horizon", type=int, default=5)
     ap.add_argument("--top-k", type=int, default=3)
@@ -92,8 +93,9 @@ def main():
     args = ap.parse_args()
 
     raw = load_panel(Path(args.cache))
-    frame, record_map, label_diag = make_pit_supervised(
+    frame, record_map, label_diag, cache_meta = load_or_build(
         raw,
+        Path(args.supervised_cache),
         horizon=args.horizon,
         target_return=args.target,
         stop_return=args.stop,
@@ -135,10 +137,13 @@ def main():
         "purge_days": args.horizon,
         "model": "logistic_context_top3_only",
         "admission_rule": "original_top3_only__held_or_unfillable_names_leave_empty_slots",
+        "supervised_cache": cache_meta,
         "label_diagnostics": label_diag,
         "prediction_rows": int(len(pred)),
         "selected_rows": int(len(selected)),
         "selected_records": int(len(records)),
+        "selected_ambiguous_rows": int(selected.get("ambiguous_same_bar", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()) if not selected.empty else 0,
+        "selected_post_entry_missing_rows": int(selected.get("post_entry_missing_future", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()) if not selected.empty else 0,
         "candidate_primary": candidate,
         "cost_scenarios": scenarios,
         "verdict": verdict,
