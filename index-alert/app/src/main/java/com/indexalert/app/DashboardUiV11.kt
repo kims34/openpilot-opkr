@@ -150,6 +150,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
     val alertTriggered = s.alertsEnabled && s.stageText.startsWith("🔔")
     val cardColor = if (alertTriggered) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surface
     val cardBorder = if (alertTriggered) BorderStroke(2.dp, MaterialTheme.colorScheme.error) else BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
+    var probabilityExpanded by remember(s.rule.id) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
@@ -226,12 +227,26 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
             Text("기준       $source", style = MaterialTheme.typography.bodySmall)
 
-            NextDayProbabilitySection(s.rule.id, refreshKey)
-            ExtendedSessionProbabilitySection(s.rule.id, refreshKey)
-            AfterOpenProbabilitySection(s.rule.id, refreshKey)
-            if (s.rule.id == "kospi100") {
-                KospiOneMonthProbabilitySection(refreshKey)
+            if (s.rule.id in setOf("sp500", "ndx", "djdiv", "kospi100")) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = { probabilityExpanded = !probabilityExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (probabilityExpanded) "확률 분석 ▲ 접기" else "확률 분석 ▼ 펼치기")
+                }
+                if (probabilityExpanded) {
+                    if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
+                        NextDayProbabilitySection(s.rule.id, refreshKey)
+                        ExtendedSessionProbabilitySection(s.rule.id, refreshKey)
+                        AfterOpenProbabilitySection(s.rule.id, refreshKey)
+                    } else if (s.rule.id == "kospi100") {
+                        ExtendedSessionProbabilitySection(s.rule.id, refreshKey)
+                        KospiOneMonthProbabilitySection(refreshKey)
+                    }
+                }
             }
+
             MonthlyChartSection(s.rule.id)
 
             if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
