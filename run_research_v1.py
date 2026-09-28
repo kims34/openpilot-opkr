@@ -10,7 +10,6 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from research_v1_core import (
@@ -21,14 +20,13 @@ from research_v1_core import (
     economic_outcome,
     summarize,
 )
-
+from research_v1_portfolio import simulate_portfolio, summary_dict
 
 DEFAULT_CACHE = Path("research_data/krx_daily")
 RESULT_DIR = Path("research_results")
 
 
 def load_panel(cache_dir: Path = DEFAULT_CACHE) -> pd.DataFrame:
-    """Load the shared parquet contract without importing any data-source client."""
     files = sorted(p for p in cache_dir.glob("*.parquet") if p.is_file())
     if not files:
         raise RuntimeError(f"no parquet data in {cache_dir}")
@@ -205,13 +203,13 @@ def main() -> None:
         "rows": int(len(panel)),
         "symbols": int(panel["symbol"].nunique()),
         "strategies": {},
-        "portfolio_metrics": {
-            "max_drawdown": None,
-            "status": "NOT_SIMULATED",
-            "reason": (
-                "Trade records overlap across decision dates. A real MDD requires a daily "
-                "mark-to-market portfolio simulator with an explicit capital-allocation policy."
-            ),
+        "portfolio_policy": {
+            "initial_equity": 1.0,
+            "daily_cohort_fraction": 1.0 / args.horizon,
+            "allocation_within_cohort": "equal_weight",
+            "duplicate_symbol_while_open": "suppress",
+            "cost_timing": "round_trip_cost_split_50_50_entry_exit",
+            "marking": "daily_close_until_realized_exit_price",
         },
         "assumptions": {
             "entry": "next_regular_open",
@@ -222,7 +220,6 @@ def main() -> None:
             "participation_ADV": args.participation,
             "ambiguous_same_day_target_stop": "exclude_primary",
             "gap_through_stop": "next/open executable price",
-            "portfolio_mdd": "not reported until daily MTM portfolio path exists",
         },
     }
 
@@ -238,16 +235,26 @@ def main() -> None:
         )
         metrics = summarize(records)
         point, lo, hi = date_cluster_bootstrap_mean(records)
+        portfolio_path, portfolio_summary = simulate_portfolio(
+            raw_panel,
+            records,
+            horizon=args.horizon,
+            initial_equity=1.0,
+            daily_cohort_fraction=1.0 / args.horizon,
+            suppress_duplicate_symbols=True,
+        )
         report["strategies"][strategy] = {
             **asdict(metrics),
             "cluster_bootstrap_mean_net_return": point,
             "cluster_bootstrap_95_low": lo,
             "cluster_bootstrap_95_high": hi,
+            "portfolio": summary_dict(portfolio_summary),
             **diag,
         }
         pd.DataFrame([asdict(r) for r in records]).to_csv(
             out_dir / f"{strategy}_trades.csv", index=False
         )
+        portfolio_path.to_csv(out_dir / f"{strategy}_portfolio.csv", index=False)
 
     if not pit:
         report["warning"] = (
