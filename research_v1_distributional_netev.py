@@ -44,11 +44,12 @@ Q_HIGH = 0.75
 
 
 def _pipe(features=None) -> Pipeline:
+    features = list(features or CONTEXT_FEATURES)
     prep = ColumnTransformer([
         ("num", Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
-        ]), CONTEXT_FEATURES)
+        ]), features)
     ], remainder="drop")
     return Pipeline([("prep", prep), ("reg", Ridge(alpha=1.0))])
 
@@ -139,8 +140,10 @@ def distributional_walk_forward(
     cal_days: int = 40,
     test_days: int = 40,
     purge_days: int = 5,
+    features=None,
 ):
-    features = list(features or CONTEXT_FEATURES)\n    dates = sorted(pd.Timestamp(x) for x in z["decision_date"].drop_duplicates())
+    features = list(features or CONTEXT_FEATURES)
+    dates = sorted(pd.Timestamp(x) for x in z["decision_date"].drop_duplicates())
     start = train_days + cal_days + 2 * purge_days
     preds = []
     folds = []
@@ -165,10 +168,10 @@ def distributional_walk_forward(
             start += test_days
             continue
 
-        model = _pipe()
-        model.fit(train[CONTEXT_FEATURES], train["fh_net_return"].astype(float))
-        cal["pred_mean"] = model.predict(cal[CONTEXT_FEATURES])
-        test["pred_mean"] = model.predict(test[CONTEXT_FEATURES])
+        model = _pipe(features)
+        model.fit(train[features], train["fh_net_return"].astype(float))
+        cal["pred_mean"] = model.predict(cal[features])
+        test["pred_mean"] = model.predict(test[features])
         q = _calibration_quantiles(cal)
         if not q:
             start += test_days
@@ -186,6 +189,7 @@ def distributional_walk_forward(
             "cal_start": str(cal_dates[0].date()),
             "cal_end": str(cal_dates[-1].date()),
             "purge_days": int(purge_days),
+            "features": features,
             "residual_quantiles": q,
         })
         start += test_days
@@ -306,10 +310,6 @@ def main():
         raise RuntimeError("distributional walk-forward produced no predictions")
 
     eligible = pred[pred["netev_low"] > 0].copy()
-    # Freeze the decision-time ranking before applying stateful executability.
-    # A blocked/held name leaves an empty slot; ranks > top_k must never be
-    # promoted retroactively, otherwise realised portfolio state changes the
-    # candidate set and overstates the executable OOS edge.
     frozen_topk = freeze_original_topk(eligible, args.top_k)
     records, selected, select_diag = stateful_select_records(
         frozen_topk,
