@@ -7,17 +7,13 @@ ranking that existed on the decision day. Training uses labelled rows only;
 replay ranks all decision-time rows and leaves a slot empty when a selected name
 cannot fill.
 
+The legacy barrier outcome remains a diagnostic/reference path. Core PIT return
+features are corporate-action-safe and use KRX's reported fluctuation rate versus
+the applicable adjusted base price; raw OHLC is retained for execution evidence.
+
 If a bar disappears after a successful entry, PIT Preliminary books a
 conservative planned-stop loss at the first missing market session. Final Judge
 work must replace that approximation with exact delisting/halt economics.
-
-The default same-bar ambiguity policy remains conservative stop-first.  An
-explicit target-first option exists only to measure an optimistic upper bound;
-it must never be treated as executable evidence without intraday first-hit data.
-
-KOSPI statutory sell taxes are applied by exact entry-date regime for historical
-fidelity. Round-trip broker commission is a separate parameter. `explicit_bps`
-remains as an override for controlled sensitivity experiments only.
 """
 from __future__ import annotations
 
@@ -33,7 +29,11 @@ from research_v1_core import (
     cost_model_return,
     economic_outcome,
 )
-from run_research_v1 import add_features, build_lookup
+from research_v1_pit_features import (
+    add_pit_features,
+    build_lookup,
+    corporate_action_gap_diagnostics,
+)
 
 FEATURES = [
     "ret1", "ret5", "ret20", "vol20", "log_adv20",
@@ -45,8 +45,6 @@ def kospi_statutory_sell_tax_bps(day) -> float:
     """Historical KOSPI sell-side statutory tax in basis points.
 
     Includes KOSPI securities transaction tax plus the 15bp rural special tax.
-    The modern-regime schedule used by IndexAlert is encoded by exact effective
-    date rather than by calendar year because the 2019 reduction began on June 3.
 
       2015-06-15 .. 2019-06-02: 15bp + 15bp = 30bp
       2019-06-03 .. 2020-12-31: 10bp + 15bp = 25bp
@@ -56,10 +54,8 @@ def kospi_statutory_sell_tax_bps(day) -> float:
       2025-01-01 .. 2025-12-31:  0bp + 15bp = 15bp
       2026-01-01 onward:          5bp + 15bp = 20bp
 
-    Dates before 2015-06-15 are intentionally rejected because the current KR
-    Judge defines 2015-06-15 as the start of the modern ±30% price-limit regime.
-    Dates after 2026 carry the 2026 rate only as a placeholder and must be
-    re-verified before a future-date Judge run.
+    Dates before 2015-06-15 are rejected because the KR research Judge starts at
+    the modern ±30% price-limit regime. Dates after 2026 must be re-verified.
     """
     ts = pd.Timestamp(day).normalize()
     if ts < pd.Timestamp("2015-06-15"):
@@ -104,10 +100,7 @@ def _synthetic_missing_future_stop(
 
 
 def _feature_item(row, decision_ts, symbol: str) -> dict:
-    item = {
-        "decision_date": decision_ts,
-        "symbol": symbol,
-    }
+    item = {"decision_date": decision_ts, "symbol": symbol}
     item.update({f: float(getattr(row, f)) for f in FEATURES})
     return item
 
@@ -129,7 +122,8 @@ def make_pit_supervised(
     if commission_round_trip_bps < 0:
         raise ValueError("commission_round_trip_bps must be non-negative")
 
-    x = add_features(raw_panel)
+    x = add_pit_features(raw_panel)
+    ca_diag = corporate_action_gap_diagnostics(x)
     x["log_adv20"] = np.log1p(x["adv20"].clip(lower=0))
     for col in ["ret5", "ret20", "vol20", "adv20"]:
         x[f"{col}_rank"] = x.groupby("decision_date")[col].rank(pct=True)
@@ -146,6 +140,8 @@ def make_pit_supervised(
         "insufficient_global_future_horizon": 0,
         "eligible_rows_with_labels": 0,
         "eligible_rows_without_label_no_fill": 0,
+        "feature_return_policy": "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS",
+        "corporate_action_return_gap_diagnostics": ca_diag,
         "ambiguity_policy": (
             "stop_first_conservative" if ambiguity_resolution_policy == "stop_first"
             else "target_first_optimistic_upper_bound_only"
@@ -202,10 +198,11 @@ def make_pit_supervised(
         if explicit_bps is None:
             statutory_bps = kospi_statutory_sell_tax_bps(entry_ts)
             applied_explicit_bps = statutory_bps + float(commission_round_trip_bps)
-            explicit_cost_counts[f"{entry_ts.date()}:{applied_explicit_bps:.1f}"] += 1
+            bucket = f"statutory_{statutory_bps:.1f}_plus_commission_{commission_round_trip_bps:.1f}"
+            explicit_cost_counts[bucket] += 1
         else:
             applied_explicit_bps = float(explicit_bps)
-            explicit_cost_counts[f"override:{applied_explicit_bps:.1f}"] += 1
+            explicit_cost_counts[f"override_{applied_explicit_bps:.1f}"] += 1
 
         cost = cost_model_return(
             half_spread_bps,
@@ -259,10 +256,7 @@ def make_pit_supervised(
                 was_ambiguous = False
             except AmbiguousFirstHit:
                 diagnostics["ambiguous_same_bar"] += 1
-                rec = economic_outcome(
-                    **kwargs,
-                    ambiguous_policy=ambiguity_resolution_policy,
-                )
+                rec = economic_outcome(**kwargs, ambiguous_policy=ambiguity_resolution_policy)
                 was_ambiguous = True
 
         key = (decision_day, symbol)
