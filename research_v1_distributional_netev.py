@@ -43,7 +43,7 @@ Q_MED = 0.50
 Q_HIGH = 0.75
 
 
-def _pipe() -> Pipeline:
+def _pipe(features=None) -> Pipeline:
     prep = ColumnTransformer([
         ("num", Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
@@ -140,7 +140,7 @@ def distributional_walk_forward(
     test_days: int = 40,
     purge_days: int = 5,
 ):
-    dates = sorted(pd.Timestamp(x) for x in z["decision_date"].drop_duplicates())
+    features = list(features or CONTEXT_FEATURES)\n    dates = sorted(pd.Timestamp(x) for x in z["decision_date"].drop_duplicates())
     start = train_days + cal_days + 2 * purge_days
     preds = []
     folds = []
