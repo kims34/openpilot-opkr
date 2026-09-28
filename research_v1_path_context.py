@@ -3,7 +3,7 @@
 Adds only information fully known at the decision close and directly relevant to
 a next-session-open entry: overnight gap into the current session, current
 intraday return, high-low range, close location in the daily range, and current
-trading-value surprise versus the prior 20 sessions.  No hyperparameter search.
+trading-value surprise versus the prior 20 sessions. No hyperparameter search.
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from sklearn.preprocessing import StandardScaler
 
 from research_v1_context import CONTEXT_FEATURES, add_context
 from research_v1_holdaware import evaluate_topk_only
-from research_v1_pit_labels import make_pit_supervised
 from research_v1_pit_run_purged import _walk_forward_pit
+from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
 PATH_FEATURES = [
@@ -53,11 +53,11 @@ def add_path_features(raw: pd.DataFrame, supervised: pd.DataFrame) -> pd.DataFra
     x["value_surprise20_log"] = np.log(ratio.clip(lower=1e-8))
 
     for col in ["gap1", "intraday_ret1", "range1", "value_surprise20_log"]:
-        x[f"{col.replace('value_surprise20_log','value_surprise20')}_rank"] = x.groupby("decision_date")[col].rank(pct=True)
+        rank_name = f"{col.replace('value_surprise20_log','value_surprise20')}_rank"
+        x[rank_name] = x.groupby("decision_date")[col].rank(pct=True)
 
     keep = ["decision_date", "symbol"] + PATH_FEATURES
-    z = supervised.merge(x[keep], on=["decision_date", "symbol"], how="left", validate="one_to_one")
-    return z
+    return supervised.merge(x[keep], on=["decision_date", "symbol"], how="left", validate="one_to_one")
 
 
 def _pipe(features):
@@ -121,6 +121,7 @@ def metric_view(result: dict) -> dict:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit")
+    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_v1")
     ap.add_argument("--result-dir", default="research_results/marcap_pit_path_context")
     ap.add_argument("--horizon", type=int, default=5)
     ap.add_argument("--top-k", type=int, default=3)
@@ -132,12 +133,14 @@ def main():
     args = ap.parse_args()
 
     raw = load_panel(Path(args.cache))
-    frame, record_map, diag = make_pit_supervised(
+    frame, record_map, diag, cache_meta = load_or_build(
         raw,
+        Path(args.supervised_cache),
         horizon=args.horizon,
         target_return=args.target,
         stop_return=args.stop,
         participation=args.participation,
+        commission_round_trip_bps=3.0,
     )
     frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
     base_context = add_context(frame)
@@ -164,11 +167,14 @@ def main():
         "purge_days": args.horizon,
         "hyperparameter_search": False,
         "path_features": PATH_FEATURES,
+        "supervised_cache": cache_meta,
         "label_diagnostics": diag,
         "baseline_logistic_context": b,
         "path_context": p,
         "delta_path_minus_baseline": delta,
         "selected_rows": int(len(selected)),
+        "selected_ambiguous_rows": int(selected.get("ambiguous_same_bar", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()) if not selected.empty else 0,
+        "selected_post_entry_missing_rows": int(selected.get("post_entry_missing_future", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()) if not selected.empty else 0,
         "interpretation": (
             "Adopt path features only if cost-adjusted OOS metrics improve materially without worsening tail risk. "
             "This is a single prespecified challenger, not a feature search."
