@@ -13,11 +13,29 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from research_v1_core import Bar, AmbiguousFirstHit, cost_model_return, date_cluster_bootstrap_mean, economic_outcome, summarize
-from research_v1_krx import DEFAULT_CACHE, load_panel
+from research_v1_core import (
+    AmbiguousFirstHit,
+    Bar,
+    cost_model_return,
+    date_cluster_bootstrap_mean,
+    economic_outcome,
+    summarize,
+)
 
 
+DEFAULT_CACHE = Path("research_data/krx_daily")
 RESULT_DIR = Path("research_results")
+
+
+def load_panel(cache_dir: Path = DEFAULT_CACHE) -> pd.DataFrame:
+    """Load the shared parquet contract without importing any data-source client."""
+    files = sorted(p for p in cache_dir.glob("*.parquet") if p.is_file())
+    if not files:
+        raise RuntimeError(f"no parquet data in {cache_dir}")
+    frames = [pd.read_parquet(p) for p in files]
+    x = pd.concat(frames, ignore_index=True)
+    x["decision_date"] = pd.to_datetime(x["decision_date"])
+    return x.sort_values(["decision_date", "symbol"]).reset_index(drop=True)
 
 
 def add_features(panel: pd.DataFrame) -> pd.DataFrame:
@@ -26,8 +44,12 @@ def add_features(panel: pd.DataFrame) -> pd.DataFrame:
     x["ret1"] = g["close"].pct_change(1)
     x["ret5"] = g["close"].pct_change(5)
     x["ret20"] = g["close"].pct_change(20)
-    x["vol20"] = x.groupby("symbol", sort=False)["ret1"].transform(lambda s: s.rolling(20, min_periods=20).std(ddof=0))
-    x["adv20"] = x.groupby("symbol", sort=False)["value"].transform(lambda s: s.rolling(20, min_periods=20).median())
+    x["vol20"] = x.groupby("symbol", sort=False)["ret1"].transform(
+        lambda s: s.rolling(20, min_periods=20).std(ddof=0)
+    )
+    x["adv20"] = x.groupby("symbol", sort=False)["value"].transform(
+        lambda s: s.rolling(20, min_periods=20).median()
+    )
     return x
 
 
@@ -51,7 +73,10 @@ def _rank_day(day: pd.DataFrame, strategy: str) -> pd.DataFrame:
 def build_lookup(panel: pd.DataFrame):
     dates = sorted(panel["decision_date"].drop_duplicates())
     date_to_pos = {pd.Timestamp(d): i for i, d in enumerate(dates)}
-    by_symbol = {s: g.set_index("decision_date").sort_index() for s, g in panel.groupby("symbol")}
+    by_symbol = {
+        s: g.set_index("decision_date").sort_index()
+        for s, g in panel.groupby("symbol")
+    }
     return dates, date_to_pos, by_symbol
 
 
@@ -71,11 +96,13 @@ def run_strategy(
     records = []
     ambiguous = 0
     skipped = 0
+    considered = 0
     for decision_date, day in panel.groupby("decision_date", sort=True):
         ranked = _rank_day(day, strategy)
         if ranked.empty:
             continue
         for _, row in ranked.head(top_k).iterrows():
+            considered += 1
             symbol = row["symbol"]
             pos = date_to_pos[pd.Timestamp(decision_date)]
             future_dates = dates[pos + 1: pos + 1 + horizon]
@@ -98,10 +125,13 @@ def run_strategy(
                 except KeyError:
                     valid = False
                     break
-                future.append(Bar(
-                    day=pd.Timestamp(d).date(), open=float(r.open), high=float(r.high), low=float(r.low),
-                    close=float(r.close), volume=float(r.volume), value=float(r.value),
-                ))
+                future.append(
+                    Bar(
+                        day=pd.Timestamp(d).date(),
+                        open=float(r.open), high=float(r.high), low=float(r.low),
+                        close=float(r.close), volume=float(r.volume), value=float(r.value),
+                    )
+                )
             if not valid:
                 skipped += 1
                 continue
@@ -114,15 +144,29 @@ def run_strategy(
             )
             try:
                 rec = economic_outcome(
-                    decision_day=pd.Timestamp(decision_date).date(), symbol=symbol, score=float(row["score"]),
-                    entry_price=float(entry_row.open), future_bars=future,
-                    target_return=target_return, stop_return=stop_return, round_trip_cost_return=cost,
+                    decision_day=pd.Timestamp(decision_date).date(),
+                    symbol=symbol,
+                    score=float(row["score"]),
+                    entry_price=float(entry_row.open),
+                    future_bars=future,
+                    target_return=target_return,
+                    stop_return=stop_return,
+                    round_trip_cost_return=cost,
                 )
             except AmbiguousFirstHit:
                 ambiguous += 1
                 continue
             records.append(rec)
-    return records, {"ambiguous": ambiguous, "skipped": skipped}
+    denom = len(records) + ambiguous
+    decision_days = len({r.decision_day for r in records})
+    return records, {
+        "considered": considered,
+        "ambiguous": ambiguous,
+        "ambiguous_rate": float(ambiguous / denom) if denom else 0.0,
+        "skipped": skipped,
+        "decision_days_with_records": decision_days,
+        "avg_records_per_decision_day": float(len(records) / decision_days) if decision_days else 0.0,
+    }
 
 
 def main() -> None:
@@ -137,8 +181,14 @@ def main() -> None:
     args = ap.parse_args()
 
     raw_panel = load_panel(Path(args.cache))
-    pit = bool(raw_panel.get("point_in_time_universe", pd.Series([False])).fillna(False).astype(bool).all())
-    source_values = sorted(set(raw_panel["source"].dropna().astype(str))) if "source" in raw_panel else ["unknown"]
+    pit = bool(
+        raw_panel.get("point_in_time_universe", pd.Series([False]))
+        .fillna(False).astype(bool).all()
+    )
+    source_values = (
+        sorted(set(raw_panel["source"].dropna().astype(str)))
+        if "source" in raw_panel else ["unknown"]
+    )
     panel = add_features(raw_panel)
     out_dir = Path(args.result_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -155,6 +205,14 @@ def main() -> None:
         "rows": int(len(panel)),
         "symbols": int(panel["symbol"].nunique()),
         "strategies": {},
+        "portfolio_metrics": {
+            "max_drawdown": None,
+            "status": "NOT_SIMULATED",
+            "reason": (
+                "Trade records overlap across decision dates. A real MDD requires a daily "
+                "mark-to-market portfolio simulator with an explicit capital-allocation policy."
+            ),
+        },
         "assumptions": {
             "entry": "next_regular_open",
             "horizon_sessions": args.horizon,
@@ -164,28 +222,41 @@ def main() -> None:
             "participation_ADV": args.participation,
             "ambiguous_same_day_target_stop": "exclude_primary",
             "gap_through_stop": "next/open executable price",
+            "portfolio_mdd": "not reported until daily MTM portfolio path exists",
         },
     }
 
     for strategy in ["momentum5", "momentum20", "momentum20_liquidity"]:
         records, diag = run_strategy(
-            panel, strategy, top_k=args.top_k, horizon=args.horizon,
-            target_return=args.target, stop_return=args.stop, participation=args.participation,
+            panel,
+            strategy,
+            top_k=args.top_k,
+            horizon=args.horizon,
+            target_return=args.target,
+            stop_return=args.stop,
+            participation=args.participation,
         )
         metrics = summarize(records)
         point, lo, hi = date_cluster_bootstrap_mean(records)
         report["strategies"][strategy] = {
             **asdict(metrics),
-            "cluster_bootstrap_mean": point,
+            "cluster_bootstrap_mean_net_return": point,
             "cluster_bootstrap_95_low": lo,
             "cluster_bootstrap_95_high": hi,
             **diag,
         }
-        pd.DataFrame([asdict(r) for r in records]).to_csv(out_dir / f"{strategy}_trades.csv", index=False)
+        pd.DataFrame([asdict(r) for r in records]).to_csv(
+            out_dir / f"{strategy}_trades.csv", index=False
+        )
 
     if not pit:
-        report["warning"] = "Smoke metrics are pipeline diagnostics only; do not use for strategy selection or performance claims."
-    (out_dir / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        report["warning"] = (
+            "Smoke metrics are pipeline diagnostics only; do not use for strategy "
+            "selection or performance claims."
+        )
+    (out_dir / "summary.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
 
