@@ -20,7 +20,7 @@ from research_v1_core import (
     economic_outcome,
     summarize,
 )
-from research_v1_portfolio import simulate_portfolio, summary_dict
+from research_v1_portfolio import filter_executable_records, simulate_portfolio, summary_dict
 
 DEFAULT_CACHE = Path("research_data/krx_daily")
 RESULT_DIR = Path("research_results")
@@ -71,10 +71,7 @@ def _rank_day(day: pd.DataFrame, strategy: str) -> pd.DataFrame:
 def build_lookup(panel: pd.DataFrame):
     dates = sorted(panel["decision_date"].drop_duplicates())
     date_to_pos = {pd.Timestamp(d): i for i, d in enumerate(dates)}
-    by_symbol = {
-        s: g.set_index("decision_date").sort_index()
-        for s, g in panel.groupby("symbol")
-    }
+    by_symbol = {s: g.set_index("decision_date").sort_index() for s, g in panel.groupby("symbol")}
     return dates, date_to_pos, by_symbol
 
 
@@ -92,9 +89,7 @@ def run_strategy(
 ):
     dates, date_to_pos, by_symbol = build_lookup(panel)
     records = []
-    ambiguous = 0
-    skipped = 0
-    considered = 0
+    ambiguous = skipped = considered = 0
     for decision_date, day in panel.groupby("decision_date", sort=True):
         ranked = _rank_day(day, strategy)
         if ranked.empty:
@@ -123,13 +118,10 @@ def run_strategy(
                 except KeyError:
                     valid = False
                     break
-                future.append(
-                    Bar(
-                        day=pd.Timestamp(d).date(),
-                        open=float(r.open), high=float(r.high), low=float(r.low),
-                        close=float(r.close), volume=float(r.volume), value=float(r.value),
-                    )
-                )
+                future.append(Bar(
+                    day=pd.Timestamp(d).date(), open=float(r.open), high=float(r.high),
+                    low=float(r.low), close=float(r.close), volume=float(r.volume), value=float(r.value),
+                ))
             if not valid:
                 skipped += 1
                 continue
@@ -142,13 +134,9 @@ def run_strategy(
             )
             try:
                 rec = economic_outcome(
-                    decision_day=pd.Timestamp(decision_date).date(),
-                    symbol=symbol,
-                    score=float(row["score"]),
-                    entry_price=float(entry_row.open),
-                    future_bars=future,
-                    target_return=target_return,
-                    stop_return=stop_return,
+                    decision_day=pd.Timestamp(decision_date).date(), symbol=symbol,
+                    score=float(row["score"]), entry_price=float(entry_row.open),
+                    future_bars=future, target_return=target_return, stop_return=stop_return,
                     round_trip_cost_return=cost,
                 )
             except AmbiguousFirstHit:
@@ -167,6 +155,17 @@ def run_strategy(
     }
 
 
+def _metric_block(records):
+    m = summarize(records)
+    point, lo, hi = date_cluster_bootstrap_mean(records) if records else (0.0, 0.0, 0.0)
+    return {
+        **asdict(m),
+        "cluster_bootstrap_mean_net_return": point,
+        "cluster_bootstrap_95_low": lo,
+        "cluster_bootstrap_95_high": hi,
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default=str(DEFAULT_CACHE))
@@ -179,14 +178,8 @@ def main() -> None:
     args = ap.parse_args()
 
     raw_panel = load_panel(Path(args.cache))
-    pit = bool(
-        raw_panel.get("point_in_time_universe", pd.Series([False]))
-        .fillna(False).astype(bool).all()
-    )
-    source_values = (
-        sorted(set(raw_panel["source"].dropna().astype(str)))
-        if "source" in raw_panel else ["unknown"]
-    )
+    pit = bool(raw_panel.get("point_in_time_universe", pd.Series([False])).fillna(False).astype(bool).all())
+    source_values = sorted(set(raw_panel["source"].dropna().astype(str))) if "source" in raw_panel else ["unknown"]
     panel = add_features(raw_panel)
     out_dir = Path(args.result_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -224,46 +217,32 @@ def main() -> None:
     }
 
     for strategy in ["momentum5", "momentum20", "momentum20_liquidity"]:
-        records, diag = run_strategy(
-            panel,
-            strategy,
-            top_k=args.top_k,
-            horizon=args.horizon,
-            target_return=args.target,
-            stop_return=args.stop,
-            participation=args.participation,
+        signal_records, diag = run_strategy(
+            panel, strategy, top_k=args.top_k, horizon=args.horizon,
+            target_return=args.target, stop_return=args.stop, participation=args.participation,
         )
-        metrics = summarize(records)
-        point, lo, hi = date_cluster_bootstrap_mean(records)
+        executable_records, dup = filter_executable_records(signal_records, True)
+        eval_start = min((r.entry_day for r in executable_records), default=None)
+        eval_end = max((r.exit_day for r in executable_records), default=None)
         portfolio_path, portfolio_summary = simulate_portfolio(
-            raw_panel,
-            records,
-            horizon=args.horizon,
-            initial_equity=1.0,
-            daily_cohort_fraction=1.0 / args.horizon,
-            suppress_duplicate_symbols=True,
+            raw_panel, executable_records, horizon=args.horizon, initial_equity=1.0,
+            daily_cohort_fraction=1.0 / args.horizon, suppress_duplicate_symbols=False,
+            evaluation_start=eval_start, evaluation_end=eval_end,
         )
         report["strategies"][strategy] = {
-            **asdict(metrics),
-            "cluster_bootstrap_mean_net_return": point,
-            "cluster_bootstrap_95_low": lo,
-            "cluster_bootstrap_95_high": hi,
+            "signal_set": _metric_block(signal_records),
+            "executable_set": _metric_block(executable_records),
+            "duplicate_signals_suppressed": dup,
             "portfolio": summary_dict(portfolio_summary),
             **diag,
         }
-        pd.DataFrame([asdict(r) for r in records]).to_csv(
-            out_dir / f"{strategy}_trades.csv", index=False
-        )
+        pd.DataFrame([asdict(r) for r in signal_records]).to_csv(out_dir / f"{strategy}_signals.csv", index=False)
+        pd.DataFrame([asdict(r) for r in executable_records]).to_csv(out_dir / f"{strategy}_executed.csv", index=False)
         portfolio_path.to_csv(out_dir / f"{strategy}_portfolio.csv", index=False)
 
     if not pit:
-        report["warning"] = (
-            "Smoke metrics are pipeline diagnostics only; do not use for strategy "
-            "selection or performance claims."
-        )
-    (out_dir / "summary.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+        report["warning"] = "Smoke metrics are pipeline diagnostics only; do not use for strategy selection or performance claims."
+    (out_dir / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
 
