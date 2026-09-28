@@ -25,6 +25,7 @@ from research_v1_distributional_netev import (
     _fixed_record_map,
     _pipe,
     distributional_walk_forward,
+    freeze_original_topk,
 )
 from research_v1_fixed_horizon_label import add_fixed_horizon_target
 from research_v1_ml import stateful_select_records
@@ -150,8 +151,9 @@ def _portfolio_with_halt_mark_carry(raw, records, pred, horizon):
 
 def _evaluate(pred, fixed_map, raw, horizon, top_k):
     eligible = pred[pred["netev_low"] > 0].copy()
+    frozen_topk = freeze_original_topk(eligible, top_k)
     records, selected, diag = stateful_select_records(
-        eligible, fixed_map, top_k=top_k, threshold=0.0
+        frozen_topk, fixed_map, top_k=top_k, threshold=0.0
     )
     metrics = summarize(records)
     point, lo, hi = date_cluster_bootstrap_mean(records) if records else (0.0, 0.0, 0.0)
@@ -171,6 +173,7 @@ def _evaluate(pred, fixed_map, raw, horizon, top_k):
             })
     return {
         "eligible_rows": int(len(eligible)),
+        "frozen_topk_rows": int(len(frozen_topk)),
         "trades": int(len(records)),
         "trade_days": trade_days,
         "test_dates": test_dates,
@@ -183,6 +186,7 @@ def _evaluate(pred, fixed_map, raw, horizon, top_k):
         },
         "portfolio": _portfolio_with_halt_mark_carry(raw, records, pred, horizon),
         "selection_diagnostics": diag,
+        "selection_policy": "netev_low_gt_0__freeze_original_topk__blocked_slot_stays_empty",
         "yearly": yearly,
     }, selected
 
@@ -246,6 +250,7 @@ def main():
         "purge_days": args.horizon,
         "cal_days": args.cal_days,
         "portfolio_mark_policy": "last_valid_mark_during_intermediate_halt_MTM_only",
+        "selection_policy": "netev_low_gt_0__freeze_original_top3__blocked_slot_stays_empty",
         "supervised_cache": meta,
         "legacy_label_diagnostics": diag,
         "expanding": exp,
