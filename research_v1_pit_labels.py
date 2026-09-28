@@ -10,6 +10,10 @@ cannot fill.
 If a bar disappears after a successful entry, PIT Preliminary books a
 conservative planned-stop loss at the first missing market session. Final Judge
 work must replace that approximation with exact delisting/halt economics.
+
+The default same-bar ambiguity policy remains conservative stop-first.  An
+explicit target-first option exists only to measure an optimistic upper bound;
+it must never be treated as executable evidence without intraday first-hit data.
 """
 from __future__ import annotations
 
@@ -73,7 +77,11 @@ def make_pit_supervised(
     explicit_bps: float = 23.0,
     participation: float = 0.0005,
     impact_coefficient: float = 0.10,
+    ambiguity_resolution_policy: str = "stop_first",
 ):
+    if ambiguity_resolution_policy not in {"stop_first", "target_first"}:
+        raise ValueError("ambiguity_resolution_policy must be stop_first or target_first")
+
     x = add_features(raw_panel)
     x["log_adv20"] = np.log1p(x["adv20"].clip(lower=0))
     for col in ["ret5", "ret20", "vol20", "adv20"]:
@@ -90,7 +98,10 @@ def make_pit_supervised(
         "insufficient_global_future_horizon": 0,
         "eligible_rows_with_labels": 0,
         "eligible_rows_without_label_no_fill": 0,
-        "ambiguity_policy": "stop_first_conservative",
+        "ambiguity_policy": (
+            "stop_first_conservative" if ambiguity_resolution_policy == "stop_first"
+            else "target_first_optimistic_upper_bound_only"
+        ),
         "entry_no_fill_policy": "retain_for_ranking_leave_slot_empty_no_retroactive_backfill",
         "post_entry_gap_policy": "planned_stop_on_first_missing_market_session_preliminary",
     }
@@ -178,11 +189,16 @@ def make_pit_supervised(
                 round_trip_cost_return=cost,
             )
             try:
+                # First detect ambiguity explicitly so diagnostics are identical
+                # under both sensitivity policies.
                 rec = economic_outcome(**kwargs)
                 was_ambiguous = False
             except AmbiguousFirstHit:
                 diagnostics["ambiguous_same_bar"] += 1
-                rec = economic_outcome(**kwargs, ambiguous_policy="stop_first")
+                rec = economic_outcome(
+                    **kwargs,
+                    ambiguous_policy=ambiguity_resolution_policy,
+                )
                 was_ambiguous = True
 
         key = (decision_day, symbol)
