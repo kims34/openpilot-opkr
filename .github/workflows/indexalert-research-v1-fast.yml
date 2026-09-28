@@ -6,6 +6,7 @@ on:
     paths:
       - 'research_v1_fast_purged_candidate.py'
       - 'research_v1_path_context.py'
+      - 'research_v1_supervised_cache.py'
       - 'research_v1_pit_labels.py'
       - 'research_v1_pit_run_purged.py'
       - 'research_v1_context.py'
@@ -49,6 +50,11 @@ jobs:
           restore-keys: |
             marcap-pit-v2-
             marcap-pit-v1-
+      - name: Cache supervised PIT labels
+        uses: actions/cache@v4
+        with:
+          path: research_data/pit_supervised_v1
+          key: pit-supervised-v1-${{ github.event.inputs.pit_start || '2024-01-01' }}-${{ github.event.inputs.pit_end || '2026-09-28' }}-h5-t040-s025-c3
       - name: Build PIT panel
         env:
           PIT_START: ${{ github.event.inputs.pit_start || '2024-01-01' }}
@@ -57,11 +63,11 @@ jobs:
           python research_v1_marcap.py --start "$PIT_START" --end "$PIT_END" --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
       - name: Run fast purged candidate
         run: |
-          python research_v1_fast_purged_candidate.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_fast --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+          python research_v1_fast_purged_candidate.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_fast --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
           cat research_results/marcap_pit_fast/summary.json
       - name: Run PIT-safe path-context challenger
         run: |
-          python research_v1_path_context.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_path_context --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+          python research_v1_path_context.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_path_context --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
           cat research_results/marcap_pit_path_context/summary.json
       - name: Upload fast results
         if: always()
