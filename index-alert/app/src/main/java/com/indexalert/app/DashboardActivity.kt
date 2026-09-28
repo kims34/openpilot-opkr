@@ -179,9 +179,6 @@ object BackendMarket {
                 }
             }
 
-            // Emphasize only when the CURRENT drawdown stage itself has actually
-            // produced an alert. A previously fired shallower stage must not keep
-            // the current card highlighted after the market moves to a deeper stage.
             val currentStageFired = stage?.let { firedThresholds.contains(it.first) } == true
             val stageText = when {
                 !alertsEnabled -> ""
@@ -227,7 +224,14 @@ object BackendMarket {
             listOf("sp500", "nasdaq100", "schd").forEach { universe ->
                 val section = sections.optJSONObject(universe)
                 if (section != null) {
-                    items.addAll(parseLaggards(section.optJSONArray("items"), universe))
+                    val decliners = section.optJSONArray("decliners")
+                    val gainers = section.optJSONArray("gainers")
+                    if (decliners != null || gainers != null) {
+                        items.addAll(parseLaggards(decliners, universe))
+                        items.addAll(parseLaggards(gainers, universe))
+                    } else {
+                        items.addAll(parseLaggards(section.optJSONArray("items"), universe))
+                    }
                     val coverage = section.optString("coverage", "0/0")
                     val label = when (universe) {
                         "sp500" -> "S&P500"
@@ -251,21 +255,29 @@ object BackendMarket {
         val out = mutableListOf<LaggardItem>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
+            val current = o.optDouble("current", Double.NaN)
+            val previousClose = o.optDouble("previous_close", Double.NaN)
+            val dayChange = o.optDouble("day_change", Double.NaN)
+            val dayChangePercent = o.optDouble("day_change_percent", Double.NaN)
+            if (!current.isFinite() || current <= 0.0 || !previousClose.isFinite() || previousClose <= 0.0 ||
+                !dayChange.isFinite() || !dayChangePercent.isFinite()) {
+                continue
+            }
             out.add(
                 LaggardItem(
                     rank = o.optInt("rank", i + 1),
                     symbol = o.optString("symbol"),
                     name = o.optString("name"),
-                    current = o.optDouble("current", 0.0),
+                    current = current,
                     ath = o.optDouble("ath", 0.0),
                     drawdown = o.optDouble("drawdown", 0.0),
                     sp500 = o.optBoolean("sp500", false),
                     nasdaq100 = o.optBoolean("nasdaq100", false),
                     schd = o.optBoolean("schd", false),
                     universe = universe,
-                    previousClose = o.optDouble("previous_close", 0.0),
-                    dayChange = o.optDouble("day_change", 0.0),
-                    dayChangePercent = o.optDouble("day_change_percent", 0.0),
+                    previousClose = previousClose,
+                    dayChange = dayChange,
+                    dayChangePercent = dayChangePercent,
                     athDays = o.optInt("ath_days", 0)
                 )
             )
