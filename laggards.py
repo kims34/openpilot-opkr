@@ -3,9 +3,12 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
+
+import market_basis
 
 UA = {"User-Agent": "Mozilla/5.0 IndexAlert/1.0"}
 SP500_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
@@ -15,6 +18,7 @@ NASDAQ100_URLS = [
 ]
 SCHD_URL = "https://www.schwabassetmanagement.com/allholdings/schd"
 REFRESH_LOCK = threading.Lock()
+NY = ZoneInfo("America/New_York")
 
 
 def _clean_symbol(symbol: str) -> str:
@@ -129,24 +133,62 @@ def init_db(monitor):
         """)
 
 
+def _regular_session_points(points):
+    """Keep only U.S. regular-session samples so pre/post prices never become a close basis."""
+    out = []
+    for ts, value in points or []:
+        try:
+            t = int(ts)
+            v = float(value)
+            local = datetime.fromtimestamp(t, timezone.utc).astimezone(NY)
+        except Exception:
+            continue
+        minute = local.hour * 60 + local.minute
+        if local.weekday() < 5 and 570 <= minute < 960 and math.isfinite(v) and v > 0:
+            out.append((t, v))
+    return out
+
+
+def _market_state(meta, current_ts: int) -> str:
+    state = str((meta or {}).get("marketState") or "").upper()
+    if state in {"PRE", "REGULAR", "POST", "CLOSED"}:
+        return state
+    local = datetime.fromtimestamp(int(current_ts), timezone.utc).astimezone(NY)
+    if local.weekday() >= 5:
+        return "CLOSED"
+    minute = local.hour * 60 + local.minute
+    if minute < 570:
+        return "PRE"
+    if minute < 960:
+        return "REGULAR"
+    return "POST"
+
+
 def _market_quote(monitor, symbol: str):
     result = monitor.yahoo_result(_yahoo_symbol(symbol), "5d", "5m", True)
     points = monitor.series(result)
     if not points:
         raise RuntimeError("quote unavailable")
-    _, current = points[-1]
+    current_ts, current = points[-1]
+    current_ts = int(current_ts)
+    current = float(current)
     meta = result.get("meta", {})
-    previous_close = current
-    for key in ("regularMarketPreviousClose", "previousClose", "chartPreviousClose"):
-        try:
-            value = float(meta.get(key) or 0)
-            if math.isfinite(value) and value > 0:
-                previous_close = value
-                break
-        except Exception:
-            pass
-    if current <= 0 or previous_close <= 0:
-        raise RuntimeError("invalid quote")
+    state = _market_state(meta, current_ts)
+    regular_points = _regular_session_points(points)
+    previous_close, previous_close_date = market_basis.regular_close_basis(
+        regular_points,
+        current_ts,
+        state,
+        "America/New_York",
+    )
+    if (
+        current <= 0
+        or not math.isfinite(current)
+        or previous_close is None
+        or previous_close <= 0
+        or not math.isfinite(previous_close)
+    ):
+        raise RuntimeError("invalid quote basis")
     name = str(meta.get("longName") or meta.get("shortName") or symbol).strip()
     day_change = current - previous_close
     day_change_pct = (current / previous_close - 1.0) * 100.0
@@ -155,9 +197,29 @@ def _market_quote(monitor, symbol: str):
         "name": name,
         "current": current,
         "previous_close": previous_close,
+        "previous_close_date": previous_close_date,
         "day_change": day_change,
         "day_change_pct": day_change_pct,
+        "market_state": state,
     }
+
+
+def _rank_directional(rows, direction: str, limit: int = 3):
+    """Return only movers whose sign matches the section label."""
+    valid = []
+    for row in rows or []:
+        try:
+            pct = float(row.get("day_change_pct"))
+        except Exception:
+            continue
+        if not math.isfinite(pct):
+            continue
+        if direction == "down" and pct < 0:
+            valid.append(row)
+        elif direction == "up" and pct > 0:
+            valid.append(row)
+    valid.sort(key=lambda x: float(x["day_change_pct"]), reverse=(direction == "up"))
+    return valid[:limit]
 
 
 def _set_meta(monitor, key: str, value: str):
@@ -215,10 +277,10 @@ def refresh(monitor):
                 total = len(members)
                 status = "ready" if total > 0 and coverage >= max(10, int(total * 0.80)) else "building"
                 direction_pct = etf_moves.get(universe, 0.0)
-                direction = "up" if direction_pct >= 0 else "down"
+                direction = "down" if direction_pct < 0 else "up"
                 ranked = []
                 if status == "ready":
-                    ranked = sorted(rows, key=lambda x: x["day_change_pct"], reverse=(direction == "up"))[:3]
+                    ranked = _rank_directional(rows, direction, 3)
                     con.executemany(
                         """INSERT INTO universe_mover_cache(
                                universe,rank,symbol,name,current,previous_close,day_change,day_change_pct,updated_at)
@@ -251,6 +313,10 @@ def refresh(monitor):
                     "direction": direction,
                     "etf_change_pct": direction_pct,
                     "items": len(ranked),
+                    "sign_check": all(
+                        (r["day_change_pct"] < 0 if direction == "down" else r["day_change_pct"] > 0)
+                        for r in ranked
+                    ),
                 }
 
         _set_meta(monitor, "laggard_source_time", now)
@@ -275,24 +341,27 @@ def get(monitor):
                    FROM universe_mover_cache WHERE universe=? ORDER BY rank""",
                 (universe,),
             ).fetchall()
+            direction = meta.get(f"laggard_{universe}_direction", "up")
+            items = [
+                {
+                    "rank": r[0],
+                    "symbol": r[1],
+                    "name": r[2],
+                    "current": r[3],
+                    "previous_close": r[4],
+                    "day_change": r[5],
+                    "day_change_percent": r[6],
+                    "updated_at": r[7],
+                }
+                for r in rows
+                if (float(r[6]) < 0 if direction == "down" else float(r[6]) > 0)
+            ]
             sections[universe] = {
                 "status": meta.get(f"laggard_{universe}_status", "building"),
                 "coverage": meta.get(f"laggard_{universe}_coverage", "0/0"),
-                "direction": meta.get(f"laggard_{universe}_direction", "up"),
+                "direction": direction,
                 "etf_change_percent": float(meta.get(f"laggard_{universe}_etf_change_pct", "0") or 0),
-                "items": [
-                    {
-                        "rank": r[0],
-                        "symbol": r[1],
-                        "name": r[2],
-                        "current": r[3],
-                        "previous_close": r[4],
-                        "day_change": r[5],
-                        "day_change_percent": r[6],
-                        "updated_at": r[7],
-                    }
-                    for r in rows
-                ],
+                "items": items[:3],
             }
 
     sp = sections["sp500"]
