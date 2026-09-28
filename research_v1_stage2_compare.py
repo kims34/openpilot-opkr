@@ -34,6 +34,20 @@ def metric_block(report: dict, kind: str):
     }
 
 
+def row_metric(row: dict) -> dict:
+    return {
+        "mean_gross_return": float(row.get("mean_gross_return", 0.0)),
+        "mean_net_return": float(row.get("mean_net_return", 0.0)),
+        "profit_factor": float(row.get("profit_factor", 0.0)),
+        "cluster_low": float(row.get("cluster_low", 0.0)),
+        "cluster_high": float(row.get("cluster_high", 0.0)),
+        "total_return": float(row.get("total_return", 0.0)),
+        "max_drawdown": float(row.get("max_drawdown", 0.0)),
+        "expected_shortfall_95": float(row.get("expected_shortfall_95", 0.0)) if row.get("expected_shortfall_95") is not None else None,
+        "trades": int(row.get("trades", 0)),
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="research_results")
@@ -55,19 +69,22 @@ def main():
     vol_path = root / "marcap_pit_vol_veto" / "summary.json"
     if vol_path.exists():
         vol = load(vol_path)
-        for row in vol.get("results", []):
-            name = f"vol_veto_{row.get('max_vol20_rank_allowed')}"
-            candidates[name] = {
-                "mean_gross_return": float(row.get("mean_gross_return", 0.0)),
-                "mean_net_return": float(row.get("mean_net_return", 0.0)),
-                "profit_factor": float(row.get("profit_factor", 0.0)),
-                "cluster_low": float(row.get("cluster_low", 0.0)),
-                "cluster_high": float(row.get("cluster_high", 0.0)),
-                "total_return": float(row.get("total_return", 0.0)),
-                "max_drawdown": float(row.get("max_drawdown", 0.0)),
-                "expected_shortfall_95": float(row.get("expected_shortfall_95", 0.0)),
-                "trades": int(row.get("trades", 0)),
-            }
+        if "results_by_model" in vol:
+            # Corrected policy: original top-K is frozen BEFORE risk veto and no
+            # lower-ranked name may be promoted.  Cap 1.0 duplicates each base
+            # model, so only actual veto caps are entered as extra candidates.
+            for model, rows in vol.get("results_by_model", {}).items():
+                for row in rows:
+                    cap = float(row.get("max_vol20_rank_allowed", 1.0))
+                    if cap >= 1.0:
+                        continue
+                    name = f"{model}__vol_veto_{cap}__no_backfill"
+                    candidates[name] = row_metric(row)
+        else:
+            # Legacy result retained only for audit; old volatility-veto rows
+            # allowed post-veto backfill and therefore are not comparable or
+            # promotion eligible.
+            pass
 
     for x in candidates.values():
         x["deployment_candidate"] = bool(
@@ -84,6 +101,8 @@ def main():
     )
     report = {
         "evaluation_stage": "PIT_PRELIMINARY_PURGED_STAGE2_COMPARE",
+        "volatility_veto_policy": "original_top3_frozen_before_veto__no_backfill",
+        "legacy_backfill_veto_excluded": True,
         "selection_rule": "deployment_pass_first_then_cluster_low_then_netEV_then_profit_factor",
         "candidates": ranked,
         "deployment_candidates": [r["name"] for r in ranked if r["deployment_candidate"]],
