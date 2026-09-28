@@ -13,7 +13,6 @@ from typing import Iterable, Sequence
 
 import numpy as np
 
-
 JUDGE_VERSION = "KR-KOSPI-JUDGE-v1.0"
 RESEARCH_VERSION = "indexalert-research-v1.0"
 
@@ -43,6 +42,7 @@ class Bar:
 @dataclass(frozen=True)
 class DecisionRecord:
     decision_day: date
+    entry_day: date
     symbol: str
     score: float
     entry_price: float
@@ -149,6 +149,8 @@ def economic_outcome(
     stop_return: float,
     round_trip_cost_return: float,
 ) -> DecisionRecord:
+    if not future_bars:
+        raise ValueError("future_bars required")
     outcome, exit_bar, exit_price = classify_first_hit(
         future_bars, entry_price, target_return, stop_return
     )
@@ -156,6 +158,7 @@ def economic_outcome(
     net = gross - round_trip_cost_return
     return DecisionRecord(
         decision_day=decision_day,
+        entry_day=future_bars[0].day,
         symbol=symbol,
         score=float(score),
         entry_price=float(entry_price),
@@ -172,20 +175,14 @@ def economic_outcome(
 
 
 def max_drawdown(returns: Sequence[float]) -> float:
-    """Generic non-overlapping return-series MDD helper.
-
-    Do not apply this directly to overlapping DecisionRecord rows. A real
-    portfolio MDD requires a daily mark-to-market portfolio path and allocation
-    policy. It remains here for that future portfolio simulator.
-    """
+    """MDD for a genuine non-overlapping periodic return series."""
     wealth = 1.0
     peak = 1.0
     worst = 0.0
     for r in returns:
         wealth *= 1.0 + float(r)
         peak = max(peak, wealth)
-        dd = wealth / peak - 1.0
-        worst = min(worst, dd)
+        worst = min(worst, wealth / peak - 1.0)
     return float(worst)
 
 
@@ -198,12 +195,7 @@ def expected_shortfall(returns: Sequence[float], alpha: float = 0.95) -> float:
 
 
 def summarize(records: Sequence[DecisionRecord]) -> MetricSummary:
-    """Summarize trade-level outcomes only.
-
-    Portfolio drawdown is intentionally excluded because these records can
-    overlap in calendar time. Compounding them sequentially would create a
-    fictitious portfolio path and grossly overstate drawdown.
-    """
+    """Summarize trade-level outcomes only; no fake overlapping-trade MDD."""
     if not records:
         return MetricSummary(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     net = np.asarray([x.net_return for x in records], dtype=float)
@@ -229,9 +221,7 @@ def summarize(records: Sequence[DecisionRecord]) -> MetricSummary:
 
 
 def date_cluster_bootstrap_mean(
-    records: Sequence[DecisionRecord],
-    samples: int = 2000,
-    seed: int = 20260928,
+    records: Sequence[DecisionRecord], samples: int = 2000, seed: int = 20260928,
 ) -> tuple[float, float, float]:
     """Cluster bootstrap by decision date, not by stock row."""
     if not records:
@@ -261,12 +251,7 @@ def cost_model_return(
     participation: float,
     impact_coefficient: float = 0.10,
 ) -> float:
-    """Simple capacity-aware round-trip cost model.
-
-    impact ~= c * sigma * sqrt(Q/ADV), applied conservatively to each side.
-    Coefficient is a placeholder that must be estimated per market before a
-    profitability claim is accepted by the Judge.
-    """
+    """Simple capacity-aware round-trip cost model."""
     if participation < 0:
         raise ValueError("participation must be non-negative")
     explicit = (2.0 * half_spread_bps + tax_commission_bps) / 10000.0
@@ -275,9 +260,7 @@ def cost_model_return(
 
 
 def choose_top_k(
-    scored: Iterable[tuple[str, float]],
-    k: int = 3,
-    minimum_score: float | None = None,
+    scored: Iterable[tuple[str, float]], k: int = 3, minimum_score: float | None = None,
 ) -> list[tuple[str, float]]:
     rows = sorted(scored, key=lambda x: x[1], reverse=True)
     if minimum_score is not None:
