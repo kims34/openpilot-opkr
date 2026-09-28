@@ -1,6 +1,7 @@
 import pandas as pd
 
 from research_v1_ml import FEATURES
+from research_v1_pit_labels import kospi_statutory_sell_tax_bps
 from research_v1_pit_run_purged import _walk_forward_pit
 
 
@@ -65,3 +66,11 @@ def test_each_fold_keeps_label_horizon_out_of_test_boundary():
         test_start = pd.Timestamp(fold["decision_date"].min())
         train_end = pd.Timestamp(fold["train_end"].iloc[0])
         assert date_pos[test_start] - date_pos[train_end] == purge + 1
+
+
+def test_kospi_statutory_tax_schedule_matches_research_years():
+    assert kospi_statutory_sell_tax_bps("2022-06-01") == 23.0
+    assert kospi_statutory_sell_tax_bps("2023-06-01") == 20.0
+    assert kospi_statutory_sell_tax_bps("2024-06-01") == 18.0
+    assert kospi_statutory_sell_tax_bps("2025-06-01") == 15.0
+    assert kospi_statutory_sell_tax_bps("2026-06-01") == 20.0
