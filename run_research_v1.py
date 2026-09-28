@@ -1,7 +1,8 @@
 """Run IndexAlert baseline research on a cached KOSPI-like daily panel.
 
-The report propagates data-lineage eligibility. A non-PIT smoke dataset can
-exercise the same engine, but its metrics are never labeled Judge-eligible.
+All strategies share the same trailing-liquidity eligibility rule and the same
+0..K hold-aware admission rule. Dataset lineage determines whether a result is
+SMOKE_NONPIT, PIT_PRELIMINARY, or final JUDGE eligible.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from research_v1_core import (
     economic_outcome,
     summarize,
 )
+from research_v1_data_policy import add_liquidity_eligibility, dataset_status
 from research_v1_portfolio import simulate_portfolio, summary_dict
 
 DEFAULT_CACHE = Path("research_data/krx_daily")
@@ -27,7 +29,10 @@ RESULT_DIR = Path("research_results")
 
 
 def load_panel(cache_dir: Path = DEFAULT_CACHE) -> pd.DataFrame:
-    files = sorted(p for p in cache_dir.glob("*.parquet") if p.is_file())
+    files = sorted(
+        p for p in cache_dir.glob("*.parquet")
+        if p.is_file() and p.name != "rejected_invalid_bars.parquet"
+    )
     if not files:
         raise RuntimeError(f"no parquet data in {cache_dir}")
     frames = [pd.read_parquet(p) for p in files]
@@ -48,15 +53,14 @@ def add_features(panel: pd.DataFrame) -> pd.DataFrame:
     x["adv20"] = x.groupby("symbol", sort=False)["value"].transform(
         lambda s: s.rolling(20, min_periods=20).median()
     )
-    return x
+    return add_liquidity_eligibility(x, 0.20)
 
 
 def _rank_day(day: pd.DataFrame, strategy: str) -> pd.DataFrame:
     d = day.copy().dropna(subset=["ret5", "ret20", "adv20", "vol20"])
+    d = d[d["liquid_eligible"].fillna(False).astype(bool)].copy()
     if d.empty:
         return d
-    liq_cut = d["adv20"].quantile(0.20)
-    d = d[d["adv20"] >= liq_cut].copy()
     if strategy == "momentum5":
         d["score"] = d["ret5"]
     elif strategy == "momentum20":
@@ -76,18 +80,9 @@ def build_lookup(panel: pd.DataFrame):
 
 
 def _record_for_row(
-    row,
-    decision_date,
-    dates,
-    date_to_pos,
-    by_symbol,
-    horizon,
-    target_return,
-    stop_return,
-    half_spread_bps,
-    explicit_bps,
-    participation,
-    impact_coefficient,
+    row, decision_date, dates, date_to_pos, by_symbol, horizon,
+    target_return, stop_return, half_spread_bps, explicit_bps,
+    participation, impact_coefficient,
 ):
     symbol = row["symbol"]
     pos = date_to_pos[pd.Timestamp(decision_date)]
@@ -106,6 +101,8 @@ def _record_for_row(
         try:
             r = hist.loc[pd.Timestamp(d)]
         except KeyError:
+            # Never invent a price. Preliminary PIT reports surface these cases
+            # as unresolved exits; final Judge requires a delisting/halt layer.
             return None, False, "missing_future_bar"
         future.append(Bar(
             day=pd.Timestamp(d).date(), open=float(r.open), high=float(r.high),
@@ -131,27 +128,19 @@ def _record_for_row(
 
 
 def run_strategy(
-    panel: pd.DataFrame,
-    strategy: str,
-    top_k: int = 3,
-    horizon: int = 5,
-    target_return: float = 0.04,
-    stop_return: float = -0.025,
-    half_spread_bps: float = 4.0,
-    explicit_bps: float = 23.0,
-    participation: float = 0.0005,
-    impact_coefficient: float = 0.10,
+    panel: pd.DataFrame, strategy: str, top_k: int = 3, horizon: int = 5,
+    target_return: float = 0.04, stop_return: float = -0.025,
+    half_spread_bps: float = 4.0, explicit_bps: float = 23.0,
+    participation: float = 0.0005, impact_coefficient: float = 0.10,
 ):
     dates, date_to_pos, by_symbol = build_lookup(panel)
     signal_records = []
     executable_records = []
     active_until = {}
     ambiguous_keys = set()
-    skipped_keys = set()
+    skipped_reasons: dict[str, int] = {}
     signal_candidates = 0
-    execution_candidates_scanned = 0
     blocked = 0
-    backfilled = 0
 
     for decision_date, day in panel.groupby("decision_date", sort=True):
         ranked = _rank_day(day, strategy)
@@ -159,7 +148,7 @@ def run_strategy(
             continue
         cache = {}
 
-        def get_rec(idx, row):
+        def get_rec(row):
             key = (pd.Timestamp(decision_date).date(), str(row["symbol"]))
             if key not in cache:
                 rec, amb, skip_reason = _record_for_row(
@@ -171,46 +160,36 @@ def run_strategy(
                 if amb:
                     ambiguous_keys.add(key)
                 if skip_reason:
-                    skipped_keys.add(key)
+                    skipped_reasons[skip_reason] = skipped_reasons.get(skip_reason, 0) + 1
             return cache[key]
 
-        # Diagnostic signal set: unadjusted top-K ranking.
-        for idx, row in ranked.head(top_k).iterrows():
+        # Only the model's original top-K are candidates. If a name is already
+        # held, the slot stays empty. We do not promote weaker ranks simply to
+        # fill three positions.
+        eligible_today = ranked.head(top_k)
+        for _, row in eligible_today.iterrows():
             signal_candidates += 1
-            rec = get_rec(idx, row)
-            if rec is not None:
-                signal_records.append(rec)
-
-        # Executable set: respect already-open positions and backfill with the
-        # next eligible rank instead of shrinking the daily cohort.
-        picked = 0
-        for rank, (idx, row) in enumerate(ranked.iterrows(), start=1):
-            if picked >= top_k:
-                break
-            execution_candidates_scanned += 1
-            rec = get_rec(idx, row)
+            rec = get_rec(row)
             if rec is None:
                 continue
+            signal_records.append(rec)
             prev_exit = active_until.get(rec.symbol)
             if prev_exit is not None and prev_exit >= rec.entry_day:
                 blocked += 1
                 continue
             executable_records.append(rec)
             active_until[rec.symbol] = rec.exit_day
-            if rank > top_k:
-                backfilled += 1
-            picked += 1
 
     decision_days = len({r.decision_day for r in signal_records})
     return signal_records, executable_records, {
         "signal_candidates_considered": signal_candidates,
-        "execution_candidates_scanned": execution_candidates_scanned,
         "ambiguous": len(ambiguous_keys),
         "ambiguous_rate_signal": float(len(ambiguous_keys) / max(1, len(signal_records))),
         "ambiguous_primary_policy": "stop_first_conservative_no_future_filter",
-        "skipped": len(skipped_keys),
+        "skipped_total": int(sum(skipped_reasons.values())),
+        "skipped_by_reason": skipped_reasons,
         "active_position_candidates_blocked": blocked,
-        "backfill_selections": backfilled,
+        "backfill_selections": 0,
         "decision_days_with_signal_records": decision_days,
         "avg_signal_records_per_decision_day": float(len(signal_records) / decision_days) if decision_days else 0.0,
     }
@@ -239,7 +218,7 @@ def main() -> None:
     args = ap.parse_args()
 
     raw_panel = load_panel(Path(args.cache))
-    pit = bool(raw_panel.get("point_in_time_universe", pd.Series([False])).fillna(False).astype(bool).all())
+    status = dataset_status(raw_panel)
     source_values = sorted(set(raw_panel["source"].dropna().astype(str))) if "source" in raw_panel else ["unknown"]
     panel = add_features(raw_panel)
     out_dir = Path(args.result_dir)
@@ -247,10 +226,7 @@ def main() -> None:
 
     report = {
         "judge_version": "KR-KOSPI-JUDGE-v1.0",
-        "judge_eligible": pit,
-        "result_class": "JUDGE" if pit else "SMOKE_NONPIT",
-        "point_in_time_universe": pit,
-        "survivorship_bias_possible": not pit,
+        **status,
         "source": source_values,
         "data_start": str(panel["decision_date"].min().date()),
         "data_end": str(panel["decision_date"].max().date()),
@@ -261,7 +237,7 @@ def main() -> None:
             "initial_equity": 1.0,
             "daily_cohort_fraction": 1.0 / args.horizon,
             "allocation_within_cohort": "equal_weight",
-            "active_symbol_selection": "exclude_then_backfill_next_rank",
+            "active_symbol_selection": "original_top_k_only__held_names_leave_empty_slots",
             "cost_timing": "round_trip_cost_split_50_50_entry_exit",
             "marking": "daily_close_until_realized_exit_price",
         },
@@ -271,6 +247,7 @@ def main() -> None:
             "target_return": args.target,
             "stop_return": args.stop,
             "bottom_liquidity_excluded": 0.20,
+            "liquidity_rule": "same_date_trailing_ADV20_cross_sectional_bottom_20pct_excluded",
             "participation_ADV": args.participation,
             "ambiguous_same_day_target_stop": "stop_first_conservative_primary",
             "gap_through_stop": "next/open executable price",
@@ -299,8 +276,13 @@ def main() -> None:
         pd.DataFrame([asdict(r) for r in executable_records]).to_csv(out_dir / f"{strategy}_executed.csv", index=False)
         portfolio_path.to_csv(out_dir / f"{strategy}_portfolio.csv", index=False)
 
-    if not pit:
-        report["warning"] = "Smoke metrics are pipeline diagnostics only; do not use for strategy selection or performance claims."
+    if status["result_class"] == "SMOKE_NONPIT":
+        report["warning"] = "Non-PIT smoke metrics are engineering diagnostics only; no profitability claim allowed."
+    elif status["result_class"] == "PIT_PRELIMINARY":
+        report["warning"] = (
+            "Historical PIT membership is available and survivorship bias is materially reduced, "
+            "but final Judge promotion is blocked until common-stock identity and unresolved delisting/halt exits are validated."
+        )
     (out_dir / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
