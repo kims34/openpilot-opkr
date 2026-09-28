@@ -17,7 +17,7 @@ import pandas as pd
 import requests
 
 DEFAULT_CACHE = Path("research_data/public_smoke_daily")
-SCHEMA_VERSION = "naver-fixed-universe-smoke-v2"
+SCHEMA_VERSION = "naver-fixed-universe-smoke-v3"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; IndexAlertResearch/1.0)",
     "Referer": "https://m.stock.naver.com/",
@@ -75,20 +75,29 @@ def _num(v):
     return float(text)
 
 
-def fetch_history(code: str, start: str, end: str, page_size: int = 500) -> pd.DataFrame:
+def fetch_history(code: str, start: str, end: str, page_size: int = 60) -> pd.DataFrame:
+    """Fetch Naver daily bars using the endpoint's observed small-page contract.
+
+    The endpoint currently rejects very large pageSize values with HTTP 400, so
+    this smoke path uses 60 rows per page and paginates far enough for the
+    requested research window.
+    """
     rows: list[dict] = []
     page = 1
     start_ts, end_ts = pd.Timestamp(start), pd.Timestamp(end)
     with requests.Session() as s:
         s.headers.update(HEADERS)
-        while page <= 10:
+        while page <= 20:
             url = f"https://m.stock.naver.com/api/stock/{code}/price?pageSize={page_size}&page={page}"
             r = s.get(url, timeout=20)
-            r.raise_for_status()
+            if r.status_code >= 400:
+                raise RuntimeError(
+                    f"price HTTP {r.status_code} page={page} pageSize={page_size} body={r.text[:160]!r}"
+                )
             try:
                 data = r.json()
             except Exception as exc:
-                raise RuntimeError(f"non-JSON price response status={r.status_code} prefix={r.text[:80]!r}") from exc
+                raise RuntimeError(f"non-JSON price response status={r.status_code} prefix={r.text[:160]!r}") from exc
             if not isinstance(data, list) or not data:
                 break
             oldest = None
