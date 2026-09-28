@@ -15,9 +15,9 @@ The default same-bar ambiguity policy remains conservative stop-first.  An
 explicit target-first option exists only to measure an optimistic upper bound;
 it must never be treated as executable evidence without intraday first-hit data.
 
-KOSPI statutory sell taxes are applied by entry year for historical fidelity.
-Round-trip broker commission is a separate parameter.  `explicit_bps` remains as
-an override for controlled sensitivity experiments only.
+KOSPI statutory sell taxes are applied by exact entry-date regime for historical
+fidelity. Round-trip broker commission is a separate parameter. `explicit_bps`
+remains as an override for controlled sensitivity experiments only.
 """
 from __future__ import annotations
 
@@ -44,26 +44,37 @@ FEATURES = [
 def kospi_statutory_sell_tax_bps(day) -> float:
     """Historical KOSPI sell-side statutory tax in basis points.
 
-    Includes securities transaction tax plus the 15bp rural special tax.
-    Schedule used by the current research range:
-      2021-2022: 8bp + 15bp = 23bp
-      2023:      5bp + 15bp = 20bp
-      2024:      3bp + 15bp = 18bp
-      2025:      0bp + 15bp = 15bp
-      2026:      5bp + 15bp = 20bp
-    For dates after 2026 the current 2026 statutory rate is carried forward only
-    as a placeholder and must be re-verified before any future-date Judge run.
+    Includes KOSPI securities transaction tax plus the 15bp rural special tax.
+    The modern-regime schedule used by IndexAlert is encoded by exact effective
+    date rather than by calendar year because the 2019 reduction began on June 3.
+
+      2015-06-15 .. 2019-06-02: 15bp + 15bp = 30bp
+      2019-06-03 .. 2020-12-31: 10bp + 15bp = 25bp
+      2021-01-01 .. 2022-12-31:  8bp + 15bp = 23bp
+      2023-01-01 .. 2023-12-31:  5bp + 15bp = 20bp
+      2024-01-01 .. 2024-12-31:  3bp + 15bp = 18bp
+      2025-01-01 .. 2025-12-31:  0bp + 15bp = 15bp
+      2026-01-01 onward:          5bp + 15bp = 20bp
+
+    Dates before 2015-06-15 are intentionally rejected because the current KR
+    Judge defines 2015-06-15 as the start of the modern ±30% price-limit regime.
+    Dates after 2026 carry the 2026 rate only as a placeholder and must be
+    re-verified before a future-date Judge run.
     """
-    year = pd.Timestamp(day).year
-    if year <= 2020:
-        raise ValueError(f"KOSPI statutory tax schedule not encoded before 2021: {day}")
-    if year <= 2022:
+    ts = pd.Timestamp(day).normalize()
+    if ts < pd.Timestamp("2015-06-15"):
+        raise ValueError(f"KOSPI statutory tax schedule not encoded before 2015-06-15: {day}")
+    if ts < pd.Timestamp("2019-06-03"):
+        return 30.0
+    if ts < pd.Timestamp("2021-01-01"):
+        return 25.0
+    if ts < pd.Timestamp("2023-01-01"):
         return 23.0
-    if year == 2023:
+    if ts < pd.Timestamp("2024-01-01"):
         return 20.0
-    if year == 2024:
+    if ts < pd.Timestamp("2025-01-01"):
         return 18.0
-    if year == 2025:
+    if ts < pd.Timestamp("2026-01-01"):
         return 15.0
     return 20.0
 
@@ -143,7 +154,7 @@ def make_pit_supervised(
         "post_entry_gap_policy": "planned_stop_on_first_missing_market_session_preliminary",
         "cost_policy": (
             "fixed_explicit_bps_override" if explicit_bps is not None
-            else "historical_KOSPI_statutory_sell_tax_by_entry_year_plus_round_trip_commission"
+            else "historical_KOSPI_statutory_sell_tax_by_exact_entry_date_plus_round_trip_commission"
         ),
         "half_spread_bps_one_way": float(half_spread_bps),
         "commission_round_trip_bps": float(commission_round_trip_bps),
@@ -191,7 +202,7 @@ def make_pit_supervised(
         if explicit_bps is None:
             statutory_bps = kospi_statutory_sell_tax_bps(entry_ts)
             applied_explicit_bps = statutory_bps + float(commission_round_trip_bps)
-            explicit_cost_counts[f"{entry_ts.year}:{applied_explicit_bps:.1f}"] += 1
+            explicit_cost_counts[f"{entry_ts.date()}:{applied_explicit_bps:.1f}"] += 1
         else:
             applied_explicit_bps = float(explicit_bps)
             explicit_cost_counts[f"override:{applied_explicit_bps:.1f}"] += 1
