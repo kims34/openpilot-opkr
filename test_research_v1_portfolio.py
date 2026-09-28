@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from research_v1_core import Bar, economic_outcome
-from research_v1_portfolio import simulate_portfolio
+from research_v1_portfolio import filter_executable_records, simulate_portfolio
 
 
 def _panel():
@@ -68,6 +68,36 @@ def test_duplicate_symbol_is_not_pyramided_while_open():
         future_bars=[_bar(days[i], 100 + i) for i in range(2, 6)],
         target_return=0.20, stop_return=-0.20, round_trip_cost_return=0.0,
     )
+    kept, skipped = filter_executable_records([rec1, rec2], True)
+    assert len(kept) == 1
+    assert skipped == 1
     _, summary = simulate_portfolio(panel, [rec1, rec2], horizon=5)
     assert summary.entries_executed == 1
     assert summary.duplicate_entries_suppressed == 1
+
+
+def test_cash_only_days_are_kept_in_evaluation_window():
+    panel = _panel()
+    days = [d.date() for d in pd.bdate_range("2026-01-02", periods=6)]
+    rec = economic_outcome(
+        decision_day=days[0], symbol="A", score=1.0, entry_price=101,
+        future_bars=[_bar(days[1], 101)],
+        target_return=0.20, stop_return=-0.20, round_trip_cost_return=0.0,
+    )
+    path, summary = simulate_portfolio(
+        panel, [rec], horizon=5, evaluation_start=days[0], evaluation_end=days[-1]
+    )
+    assert summary.sessions == 6
+    assert len(path) == 6
+    assert path.iloc[-1]["positions"] == 0
+
+
+def test_empty_strategy_can_represent_full_cash_window():
+    panel = _panel()
+    days = [d.date() for d in pd.bdate_range("2026-01-02", periods=6)]
+    path, summary = simulate_portfolio(
+        panel, [], horizon=5, evaluation_start=days[0], evaluation_end=days[-1]
+    )
+    assert len(path) == 6
+    assert summary.total_return == pytest.approx(0.0)
+    assert summary.average_cash_weight == pytest.approx(1.0)
