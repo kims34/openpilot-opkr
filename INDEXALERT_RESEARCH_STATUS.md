@@ -2,126 +2,155 @@
 
 Updated: 2026-09-29 KST
 Branch: `index-alert-research-v1`
+Master authority: `INDEXALERT_MASTER_SPEC.md`
 Promotion authority: **none yet** — all results remain PIT preliminary until final Judge blockers are removed.
 
-## Latest completed reference
+## Current direction
 
-GitHub Actions run: `36458508197` — **IndexAlert Research v1 Purged PIT**
-Result: `NO_ROBUST_SHORT_TERM_EDGE_YET`
+The research center of gravity has moved from fixed barrier / UP-DOWN classification to **executable cost-adjusted NetReturn / NetEV distribution**.
 
-### Best completed candidate
+Legacy barrier models remain only as diagnostics and reference baselines.
 
-`logistic_context_top3_only`, 5-session label embargo/purge, original top-3 only, no forced backfill.
+## Latest completed Core candidate
 
-- trades: 604
-- mean gross return / trade: -0.0176%
-- mean cost / trade: 0.3160%
-- mean net return / trade: -0.3337%
-- profit factor: 0.7707
-- date-cluster bootstrap 95% interval: -0.5422% to +0.0852%
-- portfolio total return: -15.85%
-- portfolio max drawdown: -30.43%
-- average gross exposure: ~40.7%
-- trade-day coverage: ~85.1%
+GitHub Actions run: `36466349857` — **IndexAlert Research v1 Distributional NetEV**
 
-Current suitability: **not suitable for live short-term investing**.
+Candidate:
+
+`Ridge mean fixed-horizon NetReturn + purged calibration residual q25/q50/q75 by volatility tercile`
+
+Admission:
+
+`conservative NetEV lower bound > 0` → select **0 to 3**
+
+Execution proxy:
+
+prior-close decision → next executable regular-session open → D+5 close → date-aware tax + commission + spread/impact allowance
+
+### Distributional NetEV v0 result
+
+- test dates: 430
+- trade days: 30
+- trade-day coverage: **6.98%**
+- selected trades: **84**
+- mean gross return / trade: **+0.7572%**
+- mean cost / trade: **0.3454%**
+- mean net return / trade: **+0.4118%**
+- win rate: 47.62%
+- Profit Factor: **1.2982**
+- trade ES95: **-6.35%**
+- date-cluster bootstrap point estimate: +0.2765%
+- date-cluster bootstrap 95% interval: **-0.7563% to +1.4187%**
+- portfolio total return: **+1.60%**
+- portfolio MDD: **-2.98%**
+- annualized volatility: ~4.12%
+- average gross exposure: ~5.58%
+- average cash weight: ~94.42%
+
+Verdict: **NO_ROBUST_DISTRIBUTIONAL_EDGE_YET**
+
+Reason: mean, PF and MDD improved materially, but the date-cluster lower confidence bound remains negative and the selected sample is only 84 trades / 30 trade days.
+
+## Distribution calibration diagnostic
+
+Target lower quantile: q25.
+
+Observed:
+
+- actual return >= predicted lower bound: **74.32%**
+- intended lower-bound coverage: 75%
+- actual inside q25-q75 interval: **45.53%**
+- nominal central q25-q75 interval: 50%
+
+Interpretation: the simple calibration layer is directionally credible enough to continue research, but no formal exchangeability/conformal guarantee is claimed.
+
+## Counterfactual observable diagnostic
+
+Within test rows with observable D+5 return:
+
+- admitted mean fixed-horizon Net Return: **+0.4118%**
+- rejected mean fixed-horizon Net Return: **-0.0809%**
+- rejected positive-return rate: ~45.14%
+
+This is evidence that the abstention gate is separating a more attractive subset, but confidence remains insufficient for promotion.
+
+## Year / drift note
+
+Earlier fixed-horizon and path-context challengers showed material 2025→2026 performance instability. This motivates one prespecified rolling-recency challenger against expanding history.
+
+No train-window sweep is allowed.
 
 ## Important diagnostics already resolved
 
 ### Leakage
 
-- Decision-time no-fill names stay in the ranking universe.
-- A missing next-open fill leaves the slot empty; rank 4 is not promoted with future knowledge.
-- Model train/test boundaries are purged by the full 5-session outcome horizon.
-- Same-bar target/stop cases are not removed with future knowledge; primary policy is conservative stop-first.
+- Decision-time no-fill names remain in the ranking universe.
+- Missing next-open fill leaves a slot empty; no future-aware promotion.
+- Learning boundaries are purged by the full five-session outcome horizon.
+- Distributional architecture uses a separate calibration block with purge on both sides.
+- Same-bar target/stop ambiguity is no longer the Core learning objective.
 
 ### Cost
 
-Historical KOSPI statutory sell tax is date-aware in the PIT label engine:
+Historical KOSPI statutory sell tax is date-aware in the PIT engine.
 
-- 2024: 18bp statutory + 3bp primary round-trip commission = 21bp explicit
-- 2025: 15bp + 3bp = 18bp
-- 2026: 20bp + 3bp = 23bp
-
-Cost sensitivity on the exact same 604 selected trades:
-
-- primary mean net: -0.3337%
-- 0bp broker commission, statutory tax retained: -0.3037%
-- **zero statutory tax + zero commission upper bound: -0.1301%**
-- zero-explicit-cost PF: 0.9029
-- zero-explicit-cost total return: -2.23%
-
-Conclusion: **explicit tax/commission is not the primary failure. Gross signal quality is still insufficient.**
+Legacy cost sensitivity showed that removing explicit tax/commission alone did not rescue the old signal, so research no longer treats fee reduction as the main path to improvement.
 
 ### Same-bar ambiguity
 
-Optimistic target-first upper bound with identical model scores/ranks:
-
-- mean net improves by only +0.0861%/trade
-- optimistic mean net remains -0.2476%
-- optimistic PF remains 0.8250
-- optimistic MDD remains -28.40%
-
-Conclusion: **intraday first-hit ordering alone cannot rescue the current strategy.** Intraday history is still useful later for execution realism, but is not the current first priority.
+Optimistic target-first handling did not rescue the legacy strategy. Intraday first-hit data remains useful for future execution realism, but it is not the current source of the observed distributional improvement.
 
 ### Security scope
 
-Conservative common-like heuristic removes 115 of 980 unique symbols.
-
-Common-like diagnostic candidate:
-
-- mean gross: +0.0387%
-- mean net: -0.2631%
-- PF: 0.8134
-- MDD: -29.87%
-
-It is a small improvement but still unsuitable. The heuristic is **not** allowed to mark common-stock identity as validated; official security-master confirmation remains required for final Judge status.
+Current PIT membership is valid for the full KOSPI listed-security universe, but official common-stock identity is not yet validated. Heuristic common-like filtering remains diagnostic only.
 
 ### Post-entry missing bars
 
-1,245 labelled paths hit a missing future executable daily bar under the preliminary data-gap rule.
+The old barrier ledger had 1,245 post-entry missing-bar cases across ~594k labelled rows; only a very small number occurred among selected candidates in recent simple models. Exact halt/delisting economics remains a Final Judge blocker but is not currently the dominant performance driver.
 
-Cause diagnostic:
+## Prior challenger findings
 
-- 1,209: security still present in PIT membership but bar invalid / likely halted
-- 36: member absent with no later observed reappearance in the sample
-- 1,018 cases later have a valid execution bar again
-- median return-to-valid-bar: 2 sessions
-- p90: 18 sessions
+### Path-context
 
-Conclusion: halt/delisting economics must be fixed before final Judge promotion, but the total incidence is small relative to ~594k labelled rows. Measure incidence among selected trades before prioritizing this above signal improvements.
+PIT-safe gap / intraday / range / close-location / trading-value-surprise features improved gross edge materially, but still produced negative post-cost mean and unstable confidence interval.
+
+### Fixed-horizon label Logistic
+
+Learning next-open→D+5 direction improved stability versus the barrier label but remained negative after costs.
+
+### Path + fixed-horizon combination
+
+Simple combination did **not** create synergy; it remained negative and worsened MDD. The combined classifier is rejected as a Core direction.
+
+### Fixed-horizon Ridge positive-only
+
+Underperformed and is rejected as a standalone admission rule.
 
 ## Current research priority
 
-Do **not** increase model complexity yet.
+Follow `INDEXALERT_MASTER_SPEC.md`.
 
-1. `path-context` challenger: gap, intraday return, daily range, close location, trading-value surprise.
-2. `fixed-horizon label` challenger: next-open -> D+5 cost-adjusted return, while execution policy remains unchanged.
-3. If needed, `cross-sectional rank label` challenger.
-4. If tail loss remains dominant, `volatility risk-veto` challenger.
-5. If signal remains weak, prespecified liquidity-universe sensitivity (top 80/50/20% ADV20).
-6. Only after a simple candidate has positive OOS economics: longer 2016+ history, official common-stock security master, exact halt/delisting economics, intraday execution data, sealed holdout and Shadow.
-
-## Fast iteration infrastructure
-
-- `research_v1_fast_purged_candidate.py`
-- `research_v1_path_context.py`
-- `research_v1_fixed_horizon_label.py`
-- `research_v1_supervised_cache.py`
-- fast Actions workflow: `.github/workflows/indexalert-research-v1-fast.yml`
-
-A deterministic supervised cache is being added so repeated experiments do not rebuild ~600k 5-session paths every time.
+1. **Distributional NetEV v0** — retain as current Core challenger, not Champion.
+2. **One prespecified recency test** — expanding vs rolling 160-session training, with calibration/purge unchanged.
+3. If recency improves robustness, freeze that direction for further fresh validation; do not window-optimize.
+4. Feature-family ablation / marginal economic value / Remaining Alpha.
+5. Feature freshness / TTL and missingness semantics.
+6. Independent liquidity / volatility / systemic-risk veto diagnostics.
+7. Official common-stock security master + exact halt/delisting economics.
+8. Intraday fill-ratio × fill-time × fill-price + post-fill markout.
+9. Longer historical Judge, sealed holdout, Shadow S1 and Fresh Confirmation S2.
 
 ## Promotion rule
 
-No candidate is promoted because it merely improves relative to the current negative baseline.
+A candidate is not promoted because it merely loses less or has a positive point estimate.
 
-A preliminary promotion candidate still requires, at minimum:
+At minimum a preliminary promotion candidate requires:
 
-- positive cost-adjusted mean OOS return
+- positive cost-adjusted OOS mean Net Return
 - PF > 1
-- positive date-cluster 95% lower bound
-- acceptable MDD / tail risk
-- no hidden degradation from coverage, turnover, costs or data-quality blockers
+- **positive date-cluster 95% lower bound**
+- acceptable MDD / ES / tail loss
+- non-degenerate coverage and sample size
+- no hidden degradation from costs, data quality or leakage
 
-The full Research Constitution and final Judge requirements remain in force.
+Final Judge promotion additionally requires the unresolved security-master, halt/delisting, long-history, sealed-holdout and Shadow requirements.
