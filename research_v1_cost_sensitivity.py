@@ -1,12 +1,12 @@
 """Cost sensitivity for the purged PIT market-context candidate.
 
-The model is trained once with the primary 23bp tax+commission assumption.  Its
-scores, ranks, selected names, entry/exit prices, and barrier outcomes are then
-held fixed while only `tax_commission_bps` is shifted.  This isolates cost drag
-from signal quality.
+The model is trained once with historical KOSPI statutory sell taxes plus the
+primary 3bp round-trip commission allowance.  Its scores, ranks, selected names,
+entry/exit prices, and barrier outcomes are then held fixed while only explicit
+cost assumptions are shifted.  This isolates cost drag from signal quality.
 
-The 0bp case is an intentionally unrealistic upper bound: if the same selected
-trades remain unattractive even with zero tax+commission, legal fee assumptions
+The zero-tax-zero-commission case is an intentionally unrealistic upper bound:
+if the same selected trades remain unattractive there, legal fee assumptions
 cannot explain the lack of edge.
 """
 from __future__ import annotations
@@ -21,19 +21,26 @@ import pandas as pd
 from research_v1_context import add_context
 from research_v1_core import date_cluster_bootstrap_mean, summarize
 from research_v1_ml import stateful_select_records
-from research_v1_pit_labels import make_pit_supervised
+from research_v1_pit_labels import kospi_statutory_sell_tax_bps, make_pit_supervised
 from research_v1_pit_run_purged import _walk_forward_pit
 from research_v1_portfolio import simulate_portfolio, summary_dict
 from run_research_v1 import load_panel
 
-PRIMARY_TAX_COMMISSION_BPS = 23.0
+PRIMARY_COMMISSION_ROUND_TRIP_BPS = 3.0
 
 
-def _adjust_cost(records, tax_commission_bps: float):
-    delta = (float(tax_commission_bps) - PRIMARY_TAX_COMMISSION_BPS) / 10000.0
+def _adjust_cost(records, *, commission_bps: float | None = None, remove_all_tax_and_commission: bool = False):
+    if remove_all_tax_and_commission and commission_bps is not None:
+        raise ValueError("choose commission sensitivity or zero-all-explicit-cost bound, not both")
     out = []
     for rec in records:
-        new_cost = float(rec.cost_return) + delta
+        if remove_all_tax_and_commission:
+            explicit_primary = kospi_statutory_sell_tax_bps(rec.entry_day) + PRIMARY_COMMISSION_ROUND_TRIP_BPS
+            delta = -explicit_primary / 10000.0
+        else:
+            commission = PRIMARY_COMMISSION_ROUND_TRIP_BPS if commission_bps is None else float(commission_bps)
+            delta = (commission - PRIMARY_COMMISSION_ROUND_TRIP_BPS) / 10000.0
+        new_cost = max(0.0, float(rec.cost_return) + delta)
         out.append(replace(
             rec,
             cost_return=new_cost,
@@ -42,8 +49,12 @@ def _adjust_cost(records, tax_commission_bps: float):
     return out
 
 
-def _summarize_scenario(raw, records, pred, horizon, bps):
-    adjusted = _adjust_cost(records, bps)
+def _summarize_scenario(raw, records, pred, horizon, *, name: str, commission_bps=None, zero_all=False):
+    adjusted = _adjust_cost(
+        records,
+        commission_bps=commission_bps,
+        remove_all_tax_and_commission=zero_all,
+    )
     m = summarize(adjusted)
     point, lo, hi = date_cluster_bootstrap_mean(adjusted) if adjusted else (0.0, 0.0, 0.0)
     eval_start = pd.Timestamp(pred["decision_date"].min()).date()
@@ -62,7 +73,9 @@ def _summarize_scenario(raw, records, pred, horizon, bps):
         evaluation_end=eval_end,
     )
     return {
-        "tax_commission_bps": float(bps),
+        "scenario": name,
+        "commission_round_trip_bps": None if commission_bps is None else float(commission_bps),
+        "statutory_tax_removed": bool(zero_all),
         **asdict(m),
         "cluster_bootstrap_mean_net_return": point,
         "cluster_bootstrap_95_low": lo,
@@ -90,8 +103,8 @@ def main():
         horizon=args.horizon,
         target_return=args.target,
         stop_return=args.stop,
+        commission_round_trip_bps=PRIMARY_COMMISSION_ROUND_TRIP_BPS,
         participation=args.participation,
-        # primary make_pit_supervised default is 23bp tax+commission
     )
     frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
     context = add_context(frame)
@@ -118,33 +131,50 @@ def main():
     )
 
     scenarios = [
-        _summarize_scenario(raw, primary_records, pred, args.horizon, bps)
-        for bps in [0.0, 20.0, 23.0, 26.0]
+        _summarize_scenario(
+            raw, primary_records, pred, args.horizon,
+            name="historical_tax_plus_0bp_commission", commission_bps=0.0,
+        ),
+        _summarize_scenario(
+            raw, primary_records, pred, args.horizon,
+            name="historical_tax_plus_3bp_commission_primary", commission_bps=3.0,
+        ),
+        _summarize_scenario(
+            raw, primary_records, pred, args.horizon,
+            name="historical_tax_plus_6bp_commission", commission_bps=6.0,
+        ),
+        _summarize_scenario(
+            raw, primary_records, pred, args.horizon,
+            name="zero_statutory_tax_and_zero_commission_upper_bound", zero_all=True,
+        ),
     ]
-    primary = next(x for x in scenarios if x["tax_commission_bps"] == PRIMARY_TAX_COMMISSION_BPS)
-    breakeven = PRIMARY_TAX_COMMISSION_BPS + float(primary["mean_net_return"]) * 10000.0
+    primary = next(x for x in scenarios if x["scenario"].endswith("primary"))
+    # Varying round-trip commission by 1bp changes every selected trade's net
+    # return by exactly 1bp. This is only a commission breakeven diagnostic;
+    # statutory taxes, spread and impact remain intact.
+    commission_breakeven = PRIMARY_COMMISSION_ROUND_TRIP_BPS + float(primary["mean_net_return"]) * 10000.0
 
     report = {
         "evaluation_stage": "PIT_PRELIMINARY_PURGED_COST_SENSITIVITY",
         "scores_ranks_and_trade_paths_held_fixed": True,
-        "primary_tax_commission_bps": PRIMARY_TAX_COMMISSION_BPS,
-        "primary_cost_structure": "23bp tax+commission + 8bp round-trip quoted half-spread allowance + volatility/participation impact",
-        "legal_context_2026_kospi": {
-            "securities_transaction_tax_bps_sell_side": 5.0,
-            "rural_special_tax_bps_sell_side": 15.0,
-            "combined_statutory_sell_tax_bps": 20.0,
-            "note": "Broker commission is account-specific; the primary 23bp combines statutory tax with a small commission allowance.",
+        "primary_commission_round_trip_bps": PRIMARY_COMMISSION_ROUND_TRIP_BPS,
+        "historical_statutory_tax_schedule_bps": {
+            "2021-2022": 23.0,
+            "2023": 20.0,
+            "2024": 18.0,
+            "2025": 15.0,
+            "2026": 20.0,
         },
+        "primary_cost_structure": "historical statutory sell tax + 3bp round-trip commission + 8bp round-trip spread allowance + volatility/participation impact",
         "label_diagnostics": label_diag,
         "selection_diagnostics": select_diag,
         "selected_executable_rows": int(len(primary_records)),
         "selected_trade_days": int(selected["decision_date"].nunique()) if not selected.empty else 0,
         "scenarios": scenarios,
-        "tax_commission_bps_breakeven_for_mean_net_only": float(breakeven),
+        "commission_bps_breakeven_for_mean_net_only": float(commission_breakeven),
         "interpretation": (
-            "A negative breakeven tax+commission bps means the fixed selected trades would still have negative mean net return "
-            "even if tax+commission were zero; spread/impact plus gross signal quality then dominate the failure. "
-            "The 0bp scenario is an upper-bound diagnostic, not a realistic trading assumption."
+            "If the zero-tax-zero-commission upper bound remains negative, explicit legal/broker costs cannot rescue the fixed selection; "
+            "spread/impact and gross signal quality dominate. A negative commission breakeven likewise means reducing broker commission to zero is insufficient."
         ),
     }
 
