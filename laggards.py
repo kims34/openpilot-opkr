@@ -205,7 +205,7 @@ def _market_quote(monitor, symbol: str):
 
 
 def _rank_directional(rows, direction: str, limit: int = 3):
-    """Return only movers whose sign matches the section label."""
+    """Return only movers whose sign matches the requested direction."""
     valid = []
     for row in rows or []:
         try:
@@ -278,17 +278,22 @@ def refresh(monitor):
                 status = "ready" if total > 0 and coverage >= max(10, int(total * 0.80)) else "building"
                 direction_pct = etf_moves.get(universe, 0.0)
                 direction = "down" if direction_pct < 0 else "up"
-                ranked = []
+                decliners = []
+                gainers = []
                 if status == "ready":
-                    ranked = _rank_directional(rows, direction, 3)
+                    decliners = _rank_directional(rows, "down", 3)
+                    gainers = _rank_directional(rows, "up", 3)
+                    encoded = []
+                    encoded.extend((i, r) for i, r in enumerate(decliners, 1))
+                    encoded.extend((100 + i, r) for i, r in enumerate(gainers, 1))
                     con.executemany(
                         """INSERT INTO universe_mover_cache(
                                universe,rank,symbol,name,current,previous_close,day_change,day_change_pct,updated_at)
                            VALUES(?,?,?,?,?,?,?,?,?)""",
                         [
-                            (universe, i, r["symbol"], r["name"], r["current"], r["previous_close"],
+                            (universe, stored_rank, r["symbol"], r["name"], r["current"], r["previous_close"],
                              r["day_change"], r["day_change_pct"], now)
-                            for i, r in enumerate(ranked, 1)
+                            for stored_rank, r in encoded
                         ],
                     )
                 con.execute(
@@ -312,11 +317,10 @@ def refresh(monitor):
                     "status": status,
                     "direction": direction,
                     "etf_change_pct": direction_pct,
-                    "items": len(ranked),
-                    "sign_check": all(
-                        (r["day_change_pct"] < 0 if direction == "down" else r["day_change_pct"] > 0)
-                        for r in ranked
-                    ),
+                    "decliners": len(decliners),
+                    "gainers": len(gainers),
+                    "sign_check": all(r["day_change_pct"] < 0 for r in decliners)
+                    and all(r["day_change_pct"] > 0 for r in gainers),
                 }
 
         _set_meta(monitor, "laggard_source_time", now)
@@ -328,6 +332,19 @@ def refresh(monitor):
         print("mover refresh failed:", type(exc).__name__, flush=True)
     finally:
         REFRESH_LOCK.release()
+
+
+def _item_from_row(r, display_rank: int):
+    return {
+        "rank": display_rank,
+        "symbol": r[1],
+        "name": r[2],
+        "current": r[3],
+        "previous_close": r[4],
+        "day_change": r[5],
+        "day_change_percent": r[6],
+        "updated_at": r[7],
+    }
 
 
 def get(monitor):
@@ -342,26 +359,24 @@ def get(monitor):
                 (universe,),
             ).fetchall()
             direction = meta.get(f"laggard_{universe}_direction", "up")
-            items = [
-                {
-                    "rank": r[0],
-                    "symbol": r[1],
-                    "name": r[2],
-                    "current": r[3],
-                    "previous_close": r[4],
-                    "day_change": r[5],
-                    "day_change_percent": r[6],
-                    "updated_at": r[7],
-                }
-                for r in rows
-                if (float(r[6]) < 0 if direction == "down" else float(r[6]) > 0)
-            ]
+            has_dual_cache = any(int(r[0]) >= 100 for r in rows)
+            if has_dual_cache:
+                decliners = [_item_from_row(r, int(r[0])) for r in rows if 1 <= int(r[0]) <= 3 and float(r[6]) < 0]
+                gainers = [_item_from_row(r, int(r[0]) - 100) for r in rows if 101 <= int(r[0]) <= 103 and float(r[6]) > 0]
+            else:
+                # Backward-compatible read during the first refresh after deploy.
+                legacy = [_item_from_row(r, int(r[0])) for r in rows[:3]]
+                decliners = [x for x in legacy if float(x["day_change_percent"]) < 0] if direction == "down" else []
+                gainers = [x for x in legacy if float(x["day_change_percent"]) > 0] if direction == "up" else []
+            selected = decliners if direction == "down" else gainers
             sections[universe] = {
                 "status": meta.get(f"laggard_{universe}_status", "building"),
                 "coverage": meta.get(f"laggard_{universe}_coverage", "0/0"),
                 "direction": direction,
                 "etf_change_percent": float(meta.get(f"laggard_{universe}_etf_change_pct", "0") or 0),
-                "items": items[:3],
+                "items": selected[:3],
+                "decliners": decliners[:3],
+                "gainers": gainers[:3],
             }
 
     sp = sections["sp500"]
