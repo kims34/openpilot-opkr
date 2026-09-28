@@ -1,8 +1,14 @@
-"""Volatility risk-veto sensitivity for the current purged context model.
+"""No-backfill volatility risk-veto sensitivity for purged PIT candidates.
 
-The predictive model is trained exactly once on the existing universe.  At
-admission time only, prespecified high-volatility caps are applied before taking
-up to three names.  This isolates a risk veto from alpha-model retraining.
+For every model, the original decision-time top-K is frozen first.  The risk
+veto may only REMOVE a high-volatility name from that set; it may never promote
+rank 4+ merely to refill a slot.  This matches IndexAlert's 0..3 admission rule.
+
+The same prespecified caps are applied to three simple candidates:
+- barrier-label market-context logistic,
+- PIT-safe path-context logistic,
+- fixed-horizon positive-net logistic.
+No hyperparameter search is introduced.
 """
 from __future__ import annotations
 
@@ -13,7 +19,9 @@ from pathlib import Path
 import pandas as pd
 
 from research_v1_context import add_context
+from research_v1_fixed_horizon_label import add_fixed_horizon_target, purged_predict as fixed_horizon_predict
 from research_v1_holdaware import evaluate_topk_only
+from research_v1_path_context import PATH_CONTEXT_FEATURES, add_path_features, purged_predict as path_predict
 from research_v1_pit_run_purged import _walk_forward_pit
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
@@ -38,6 +46,46 @@ def view(result):
     }
 
 
+def freeze_original_topk(pred: pd.DataFrame, top_k: int) -> pd.DataFrame:
+    return (
+        pred.sort_values(["decision_date", "score"], ascending=[True, False])
+        .groupby("decision_date", group_keys=False)
+        .head(top_k)
+        .copy()
+    )
+
+
+def evaluate_veto_family(name, pred, risk, record_map, raw, horizon, top_k):
+    frozen = freeze_original_topk(pred, top_k)
+    frozen = frozen.merge(risk, on=["decision_date", "symbol"], how="left", validate="one_to_one")
+    all_test_dates = int(pred["decision_date"].nunique())
+    rows = []
+    for cap in VOL_CAPS:
+        eligible = frozen[frozen["vol20_rank"].fillna(1.0) <= cap].copy()
+        result, selected, _ = evaluate_topk_only(eligible, record_map, raw, horizon, top_k)
+        row = {
+            "model": name,
+            "max_vol20_rank_allowed": cap,
+            "original_topk_rows": int(len(frozen)),
+            "rows_after_veto": int(len(eligible)),
+            "vetoed_original_topk_rows": int(len(frozen) - len(eligible)),
+            "selected_rows": int(len(selected)),
+            "all_test_dates": all_test_dates,
+            **view(result),
+        }
+        rows.append(row)
+    base = rows[0]
+    for row in rows:
+        row["delta_vs_no_veto"] = {
+            "mean_net_return": row["mean_net_return"] - base["mean_net_return"],
+            "profit_factor": row["profit_factor"] - base["profit_factor"],
+            "expected_shortfall_95": row["expected_shortfall_95"] - base["expected_shortfall_95"],
+            "max_drawdown": row["max_drawdown"] - base["max_drawdown"],
+            "trades": row["trades"] - base["trades"],
+        }
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit")
@@ -60,51 +108,56 @@ def main():
     )
     frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
     context = add_context(frame)
-    pred = _walk_forward_pit(
+    risk = frame[["decision_date", "symbol", "vol20_rank"]].copy()
+
+    barrier_pred = _walk_forward_pit(
         context, "logistic_context", args.train_days, args.test_days,
         context=True, purge_days=args.horizon,
     )
-    risk = frame[["decision_date", "symbol", "vol20_rank"]].copy()
-    pred = pred.merge(risk, on=["decision_date", "symbol"], how="left", validate="one_to_one")
 
-    results = []
-    for cap in VOL_CAPS:
-        eligible = pred[pred["vol20_rank"] <= cap].copy()
-        result, selected, _ = evaluate_topk_only(eligible, record_map, raw, args.horizon, args.top_k)
-        results.append({
-            "max_vol20_rank_allowed": cap,
-            "prediction_rows_after_veto": int(len(eligible)),
-            "selected_rows": int(len(selected)),
-            **view(result),
-        })
+    enriched = add_path_features(raw, context)
+    path_pred = path_predict(
+        enriched, PATH_CONTEXT_FEATURES,
+        train_days=args.train_days, test_days=args.test_days,
+        purge_days=args.horizon, model_name="logistic_path_context",
+    )
 
-    baseline = results[0]
+    fixed_frame = add_fixed_horizon_target(raw, context, record_map, args.horizon)
+    fixed_pred = fixed_horizon_predict(
+        fixed_frame, target_col="fh_positive_net", kind="logistic",
+        train_days=args.train_days, test_days=args.test_days, purge_days=args.horizon,
+    )
+
+    families = {
+        "barrier_context": barrier_pred,
+        "path_context": path_pred,
+        "fixed_horizon_logistic": fixed_pred,
+    }
+    results = {
+        name: evaluate_veto_family(name, pred, risk, record_map, raw, args.horizon, args.top_k)
+        for name, pred in families.items()
+    }
+
     report = {
-        "evaluation_stage": "PIT_PRELIMINARY_PURGED_VOLATILITY_RISK_VETO",
+        "evaluation_stage": "PIT_PRELIMINARY_PURGED_VOLATILITY_RISK_VETO_NO_BACKFILL",
         "model_scores_held_fixed": True,
+        "original_topk_frozen_before_veto": True,
+        "backfill_after_veto": False,
         "veto_caps_prespecified": VOL_CAPS,
         "hyperparameter_search": False,
         "supervised_cache": meta,
         "label_diagnostics": diag,
-        "results": results,
-        "delta_vs_no_vol_veto": [
-            {
-                "max_vol20_rank_allowed": r["max_vol20_rank_allowed"],
-                "mean_net_return": r["mean_net_return"] - baseline["mean_net_return"],
-                "profit_factor": r["profit_factor"] - baseline["profit_factor"],
-                "expected_shortfall_95": r["expected_shortfall_95"] - baseline["expected_shortfall_95"],
-                "max_drawdown": r["max_drawdown"] - baseline["max_drawdown"],
-            }
-            for r in results
-        ],
+        "results_by_model": results,
         "interpretation": (
-            "A volatility cap is useful only if tail risk improves without merely trading too little or destroying net utility. "
-            "This is a risk-overlay diagnostic, not a tuned alpha threshold."
+            "The veto can only remove an original top-K candidate. It cannot promote lower-ranked names. "
+            "A cap is useful only if tail/MDD improve without destroying net utility or reducing coverage to a trivial level."
         ),
     }
     out = Path(args.result_dir)
     out.mkdir(parents=True, exist_ok=True)
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    flat = [row for rows in results.values() for row in rows]
+    pd.DataFrame(flat).to_csv(out / "comparison.csv", index=False)
     print("VOLATILITY_VETO=" + json.dumps(report, ensure_ascii=False), flush=True)
 
 
