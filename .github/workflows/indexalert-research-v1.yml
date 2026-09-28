@@ -9,6 +9,7 @@ on:
       - 'research_v1_krx.py'
       - 'research_v1_public.py'
       - 'research_v1_ml.py'
+      - 'research_v1_selective.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
       - 'test_research_v1_portfolio.py'
@@ -66,11 +67,16 @@ jobs:
         run: |
           python research_v1_ml.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_ml --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
 
+      - name: Run Selective NO-TRADE smoke tournament
+        run: |
+          python research_v1_selective.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_selective --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
+
       - name: Show smoke summaries and limitations
         if: always()
         run: |
           test -f research_results/public_smoke/summary.json && cat research_results/public_smoke/summary.json || true
           test -f research_results/public_smoke_ml/summary.json && cat research_results/public_smoke_ml/summary.json || true
+          test -f research_results/public_smoke_selective/summary.json && cat research_results/public_smoke_selective/summary.json || true
           test -f research_data/public_smoke_daily/build_stats.json && cat research_data/public_smoke_daily/build_stats.json || true
           test -f research_data/public_smoke_daily/limitations.json && cat research_data/public_smoke_daily/limitations.json || true
           test -f research_data/public_smoke_daily/failures.json && cat research_data/public_smoke_daily/failures.json || true
@@ -83,6 +89,7 @@ jobs:
           path: |
             research_results/public_smoke/
             research_results/public_smoke_ml/
+            research_results/public_smoke_selective/
             research_data/public_smoke_daily/build_stats.json
             research_data/public_smoke_daily/limitations.json
             research_data/public_smoke_daily/universe.json
