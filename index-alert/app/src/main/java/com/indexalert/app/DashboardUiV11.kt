@@ -173,7 +173,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
 
             Spacer(Modifier.height(8.dp))
-            val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signedV19(s.dayChange)} (${signedPctV19(s.dayChangePercent)})" else ""
+            val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signedPctV19(s.dayChangePercent)} (${signedV19(s.dayChange)})" else ""
             val currentLabel = if (s.rule.id == "usdkrw") "현재 환율" else "현재값"
             Text(
                 "$currentLabel  ${fmtV19(s.current)}$change",
@@ -273,7 +273,7 @@ private fun DirectionalMoverSectionV19(s: IndexSnapshot, movers: List<LaggardIte
         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
             Text("${item.rank}. ${item.symbol} · ${item.name}", style = MaterialTheme.typography.bodyMedium)
             Text(
-                "현재 ${fmtV19(item.current)}  ${signedV19(item.dayChange)} (${signedPctV19(item.dayChangePercent)})",
+                "현재 ${fmtV19(item.current)}  ${signedPctV19(item.dayChangePercent)} (${signedV19(item.dayChange)})",
                 color = movementColorV19(item.dayChangePercent),
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyMedium
