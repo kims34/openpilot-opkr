@@ -5,6 +5,8 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_kospi_baseline.py'
+      - 'research_kospi_model_v1.py'
+      - 'research_kospi_full_v1.py'
       - 'requirements.txt'
       - '.github/workflows/index-alert-research-v1.yml'
   workflow_dispatch:
@@ -13,14 +15,14 @@ permissions:
   contents: write
 
 jobs:
-  kospi-baseline:
+  kospi-research-v1:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
           ref: index-alert-research-v1
-          fetch-depth: 0
+          fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
@@ -30,44 +32,62 @@ jobs:
       - name: Install research dependencies
         run: pip install -r requirements.txt
 
-      - name: Run unit syntax check
-        run: python -m py_compile research_kospi_baseline.py
-
-      - name: Run KOSPI PIT baseline research
+      - name: Syntax checks
         run: |
-          mkdir -p research_results
-          python research_kospi_baseline.py \
-            --from-date 20250101 \
-            --to-date 20260925 \
-            --db /tmp/indexalert-research.sqlite \
-            --output research_results/kospi_baseline_20250101_20260925.json
+          python -m py_compile research_kospi_baseline.py
+          python -m py_compile research_kospi_model_v1.py
+          python -m py_compile research_kospi_full_v1.py
 
-      - name: Persist reproducible result
+      - name: Fetch immutable-style historical KRX cross-sections
+        run: |
+          git clone --depth 1 https://github.com/FinanceData/marcap.git /tmp/marcap
+          test -d /tmp/marcap/data
+          ls -lh /tmp/marcap/data | tail -n 12
+
+      - name: Run KOSPI PIT data build + baseline + walk-forward model tournament
+        run: |
+          rm -f /tmp/indexalert-research.sqlite
+          mkdir -p research_results
+          python research_kospi_full_v1.py \
+            --from-date 20180102 \
+            --to-date 20260925 \
+            --marcap-dir /tmp/marcap/data \
+            --db /tmp/indexalert-research.sqlite \
+            --output research_results/kospi_full_v1.json
+
+      - name: Create compact audit summary
         run: |
           python - <<'PY'
           import json, pathlib
-          p = pathlib.Path('research_results/kospi_baseline_20250101_20260925.json')
+          p = pathlib.Path('research_results/kospi_full_v1.json')
           d = json.loads(p.read_text(encoding='utf-8'))
-          summary = {
-              'run_id': d.get('run_id'),
-              'market': d.get('market'),
+          mt = d.get('model_tournament') or {}
+          compact = {
+              'research_version': d.get('research_version'),
+              'data_source': d.get('data_source'),
               'from_date': d.get('from_date'),
               'to_date': d.get('to_date'),
               'trading_days': d.get('trading_days'),
-              'selection_days': d.get('selection_days'),
-              'selection_rows': d.get('selection_rows'),
-              'cost_scenarios': d.get('cost_scenarios'),
-              'models': d.get('models'),
-              'execution_misses': d.get('execution_misses'),
-              'limitations': d.get('limitations'),
+              'status': d.get('status'),
+              'profitability_validated': d.get('profitability_validated'),
+              'validation_note': d.get('validation_note'),
+              'baseline_models': (d.get('baseline') or {}).get('models'),
+              'walk_forward_models': mt.get('models'),
+              'walk_forward_brier': mt.get('brier'),
+              'walk_forward_folds': mt.get('folds'),
+              'observation_rows': mt.get('observation_rows'),
+              'cost_scenarios': mt.get('cost_scenarios'),
           }
-          pathlib.Path('research_results/kospi_baseline_latest_summary.json').write_text(
-              json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + '\n',
+          pathlib.Path('research_results/kospi_full_v1_summary.json').write_text(
+              json.dumps(compact, ensure_ascii=False, indent=2, allow_nan=False) + '\n',
               encoding='utf-8',
           )
           PY
+
+      - name: Persist reproducible results
+        run: |
           git config user.name 'indexalert-research-bot'
           git config user.email 'indexalert-research-bot@users.noreply.github.com'
-          git add research_results/kospi_baseline_20250101_20260925.json research_results/kospi_baseline_latest_summary.json
-          git commit -m 'Store KOSPI baseline research result' || exit 0
+          git add research_results/kospi_full_v1.json research_results/kospi_full_v1_summary.json
+          git commit -m 'Store KOSPI full v1 research result' || exit 0
           git push origin HEAD:index-alert-research-v1
