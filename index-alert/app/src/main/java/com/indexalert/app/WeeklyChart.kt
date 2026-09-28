@@ -33,8 +33,13 @@ data class MonthlyHistory(
     val max: Double,
     val maxTs: Long,
     val current: Double,
+    val currentTs: Long,
     val fromHighPercent: Double,
-    val source: String
+    val source: String,
+    val latestSource: String,
+    val latestSession: String,
+    val latestLabel: String,
+    val latestEstimated: Boolean
 )
 
 private data class KoreaLeaderQuote(
@@ -74,6 +79,7 @@ fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
     val maxValue = root.optDouble("max", points.maxOf { it.value })
     val minValue = root.optDouble("min", points.minOf { it.value })
     val current = root.optDouble("current", points.last().value)
+    val currentTs = root.optLong("current_ts", points.last().ts)
     val fromHigh = root.optDouble(
         "from_high_percent",
         if (maxValue > 0) (current / maxValue - 1.0) * 100.0 else 0.0
@@ -86,8 +92,13 @@ fun BackendMarket.monthHistory(indexId: String): MonthlyHistory {
         max = maxValue,
         maxTs = root.optLong("max_ts", points.maxByOrNull { it.value }?.ts ?: 0L),
         current = current,
+        currentTs = currentTs,
         fromHighPercent = fromHigh,
-        source = root.optString("source", "최근 1개월 일봉")
+        source = root.optString("source", "최근 1개월 일봉"),
+        latestSource = root.optString("latest_source", ""),
+        latestSession = root.optString("latest_session", ""),
+        latestLabel = root.optString("latest_label", "현재가"),
+        latestEstimated = root.optBoolean("latest_estimated", false)
     )
 }
 
@@ -183,20 +194,27 @@ private fun KoreaLeaderSection() {
 }
 
 @Composable
-fun MonthlyChartSection(indexId: String) {
+fun MonthlyChartSection(indexId: String, refreshKey: String = "") {
     var loading by remember(indexId) { mutableStateOf(true) }
     var history by remember(indexId) { mutableStateOf<MonthlyHistory?>(null) }
     var error by remember(indexId) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(indexId) {
-        loading = true
-        error = null
-        val result = withContext(Dispatchers.IO) {
-            runCatching { BackendMarket.monthHistory(indexId) }
+    LaunchedEffect(indexId, refreshKey) {
+        while (true) {
+            loading = history == null
+            error = null
+            val result = withContext(Dispatchers.IO) {
+                runCatching { BackendMarket.monthHistory(indexId) }
+            }
+            result.onSuccess {
+                history = it
+                error = null
+            }.onFailure {
+                error = it.message ?: "1개월 차트 조회 실패"
+            }
+            loading = false
+            delay(60_000L)
         }
-        result.onSuccess { history = it }
-            .onFailure { error = it.message ?: "1개월 차트 조회 실패" }
-        loading = false
     }
 
     if (indexId == "kospi100") {
@@ -204,25 +222,29 @@ fun MonthlyChartSection(indexId: String) {
     }
 
     Spacer(Modifier.height(10.dp))
-    Text("최근 1개월 · 일봉", style = MaterialTheme.typography.titleSmall)
+    Text("최근 1개월 · 일별 점 그래프", style = MaterialTheme.typography.titleSmall)
+    Text("각 거래일 1점 · 마지막 점은 현재 세션의 최신값", style = MaterialTheme.typography.labelSmall)
     Spacer(Modifier.height(6.dp))
 
     when {
         loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
-        error != null -> Text("차트 확인 실패: $error", style = MaterialTheme.typography.bodySmall)
         history != null -> MonthlyLineChart(history!!)
+        error != null -> Text("차트 확인 실패: $error", style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
 private fun MonthlyLineChart(history: MonthlyHistory) {
     val lineColor = MaterialTheme.colorScheme.primary
+    val dotColor = MaterialTheme.colorScheme.primary
+    val latestDotColor = if (history.latestEstimated) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val values = history.points.map { it.value }
     val low = values.minOrNull() ?: 0.0
     val high = values.maxOrNull() ?: low
     val span = max(high - low, max(high * 0.002, 0.01))
     val df = remember { SimpleDateFormat("MM/dd", Locale.KOREA) }
+    val dtf = remember { SimpleDateFormat("MM/dd HH:mm", Locale.KOREA) }
 
     val highDate = if (history.maxTs > 0) df.format(Date(history.maxTs * 1000L)) else "-"
     val lowDate = if (history.minTs > 0) df.format(Date(history.minTs * 1000L)) else "-"
@@ -235,22 +257,32 @@ private fun MonthlyLineChart(history: MonthlyHistory) {
     Canvas(
         Modifier
             .fillMaxWidth()
-            .height(160.dp)
-            .padding(vertical = 8.dp)
+            .height(170.dp)
+            .padding(vertical = 10.dp)
     ) {
         drawLine(gridColor, Offset(0f, size.height * 0.25f), Offset(size.width, size.height * 0.25f), 1f)
         drawLine(gridColor, Offset(0f, size.height * 0.5f), Offset(size.width, size.height * 0.5f), 1f)
         drawLine(gridColor, Offset(0f, size.height * 0.75f), Offset(size.width, size.height * 0.75f), 1f)
 
         val count = history.points.size
-        history.points.zipWithNext().forEachIndexed { i, pair ->
-            val a = pair.first
-            val b = pair.second
-            val x1 = if (count <= 1) 0f else size.width * i / (count - 1).toFloat()
-            val x2 = if (count <= 1) size.width else size.width * (i + 1) / (count - 1).toFloat()
-            val y1 = size.height - ((a.value - low) / span).toFloat() * size.height
-            val y2 = size.height - ((b.value - low) / span).toFloat() * size.height
-            drawLine(lineColor, Offset(x1, y1), Offset(x2, y2), strokeWidth = 4f)
+        fun pointOffset(i: Int): Offset {
+            val p = history.points[i]
+            val x = if (count <= 1) size.width / 2f else size.width * i / (count - 1).toFloat()
+            val y = size.height - ((p.value - low) / span).toFloat() * size.height
+            return Offset(x, y)
+        }
+
+        history.points.zipWithNext().forEachIndexed { i, _ ->
+            drawLine(lineColor, pointOffset(i), pointOffset(i + 1), strokeWidth = 3.5f)
+        }
+
+        history.points.indices.forEach { i ->
+            val last = i == history.points.lastIndex
+            drawCircle(
+                color = if (last) latestDotColor else dotColor,
+                radius = if (last) 7f else 4f,
+                center = pointOffset(i)
+            )
         }
     }
 
@@ -261,14 +293,26 @@ private fun MonthlyLineChart(history: MonthlyHistory) {
         Text(lastDate, style = MaterialTheme.typography.labelSmall)
     }
 
-    Text("현재 ${fmtMonthly(history.current)}", style = MaterialTheme.typography.bodyMedium)
+    val currentTime = if (history.currentTs > 0) dtf.format(Date(history.currentTs * 1000L)) else "-"
+    val estimateSuffix = if (history.latestEstimated) " · 추정값" else ""
     Text(
-        "1개월 최고가 대비 등락률 ${signedPctMonthly(history.fromHighPercent)}",
+        "마지막 점  ${history.latestLabel} · ${fmtMonthly(history.current)} · $currentTime$estimateSuffix",
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold
+    )
+    Text(
+        "1개월 최고 점 대비 등락률 ${signedPctMonthly(history.fromHighPercent)}",
         color = MonthlyMetricBlue,
         fontWeight = FontWeight.Bold,
         style = MaterialTheme.typography.titleSmall
     )
-    Text("차트 기준: ${history.source}", style = MaterialTheme.typography.labelSmall)
+    Text("일별 기준: ${history.source}", style = MaterialTheme.typography.labelSmall)
+    if (history.latestSource.isNotBlank()) {
+        Text("마지막 점 기준: ${history.latestSource}", style = MaterialTheme.typography.labelSmall)
+    }
+    if (history.latestSession.isNotBlank()) {
+        Text("현재 세션: ${history.latestSession}", style = MaterialTheme.typography.labelSmall)
+    }
 }
 
 private fun fmtMonthly(v: Double): String = String.format(Locale.US, "%,.2f", v)
