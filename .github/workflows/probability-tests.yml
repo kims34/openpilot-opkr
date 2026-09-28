@@ -6,6 +6,8 @@ on:
       - 'probability_model.py'
       - 'probability_model_v31_runtime.py'
       - 'probability_model_v33_runtime.py'
+      - 'probability_live_gate.py'
+      - 'probability_live_gate_patch.py'
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
       - 'next_day_probability_v33.py'
@@ -14,6 +16,7 @@ on:
       - 'one_month_calibrated.py'
       - 'test_probability.py'
       - 'test_probability_v33.py'
+      - 'test_probability_live_gate.py'
       - 'test_one_month_probability.py'
       - 'test_one_month_distribution.py'
       - 'test_one_month_calibrated.py'
@@ -31,4 +34,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - run: python -m unittest test_probability.py test_probability_v33.py test_one_month_probability.py test_one_month_distribution.py test_one_month_calibrated.py -v
+      - run: python -m unittest test_probability.py test_probability_v33.py test_probability_live_gate.py test_one_month_probability.py test_one_month_distribution.py test_one_month_calibrated.py -v
