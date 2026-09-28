@@ -7,7 +7,7 @@ outcomes before any complex model is allowed into the tournament.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from math import isfinite, sqrt
 from typing import Iterable, Sequence
 
@@ -60,11 +60,15 @@ class DecisionRecord:
 @dataclass(frozen=True)
 class MetricSummary:
     trades: int
+    mean_gross_return: float
+    mean_cost_return: float
     mean_net_return: float
     win_rate: float
     profit_factor: float
-    max_drawdown: float
-    expected_shortfall_95: float
+    trade_expected_shortfall_95: float
+    target_rate: float
+    stop_rate: float
+    time_rate: float
 
 
 class AmbiguousFirstHit(RuntimeError):
@@ -119,7 +123,6 @@ def classify_first_hit(
     stop = entry_price * (1.0 + stop_return)
     for bar in future_bars:
         bar.validate()
-        # Overnight gap-through: the open is the first executable regular-session price.
         if bar.open <= stop:
             return "STOP", bar, bar.open
         if bar.open >= target:
@@ -169,6 +172,12 @@ def economic_outcome(
 
 
 def max_drawdown(returns: Sequence[float]) -> float:
+    """Generic non-overlapping return-series MDD helper.
+
+    Do not apply this directly to overlapping DecisionRecord rows. A real
+    portfolio MDD requires a daily mark-to-market portfolio path and allocation
+    policy. It remains here for that future portfolio simulator.
+    """
     wealth = 1.0
     peak = 1.0
     worst = 0.0
@@ -189,19 +198,33 @@ def expected_shortfall(returns: Sequence[float], alpha: float = 0.95) -> float:
 
 
 def summarize(records: Sequence[DecisionRecord]) -> MetricSummary:
+    """Summarize trade-level outcomes only.
+
+    Portfolio drawdown is intentionally excluded because these records can
+    overlap in calendar time. Compounding them sequentially would create a
+    fictitious portfolio path and grossly overstate drawdown.
+    """
     if not records:
-        return MetricSummary(0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    rets = [x.net_return for x in records]
-    gains = sum(r for r in rets if r > 0)
-    losses = -sum(r for r in rets if r < 0)
+        return MetricSummary(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    net = np.asarray([x.net_return for x in records], dtype=float)
+    gross = np.asarray([x.gross_return for x in records], dtype=float)
+    costs = np.asarray([x.cost_return for x in records], dtype=float)
+    gains = float(net[net > 0].sum())
+    losses = float(-net[net < 0].sum())
     pf = gains / losses if losses > 0 else (float("inf") if gains > 0 else 0.0)
+    outcomes = [x.outcome for x in records]
+    n = len(records)
     return MetricSummary(
-        trades=len(records),
-        mean_net_return=float(np.mean(rets)),
-        win_rate=float(np.mean([r > 0 for r in rets])),
+        trades=n,
+        mean_gross_return=float(np.mean(gross)),
+        mean_cost_return=float(np.mean(costs)),
+        mean_net_return=float(np.mean(net)),
+        win_rate=float(np.mean(net > 0)),
         profit_factor=float(pf),
-        max_drawdown=max_drawdown(rets),
-        expected_shortfall_95=expected_shortfall(rets, 0.95),
+        trade_expected_shortfall_95=expected_shortfall(net.tolist(), 0.95),
+        target_rate=float(sum(x == "TARGET" for x in outcomes) / n),
+        stop_rate=float(sum(x == "STOP" for x in outcomes) / n),
+        time_rate=float(sum(x == "TIME" for x in outcomes) / n),
     )
 
 
