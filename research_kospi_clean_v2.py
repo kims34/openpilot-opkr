@@ -154,7 +154,7 @@ def engineer(df: pd.DataFrame) -> pd.DataFrame:
     entry = entry.rename(columns={"intraday": "entry_intraday", "cumlog": "entry_cumlog"})
     entry = entry[["code", "decision_idx", "entry_intraday", "entry_cumlog"]]
 
-    base_cols = ["date", "day_idx", "code", "name"] + FEATURES + list(BASELINES)
+    base_cols = list(dict.fromkeys(["date", "day_idx", "code", "name"] + FEATURES + list(BASELINES)))
     obs = x[base_cols].copy().rename(columns={"day_idx": "decision_idx"})
     obs = obs.merge(entry, on=["code", "decision_idx"], how="left", validate="one_to_one")
 
