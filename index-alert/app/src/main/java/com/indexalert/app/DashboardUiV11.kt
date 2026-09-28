@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import kotlin.math.abs
 
 private val RiseRed = Color(0xFFD32F2F)
 private val FallBlue = Color(0xFF1565C0)
@@ -90,7 +91,21 @@ fun HomeV11(
                 "djdiv" -> "schd"
                 else -> null
             }
-            val movers = if (universe == null) emptyList() else laggards.filter { it.universe == universe }.sortedBy { it.rank }.take(3)
+            val isDown = (snapshot.dayChangePercent ?: 0.0) < 0.0
+            // Client-side sign gate: even if a cached mover set was produced before
+            // an ETF direction flip, never render a gainer under a decline heading
+            // (or a decliner under a gain heading).
+            val movers = if (universe == null) {
+                emptyList()
+            } else {
+                laggards
+                    .filter { item ->
+                        item.universe == universe &&
+                            (if (isDown) item.dayChangePercent < 0.0 else item.dayChangePercent > 0.0)
+                    }
+                    .sortedBy { it.rank }
+                    .take(3)
+            }
             IndexCardV19(snapshot, movers, laggardStatus, statusText)
         }
 
@@ -173,7 +188,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
             }
 
             Spacer(Modifier.height(8.dp))
-            val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signedPctV19(s.dayChangePercent)} (${signedV19(s.dayChange)})" else ""
+            val change = if (s.dayChange != null && s.dayChangePercent != null) "  ${signedPctV19(s.dayChangePercent)} (${magnitudeV19(s.dayChange)})" else ""
             val currentLabel = if (s.rule.id == "usdkrw") "현재 환율" else "현재값"
             Text(
                 "$currentLabel  ${fmtV19(s.current)}$change",
@@ -270,7 +285,7 @@ private fun DirectionalMoverSectionV19(s: IndexSnapshot, movers: List<LaggardIte
     Spacer(Modifier.height(4.dp))
 
     if (movers.isEmpty()) {
-        Text(moverStatus.ifBlank { "구성종목 등락 계산 중" }, style = MaterialTheme.typography.bodySmall)
+        Text(moverStatus.ifBlank { "현재 방향과 일치하는 구성종목 등락 계산 중" }, style = MaterialTheme.typography.bodySmall)
         return
     }
 
@@ -278,7 +293,7 @@ private fun DirectionalMoverSectionV19(s: IndexSnapshot, movers: List<LaggardIte
         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
             Text("${item.rank}. ${item.symbol} · ${item.name}", style = MaterialTheme.typography.bodyMedium)
             Text(
-                "현재 ${fmtV19(item.current)}  ${signedPctV19(item.dayChangePercent)} (${signedV19(item.dayChange)})",
+                "현재 ${fmtV19(item.current)}  ${signedPctV19(item.dayChangePercent)} (${magnitudeV19(item.dayChange)})",
                 color = movementColorV19(item.dayChangePercent),
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyMedium
@@ -295,5 +310,5 @@ private fun movementColorV19(percent: Double?): Color = when {
 }
 
 private fun fmtV19(v: Double?): String = v?.let { String.format(Locale.US, "%,.2f", it) } ?: "-"
-private fun signedV19(v: Double): String = String.format(Locale.US, "%+,.2f", v)
+private fun magnitudeV19(v: Double): String = String.format(Locale.US, "%,.2f", abs(v))
 private fun signedPctV19(v: Double): String = String.format(Locale.US, "%+.2f%%", v)
