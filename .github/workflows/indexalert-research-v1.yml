@@ -10,6 +10,7 @@ on:
       - 'research_v1_public.py'
       - 'research_v1_ml.py'
       - 'research_v1_selective.py'
+      - 'research_v1_assess.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
       - 'test_research_v1_portfolio.py'
@@ -63,7 +64,7 @@ jobs:
         run: |
           python run_research_v1.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
 
-      - name: Run Logistic walk-forward smoke tournament
+      - name: Run ML walk-forward smoke tournament
         run: |
           python research_v1_ml.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_ml --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
 
@@ -71,12 +72,18 @@ jobs:
         run: |
           python research_v1_selective.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_selective --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
 
+      - name: Assess short-term suitability
+        run: |
+          python research_v1_assess.py
+          cat research_results/assessment/assessment.md
+
       - name: Show smoke summaries and limitations
         if: always()
         run: |
           test -f research_results/public_smoke/summary.json && cat research_results/public_smoke/summary.json || true
           test -f research_results/public_smoke_ml/summary.json && cat research_results/public_smoke_ml/summary.json || true
           test -f research_results/public_smoke_selective/summary.json && cat research_results/public_smoke_selective/summary.json || true
+          test -f research_results/assessment/assessment.json && cat research_results/assessment/assessment.json || true
           test -f research_data/public_smoke_daily/build_stats.json && cat research_data/public_smoke_daily/build_stats.json || true
           test -f research_data/public_smoke_daily/limitations.json && cat research_data/public_smoke_daily/limitations.json || true
           test -f research_data/public_smoke_daily/failures.json && cat research_data/public_smoke_daily/failures.json || true
@@ -90,6 +97,7 @@ jobs:
             research_results/public_smoke/
             research_results/public_smoke_ml/
             research_results/public_smoke_selective/
+            research_results/assessment/
             research_data/public_smoke_daily/build_stats.json
             research_data/public_smoke_daily/limitations.json
             research_data/public_smoke_daily/universe.json
