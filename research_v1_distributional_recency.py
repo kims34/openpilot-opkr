@@ -3,6 +3,10 @@
 Compares the current expanding training history with one prespecified rolling
 window equal to the original 160-session training length. Calibration remains a
 separate 40-session block with five-session purge on both sides. No window search.
+
+For MTM diagnostics only, a selected position with no executable close on an
+intermediate session is carried at its last valid mark until trading resumes.
+Realized entry/exit economics are not changed.
 """
 from __future__ import annotations
 
@@ -20,11 +24,11 @@ from research_v1_distributional_netev import (
     _calibration_quantiles,
     _fixed_record_map,
     _pipe,
-    _portfolio,
     distributional_walk_forward,
 )
 from research_v1_fixed_horizon_label import add_fixed_horizon_target
 from research_v1_ml import stateful_select_records
+from research_v1_portfolio import simulate_portfolio, summary_dict
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
@@ -92,6 +96,58 @@ def rolling_distributional_walk_forward(
     ), folds
 
 
+def _portfolio_with_halt_mark_carry(raw, records, pred, horizon):
+    if pred.empty:
+        return {}
+    p = raw[["decision_date", "symbol", "close"]].copy()
+    p["decision_date"] = pd.to_datetime(p["decision_date"])
+    sessions = sorted(pd.Timestamp(x).date() for x in p["decision_date"].unique())
+    close_map = {
+        (pd.Timestamp(r.decision_date).date(), str(r.symbol)): float(r.close)
+        for r in p.itertuples(index=False)
+    }
+    additions = []
+    for rec in records:
+        last_mark = float(rec.entry_price)
+        for day in sessions:
+            if day < rec.entry_day:
+                continue
+            if day >= rec.exit_day:
+                break
+            key = (day, rec.symbol)
+            if key in close_map:
+                last_mark = close_map[key]
+            else:
+                additions.append({
+                    "decision_date": pd.Timestamp(day),
+                    "symbol": rec.symbol,
+                    "close": last_mark,
+                })
+    if additions:
+        p = pd.concat([p, pd.DataFrame(additions)], ignore_index=True)
+        p = p.drop_duplicates(["decision_date", "symbol"], keep="first")
+
+    eval_start = pd.Timestamp(pred["decision_date"].min()).date()
+    eval_end = max(
+        pd.Timestamp(pred["decision_date"].max()).date(),
+        max((r.exit_day for r in records), default=eval_start),
+    )
+    _, port = simulate_portfolio(
+        p,
+        records,
+        horizon=horizon,
+        initial_equity=1.0,
+        daily_cohort_fraction=1.0 / horizon,
+        suppress_duplicate_symbols=False,
+        evaluation_start=eval_start,
+        evaluation_end=eval_end,
+    )
+    result = summary_dict(port)
+    result["halt_mark_carry_forward_rows"] = int(len(additions))
+    result["halt_mark_policy"] = "last_valid_mark_for_intermediate_MTM_only"
+    return result
+
+
 def _evaluate(pred, fixed_map, raw, horizon, top_k):
     eligible = pred[pred["netev_low"] > 0].copy()
     records, selected, diag = stateful_select_records(
@@ -125,7 +181,7 @@ def _evaluate(pred, fixed_map, raw, horizon, top_k):
             "cluster_bootstrap_95_low": lo,
             "cluster_bootstrap_95_high": hi,
         },
-        "portfolio": _portfolio(raw, records, pred, horizon),
+        "portfolio": _portfolio_with_halt_mark_carry(raw, records, pred, horizon),
         "selection_diagnostics": diag,
         "yearly": yearly,
     }, selected
@@ -189,6 +245,7 @@ def main():
         "rolling_train_sessions": args.train_days,
         "purge_days": args.horizon,
         "cal_days": args.cal_days,
+        "portfolio_mark_policy": "last_valid_mark_during_intermediate_halt_MTM_only",
         "supervised_cache": meta,
         "legacy_label_diagnostics": diag,
         "expanding": exp,
