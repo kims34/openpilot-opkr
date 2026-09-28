@@ -5,7 +5,7 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_distributional_ablation.py'
-      - 'research_v1_distributional_netev.py'
+      - 'research_v1_distributional_netev.py'\n      - 'research_v1_context.py'
       - '.github/workflows/indexalert-research-v1-distributional-ablation.yml'
   workflow_dispatch:
 
