@@ -9,8 +9,10 @@ on:
       - 'production_v17.py'
       - 'production_v31.py'
       - 'market_basis.py'
+      - 'fx_basis.py'
       - 'laggards.py'
       - 'test_market_basis.py'
+      - 'test_fx_basis.py'
       - 'test_laggards_direction.py'
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
@@ -36,8 +38,8 @@ jobs:
         run: pip install requests beautifulsoup4
       - name: Syntax and regression checks
         run: |
-          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v31.py market_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
-          python -m unittest -v test_market_basis.py test_laggards_direction.py
+          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v31.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
+          python -m unittest -v test_market_basis.py test_fx_basis.py test_laggards_direction.py
       - name: Wait for production deployment and verify API
         run: |
           set -u -o pipefail
@@ -61,6 +63,16 @@ jobs:
               assert row.get('basis_verified') is True, (key,row)
               assert isinstance(row.get('previous_close'), (int,float)) and row['previous_close'] > 0, (key,row)
               assert isinstance(row.get('previous_close_date'), str) and row['previous_close_date'], (key,row)
+
+          fx=by_id.get('usdkrw') or {}
+          assert fx.get('basis_verified') is True, fx
+          assert isinstance(fx.get('last_value'), (int,float)) and fx['last_value'] > 0, fx
+          assert isinstance(fx.get('previous_close'), (int,float)) and fx['previous_close'] > 0, fx
+          assert isinstance(fx.get('previous_close_date'), str) and fx['previous_close_date'], fx
+          assert 'ECOS' in str(fx.get('basis_provider') or ''), fx
+          calc=(fx['last_value']/fx['previous_close']-1.0)*100.0
+          assert abs(calc-float(fx.get('day_change_percent'))) < 0.011, fx
+          assert abs((fx['last_value']-fx['previous_close'])-float(fx.get('day_change'))) < 0.011, fx
 
           for universe, section in (movers.get('sections') or {}).items():
               direction=section.get('direction')
