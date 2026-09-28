@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,7 @@ import java.util.Locale
 
 private const val EXTENDED_MODEL = "4.1-extended-session"
 private val EXTENDED_IDS = setOf("sp500", "ndx", "djdiv", "kospi100")
+private val ProbabilityBlack = Color.Black
 
 data class ExtendedSessionEstimate(
     val available: Boolean,
@@ -152,7 +154,8 @@ fun ExtendedSessionProbabilitySection(indexId: String, refreshKey: String = "") 
                 Text(
                     "다음 거래일 기본 상승확률  ${String.format(Locale.US, "%.1f%%", e.kospiBaseProbability)}",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = ProbabilityBlack
                 )
             }
 
@@ -171,21 +174,31 @@ fun ExtendedSessionProbabilitySection(indexId: String, refreshKey: String = "") 
             Text(
                 "다음 거래일 종가 상승 추정  ${String.format(Locale.US, "%.1f%%", e.probability)}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = ProbabilityBlack
             )
             if (e.baselineProbability != null && e.adjustmentPp != null) {
                 Text(
                     "기본 ${String.format(Locale.US, "%.1f%%", e.baselineProbability)} → 시간외 ${String.format(Locale.US, "%.1f%%", e.probability)} " +
                         "(${String.format(Locale.US, "%+.1f%%p", e.adjustmentPp)})",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ProbabilityBlack
                 )
             }
             e.extendedMovePercent?.let {
-                Text("시간외 연동 움직임 ${String.format(Locale.US, "%+.2f%%", it)}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "시간외 연동 움직임 ${String.format(Locale.US, "%+.2f%%", it)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ProbabilityBlack
+                )
             }
             e.estimatedOpenPrice?.let {
                 val label = if (indexId == "kospi100") "다음 시가 연동 추정값" else "다음 시가 참고값"
-                Text("$label ${String.format(Locale.US, "%,.2f", it)}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "$label ${String.format(Locale.US, "%,.2f", it)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ProbabilityBlack
+                )
             }
             e.source?.let { Text("기준  $it", style = MaterialTheme.typography.bodySmall) }
 
