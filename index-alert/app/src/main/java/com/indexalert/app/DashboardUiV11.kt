@@ -247,7 +247,7 @@ private fun IndexCardV19(s: IndexSnapshot, movers: List<LaggardItem>, moverStatu
                 }
             }
 
-            MonthlyChartSection(s.rule.id)
+            MonthlyChartSection(s.rule.id, refreshKey)
 
             if (s.rule.id in setOf("sp500", "ndx", "djdiv")) {
                 DirectionalMoverSectionV19(s, movers, moverStatus)
