@@ -16,24 +16,9 @@ import numpy as np
 import pandas as pd
 
 from research_v1_core import date_cluster_bootstrap_mean, summarize
-from research_v1_ml import FEATURES, _pipeline, make_supervised
-from research_v1_portfolio import filter_executable_records, simulate_portfolio, summary_dict
+from research_v1_ml import FEATURES, _pipeline, make_supervised, stateful_select_records
+from research_v1_portfolio import simulate_portfolio, summary_dict
 from run_research_v1 import load_panel
-
-
-def _select_records(scored: pd.DataFrame, record_map: dict, threshold: float | None, top_k: int):
-    if threshold is None or scored.empty:
-        return []
-    out = []
-    for day, d in scored.groupby("decision_date", sort=True):
-        chosen = d[d["prob"] >= threshold].sort_values("prob", ascending=False).head(top_k)
-        for row in chosen.itertuples(index=False):
-            key = (pd.Timestamp(day).date(), str(row.symbol))
-            base = record_map.get(key)
-            if base is None:
-                continue
-            out.append(base.__class__(**{**asdict(base), "score": float(row.prob)}))
-    return out
 
 
 def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trades: int = 30):
@@ -44,8 +29,9 @@ def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trade
     probs = cal["prob"].to_numpy(dtype=float)
     for cov in coverages:
         threshold = float(np.quantile(probs, 1.0 - cov))
-        signal_recs = _select_records(cal, record_map, threshold, top_k)
-        recs, dup = filter_executable_records(signal_recs, True)
+        recs, _, state_diag = stateful_select_records(
+            cal, record_map, top_k=top_k, threshold=threshold, active_until={}
+        )
         if len(recs) < min_trades:
             continue
         m = summarize(recs)
@@ -53,16 +39,15 @@ def _choose_threshold(cal: pd.DataFrame, record_map: dict, top_k: int, min_trade
         candidates.append({
             "coverage_target": cov,
             "threshold": threshold,
-            "signal_trades": len(signal_recs),
             "executable_trades": len(recs),
-            "duplicates_suppressed": dup,
+            **state_diag,
             "mean_net_return": m.mean_net_return,
             "bootstrap_point": point,
             "bootstrap_low": lo,
             "bootstrap_high": hi,
         })
-    # Fail-closed rule: a candidate admission threshold is eligible only when
-    # the date-clustered lower confidence bound is above zero on calibration.
+    # Fail closed: admission is allowed only when the calibration-window lower
+    # confidence bound is above zero. Otherwise the engine chooses NO TRADE.
     valid = [x for x in candidates if x["bootstrap_low"] > 0]
     if not valid:
         return None, {"reason": "no_positive_lower_bound_policy", "candidates": candidates}
@@ -81,9 +66,10 @@ def run_selective(
     horizon: int = 5,
 ):
     dates = sorted(pd.Timestamp(x) for x in frame["decision_date"].drop_duplicates())
-    test_signal_records = []
+    test_records = []
     all_test_rows = []
     fold_log = []
+    live_state = {}
     start = train_days + calibration_days
     while start < len(dates):
         train_block = dates[: start - calibration_days]
@@ -102,12 +88,21 @@ def run_selective(
         cal["prob"] = model.predict_proba(cal[FEATURES])[:, 1]
         test["prob"] = model.predict_proba(test[FEATURES])[:, 1]
         threshold, threshold_info = _choose_threshold(cal, record_map, top_k)
-        selected_signals = _select_records(test, record_map, threshold, top_k)
-        selected_exec, dup = filter_executable_records(selected_signals, True)
-        test_signal_records.extend(selected_signals)
+        if threshold is None:
+            selected = []
+            selected_rows = pd.DataFrame()
+            state_diag = {"active_position_candidates_blocked": 0, "backfill_selections": 0}
+        else:
+            selected, selected_rows, state_diag = stateful_select_records(
+                test, record_map, top_k=top_k, threshold=threshold, active_until=live_state
+            )
+        test_records.extend(selected)
         test["threshold"] = threshold if threshold is not None else np.nan
         test["trade_allowed"] = bool(threshold is not None)
-        all_test_rows.append(test[["decision_date", "symbol", "label_positive_net", "net_return", "prob", "threshold", "trade_allowed"]])
+        all_test_rows.append(test[[
+            "decision_date", "symbol", "label_positive_net", "net_return",
+            "ambiguous_same_bar", "prob", "threshold", "trade_allowed",
+        ]])
         fold_log.append({
             "train_end": str(train_block[-1].date()),
             "cal_start": str(cal_block[0].date()),
@@ -115,18 +110,16 @@ def run_selective(
             "test_start": str(test_block[0].date()),
             "test_end": str(test_block[-1].date()),
             "threshold": threshold,
-            "test_signal_selected": len(selected_signals),
-            "test_executable_selected_within_fold": len(selected_exec),
-            "test_duplicates_suppressed_within_fold": dup,
+            "test_executable_selected": len(selected),
+            **state_diag,
+            "test_selected_ambiguous": int(selected_rows.get("ambiguous_same_bar", pd.Series(dtype=bool)).fillna(False).astype(bool).sum()) if not selected_rows.empty else 0,
             "threshold_selection": threshold_info,
         })
         start += test_days
 
     pred = pd.concat(all_test_rows, ignore_index=True) if all_test_rows else pd.DataFrame()
-    executable_records, dup_total = filter_executable_records(test_signal_records, True)
-    metrics_signal = summarize(test_signal_records)
-    metrics_exec = summarize(executable_records)
-    point, lo, hi = date_cluster_bootstrap_mean(executable_records) if executable_records else (0.0, 0.0, 0.0)
+    metrics = summarize(test_records)
+    point, lo, hi = date_cluster_bootstrap_mean(test_records) if test_records else (0.0, 0.0, 0.0)
 
     if pred.empty:
         eval_start = eval_end = None
@@ -134,31 +127,29 @@ def run_selective(
         eval_start = pd.Timestamp(pred["decision_date"].min()).date()
         eval_end = max(
             pd.Timestamp(pred["decision_date"].max()).date(),
-            max((r.exit_day for r in executable_records), default=eval_start),
+            max((r.exit_day for r in test_records), default=eval_start),
         )
     path, portfolio = simulate_portfolio(
-        raw_panel, executable_records, horizon=horizon, initial_equity=1.0,
+        raw_panel, test_records, horizon=horizon, initial_equity=1.0,
         daily_cohort_fraction=1.0 / horizon, suppress_duplicate_symbols=False,
         evaluation_start=eval_start, evaluation_end=eval_end,
     )
     test_dates = int(pred["decision_date"].nunique()) if not pred.empty else 0
-    trade_days = len({r.decision_day for r in executable_records})
+    trade_days = len({r.decision_day for r in test_records})
     return {
-        "signal_set": asdict(metrics_signal),
         "executable_set": {
-            **asdict(metrics_exec),
+            **asdict(metrics),
             "cluster_bootstrap_mean_net_return": point,
             "cluster_bootstrap_95_low": lo,
             "cluster_bootstrap_95_high": hi,
         },
-        "duplicate_signals_suppressed": int(dup_total),
         "portfolio": summary_dict(portfolio),
         "test_dates": test_dates,
         "trade_days": trade_days,
         "trade_day_coverage": float(trade_days / test_dates) if test_dates else 0.0,
-        "avg_executable_trades_per_test_day": float(len(executable_records) / test_dates) if test_dates else 0.0,
+        "avg_executable_trades_per_test_day": float(len(test_records) / test_dates) if test_dates else 0.0,
         "folds": fold_log,
-    }, pred, pd.DataFrame([asdict(r) for r in executable_records]), path
+    }, pred, pd.DataFrame([asdict(r) for r in test_records]), path
 
 
 def main():
@@ -189,7 +180,7 @@ def main():
         "selection_rule": (
             "For each fold, choose among fixed probability-coverage candidates on the prior "
             "40-day calibration block; require positive date-cluster bootstrap lower bound, "
-            "else NO TRADE."
+            "else NO TRADE. Candidate admission is stateful and backfills blocked active names."
         ),
         "diagnostics": diag,
         "result": result,
