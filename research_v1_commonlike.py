@@ -17,7 +17,8 @@ from research_v1_context import add_context
 from research_v1_data_policy import dataset_status
 from research_v1_holdaware import evaluate_topk_only
 from research_v1_pit_labels import make_pit_supervised
-from research_v1_pit_run import _grade, _walk_forward_pit
+from research_v1_pit_run import _grade
+from research_v1_pit_run_purged import _walk_forward_pit
 from research_v1_security_scope import filter_common_like_heuristic
 from run_research_v1 import load_panel
 
@@ -34,6 +35,8 @@ def _candidate_row(name: str, candidate: dict) -> dict:
     return {
         "name": name,
         "trades": int(ex.get("trades") or 0),
+        "mean_gross_return": float(ex.get("mean_gross_return") or 0.0),
+        "mean_cost_return": float(ex.get("mean_cost_return") or 0.0),
         "mean_net_return": float(ex.get("mean_net_return") or 0.0),
         "profit_factor": float(ex.get("profit_factor") or 0.0),
         "cluster_low": float(ex.get("cluster_bootstrap_95_low") or 0.0),
@@ -64,7 +67,6 @@ def main():
         raise RuntimeError("common-like challenger requires PIT membership data")
 
     common_raw, scope_diag = filter_common_like_heuristic(raw)
-    # Critical invariant: heuristic filtering never validates identity.
     if bool(common_raw.get("common_stock_identity_validated", pd.Series([False])).fillna(False).astype(bool).all()):
         raise RuntimeError("heuristic scope must not claim validated common-stock identity")
 
@@ -85,15 +87,17 @@ def main():
         args.train_days,
         args.test_days,
         context=True,
+        purge_days=args.horizon,
     )
     candidate, _, _ = evaluate_topk_only(
         pred, record_map, common_raw, args.horizon, args.top_k
     )
     candidate["objective"] = "probability_positive_net_return_plus_simple_market_context"
     candidate["admission_rule"] = (
-        "COMMON_LIKE_HEURISTIC_DIAGNOSTIC__original_top3_fixed_at_decision__"
+        "PURGED_COMMON_LIKE_HEURISTIC_DIAGNOSTIC__original_top3_fixed_at_decision__"
         "no_fill_leaves_empty_slot"
     )
+    candidate["purge_days"] = int(args.horizon)
     candidate["security_scope_identity_validated"] = False
     candidate["security_scope_heuristic_only"] = True
 
@@ -115,8 +119,9 @@ def main():
         }
 
     report = {
-        "evaluation_stage": "PIT_PRELIMINARY_SCOPE_CHALLENGER",
+        "evaluation_stage": "PIT_PRELIMINARY_SCOPE_CHALLENGER_PURGED",
         "judge_eligible": False,
+        "purge_days": int(args.horizon),
         "judge_blocker": "security-scope filter is heuristic; official point-in-time common-stock identity is not validated",
         "scope_diagnostic": scope_diag,
         "full_raw_rows": int(len(raw)),
