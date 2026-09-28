@@ -1,6 +1,6 @@
 """Purged PIT feature-family ablation for Distributional NetEV.
 
-This is a diagnostic decomposition, not a hyperparameter search.  Every family
+This is a diagnostic decomposition, not a hyperparameter search. Every family
 uses the same expanding walk-forward, purge, calibration, lower-bound admission,
 strict decision-time Top3 freeze and no-backfill execution policy.
 """
@@ -9,6 +9,7 @@ import json
 
 from research_v1_context import CONTEXT_FEATURES, add_context
 from research_v1_distributional_netev import (
+    _calendar_splits,
     _cost_stress,
     _fixed_record_map,
     _metric,
@@ -32,9 +33,6 @@ FAMILIES = {
     "drop_market": [x for x in CONTEXT_FEATURES if x not in MARKET],
     "drop_residual": [x for x in CONTEXT_FEATURES if x not in RESID],
     "context_only": MARKET + RESID,
-    # Decompose the strong context_only result.  MARKET is common to every
-    # stock on a decision date, while RESID carries stock-specific relative
-    # strength.  These are diagnostics only; no thresholds are tuned from OOS.
     "market_only": MARKET,
     "residual_only": RESID,
 }
@@ -55,6 +53,29 @@ def _rank_diagnostics(pred):
     }
 
 
+def _extreme_day_dependency(records):
+    if not records:
+        return {"baseline": _metric([]), "remove_best_days": {}}
+    by_day = {}
+    for rec in records:
+        by_day.setdefault(rec.decision_day, []).append(rec)
+    ranked_days = sorted(
+        by_day,
+        key=lambda d: sum(r.net_return for r in by_day[d]) / len(by_day[d]),
+        reverse=True,
+    )
+    out = {"baseline": _metric(records), "remove_best_days": {}}
+    for n in (1, 3, 5):
+        removed = set(ranked_days[:n])
+        kept = [r for r in records if r.decision_day not in removed]
+        out["remove_best_days"][str(n)] = {
+            "removed_dates": [str(d) for d in ranked_days[:n]],
+            "remaining_records": int(len(kept)),
+            "metrics": _metric(kept),
+        }
+    return out
+
+
 def main():
     raw = load_panel(Path("research_data/marcap_kospi_pit"))
     frame, legacy_map, diag, meta = load_or_build(
@@ -69,6 +90,8 @@ def main():
     frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
     z = add_fixed_horizon_target(raw, add_context(frame), legacy_map, 5)
     fixed = _fixed_record_map(z, 5)
+    out_dir = Path("research_results/marcap_pit_distributional_ablation")
+    out_dir.mkdir(parents=True, exist_ok=True)
     out = {
         "policy": "predeclared_feature_family_ablation_same_purged_walkforward_no_oos_threshold_tuning",
         "selection_policy": "netev_low_gt_0__freeze_original_top3__blocked_slot_stays_empty",
@@ -96,14 +119,16 @@ def main():
             "rank_diagnostics": _rank_diagnostics(pred),
             "metrics": _metric(records),
             "cost_stress": _cost_stress(records),
+            "calendar_year_splits": _calendar_splits(records),
+            "extreme_day_dependency": _extreme_day_dependency(records),
         }
+        selected.to_csv(out_dir / f"{name}_selected.csv", index=False)
     out["diagnostic_note"] = (
-        "market_only cannot provide cross-sectional stock ranking if all market features are identical within a day; "
-        "rank diagnostics explicitly test for that degeneracy. residual_only isolates stock-specific relative strength."
+        "Calibration always conditions residual quantiles on vol20_rank terciles. "
+        "Therefore market_only is market-model features under a fixed stock-specific volatility calibration layer, "
+        "not a mathematically pure identical-score market timing model. Extreme-day tests remove entire decision days."
     )
-    p = Path("research_results/marcap_pit_distributional_ablation")
-    p.mkdir(parents=True, exist_ok=True)
-    (p / "summary.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / "summary.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print("DISTRIBUTIONAL_ABLATION=" + json.dumps(out, ensure_ascii=False), flush=True)
 
 
