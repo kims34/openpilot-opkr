@@ -10,6 +10,7 @@ on:
       - 'research_v1_krx.py'
       - 'research_v1_public.py'
       - 'research_v1_marcap.py'
+      - 'research_v1_pit_labels.py'
       - 'research_v1_ml.py'
       - 'research_v1_selective.py'
       - 'research_v1_holdaware.py'
@@ -51,20 +52,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Install research-only dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest==9.1.1 pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
-
       - name: Unit tests
         run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py
-
       - name: Build public real-price smoke panel
         env:
           START_DATE: ${{ github.event.inputs.start || '2025-01-01' }}
@@ -72,42 +69,31 @@ jobs:
           UNIVERSE_SIZE: ${{ github.event.inputs.universe_size || '30' }}
         run: |
           python research_v1_public.py --start "$START_DATE" --end "$END_DATE" --universe-size "$UNIVERSE_SIZE" --sleep 0.10
-
       - name: Run Baseline smoke tournament
         run: |
           python run_research_v1.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
-
       - name: Run ML walk-forward smoke tournament
         run: |
           python research_v1_ml.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_ml --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-
       - name: Run Hold-aware TOP3-only comparison
         run: |
           python research_v1_holdaware.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_holdaware --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-
       - name: Run Market-context challenger
         run: |
           python research_v1_context.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_context --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-
       - name: Run Selective NO-TRADE smoke tournament
         run: |
           python research_v1_selective.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_selective --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
-
       - name: Assess short-term suitability
         run: |
           python research_v1_assess.py
           cat research_results/assessment/assessment.md
-
       - name: Show smoke summaries and limitations
         if: always()
         run: |
-          test -f research_results/public_smoke/summary.json && cat research_results/public_smoke/summary.json || true
-          test -f research_results/public_smoke_ml/summary.json && cat research_results/public_smoke_ml/summary.json || true
-          test -f research_results/public_smoke_holdaware/summary.json && cat research_results/public_smoke_holdaware/summary.json || true
-          test -f research_results/public_smoke_context/summary.json && cat research_results/public_smoke_context/summary.json || true
-          test -f research_results/public_smoke_selective/summary.json && cat research_results/public_smoke_selective/summary.json || true
           test -f research_results/assessment/assessment.json && cat research_results/assessment/assessment.json || true
-
+          test -f research_data/public_smoke_daily/build_stats.json && cat research_data/public_smoke_daily/build_stats.json || true
+          test -f research_data/public_smoke_daily/limitations.json && cat research_data/public_smoke_daily/limitations.json || true
       - name: Upload smoke artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -134,17 +120,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Install PIT research dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
-
       - name: Cache marcap yearly source files
         uses: actions/cache@v4
         with:
@@ -152,7 +135,6 @@ jobs:
           key: marcap-pit-v1-${{ github.event.inputs.pit_start || '2024-01-01' }}-${{ github.event.inputs.pit_end || '2026-09-28' }}
           restore-keys: |
             marcap-pit-v1-
-
       - name: Build historical KOSPI PIT membership panel
         env:
           PIT_START: ${{ github.event.inputs.pit_start || '2024-01-01' }}
@@ -161,17 +143,14 @@ jobs:
           python research_v1_marcap.py --start "$PIT_START" --end "$PIT_END" --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
           cat research_data/marcap_kospi_pit/build_stats.json
           cat research_data/marcap_kospi_pit/limitations.json
-
       - name: Run PIT preliminary model tournament
         run: |
           python research_v1_pit_run.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
-
-      - name: Show PIT preliminary assessment
+      - name: Show compact PIT preliminary assessment
         if: always()
         run: |
-          test -f research_results/marcap_pit/summary.json && cat research_results/marcap_pit/summary.json || true
+          test -f research_results/marcap_pit/compact.json && cat research_results/marcap_pit/compact.json || true
           test -f research_results/marcap_pit/candidate_comparison.csv && cat research_results/marcap_pit/candidate_comparison.csv || true
-
       - name: Upload PIT preliminary artifact
         if: always()
         uses: actions/upload-artifact@v4
