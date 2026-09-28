@@ -1,1 +1,3 @@
-IndexAlert v2.6 monthly terminal return mode rollout
+IndexAlert v2.7 extended-session market-card rollout
+SPY/QQQ/SCHD: regular actual ETF, pre/post actual ETF first, overnight futures-linked estimate only
+KOSPI: Naver regular cash, off-hours linked estimate only
