@@ -5,6 +5,7 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_fast_purged_candidate.py'
+      - 'research_v1_path_context.py'
       - 'research_v1_pit_labels.py'
       - 'research_v1_pit_run_purged.py'
       - 'research_v1_context.py'
@@ -58,11 +59,17 @@ jobs:
         run: |
           python research_v1_fast_purged_candidate.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_fast --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
           cat research_results/marcap_pit_fast/summary.json
-      - name: Upload fast result
+      - name: Run PIT-safe path-context challenger
+        run: |
+          python research_v1_path_context.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_path_context --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+          cat research_results/marcap_pit_path_context/summary.json
+      - name: Upload fast results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: indexalert-research-v1-fast-purged
-          path: research_results/marcap_pit_fast/
+          path: |
+            research_results/marcap_pit_fast/
+            research_results/marcap_pit_path_context/
           if-no-files-found: warn
           retention-days: 30
