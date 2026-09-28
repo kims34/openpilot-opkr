@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import requests
 from fastapi import HTTPException
 
+import fx_basis
 import production
 
 NAVER_HEADERS = {
@@ -104,14 +105,20 @@ def _naver_kospi_history():
     )
 
 
-def _naver_usdkrw_history():
-    return _naver_daily(
-        [
-            "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW/prices?page=1&pageSize=40",
-            "https://m.stock.naver.com/front-api/marketIndex/prices?category=exchange&reutersCode=FX_USDKRW&page=1&pageSize=40",
-        ],
-        "Asia/Seoul",
+def _ecos_usdkrw_history():
+    closes = fx_basis.fetch_usdkrw_1530_closes(
+        requests,
+        now=datetime.now(ZoneInfo("Asia/Seoul")),
+        lookback_days=42,
+        headers=NAVER_HEADERS,
     )
+    tz = ZoneInfo("Asia/Seoul")
+    cutoff = datetime.now(tz).date() - timedelta(days=32)
+    return [
+        (int(datetime.combine(day, dt_time(15, 30), tzinfo=tz).timestamp()), float(value))
+        for day, value in closes
+        if day >= cutoff and value > 0
+    ]
 
 
 def _session_label(index_id: str, market_state: str, source: str, estimated: bool, ts: int):
@@ -133,7 +140,7 @@ def _session_label(index_id: str, market_state: str, source: str, estimated: boo
     if index_id == "kospi100":
         return "코스피 정규장 현재지수" if state == "REGULAR" else "코스피 장마감 지수"
     if index_id == "usdkrw":
-        return "현재 원/달러 환율" if state in {"OPEN", "REGULAR"} else "최근 원/달러 환율"
+        return "실시간 원/달러 환율" if state == "LIVE" else "최근 원/달러 환율"
     return "현재값"
 
 
@@ -196,8 +203,8 @@ def attach(app, monitor, naver_kospi_quote, naver_usdkrw_quote):
                 source = "KOSPI · 네이버 증권"
                 estimated = False
             elif index_id == "usdkrw":
-                value, _, _, _, value_ts, market_state = naver_usdkrw_quote()
-                source = "USD/KRW · 네이버 증권"
+                value, _, market_state, value_ts = monitor.current(symbol)
+                source = "USD/KRW · Yahoo Finance 최근 거래가"
                 estimated = False
             else:
                 value, _, market_state, value_ts = monitor.current(symbol)
@@ -220,13 +227,13 @@ def attach(app, monitor, naver_kospi_quote, naver_usdkrw_quote):
                 daily = _naver_kospi_history()
                 history_source = "KOSPI 최근 1개월 · 네이버 증권 일별 시세"
             elif index_id == "usdkrw":
-                daily = _naver_usdkrw_history()
-                history_source = "USD/KRW 최근 1개월 · 네이버 환율 일별 고시"
+                daily = _ecos_usdkrw_history()
+                history_source = "USD/KRW 최근 1개월 · 한국은행 ECOS 15:30 종가"
             else:
                 daily = yahoo_daily(symbol)
                 history_source = f"{symbol} 최근 1개월 일봉"
         except Exception as exc:
-            print("Naver monthly history fallback", index_id, type(exc).__name__, flush=True)
+            print("monthly history fallback", index_id, type(exc).__name__, flush=True)
             try:
                 daily = yahoo_daily(symbol)
                 history_source = f"{symbol} 최근 1개월 일봉 · 보조 소스"
