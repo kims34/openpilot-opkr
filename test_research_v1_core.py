@@ -21,6 +21,17 @@ def test_same_bar_target_stop_is_ambiguous():
         economic_outcome(date(2026, 1, 1), "TEST", 1.0, 100, future, 0.04, -0.03, 0.0)
 
 
+def test_same_bar_can_be_scored_conservatively_without_future_filtering():
+    future = [b("2026-01-02", 100, 105, 95, 101)]
+    r = economic_outcome(
+        date(2026, 1, 1), "TEST", 1.0, 100, future, 0.04, -0.03, 0.001,
+        ambiguous_policy="stop_first",
+    )
+    assert r.outcome == "STOP"
+    assert r.exit_price == pytest.approx(97.0)
+    assert r.net_return == pytest.approx(-0.031)
+
+
 def test_gap_through_stop_uses_open():
     future = [b("2026-01-02", 90, 95, 89, 92)]
     r = economic_outcome(date(2026, 1, 1), "TEST", 1.0, 100, future, 0.04, -0.03, 0.001)
