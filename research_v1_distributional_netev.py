@@ -228,6 +228,31 @@ def _metric(records):
     }
 
 
+def _cost_stress(records, multipliers=(1.0, 1.5, 2.0)):
+    rows = {}
+    for m in multipliers:
+        net = np.asarray([r.gross_return - m * r.cost_return for r in records], dtype=float)
+        if len(net) == 0:
+            rows[str(m)] = {"mean_net_return": 0.0, "win_rate": 0.0, "profit_factor": 0.0}
+            continue
+        gains = float(net[net > 0].sum())
+        losses = float(-net[net < 0].sum())
+        rows[str(m)] = {
+            "mean_net_return": float(net.mean()),
+            "win_rate": float((net > 0).mean()),
+            "profit_factor": float(gains / losses) if losses > 0 else (float("inf") if gains > 0 else 0.0),
+        }
+    return rows
+
+
+def _calendar_splits(records):
+    out = {}
+    for year in sorted({r.decision_day.year for r in records}):
+        xs = [r for r in records if r.decision_day.year == year]
+        out[str(year)] = _metric(xs)
+    return out
+
+
 def freeze_original_topk(eligible: pd.DataFrame, top_k: int) -> pd.DataFrame:
     """Freeze decision-time ranks before portfolio-state/executability checks."""
     if eligible.empty:
@@ -339,6 +364,8 @@ def main():
         "trade_day_coverage": float(trade_days / test_dates) if test_dates else 0.0,
         "selection_diagnostics": select_diag,
         "selected_executable": _metric(records),
+        "cost_stress": _cost_stress(records),
+        "calendar_year_splits": _calendar_splits(records),
         "portfolio": _portfolio(raw, records, pred, args.horizon),
         "distribution_diagnostics": {
             "target_lower_quantile": Q_LOW,
