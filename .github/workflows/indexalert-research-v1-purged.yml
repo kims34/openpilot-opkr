@@ -1,0 +1,105 @@
+name: IndexAlert Research v1 Purged PIT
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_core.py'
+      - 'research_v1_portfolio.py'
+      - 'research_v1_data_policy.py'
+      - 'research_v1_security_scope.py'
+      - 'research_v1_marcap.py'
+      - 'research_v1_pit_labels.py'
+      - 'research_v1_ml.py'
+      - 'research_v1_holdaware.py'
+      - 'research_v1_context.py'
+      - 'research_v1_pit_run.py'
+      - 'research_v1_pit_run_purged.py'
+      - 'research_v1_commonlike.py'
+      - 'research_v1_gap_diagnostics.py'
+      - 'research_v1_ambiguity_sensitivity.py'
+      - 'run_research_v1.py'
+      - 'test_research_v1_core.py'
+      - 'test_research_v1_portfolio.py'
+      - 'test_research_v1_security_scope.py'
+      - '.github/workflows/indexalert-research-v1-purged.yml'
+  workflow_dispatch:
+    inputs:
+      pit_start:
+        description: 'PIT preliminary start (YYYY-MM-DD)'
+        required: false
+        default: '2024-01-01'
+      pit_end:
+        description: 'PIT preliminary end (YYYY-MM-DD)'
+        required: false
+        default: '2026-09-28'
+
+jobs:
+  pit-purged:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest==9.1.1 pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Unit tests
+        run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py test_research_v1_security_scope.py
+      - name: Cache marcap yearly source files
+        uses: actions/cache@v4
+        with:
+          path: research_data/marcap_raw
+          key: marcap-pit-v2-${{ github.event.inputs.pit_start || '2024-01-01' }}-${{ github.event.inputs.pit_end || '2026-09-28' }}
+          restore-keys: |
+            marcap-pit-v2-
+            marcap-pit-v1-
+      - name: Build historical KOSPI PIT membership panel
+        env:
+          PIT_START: ${{ github.event.inputs.pit_start || '2024-01-01' }}
+          PIT_END: ${{ github.event.inputs.pit_end || '2026-09-28' }}
+        run: |
+          python research_v1_marcap.py --start "$PIT_START" --end "$PIT_END" --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
+          cat research_data/marcap_kospi_pit/build_stats.json
+      - name: Run purged PIT preliminary model tournament
+        run: |
+          python research_v1_pit_run_purged.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Run purged common-like scope challenger
+        run: |
+          python research_v1_commonlike.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_commonlike --full-pit-result research_results/marcap_pit/compact.json --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Diagnose post-entry missing-bar causes
+        run: |
+          python research_v1_gap_diagnostics.py --cache research_data/marcap_kospi_pit --membership research_data/marcap_kospi_pit/lineage/membership_status.parquet --result-dir research_results/marcap_pit_gap_diagnostics --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
+      - name: Bound same-bar target-stop ambiguity with purged scores
+        run: |
+          python research_v1_ambiguity_sensitivity.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_ambiguity --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+      - name: Show compact results
+        if: always()
+        run: |
+          test -f research_results/marcap_pit/compact.json && cat research_results/marcap_pit/compact.json || true
+          test -f research_results/marcap_pit/candidate_comparison.csv && cat research_results/marcap_pit/candidate_comparison.csv || true
+          test -f research_results/marcap_pit_commonlike/summary.json && cat research_results/marcap_pit_commonlike/summary.json || true
+          test -f research_results/marcap_pit_gap_diagnostics/summary.json && cat research_results/marcap_pit_gap_diagnostics/summary.json || true
+          test -f research_results/marcap_pit_ambiguity/summary.json && cat research_results/marcap_pit_ambiguity/summary.json || true
+      - name: Upload purged PIT artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-purged-pit
+          path: |
+            research_results/marcap_pit/
+            research_results/marcap_pit_commonlike/
+            research_results/marcap_pit_gap_diagnostics/
+            research_results/marcap_pit_ambiguity/
+            research_data/marcap_kospi_pit/build_stats.json
+            research_data/marcap_kospi_pit/limitations.json
+            research_data/marcap_kospi_pit/rejected_invalid_bars.parquet
+            research_data/marcap_kospi_pit/lineage/membership_status.parquet
+          if-no-files-found: warn
+          retention-days: 30
