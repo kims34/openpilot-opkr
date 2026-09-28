@@ -31,6 +31,7 @@ COPY one_month_calibrated.py .
 COPY kospi_monthly.py .
 COPY kospi_nextday_probability.py .
 COPY extended_session_probability.py .
+COPY extended_session_kospi_fallback.py .
 COPY probability_shadow.py .
 COPY probability_milestone.py .
 COPY probability_model.py .
