@@ -15,29 +15,27 @@ def _load(path: str):
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
 
 
+def _row(name: str, m: dict, objective=None, admission_rule=None):
+    ex = m.get("executable_set", {})
+    port = m.get("portfolio", {})
+    return {
+        "name": name,
+        "objective": objective or m.get("objective"),
+        "admission_rule": admission_rule or m.get("admission_rule") or m.get("policy"),
+        "trades": ex.get("trades", 0),
+        "mean_net_return": ex.get("mean_net_return", 0.0),
+        "profit_factor": ex.get("profit_factor", 0.0),
+        "bootstrap_low": ex.get("cluster_bootstrap_95_low"),
+        "total_return": port.get("total_return", 0.0),
+        "max_drawdown": port.get("max_drawdown", 0.0),
+        "trade_day_coverage": m.get("trade_day_coverage"),
+        "primary_rank_mean_net_return": m.get("primary_rank_mean_net_return"),
+        "backfill_mean_net_return": m.get("backfill_mean_net_return"),
+    }
+
+
 def _model_rows(ml: dict):
-    rows = []
-    for name, m in ml.get("models", {}).items():
-        ex = m.get("executable_set", {})
-        pf = ex.get("profit_factor", 0.0)
-        net = ex.get("mean_net_return", 0.0)
-        lo = ex.get("cluster_bootstrap_95_low")
-        port = m.get("portfolio", {})
-        rows.append({
-            "name": name,
-            "objective": m.get("objective"),
-            "admission_rule": m.get("admission_rule"),
-            "trades": ex.get("trades", 0),
-            "mean_net_return": net,
-            "profit_factor": pf,
-            "bootstrap_low": lo,
-            "total_return": port.get("total_return", 0.0),
-            "max_drawdown": port.get("max_drawdown", 0.0),
-            "trade_day_coverage": m.get("trade_day_coverage"),
-            "primary_rank_mean_net_return": m.get("primary_rank_mean_net_return"),
-            "backfill_mean_net_return": m.get("backfill_mean_net_return"),
-        })
-    return rows
+    return [_row(name, m) for name, m in ml.get("models", {}).items()]
 
 
 def _classify(row: dict):
@@ -48,7 +46,7 @@ def _classify(row: dict):
     lo = row.get("bootstrap_low")
     mdd = float(row.get("max_drawdown") or 0.0)
     if trades == 0:
-        return "NO_TRADE_FAIL_CLOSED", ["No calibration policy had a positive lower confidence bound."]
+        return "NO_TRADE_FAIL_CLOSED", ["No policy had sufficiently robust positive evidence to admit trades."]
     reasons = []
     if net <= 0:
         reasons.append("Cost-adjusted mean trade return is not positive.")
@@ -69,34 +67,29 @@ def main():
     baseline = _load("research_results/public_smoke/summary.json")
     ml = _load("research_results/public_smoke_ml/summary.json")
     selective = _load("research_results/public_smoke_selective/summary.json")
+    holdaware = _load("research_results/public_smoke_holdaware/summary.json")
     rows = _model_rows(ml)
 
-    # Include the calibrated abstention policy as a separate candidate.
     sel = selective.get("result", {})
     if sel:
-        ex = sel.get("executable_set", {})
-        port = sel.get("portfolio", {})
-        rows.append({
-            "name": "logistic_calibrated_abstention",
-            "objective": "probability_positive_net_return",
-            "admission_rule": "calibration_window_positive_cluster_LCB",
-            "trades": ex.get("trades", 0),
-            "mean_net_return": ex.get("mean_net_return", 0.0),
-            "profit_factor": ex.get("profit_factor", 0.0),
-            "bootstrap_low": ex.get("cluster_bootstrap_95_low", 0.0),
-            "total_return": port.get("total_return", 0.0),
-            "max_drawdown": port.get("max_drawdown", 0.0),
-            "trade_day_coverage": sel.get("trade_day_coverage", 0.0),
-            "primary_rank_mean_net_return": None,
-            "backfill_mean_net_return": None,
-        })
+        rows.append(_row(
+            "logistic_calibrated_abstention", sel,
+            objective="probability_positive_net_return",
+            admission_rule="calibration_window_positive_cluster_LCB",
+        ))
+
+    for name, m in holdaware.get("models", {}).items():
+        rows.append(_row(
+            f"holdaware_{name}", m,
+            objective="probability_positive_net_return",
+            admission_rule="original_top3_only__held_names_leave_empty_slots",
+        ))
 
     evaluated = []
     for row in rows:
         grade, reasons = _classify(row)
         evaluated.append({**row, "smoke_grade": grade, "issues": reasons})
 
-    # Baseline diagnostics establish whether simple momentum already works.
     baseline_rows = []
     for name, s in baseline.get("strategies", {}).items():
         ex = s.get("executable_set", {})
@@ -118,14 +111,15 @@ def main():
         promising = [x for x in evaluated if x["smoke_grade"] == "PROMISING_SMOKE_ONLY"]
         overall = "JUDGE_CANDIDATE_EXISTS" if promising else "NO_JUDGE_CANDIDATE"
 
-    # Surface structural problems that should drive the next revision.
     structural = []
     if any((x.get("backfill_mean_net_return") is not None and x.get("primary_rank_mean_net_return") is not None and x["backfill_mean_net_return"] < x["primary_rank_mean_net_return"]) for x in evaluated):
         structural.append("Backfilled lower-ranked names underperform primary ranks; do not force portfolio fill.")
     if any(float(x.get("profit_factor") or 0.0) < 1.0 and int(x.get("trades") or 0) > 0 for x in evaluated):
-        structural.append("Current features/objective do not yet overcome transaction costs.")
+        structural.append("Current feature set/objectives do not yet consistently overcome transaction costs.")
     if any(int(x.get("trades") or 0) == 0 for x in evaluated):
-        structural.append("Strict abstention currently chooses cash; this is preferable to forcing statistically unsupported trades.")
+        structural.append("Strict abstention can choose cash; this is preferable to forcing statistically unsupported trades.")
+    if holdaware:
+        structural.append("Hold-aware original-top3-only policy is explicitly benchmarked against deeper-rank backfill.")
     if not judge_eligible:
         structural.append("Current 30-stock fixed basket is non-PIT and survivorship/selection biased; results cannot establish real profitability.")
 
@@ -140,9 +134,10 @@ def main():
         "model_candidates": evaluated,
         "structural_issues": structural,
         "next_actions": [
-            "Prefer 0..3 admission over forced top-3 when backfill quality decays.",
+            "Use 0..3 admission; do not promote lower ranks merely to fill empty slots.",
             "Compare direct net-return prediction against binary success probability.",
             "Do not add model complexity until a simple economic objective shows positive cost-adjusted edge.",
+            "If all simple objectives fail, improve information content with pre-registered market/sector/regime features rather than tuning barriers.",
             "Replace fixed smoke basket with authenticated PIT KOSPI universe before any profitability claim.",
         ],
     }
