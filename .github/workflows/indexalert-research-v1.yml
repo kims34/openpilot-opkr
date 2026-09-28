@@ -11,6 +11,7 @@ on:
       - 'research_v1_ml.py'
       - 'research_v1_selective.py'
       - 'research_v1_holdaware.py'
+      - 'research_v1_context.py'
       - 'research_v1_assess.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
@@ -73,6 +74,10 @@ jobs:
         run: |
           python research_v1_holdaware.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_holdaware --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
 
+      - name: Run Market-context challenger
+        run: |
+          python research_v1_context.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_context --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+
       - name: Run Selective NO-TRADE smoke tournament
         run: |
           python research_v1_selective.py --cache research_data/public_smoke_daily --result-dir research_results/public_smoke_selective --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
@@ -88,6 +93,7 @@ jobs:
           test -f research_results/public_smoke/summary.json && cat research_results/public_smoke/summary.json || true
           test -f research_results/public_smoke_ml/summary.json && cat research_results/public_smoke_ml/summary.json || true
           test -f research_results/public_smoke_holdaware/summary.json && cat research_results/public_smoke_holdaware/summary.json || true
+          test -f research_results/public_smoke_context/summary.json && cat research_results/public_smoke_context/summary.json || true
           test -f research_results/public_smoke_selective/summary.json && cat research_results/public_smoke_selective/summary.json || true
           test -f research_results/assessment/assessment.json && cat research_results/assessment/assessment.json || true
           test -f research_data/public_smoke_daily/build_stats.json && cat research_data/public_smoke_daily/build_stats.json || true
@@ -103,6 +109,7 @@ jobs:
             research_results/public_smoke/
             research_results/public_smoke_ml/
             research_results/public_smoke_holdaware/
+            research_results/public_smoke_context/
             research_results/public_smoke_selective/
             research_results/assessment/
             research_data/public_smoke_daily/build_stats.json
