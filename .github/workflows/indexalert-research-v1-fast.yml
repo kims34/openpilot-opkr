@@ -1,0 +1,68 @@
+name: IndexAlert Research v1 Fast Purged
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_fast_purged_candidate.py'
+      - 'research_v1_pit_labels.py'
+      - 'research_v1_pit_run_purged.py'
+      - 'research_v1_context.py'
+      - 'research_v1_holdaware.py'
+      - 'research_v1_core.py'
+      - 'research_v1_portfolio.py'
+      - 'research_v1_marcap.py'
+      - '.github/workflows/indexalert-research-v1-fast.yml'
+  workflow_dispatch:
+    inputs:
+      pit_start:
+        description: 'PIT start (YYYY-MM-DD)'
+        required: false
+        default: '2024-01-01'
+      pit_end:
+        description: 'PIT end (YYYY-MM-DD)'
+        required: false
+        default: '2026-09-28'
+
+jobs:
+  fast-purged-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Cache marcap source
+        uses: actions/cache@v4
+        with:
+          path: research_data/marcap_raw
+          key: marcap-fast-v1-${{ github.event.inputs.pit_start || '2024-01-01' }}-${{ github.event.inputs.pit_end || '2026-09-28' }}
+          restore-keys: |
+            marcap-pit-v2-
+            marcap-pit-v1-
+      - name: Build PIT panel
+        env:
+          PIT_START: ${{ github.event.inputs.pit_start || '2024-01-01' }}
+          PIT_END: ${{ github.event.inputs.pit_end || '2026-09-28' }}
+        run: |
+          python research_v1_marcap.py --start "$PIT_START" --end "$PIT_END" --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
+      - name: Run fast purged candidate
+        run: |
+          python research_v1_fast_purged_candidate.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit_fast --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+          cat research_results/marcap_pit_fast/summary.json
+      - name: Upload fast result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-fast-purged
+          path: research_results/marcap_pit_fast/
+          if-no-files-found: warn
+          retention-days: 30
