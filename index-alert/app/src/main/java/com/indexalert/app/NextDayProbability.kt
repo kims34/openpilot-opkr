@@ -17,7 +17,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-private const val VALIDATED_MODEL = "3.2-live-guardrails"
+private const val VALIDATED_MODEL = "3.3-calibration-gated"
 
 data class MonthValidation(
     val count: Int,
