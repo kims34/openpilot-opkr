@@ -5,10 +5,12 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_core.py'
+      - 'research_v1_portfolio.py'
       - 'research_v1_krx.py'
       - 'research_v1_public.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
+      - 'test_research_v1_portfolio.py'
       - '.github/workflows/indexalert-research-v1.yml'
   workflow_dispatch:
     inputs:
@@ -45,7 +47,7 @@ jobs:
           pip install pytest==9.1.1 pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0
 
       - name: Unit tests
-        run: pytest -q test_research_v1_core.py
+        run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py
 
       - name: Build public real-price smoke panel
         env:
