@@ -6,6 +6,9 @@ on:
     paths:
       - 'INDEXALERT_MASTER_SPEC.md'
       - 'research_v1_distributional_netev.py'
+      - 'research_v1_distributional_ablation.py'
+      - 'research_v1_distributional_recency.py'
+      - 'test_research_v1_distributional_netev.py'
       - 'research_v1_supervised_cache.py'
       - 'research_v1_fixed_horizon_label.py'
       - 'research_v1_context.py'
@@ -28,6 +31,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Compile and run Distributional regression tests
+        run: |
+          python -m py_compile research_v1_distributional_netev.py research_v1_distributional_ablation.py research_v1_distributional_recency.py
+          python -m unittest test_research_v1_distributional_netev.py
       - name: Restore marcap source
         uses: actions/cache@v4
         with:
