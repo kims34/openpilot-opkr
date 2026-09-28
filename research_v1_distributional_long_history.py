@@ -1,19 +1,8 @@
-"""Long-history robustness check for IndexAlert Distributional NetEV.
+"""Long-history corporate-action-safe robustness for Distributional NetEV.
 
-This is deliberately NOT a sealed holdout.  The candidate architecture was
-informed by later-period research, so earlier years are used only as an external
-historical robustness check.  No threshold/window search is allowed here.
-
-Prespecified protocol:
-- PIT KOSPI listed-security universe, 2015-06-15 onward
-- exact date-aware statutory sell tax + 3bp round-trip commission
-- 20th percentile liquidity floor, matching current research
-- initial 504 sessions training (~2y)
-- separate 126-session calibration (~6m)
-- 5-session purge on both train/cal and cal/test boundaries
-- 126-session OOS test blocks (~6m)
-- strict decision-time Top3 freeze; blocked names leave empty slots
-- compare only all_context reference vs context_only challenger
+This is NOT a sealed holdout. The architecture was informed by later-period
+research, so 2015-2026 is used only as a historical robustness/falsification test.
+No threshold/window/hyperparameter search is allowed.
 """
 from __future__ import annotations
 
@@ -44,6 +33,29 @@ RESID = ["resid_ret1", "resid_ret5", "resid_ret20"]
 CONTEXT_ONLY = MARKET + RESID
 
 
+def _extreme_day_dependency(records):
+    if not records:
+        return {"baseline": _metric([]), "remove_best_days": {}}
+    by_day = {}
+    for rec in records:
+        by_day.setdefault(rec.decision_day, []).append(rec)
+    ranked = sorted(
+        by_day,
+        key=lambda d: sum(r.net_return for r in by_day[d]) / len(by_day[d]),
+        reverse=True,
+    )
+    out = {"baseline": _metric(records), "remove_best_days": {}}
+    for n in (1, 3, 5, 10):
+        removed = set(ranked[:n])
+        kept = [r for r in records if r.decision_day not in removed]
+        out["remove_best_days"][str(n)] = {
+            "removed_dates": [str(d) for d in ranked[:n]],
+            "remaining_records": int(len(kept)),
+            "metrics": _metric(kept),
+        }
+    return out
+
+
 def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_days, test_days, horizon, top_k):
     pred, folds = distributional_walk_forward(
         z,
@@ -59,10 +71,7 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
     eligible = pred[pred["netev_low"] > 0].copy()
     frozen = freeze_original_topk(eligible, top_k)
     records, selected, selection_diag = stateful_select_records(
-        frozen,
-        fixed_map,
-        top_k=top_k,
-        threshold=0.0,
+        frozen, fixed_map, top_k=top_k, threshold=0.0,
     )
     test_dates = int(pred["decision_date"].nunique())
     trade_days = int(selected["decision_date"].nunique()) if not selected.empty else 0
@@ -80,6 +89,7 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
         "metrics": _metric(records),
         "cost_stress": _cost_stress(records),
         "calendar_year_splits": _calendar_splits(records),
+        "extreme_day_dependency": _extreme_day_dependency(records),
         "portfolio": _portfolio(raw, records, pred, horizon),
         "folds": folds,
     }
@@ -94,7 +104,7 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit_long")
-    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_long_v1")
+    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_long_v2_ca")
     ap.add_argument("--result-dir", default="research_results/marcap_pit_distributional_long")
     ap.add_argument("--horizon", type=int, default=5)
     ap.add_argument("--top-k", type=int, default=3)
@@ -125,9 +135,7 @@ def main():
         "context_only_challenger": CONTEXT_ONLY,
     }.items():
         result, selected = evaluate_candidate(
-            z,
-            fixed_map,
-            raw,
+            z, fixed_map, raw,
             name=name,
             features=features,
             train_days=args.train_days,
@@ -148,9 +156,11 @@ def main():
     }
 
     report = {
-        "evaluation_stage": "LONG_HISTORY_ROBUSTNESS_NOT_SEALED_HOLDOUT",
+        "evaluation_stage": "LONG_HISTORY_CA_SAFE_ROBUSTNESS_NOT_SEALED_HOLDOUT",
         "history_start": str(raw["decision_date"].min().date()),
         "history_end": str(raw["decision_date"].max().date()),
+        "feature_return_policy": "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS",
+        "fixed_horizon_return_policy": "KRX_FLUC_RT_ECONOMIC_INDEX_FROM_ENTRY_OPEN_TO_EXIT_CLOSE",
         "protocol": {
             "train_days_initial": args.train_days,
             "cal_days": args.cal_days,
@@ -167,7 +177,7 @@ def main():
         "comparison": comparison,
         "promotion_allowed_from_this_test": False,
         "reason": (
-            "Long-history evidence can reject fragile candidates or justify continued research, "
+            "Long-history evidence can reject fragile candidates or support continued research, "
             "but cannot replace a sealed holdout and prospective Shadow because model choices were informed by prior results."
         ),
     }
