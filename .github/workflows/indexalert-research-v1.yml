@@ -6,12 +6,15 @@ on:
     paths:
       - 'research_v1_core.py'
       - 'research_v1_portfolio.py'
+      - 'research_v1_data_policy.py'
       - 'research_v1_krx.py'
       - 'research_v1_public.py'
+      - 'research_v1_marcap.py'
       - 'research_v1_ml.py'
       - 'research_v1_selective.py'
       - 'research_v1_holdaware.py'
       - 'research_v1_context.py'
+      - 'research_v1_pit_run.py'
       - 'research_v1_assess.py'
       - 'run_research_v1.py'
       - 'test_research_v1_core.py'
@@ -20,17 +23,25 @@ on:
   workflow_dispatch:
     inputs:
       start:
-        description: 'Research start (YYYY-MM-DD)'
+        description: 'Smoke start (YYYY-MM-DD)'
         required: false
         default: '2025-01-01'
       end:
-        description: 'Research end (YYYY-MM-DD)'
+        description: 'Smoke end (YYYY-MM-DD)'
         required: false
         default: '2026-09-28'
       universe_size:
         description: 'Fixed non-PIT KOSPI smoke basket size'
         required: false
         default: '30'
+      pit_start:
+        description: 'PIT preliminary start (YYYY-MM-DD)'
+        required: false
+        default: '2024-01-01'
+      pit_end:
+        description: 'PIT preliminary end (YYYY-MM-DD)'
+        required: false
+        default: '2026-09-28'
 
 jobs:
   smoke-test-and-backtest:
@@ -96,11 +107,8 @@ jobs:
           test -f research_results/public_smoke_context/summary.json && cat research_results/public_smoke_context/summary.json || true
           test -f research_results/public_smoke_selective/summary.json && cat research_results/public_smoke_selective/summary.json || true
           test -f research_results/assessment/assessment.json && cat research_results/assessment/assessment.json || true
-          test -f research_data/public_smoke_daily/build_stats.json && cat research_data/public_smoke_daily/build_stats.json || true
-          test -f research_data/public_smoke_daily/limitations.json && cat research_data/public_smoke_daily/limitations.json || true
-          test -f research_data/public_smoke_daily/failures.json && cat research_data/public_smoke_daily/failures.json || true
 
-      - name: Upload research artifact
+      - name: Upload smoke artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -116,5 +124,63 @@ jobs:
             research_data/public_smoke_daily/limitations.json
             research_data/public_smoke_daily/universe.json
             research_data/public_smoke_daily/failures.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  pit-preliminary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install PIT research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+
+      - name: Cache marcap yearly source files
+        uses: actions/cache@v4
+        with:
+          path: research_data/marcap_raw
+          key: marcap-pit-v1-${{ github.event.inputs.pit_start || '2024-01-01' }}-${{ github.event.inputs.pit_end || '2026-09-28' }}
+          restore-keys: |
+            marcap-pit-v1-
+
+      - name: Build historical KOSPI PIT membership panel
+        env:
+          PIT_START: ${{ github.event.inputs.pit_start || '2024-01-01' }}
+          PIT_END: ${{ github.event.inputs.pit_end || '2026-09-28' }}
+        run: |
+          python research_v1_marcap.py --start "$PIT_START" --end "$PIT_END" --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
+          cat research_data/marcap_kospi_pit/build_stats.json
+          cat research_data/marcap_kospi_pit/limitations.json
+
+      - name: Run PIT preliminary model tournament
+        run: |
+          python research_v1_pit_run.py --cache research_data/marcap_kospi_pit --result-dir research_results/marcap_pit --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005 --train-days 200 --test-days 40
+
+      - name: Show PIT preliminary assessment
+        if: always()
+        run: |
+          test -f research_results/marcap_pit/summary.json && cat research_results/marcap_pit/summary.json || true
+          test -f research_results/marcap_pit/candidate_comparison.csv && cat research_results/marcap_pit/candidate_comparison.csv || true
+
+      - name: Upload PIT preliminary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-marcap-pit-preliminary
+          path: |
+            research_results/marcap_pit/
+            research_data/marcap_kospi_pit/build_stats.json
+            research_data/marcap_kospi_pit/limitations.json
+            research_data/marcap_kospi_pit/rejected_invalid_bars.parquet
           if-no-files-found: warn
           retention-days: 30
