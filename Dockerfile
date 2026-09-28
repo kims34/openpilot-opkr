@@ -26,6 +26,7 @@ COPY production_v28.py .
 COPY production_v29.py .
 COPY production_v30.py .
 COPY market_basis.py .
+COPY fx_basis.py .
 COPY production_v31.py .
 COPY briefing.py .
 COPY history_routes.py .
