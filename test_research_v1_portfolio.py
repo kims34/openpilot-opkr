@@ -5,6 +5,7 @@ import pytest
 
 from research_v1_core import Bar, economic_outcome
 from research_v1_portfolio import filter_executable_records, simulate_portfolio
+from research_v1_distributional_netev import freeze_original_topk
 
 
 def _panel():
@@ -101,3 +102,18 @@ def test_empty_strategy_can_represent_full_cash_window():
     assert len(path) == 6
     assert summary.total_return == pytest.approx(0.0)
     assert summary.average_cash_weight == pytest.approx(1.0)
+
+
+
+def test_distributional_freezes_original_top3_without_backfill():
+    day = pd.Timestamp("2026-01-02")
+    eligible = pd.DataFrame({
+        "decision_date": [day] * 5,
+        "symbol": ["A", "B", "C", "D", "E"],
+        "score": [5.0, 4.0, 3.0, 2.0, 1.0],
+        "netev_low": [0.5, 0.4, 0.3, 0.2, 0.1],
+    })
+    frozen = freeze_original_topk(eligible, 3)
+    assert frozen["symbol"].tolist() == ["A", "B", "C"]
+    # D/E must not enter the candidate set later if A/B/C are blocked.
+    assert set(frozen["symbol"]).isdisjoint({"D", "E"})
