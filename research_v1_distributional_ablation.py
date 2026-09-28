@@ -40,11 +40,7 @@ FAMILIES = {
 
 def _rank_diagnostics(pred):
     if pred.empty:
-        return {
-            "days": 0,
-            "median_unique_scores_per_day": 0.0,
-            "fraction_days_single_unique_score": 0.0,
-        }
+        return {"days": 0, "median_unique_scores_per_day": 0.0, "fraction_days_single_unique_score": 0.0}
     unique_per_day = pred.groupby("decision_date")["score"].nunique(dropna=True)
     return {
         "days": int(len(unique_per_day)),
@@ -80,7 +76,7 @@ def main():
     raw = load_panel(Path("research_data/marcap_kospi_pit"))
     frame, legacy_map, diag, meta = load_or_build(
         raw,
-        Path("research_data/pit_supervised_v1"),
+        Path("research_data/pit_supervised_v2_ca"),
         horizon=5,
         target_return=0.04,
         stop_return=-0.025,
@@ -93,18 +89,18 @@ def main():
     out_dir = Path("research_results/marcap_pit_distributional_ablation")
     out_dir.mkdir(parents=True, exist_ok=True)
     out = {
+        "evaluation_stage": "PIT_PRELIMINARY_CA_SAFE_FEATURE_FAMILY_ABLATION",
+        "feature_return_policy": "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS",
+        "fixed_horizon_return_policy": "KRX_FLUC_RT_ECONOMIC_INDEX_FROM_ENTRY_OPEN_TO_EXIT_CLOSE",
         "policy": "predeclared_feature_family_ablation_same_purged_walkforward_no_oos_threshold_tuning",
         "selection_policy": "netev_low_gt_0__freeze_original_top3__blocked_slot_stays_empty",
+        "supervised_cache": meta,
+        "label_diagnostics": diag,
         "models": {},
     }
     for name, features in FAMILIES.items():
         pred, _ = distributional_walk_forward(
-            z,
-            train_days=160,
-            cal_days=40,
-            test_days=40,
-            purge_days=5,
-            features=features,
+            z, train_days=160, cal_days=40, test_days=40, purge_days=5, features=features,
         )
         eligible = pred[pred["netev_low"] > 0].copy()
         frozen = freeze_original_topk(eligible, 3)
@@ -125,8 +121,8 @@ def main():
         selected.to_csv(out_dir / f"{name}_selected.csv", index=False)
     out["diagnostic_note"] = (
         "Calibration always conditions residual quantiles on vol20_rank terciles. "
-        "Therefore market_only is market-model features under a fixed stock-specific volatility calibration layer, "
-        "not a mathematically pure identical-score market timing model. Extreme-day tests remove entire decision days."
+        "Market-only therefore remains under a fixed stock-specific volatility-calibration layer. "
+        "Extreme-day tests remove entire decision days."
     )
     (out_dir / "summary.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print("DISTRIBUTIONAL_ABLATION=" + json.dumps(out, ensure_ascii=False), flush=True)
