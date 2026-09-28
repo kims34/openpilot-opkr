@@ -42,10 +42,10 @@ jobs:
         run: |
           mkdir -p /tmp/marcap/data
           for y in 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
-            echo "downloading marcap-$y.csv.gz"
+            echo "downloading marcap-$y.parquet"
             curl -fL --retry 3 --retry-delay 2 \
-              "https://raw.githubusercontent.com/FinanceData/marcap/master/data/marcap-$y.csv.gz" \
-              -o "/tmp/marcap/data/marcap-$y.csv.gz"
+              "https://raw.githubusercontent.com/FinanceData/marcap/master/data/marcap-$y.parquet" \
+              -o "/tmp/marcap/data/marcap-$y.parquet"
           done
           ls -lh /tmp/marcap/data
 
