@@ -269,8 +269,18 @@ def main():
         raise RuntimeError("distributional walk-forward produced no predictions")
 
     eligible = pred[pred["netev_low"] > 0].copy()
+    # Freeze the decision-time ranking before applying stateful executability.
+    # A blocked/held name leaves an empty slot; ranks > top_k must never be
+    # promoted retroactively, otherwise realised portfolio state changes the
+    # candidate set and overstates the executable OOS edge.
+    frozen_topk = (
+        eligible.sort_values(["decision_date", "score"], ascending=[True, False])
+        .groupby("decision_date", group_keys=False)
+        .head(args.top_k)
+        .copy()
+    )
     records, selected, select_diag = stateful_select_records(
-        eligible,
+        frozen_topk,
         fixed_map,
         top_k=args.top_k,
         threshold=0.0,
@@ -303,7 +313,7 @@ def main():
             "primary_target": "next_executable_open_to_Dplus5_close_cost_adjusted_net_return",
             "legacy_barrier_is_primary": False,
             "distribution": "Ridge mean + purged calibration residual q25/q50/q75 conditional on vol20 tercile",
-            "admission": "netev_lower_bound_gt_0__0_to_3",
+            "admission": "netev_lower_bound_gt_0__freeze_original_top3__blocked_slot_stays_empty",
             "final_conformal_guarantee_claimed": False,
         },
         "purge_days": args.horizon,
