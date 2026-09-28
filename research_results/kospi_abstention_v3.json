@@ -1,0 +1,4993 @@
+{
+  "research_version": "indexalert-kospi-abstention-v3",
+  "parent_model": "kospi-clean-logistic-v2",
+  "universe_version": "kospi-common-proxy-v2",
+  "from_date": "2018-01-02",
+  "to_date": "2026-09-25",
+  "trading_days": 2142,
+  "observation_rows": 1330916,
+  "coverages_predeclared": [
+    0.01,
+    0.05,
+    0.1
+  ],
+  "threshold_rule": "per-fold quantile of fitted training scores only; frozen on test",
+  "daily_admission_rule": "probability >= frozen threshold; choose up to 3; zero allowed",
+  "coverage_matched_controls": [
+    "mom20_liq",
+    "rev20_liq"
+  ],
+  "cost_scenarios": {
+    "gross": 0.0,
+    "low_10bp": 0.001,
+    "base_25bp": 0.0025,
+    "stress_50bp": 0.005
+  },
+  "result": {
+    "policies": {
+      "1": {
+        "top_1pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.004907310802721599,
+              "median_trade": -0.010251155947877224,
+              "precision_positive_trade": 0.3897849462365591,
+              "profit_factor": 0.8047521003301776,
+              "mean_trade_day": -0.004929213720208523,
+              "positive_trade_days": 0.38044758539458184,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007826533014000705,
+                -0.0015341477163814665
+              ],
+              "fold_mean_median": -0.005659549670781978,
+              "fold_mean_min": -0.01183508758394306,
+              "fold_mean_max": 0.006945214160913606,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0059073108027216,
+              "median_trade": -0.011251155947877223,
+              "precision_positive_trade": 0.38799283154121866,
+              "profit_factor": 0.7705401765254013,
+              "mean_trade_day": -0.005929213720208523,
+              "positive_trade_days": 0.3710247349823322,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008826533014000706,
+                -0.0025341477163814672
+              ],
+              "fold_mean_median": -0.006659549670781979,
+              "fold_mean_min": -0.012835087583943059,
+              "fold_mean_max": 0.005945214160913605,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0074073108027215995,
+              "median_trade": -0.012751155947877225,
+              "precision_positive_trade": 0.3718637992831541,
+              "profit_factor": 0.7223105570185412,
+              "mean_trade_day": -0.0074292137202085235,
+              "positive_trade_days": 0.3568904593639576,
+              "block_boot_ci95_mean_trade_day": [
+                -0.010326533014000706,
+                -0.004034147716381467
+              ],
+              "fold_mean_median": -0.00815954967078198,
+              "fold_mean_min": -0.01433508758394306,
+              "fold_mean_max": 0.004445214160913605,
+              "positive_folds": 1,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0099073108027216,
+              "median_trade": -0.015251155947877224,
+              "precision_positive_trade": 0.35304659498207885,
+              "profit_factor": 0.6494964045668369,
+              "mean_trade_day": -0.009929213720208524,
+              "positive_trade_days": 0.3380447585394582,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012826533014000706,
+                -0.006534147716381468
+              ],
+              "fold_mean_median": -0.01065954967078198,
+              "fold_mean_min": -0.01683508758394306,
+              "fold_mean_max": 0.0019452141609136052,
+              "positive_folds": 1,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0017912961110890095,
+              "median_trade": -0.005932382337759829,
+              "precision_positive_trade": 0.44713261648745517,
+              "profit_factor": 0.9228037323929977,
+              "mean_trade_day": -0.0012650935414284085,
+              "positive_trade_days": 0.4617196702002356,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004122113379876607,
+                0.001812515002245815
+              ],
+              "fold_mean_median": -0.0014800024699042013,
+              "fold_mean_min": -0.012600149123779573,
+              "fold_mean_max": 0.011471007525048168,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0027912961110890104,
+              "median_trade": -0.00693238233775983,
+              "precision_positive_trade": 0.4444444444444444,
+              "profit_factor": 0.8825105688836865,
+              "mean_trade_day": -0.002265093541428409,
+              "positive_trade_days": 0.45229681978798586,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005122113379876607,
+                0.0008125150022458145
+              ],
+              "fold_mean_median": -0.002480002469904202,
+              "fold_mean_min": -0.013600149123779574,
+              "fold_mean_max": 0.010471007525048167,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.00429129611108901,
+              "median_trade": -0.00843238233775983,
+              "precision_positive_trade": 0.43100358422939067,
+              "profit_factor": 0.8255692988696615,
+              "mean_trade_day": -0.0037650935414284092,
+              "positive_trade_days": 0.43462897526501765,
+              "block_boot_ci95_mean_trade_day": [
+                -0.006622113379876607,
+                -0.0006874849977541858
+              ],
+              "fold_mean_median": -0.003980002469904202,
+              "fold_mean_min": -0.015100149123779575,
+              "fold_mean_max": 0.008971007525048168,
+              "positive_folds": 5,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.00679129611108901,
+              "median_trade": -0.01093238233775983,
+              "precision_positive_trade": 0.40770609318996415,
+              "profit_factor": 0.7393321239220029,
+              "mean_trade_day": -0.006265093541428409,
+              "positive_trade_days": 0.4040047114252061,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009122113379876607,
+                -0.0031874849977541857
+              ],
+              "fold_mean_median": -0.006480002469904201,
+              "fold_mean_min": -0.017600149123779576,
+              "fold_mean_max": 0.006471007525048167,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0007161425241134317,
+              "median_trade": -0.0036877702929363322,
+              "precision_positive_trade": 0.43548387096774194,
+              "profit_factor": 0.9511068840015283,
+              "mean_trade_day": -0.0007607033907377357,
+              "positive_trade_days": 0.45111896348645464,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0027661913935340975,
+                0.0014123270602499868
+              ],
+              "fold_mean_median": -3.397733124957259e-05,
+              "fold_mean_min": -0.0075488592450869965,
+              "fold_mean_max": 0.00540048122346446,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0017161425241134323,
+              "median_trade": -0.004687770292936332,
+              "precision_positive_trade": 0.4336917562724014,
+              "profit_factor": 0.8871850732408112,
+              "mean_trade_day": -0.0017607033907377364,
+              "positive_trade_days": 0.4381625441696113,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0037661913935340984,
+                0.00041232706024998614
+              ],
+              "fold_mean_median": -0.001033977331249573,
+              "fold_mean_min": -0.008548859245086997,
+              "fold_mean_max": 0.004400481223464459,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.0032161425241134323,
+              "median_trade": -0.006187770292936332,
+              "precision_positive_trade": 0.41308243727598565,
+              "profit_factor": 0.7999731889588851,
+              "mean_trade_day": -0.003260703390737736,
+              "positive_trade_days": 0.40636042402826855,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005266191393534098,
+                -0.0010876729397500135
+              ],
+              "fold_mean_median": -0.0025339773312495727,
+              "fold_mean_min": -0.010048859245086996,
+              "fold_mean_max": 0.002900481223464459,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2232,
+              "eligible_days": 876,
+              "trade_days": 849,
+              "coverage_trade_days": 0.9691780821917808,
+              "avg_names_per_trade_day": 2.628975265017668,
+              "mean_trade": -0.005716142524113432,
+              "median_trade": -0.008687770292936332,
+              "precision_positive_trade": 0.3767921146953405,
+              "profit_factor": 0.6750849748801947,
+              "mean_trade_day": -0.005760703390737736,
+              "positive_trade_days": 0.3674911660777385,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007766191393534098,
+                -0.003587672939750013
+              ],
+              "fold_mean_median": -0.005033977331249573,
+              "fold_mean_min": -0.012548859245086997,
+              "fold_mean_max": 0.0004004812234644593,
+              "positive_folds": 1,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_5pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.004777748181808572,
+              "median_trade": -0.008880994671403217,
+              "precision_positive_trade": 0.3939855348306053,
+              "profit_factor": 0.802519022358444,
+              "mean_trade_day": -0.004775531703046918,
+              "positive_trade_days": 0.4006849315068493,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007396990893193073,
+                -0.0018254419564309023
+              ],
+              "fold_mean_median": -0.006337298006912091,
+              "fold_mean_min": -0.008562699908284644,
+              "fold_mean_max": 0.003653205919663488,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.005777748181808572,
+              "median_trade": -0.009880994671403218,
+              "precision_positive_trade": 0.39208222306813856,
+              "profit_factor": 0.7670261494251449,
+              "mean_trade_day": -0.00577553170304692,
+              "positive_trade_days": 0.384703196347032,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008396990893193073,
+                -0.002825441956430903
+              ],
+              "fold_mean_median": -0.0073372980069120915,
+              "fold_mean_min": -0.009562699908284645,
+              "fold_mean_max": 0.002653205919663487,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.007277748181808572,
+              "median_trade": -0.011380994671403218,
+              "precision_positive_trade": 0.37609440426341834,
+              "profit_factor": 0.7170827163916256,
+              "mean_trade_day": -0.00727553170304692,
+              "positive_trade_days": 0.365296803652968,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009896990893193075,
+                -0.004325441956430903
+              ],
+              "fold_mean_median": -0.00883729800691209,
+              "fold_mean_min": -0.011062699908284646,
+              "fold_mean_max": 0.0011532059196634869,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.009777748181808573,
+              "median_trade": -0.013880994671403218,
+              "precision_positive_trade": 0.3555386372287781,
+              "profit_factor": 0.6419314813156121,
+              "mean_trade_day": -0.00977553170304692,
+              "positive_trade_days": 0.3378995433789954,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012396990893193075,
+                -0.006825441956430903
+              ],
+              "fold_mean_median": -0.011337298006912092,
+              "fold_mean_min": -0.013562699908284645,
+              "fold_mean_max": -0.0013467940803365127,
+              "positive_folds": 0,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.0019995416018649347,
+              "median_trade": -0.006521739130434668,
+              "precision_positive_trade": 0.4449942900647126,
+              "profit_factor": 0.9130431091442043,
+              "mean_trade_day": -0.001952526518172782,
+              "positive_trade_days": 0.4634703196347032,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004556702627201358,
+                0.00047469169330216786
+              ],
+              "fold_mean_median": -0.0010924631667774314,
+              "fold_mean_min": -0.01384814725219857,
+              "fold_mean_max": 0.009262372001825678,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.002999541601864935,
+              "median_trade": -0.007521739130434668,
+              "precision_positive_trade": 0.4427103159497526,
+              "profit_factor": 0.872631453711648,
+              "mean_trade_day": -0.0029525265181727825,
+              "positive_trade_days": 0.4531963470319635,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005556702627201359,
+                -0.0005253083066978328
+              ],
+              "fold_mean_median": -0.002092463166777432,
+              "fold_mean_min": -0.01484814725219857,
+              "fold_mean_max": 0.008262372001825677,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.004499541601864936,
+              "median_trade": -0.009021739130434667,
+              "precision_positive_trade": 0.42748382185001904,
+              "profit_factor": 0.8155769099739415,
+              "mean_trade_day": -0.0044525265181727825,
+              "positive_trade_days": 0.4337899543378995,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007056702627201358,
+                -0.0020253083066978333
+              ],
+              "fold_mean_median": -0.003592463166777432,
+              "fold_mean_min": -0.01634814725219857,
+              "fold_mean_max": 0.006762372001825678,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.006999541601864934,
+              "median_trade": -0.011521739130434668,
+              "precision_positive_trade": 0.40464408070041874,
+              "profit_factor": 0.7293025406361243,
+              "mean_trade_day": -0.006952526518172782,
+              "positive_trade_days": 0.3972602739726027,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009556702627201359,
+                -0.0045253083066978325
+              ],
+              "fold_mean_median": -0.0060924631667774315,
+              "fold_mean_min": -0.01884814725219857,
+              "fold_mean_max": 0.004262372001825677,
+              "positive_folds": 2,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.0007648245241745436,
+              "median_trade": -0.00393700787401576,
+              "precision_positive_trade": 0.4309097830224591,
+              "profit_factor": 0.9461147030593541,
+              "mean_trade_day": -0.000763668887430431,
+              "positive_trade_days": 0.4554794520547945,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0027229223903567907,
+                0.0011212179738356338
+              ],
+              "fold_mean_median": -0.00019949196635411128,
+              "fold_mean_min": -0.007965320323131188,
+              "fold_mean_max": 0.004199237422295525,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.001764824524174544,
+              "median_trade": -0.00493700787401576,
+              "precision_positive_trade": 0.4293871336124857,
+              "profit_factor": 0.8804561885301362,
+              "mean_trade_day": -0.0017636688874304316,
+              "positive_trade_days": 0.4349315068493151,
+              "block_boot_ci95_mean_trade_day": [
+                -0.003722922390356791,
+                0.00012121797383563335
+              ],
+              "fold_mean_median": -0.0011994919663541118,
+              "fold_mean_min": -0.008965320323131189,
+              "fold_mean_max": 0.0031992374222955247,
+              "positive_folds": 5,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.0032648245241745436,
+              "median_trade": -0.006437007874015761,
+              "precision_positive_trade": 0.40616673011039206,
+              "profit_factor": 0.7912217849804041,
+              "mean_trade_day": -0.0032636688874304316,
+              "positive_trade_days": 0.3984018264840183,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005222922390356791,
+                -0.0013787820261643665
+              ],
+              "fold_mean_median": -0.0026994919663541114,
+              "fold_mean_min": -0.010465320323131189,
+              "fold_mean_max": 0.0016992374222955244,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2627,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 2.9988584474885847,
+              "mean_trade": -0.005764824524174544,
+              "median_trade": -0.00893700787401576,
+              "precision_positive_trade": 0.36924248191853826,
+              "profit_factor": 0.6642479705277203,
+              "mean_trade_day": -0.005763668887430432,
+              "positive_trade_days": 0.3561643835616438,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007722922390356791,
+                -0.003878782026164366
+              ],
+              "fold_mean_median": -0.005199491966354112,
+              "fold_mean_min": -0.012965320323131187,
+              "fold_mean_max": -0.0008007625777044753,
+              "positive_folds": 0,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_10pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.004772898153014109,
+              "median_trade": -0.008841905786405858,
+              "precision_positive_trade": 0.3942161339421613,
+              "profit_factor": 0.8026443936829486,
+              "mean_trade_day": -0.004772898153014109,
+              "positive_trade_days": 0.4006849315068493,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007394357343160264,
+                -0.0018201748563652811
+              ],
+              "fold_mean_median": -0.006337298006912091,
+              "fold_mean_min": -0.008562699908284644,
+              "fold_mean_max": 0.003653205919663488,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0057728981530141095,
+              "median_trade": -0.009841905786405857,
+              "precision_positive_trade": 0.3923135464231355,
+              "profit_factor": 0.7671331052849653,
+              "mean_trade_day": -0.005772898153014109,
+              "positive_trade_days": 0.384703196347032,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008394357343160264,
+                -0.002820174856365282
+              ],
+              "fold_mean_median": -0.0073372980069120915,
+              "fold_mean_min": -0.009562699908284645,
+              "fold_mean_max": 0.002653205919663487,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.007272898153014109,
+              "median_trade": -0.011341905786405856,
+              "precision_positive_trade": 0.3763318112633181,
+              "profit_factor": 0.7171636336228676,
+              "mean_trade_day": -0.007272898153014109,
+              "positive_trade_days": 0.3664383561643836,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009894357343160264,
+                -0.004320174856365282
+              ],
+              "fold_mean_median": -0.00883729800691209,
+              "fold_mean_min": -0.011062699908284646,
+              "fold_mean_max": 0.0011532059196634869,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.009772898153014109,
+              "median_trade": -0.013841905786405857,
+              "precision_positive_trade": 0.3557838660578387,
+              "profit_factor": 0.6419728574362953,
+              "mean_trade_day": -0.009772898153014109,
+              "positive_trade_days": 0.3378995433789954,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012394357343160264,
+                -0.006820174856365282
+              ],
+              "fold_mean_median": -0.011337298006912092,
+              "fold_mean_min": -0.013562699908284645,
+              "fold_mean_max": -0.0013467940803365127,
+              "positive_folds": 0,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.001982876758928656,
+              "median_trade": -0.006507622811970518,
+              "precision_positive_trade": 0.4452054794520548,
+              "profit_factor": 0.9137350113771208,
+              "mean_trade_day": -0.001982876758928656,
+              "positive_trade_days": 0.4634703196347032,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004617403108713105,
+                0.00047469169330216786
+              ],
+              "fold_mean_median": -0.0010924631667774314,
+              "fold_mean_min": -0.01384814725219857,
+              "fold_mean_max": 0.009262372001825678,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0029828767589286567,
+              "median_trade": -0.007507622811970518,
+              "precision_positive_trade": 0.4429223744292237,
+              "profit_factor": 0.8732908724030057,
+              "mean_trade_day": -0.0029828767589286567,
+              "positive_trade_days": 0.4531963470319635,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005617403108713106,
+                -0.0005253083066978328
+              ],
+              "fold_mean_median": -0.002092463166777432,
+              "fold_mean_min": -0.01484814725219857,
+              "fold_mean_max": 0.008262372001825677,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.004482876758928657,
+              "median_trade": -0.009007622811970518,
+              "precision_positive_trade": 0.4277016742770167,
+              "profit_factor": 0.8161900103743793,
+              "mean_trade_day": -0.004482876758928657,
+              "positive_trade_days": 0.4337899543378995,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007117403108713107,
+                -0.0020253083066978333
+              ],
+              "fold_mean_median": -0.003592463166777432,
+              "fold_mean_min": -0.01634814725219857,
+              "fold_mean_max": 0.006762372001825678,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.006982876758928656,
+              "median_trade": -0.011507622811970517,
+              "precision_positive_trade": 0.4048706240487062,
+              "profit_factor": 0.7298442310767673,
+              "mean_trade_day": -0.006982876758928657,
+              "positive_trade_days": 0.3972602739726027,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009617403108713106,
+                -0.0045253083066978325
+              ],
+              "fold_mean_median": -0.0060924631667774315,
+              "fold_mean_min": -0.01884814725219857,
+              "fold_mean_max": 0.004262372001825677,
+              "positive_folds": 2,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0007726855632091492,
+              "median_trade": -0.003938115642128864,
+              "precision_positive_trade": 0.4307458143074581,
+              "profit_factor": 0.9455714078235227,
+              "mean_trade_day": -0.0007726855632091492,
+              "positive_trade_days": 0.454337899543379,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0027477137398377576,
+                0.0011031846222781976
+              ],
+              "fold_mean_median": -0.00020497111525998146,
+              "fold_mean_min": -0.007965320323131188,
+              "fold_mean_max": 0.004199237422295525,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0017726855632091499,
+              "median_trade": -0.004938115642128864,
+              "precision_positive_trade": 0.4292237442922374,
+              "profit_factor": 0.8799474106389031,
+              "mean_trade_day": -0.0017726855632091496,
+              "positive_trade_days": 0.4337899543378995,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0037477137398377576,
+                0.000103184622278197
+              ],
+              "fold_mean_median": -0.0012049711152599819,
+              "fold_mean_min": -0.008965320323131189,
+              "fold_mean_max": 0.0031992374222955247,
+              "positive_folds": 5,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0032726855632091495,
+              "median_trade": -0.006438115642128864,
+              "precision_positive_trade": 0.4060121765601218,
+              "profit_factor": 0.7907612762937053,
+              "mean_trade_day": -0.0032726855632091495,
+              "positive_trade_days": 0.3984018264840183,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005247713739837758,
+                -0.0013968153777218029
+              ],
+              "fold_mean_median": -0.0027049711152599817,
+              "fold_mean_min": -0.010465320323131189,
+              "fold_mean_max": 0.0016992374222955244,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2628,
+              "eligible_days": 876,
+              "trade_days": 876,
+              "coverage_trade_days": 1.0,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.005772685563209149,
+              "median_trade": -0.008938115642128864,
+              "precision_positive_trade": 0.3691019786910198,
+              "profit_factor": 0.6638590678471858,
+              "mean_trade_day": -0.005772685563209149,
+              "positive_trade_days": 0.3561643835616438,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007747713739837758,
+                -0.0038968153777218027
+              ],
+              "fold_mean_median": -0.005204971115259981,
+              "fold_mean_min": -0.012965320323131187,
+              "fold_mean_max": -0.0008007625777044753,
+              "positive_folds": 0,
+              "fold_count": 14
+            }
+          }
+        }
+      },
+      "2": {
+        "top_1pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.007627181197924754,
+              "median_trade": -0.014414169263415516,
+              "precision_positive_trade": 0.3938679245283019,
+              "profit_factor": 0.7885514436279814,
+              "mean_trade_day": -0.007401082258255977,
+              "positive_trade_days": 0.37841043890865955,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012786291438221192,
+                -0.0011058204941179017
+              ],
+              "fold_mean_median": -0.00944409624223007,
+              "fold_mean_min": -0.024502756301908016,
+              "fold_mean_max": 0.008853528224863709,
+              "positive_folds": 4,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.008627181197924754,
+              "median_trade": -0.015414169263415515,
+              "precision_positive_trade": 0.389622641509434,
+              "profit_factor": 0.7648034184852012,
+              "mean_trade_day": -0.008401082258255978,
+              "positive_trade_days": 0.3736654804270463,
+              "block_boot_ci95_mean_trade_day": [
+                -0.013786291438221193,
+                -0.0021058204941179024
+              ],
+              "fold_mean_median": -0.010444096242230071,
+              "fold_mean_min": -0.02550275630190802,
+              "fold_mean_max": 0.007853528224863708,
+              "positive_folds": 4,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.010127181197924755,
+              "median_trade": -0.01691416926341552,
+              "precision_positive_trade": 0.3759433962264151,
+              "profit_factor": 0.7307055419581794,
+              "mean_trade_day": -0.009901082258255978,
+              "positive_trade_days": 0.365361803084223,
+              "block_boot_ci95_mean_trade_day": [
+                -0.015286291438221194,
+                -0.0036058204941179033
+              ],
+              "fold_mean_median": -0.011944096242230074,
+              "fold_mean_min": -0.02700275630190802,
+              "fold_mean_max": 0.006353528224863708,
+              "positive_folds": 3,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.012627181197924756,
+              "median_trade": -0.019414169263415514,
+              "precision_positive_trade": 0.3599056603773585,
+              "profit_factor": 0.6777443969535593,
+              "mean_trade_day": -0.012401082258255978,
+              "positive_trade_days": 0.3475682087781732,
+              "block_boot_ci95_mean_trade_day": [
+                -0.017786291438221195,
+                -0.006105820494117903
+              ],
+              "fold_mean_median": -0.014444096242230073,
+              "fold_mean_min": -0.02950275630190802,
+              "fold_mean_max": 0.003853528224863707,
+              "positive_folds": 3,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.0013599330675064883,
+              "median_trade": -0.00989308280270399,
+              "precision_positive_trade": 0.4367924528301887,
+              "profit_factor": 0.959729604665583,
+              "mean_trade_day": -6.836731114012588e-05,
+              "positive_trade_days": 0.4531435349940688,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005657587579864379,
+                0.005761714247780357
+              ],
+              "fold_mean_median": 0.0043086307669701045,
+              "fold_mean_min": -0.030768317017059725,
+              "fold_mean_max": 0.027673573901972094,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.002359933067506489,
+              "median_trade": -0.01089308280270399,
+              "precision_positive_trade": 0.43113207547169813,
+              "profit_factor": 0.9312736872866545,
+              "mean_trade_day": -0.0010683673111401267,
+              "positive_trade_days": 0.4472123368920522,
+              "block_boot_ci95_mean_trade_day": [
+                -0.00665758757986438,
+                0.004761714247780356
+              ],
+              "fold_mean_median": 0.003308630766970104,
+              "fold_mean_min": -0.031768317017059726,
+              "fold_mean_max": 0.026673573901972093,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.00385993306750649,
+              "median_trade": -0.01239308280270399,
+              "precision_positive_trade": 0.4226415094339623,
+              "profit_factor": 0.8903404982519539,
+              "mean_trade_day": -0.002568367311140127,
+              "positive_trade_days": 0.4424673784104389,
+              "block_boot_ci95_mean_trade_day": [
+                -0.00815758757986438,
+                0.0032617142477803563
+              ],
+              "fold_mean_median": 0.001808630766970103,
+              "fold_mean_min": -0.03326831701705973,
+              "fold_mean_max": 0.025173573901972092,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.006359933067506489,
+              "median_trade": -0.01489308280270399,
+              "precision_positive_trade": 0.4108490566037736,
+              "profit_factor": 0.8265076944919323,
+              "mean_trade_day": -0.0050683673111401265,
+              "positive_trade_days": 0.431791221826809,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01065758757986438,
+                0.0007617142477803562
+              ],
+              "fold_mean_median": -0.0006913692330298966,
+              "fold_mean_min": -0.03576831701705972,
+              "fold_mean_max": 0.02267357390197209,
+              "positive_folds": 7,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -6.43879661455067e-05,
+              "median_trade": -0.0042613259018648465,
+              "precision_positive_trade": 0.45990566037735847,
+              "profit_factor": 0.9971528630825214,
+              "mean_trade_day": -0.00014598813344024068,
+              "positive_trade_days": 0.4626334519572954,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004336369688968456,
+                0.0043310858581407045
+              ],
+              "fold_mean_median": 0.0001402223126244069,
+              "fold_mean_min": -0.01714498911420523,
+              "fold_mean_max": 0.011661533795342413,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.0010643879661455073,
+              "median_trade": -0.005261325901864846,
+              "precision_positive_trade": 0.4542452830188679,
+              "profit_factor": 0.9540404295825297,
+              "mean_trade_day": -0.0011459881334402414,
+              "positive_trade_days": 0.45195729537366547,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005336369688968457,
+                0.003331085858140703
+              ],
+              "fold_mean_median": -0.0008597776873755937,
+              "fold_mean_min": -0.01814498911420523,
+              "fold_mean_max": 0.010661533795342413,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.002564387966145508,
+              "median_trade": -0.006761325901864846,
+              "precision_positive_trade": 0.435377358490566,
+              "profit_factor": 0.8931154902414858,
+              "mean_trade_day": -0.0026459881334402412,
+              "positive_trade_days": 0.4389086595492289,
+              "block_boot_ci95_mean_trade_day": [
+                -0.006836369688968457,
+                0.0018310858581407031
+              ],
+              "fold_mean_median": -0.0023597776873755935,
+              "fold_mean_min": -0.01964498911420523,
+              "fold_mean_max": 0.009161533795342413,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2120,
+              "eligible_days": 876,
+              "trade_days": 843,
+              "coverage_trade_days": 0.9623287671232876,
+              "avg_names_per_trade_day": 2.5148279952550414,
+              "mean_trade": -0.005064387966145507,
+              "median_trade": -0.009261325901864846,
+              "precision_positive_trade": 0.4212264150943396,
+              "profit_factor": 0.8007956415589249,
+              "mean_trade_day": -0.00514598813344024,
+              "positive_trade_days": 0.41162514827995256,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009336369688968456,
+                -0.0006689141418592966
+              ],
+              "fold_mean_median": -0.004859777687375593,
+              "fold_mean_min": -0.02214498911420523,
+              "fold_mean_max": 0.006661533795342412,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_5pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.006753375441031451,
+              "median_trade": -0.013698061055623573,
+              "precision_positive_trade": 0.38952599388379205,
+              "profit_factor": 0.801917403922056,
+              "mean_trade_day": -0.006787948034558091,
+              "positive_trade_days": 0.38742857142857146,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011081833847539331,
+                -0.0019341292321002678
+              ],
+              "fold_mean_median": -0.0053734839671296135,
+              "fold_mean_min": -0.02372696084012686,
+              "fold_mean_max": 0.006922652321839638,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.007753375441031452,
+              "median_trade": -0.014698061055623572,
+              "precision_positive_trade": 0.3845565749235474,
+              "profit_factor": 0.7766123919058114,
+              "mean_trade_day": -0.007787948034558092,
+              "positive_trade_days": 0.3782857142857143,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01208183384753933,
+                -0.002934129232100269
+              ],
+              "fold_mean_median": -0.006373483967129615,
+              "fold_mean_min": -0.02472696084012686,
+              "fold_mean_max": 0.005922652321839638,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.009253375441031452,
+              "median_trade": -0.01619806105562357,
+              "precision_positive_trade": 0.37232415902140675,
+              "profit_factor": 0.7403672352138891,
+              "mean_trade_day": -0.009287948034558093,
+              "positive_trade_days": 0.36914285714285716,
+              "block_boot_ci95_mean_trade_day": [
+                -0.013581833847539332,
+                -0.004434129232100269
+              ],
+              "fold_mean_median": -0.007873483967129613,
+              "fold_mean_min": -0.02622696084012686,
+              "fold_mean_max": 0.004422652321839639,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.011753375441031453,
+              "median_trade": -0.01869806105562357,
+              "precision_positive_trade": 0.3570336391437309,
+              "profit_factor": 0.6842775003349476,
+              "mean_trade_day": -0.011787948034558092,
+              "positive_trade_days": 0.3485714285714286,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01608183384753933,
+                -0.006934129232100269
+              ],
+              "fold_mean_median": -0.010373483967129615,
+              "fold_mean_min": -0.02872696084012686,
+              "fold_mean_max": 0.001922652321839637,
+              "positive_folds": 1,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.0016148670438497833,
+              "median_trade": -0.009813663658264724,
+              "precision_positive_trade": 0.43654434250764523,
+              "profit_factor": 0.9515648221830565,
+              "mean_trade_day": -0.0015880001369177111,
+              "positive_trade_days": 0.448,
+              "block_boot_ci95_mean_trade_day": [
+                -0.006391041650525027,
+                0.0035150516653538314
+              ],
+              "fold_mean_median": 0.001092298134045979,
+              "fold_mean_min": -0.025586631324722213,
+              "fold_mean_max": 0.023871129628592,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.002614867043849784,
+              "median_trade": -0.010813663658264723,
+              "precision_positive_trade": 0.4315749235474006,
+              "profit_factor": 0.9228847785577822,
+              "mean_trade_day": -0.0025880001369177116,
+              "positive_trade_days": 0.4377142857142857,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007391041650525028,
+                0.0025150516653538305
+              ],
+              "fold_mean_median": 9.229813404597852e-05,
+              "fold_mean_min": -0.026586631324722214,
+              "fold_mean_max": 0.022871129628591995,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.004114867043849784,
+              "median_trade": -0.012313663658264725,
+              "precision_positive_trade": 0.4235474006116208,
+              "profit_factor": 0.8816480564389098,
+              "mean_trade_day": -0.004088000136917712,
+              "positive_trade_days": 0.42742857142857144,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008891041650525029,
+                0.0010150516653538303
+              ],
+              "fold_mean_median": -0.0014077018659540217,
+              "fold_mean_min": -0.028086631324722215,
+              "fold_mean_max": 0.021371129628591994,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.006614867043849785,
+              "median_trade": -0.014813663658264723,
+              "precision_positive_trade": 0.4101681957186544,
+              "profit_factor": 0.8174099124546349,
+              "mean_trade_day": -0.0065880001369177125,
+              "positive_trade_days": 0.4114285714285714,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011391041650525027,
+                -0.0014849483346461693
+              ],
+              "fold_mean_median": -0.0039077018659540224,
+              "fold_mean_min": -0.030586631324722214,
+              "fold_mean_max": 0.018871129628591995,
+              "positive_folds": 2,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": 0.0008598774570943767,
+              "median_trade": -0.003945841198916964,
+              "precision_positive_trade": 0.46062691131498473,
+              "profit_factor": 1.0406757688023813,
+              "mean_trade_day": 0.0008407221425629117,
+              "positive_trade_days": 0.4742857142857143,
+              "block_boot_ci95_mean_trade_day": [
+                -0.003135695259375653,
+                0.004602487838571935
+              ],
+              "fold_mean_median": 0.0017572127860696805,
+              "fold_mean_min": -0.015832611843101103,
+              "fold_mean_max": 0.010076755339283445,
+              "positive_folds": 9,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.00014012254290562392,
+              "median_trade": -0.004945841198916964,
+              "precision_positive_trade": 0.4552752293577982,
+              "profit_factor": 0.9935376676954477,
+              "mean_trade_day": -0.00015927785743708895,
+              "positive_trade_days": 0.46514285714285714,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004135695259375653,
+                0.003602487838571934
+              ],
+              "fold_mean_median": 0.0007572127860696796,
+              "fold_mean_min": -0.016832611843101104,
+              "fold_mean_max": 0.009076755339283444,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.001640122542905624,
+              "median_trade": -0.0064458411989169635,
+              "precision_positive_trade": 0.43577981651376146,
+              "profit_factor": 0.9271554402390944,
+              "mean_trade_day": -0.0016592778574370892,
+              "positive_trade_days": 0.45485714285714285,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005635695259375653,
+                0.002102487838571934
+              ],
+              "fold_mean_median": -0.0007427872139303203,
+              "fold_mean_min": -0.0183326118431011,
+              "fold_mean_max": 0.0075767553392834435,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2616,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 2.9897142857142858,
+              "mean_trade": -0.004140122542905624,
+              "median_trade": -0.008945841198916964,
+              "precision_positive_trade": 0.42010703363914376,
+              "profit_factor": 0.8271131952680498,
+              "mean_trade_day": -0.004159277857437089,
+              "positive_trade_days": 0.42628571428571427,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008135695259375653,
+                -0.000397512161428066
+              ],
+              "fold_mean_median": -0.00324278721393032,
+              "fold_mean_min": -0.0208326118431011,
+              "fold_mean_max": 0.005076755339283445,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_10pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.006667633733582251,
+              "median_trade": -0.013683778234086346,
+              "precision_positive_trade": 0.3900952380952381,
+              "profit_factor": 0.8041991951013487,
+              "mean_trade_day": -0.006667633733582251,
+              "positive_trade_days": 0.3862857142857143,
+              "block_boot_ci95_mean_trade_day": [
+                -0.010905798061084233,
+                -0.0019088071860318039
+              ],
+              "fold_mean_median": -0.0053734839671296135,
+              "fold_mean_min": -0.02372696084012686,
+              "fold_mean_max": 0.006922652321839638,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.007667633733582251,
+              "median_trade": -0.014683778234086346,
+              "precision_positive_trade": 0.3851428571428571,
+              "profit_factor": 0.77882039724735,
+              "mean_trade_day": -0.0076676337335822515,
+              "positive_trade_days": 0.37714285714285717,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011905798061084232,
+                -0.0029088071860318043
+              ],
+              "fold_mean_median": -0.006373483967129615,
+              "fold_mean_min": -0.02472696084012686,
+              "fold_mean_max": 0.005922652321839638,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.009167633733582252,
+              "median_trade": -0.016183778234086347,
+              "precision_positive_trade": 0.372952380952381,
+              "profit_factor": 0.7424689297129494,
+              "mean_trade_day": -0.009167633733582252,
+              "positive_trade_days": 0.368,
+              "block_boot_ci95_mean_trade_day": [
+                -0.013405798061084233,
+                -0.004408807186031804
+              ],
+              "fold_mean_median": -0.007873483967129613,
+              "fold_mean_min": -0.02622696084012686,
+              "fold_mean_max": 0.004422652321839639,
+              "positive_folds": 2,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.011667633733582252,
+              "median_trade": -0.018683778234086346,
+              "precision_positive_trade": 0.35733333333333334,
+              "profit_factor": 0.6862154985514143,
+              "mean_trade_day": -0.011667633733582252,
+              "positive_trade_days": 0.3474285714285714,
+              "block_boot_ci95_mean_trade_day": [
+                -0.015905798061084234,
+                -0.006908807186031805
+              ],
+              "fold_mean_median": -0.010373483967129615,
+              "fold_mean_min": -0.02872696084012686,
+              "fold_mean_max": 0.001922652321839637,
+              "positive_folds": 1,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.001653915912282539,
+              "median_trade": -0.009866593886462938,
+              "precision_positive_trade": 0.4358095238095238,
+              "profit_factor": 0.9503238555845587,
+              "mean_trade_day": -0.0016539159122825392,
+              "positive_trade_days": 0.448,
+              "block_boot_ci95_mean_trade_day": [
+                -0.006391785080339431,
+                0.0033626416437964432
+              ],
+              "fold_mean_median": 0.0008963099084512612,
+              "fold_mean_min": -0.025586631324722213,
+              "fold_mean_max": 0.023871129628592,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0026539159122825396,
+              "median_trade": -0.010866593886462939,
+              "precision_positive_trade": 0.4308571428571429,
+              "profit_factor": 0.9216266294406218,
+              "mean_trade_day": -0.00265391591228254,
+              "positive_trade_days": 0.4377142857142857,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007391785080339432,
+                0.0023626416437964428
+              ],
+              "fold_mean_median": -0.00010369009154873922,
+              "fold_mean_min": -0.026586631324722214,
+              "fold_mean_max": 0.022871129628591995,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0041539159122825405,
+              "median_trade": -0.012366593886462938,
+              "precision_positive_trade": 0.4228571428571429,
+              "profit_factor": 0.8803699273619542,
+              "mean_trade_day": -0.0041539159122825405,
+              "positive_trade_days": 0.42742857142857144,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008891785080339432,
+                0.0008626416437964421
+              ],
+              "fold_mean_median": -0.0016036900915487396,
+              "fold_mean_min": -0.028086631324722215,
+              "fold_mean_max": 0.021371129628591994,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.00665391591228254,
+              "median_trade": -0.014866593886462939,
+              "precision_positive_trade": 0.4095238095238095,
+              "profit_factor": 0.8161118177215599,
+              "mean_trade_day": -0.00665391591228254,
+              "positive_trade_days": 0.4114285714285714,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011391785080339431,
+                -0.0016373583562035578
+              ],
+              "fold_mean_median": -0.004103690091548739,
+              "fold_mean_min": -0.030586631324722214,
+              "fold_mean_max": 0.018871129628591995,
+              "positive_folds": 3,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": 0.0008293044428709175,
+              "median_trade": -0.0039682539682539915,
+              "precision_positive_trade": 0.4601904761904762,
+              "profit_factor": 1.0392049575063609,
+              "mean_trade_day": 0.0008293044428709177,
+              "positive_trade_days": 0.472,
+              "block_boot_ci95_mean_trade_day": [
+                -0.003138116441321214,
+                0.004588307884527153
+              ],
+              "fold_mean_median": 0.0016517685292712166,
+              "fold_mean_min": -0.015832611843101103,
+              "fold_mean_max": 0.010076755339283445,
+              "positive_folds": 9,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.00017069555712908308,
+              "median_trade": -0.0049682539682539915,
+              "precision_positive_trade": 0.45485714285714285,
+              "profit_factor": 0.9921326291193397,
+              "mean_trade_day": -0.0001706955571290831,
+              "positive_trade_days": 0.46285714285714286,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004138116441321215,
+                0.0035883078845271527
+              ],
+              "fold_mean_median": 0.0006517685292712157,
+              "fold_mean_min": -0.016832611843101104,
+              "fold_mean_max": 0.009076755339283444,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0016706955571290831,
+              "median_trade": -0.006468253968253991,
+              "precision_positive_trade": 0.43542857142857144,
+              "profit_factor": 0.9258445083588972,
+              "mean_trade_day": -0.0016706955571290834,
+              "positive_trade_days": 0.45371428571428574,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005638116441321215,
+                0.0020883078845271522
+              ],
+              "fold_mean_median": -0.0008482314707287841,
+              "fold_mean_min": -0.0183326118431011,
+              "fold_mean_max": 0.0075767553392834435,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2625,
+              "eligible_days": 876,
+              "trade_days": 875,
+              "coverage_trade_days": 0.9988584474885844,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.004170695557129084,
+              "median_trade": -0.008968253968253992,
+              "precision_positive_trade": 0.4198095238095238,
+              "profit_factor": 0.8259459484083209,
+              "mean_trade_day": -0.004170695557129084,
+              "positive_trade_days": 0.42514285714285716,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008138116441321215,
+                -0.00041169211547284744
+              ],
+              "fold_mean_median": -0.003348231470728784,
+              "fold_mean_min": -0.0208326118431011,
+              "fold_mean_max": 0.005076755339283445,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          }
+        }
+      },
+      "3": {
+        "top_1pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.007408619195406731,
+              "median_trade": -0.019051022578938627,
+              "precision_positive_trade": 0.3812741312741313,
+              "profit_factor": 0.8269471658269216,
+              "mean_trade_day": -0.006907900648593392,
+              "positive_trade_days": 0.39618138424821003,
+              "block_boot_ci95_mean_trade_day": [
+                -0.014447022432201374,
+                0.002089588131833953
+              ],
+              "fold_mean_median": -0.004850315311041095,
+              "fold_mean_min": -0.043504508308181526,
+              "fold_mean_max": 0.016709796971584995,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.008408619195406732,
+              "median_trade": -0.020051022578938628,
+              "precision_positive_trade": 0.37258687258687256,
+              "profit_factor": 0.8064211320784015,
+              "mean_trade_day": -0.007907900648593393,
+              "positive_trade_days": 0.38782816229116945,
+              "block_boot_ci95_mean_trade_day": [
+                -0.015447022432201375,
+                0.0010895881318339522
+              ],
+              "fold_mean_median": -0.005850315311041096,
+              "fold_mean_min": -0.044504508308181534,
+              "fold_mean_max": 0.015709796971584995,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.009908619195406731,
+              "median_trade": -0.021551022578938626,
+              "precision_positive_trade": 0.3667953667953668,
+              "profit_factor": 0.7767465453337495,
+              "mean_trade_day": -0.009407900648593393,
+              "positive_trade_days": 0.38066825775656327,
+              "block_boot_ci95_mean_trade_day": [
+                -0.016947022432201378,
+                -0.0004104118681660474
+              ],
+              "fold_mean_median": -0.007350315311041097,
+              "fold_mean_min": -0.046004508308181535,
+              "fold_mean_max": 0.014209796971584995,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.012408619195406732,
+              "median_trade": -0.024051022578938628,
+              "precision_positive_trade": 0.3532818532818533,
+              "profit_factor": 0.7301288760489647,
+              "mean_trade_day": -0.011907900648593395,
+              "positive_trade_days": 0.36515513126491644,
+              "block_boot_ci95_mean_trade_day": [
+                -0.019447022432201377,
+                -0.002910411868166048
+              ],
+              "fold_mean_median": -0.009850315311041098,
+              "fold_mean_min": -0.04850450830818154,
+              "fold_mean_max": 0.011709796971584994,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.001483472926597369,
+              "median_trade": -0.012456483439838122,
+              "precision_positive_trade": 0.4377413127413127,
+              "profit_factor": 0.964236023380947,
+              "mean_trade_day": 0.0004427685193154636,
+              "positive_trade_days": 0.4522673031026253,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007248041282219725,
+                0.00817048448159379
+              ],
+              "fold_mean_median": 0.004058894504246534,
+              "fold_mean_min": -0.03905177068067331,
+              "fold_mean_max": 0.03689614520202535,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.0024834729265973696,
+              "median_trade": -0.013456483439838123,
+              "precision_positive_trade": 0.4329150579150579,
+              "profit_factor": 0.9409327647551614,
+              "mean_trade_day": -0.0005572314806845369,
+              "positive_trade_days": 0.44749403341288785,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008248041282219726,
+                0.0071704844815937896
+              ],
+              "fold_mean_median": 0.003058894504246533,
+              "fold_mean_min": -0.0400517706806733,
+              "fold_mean_max": 0.035896145202025345,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.00398347292659737,
+              "median_trade": -0.014956483439838122,
+              "precision_positive_trade": 0.4276061776061776,
+              "profit_factor": 0.907141419247581,
+              "mean_trade_day": -0.002057231480684538,
+              "positive_trade_days": 0.4451073985680191,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009748041282219727,
+                0.005670484481593788
+              ],
+              "fold_mean_median": 0.0015588945042465325,
+              "fold_mean_min": -0.04155177068067331,
+              "fold_mean_max": 0.034396145202025344,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.0064834729265973706,
+              "median_trade": -0.017456483439838123,
+              "precision_positive_trade": 0.416988416988417,
+              "profit_factor": 0.8537823268606871,
+              "mean_trade_day": -0.004557231480684538,
+              "positive_trade_days": 0.431980906921241,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012248041282219728,
+                0.0031704844815937877
+              ],
+              "fold_mean_median": -0.000941105495753468,
+              "fold_mean_min": -0.044051770680673306,
+              "fold_mean_max": 0.03189614520202535,
+              "positive_folds": 6,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": 0.001170533321092662,
+              "median_trade": -0.005552184657278431,
+              "precision_positive_trade": 0.45366795366795365,
+              "profit_factor": 1.0420717494650595,
+              "mean_trade_day": 0.0012505412261842167,
+              "positive_trade_days": 0.47613365155131265,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0043957758245106865,
+                0.008057028615491233
+              ],
+              "fold_mean_median": 0.004411132036163819,
+              "fold_mean_min": -0.026231655823342262,
+              "fold_mean_max": 0.020645822786016677,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": 0.0001705333210926614,
+              "median_trade": -0.00655218465727843,
+              "precision_positive_trade": 0.44594594594594594,
+              "profit_factor": 1.006010090641339,
+              "mean_trade_day": 0.00025054122618421606,
+              "positive_trade_days": 0.4594272076372315,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0053957758245106865,
+                0.0070570286154912325
+              ],
+              "fold_mean_median": 0.003411132036163819,
+              "fold_mean_min": -0.027231655823342263,
+              "fold_mean_max": 0.01964582278601668,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.0013294666789073386,
+              "median_trade": -0.00805218465727843,
+              "precision_positive_trade": 0.43194980694980695,
+              "profit_factor": 0.9544934933112047,
+              "mean_trade_day": -0.0012494587738157838,
+              "positive_trade_days": 0.4439140811455847,
+              "block_boot_ci95_mean_trade_day": [
+                -0.006895775824510686,
+                0.005557028615491233
+              ],
+              "fold_mean_median": 0.0019111320361638194,
+              "fold_mean_min": -0.028731655823342264,
+              "fold_mean_max": 0.018145822786016678,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2072,
+              "eligible_days": 876,
+              "trade_days": 838,
+              "coverage_trade_days": 0.95662100456621,
+              "avg_names_per_trade_day": 2.4725536992840094,
+              "mean_trade": -0.003829466678907339,
+              "median_trade": -0.010552184657278432,
+              "precision_positive_trade": 0.4140926640926641,
+              "profit_factor": 0.8750837358325433,
+              "mean_trade_day": -0.0037494587738157842,
+              "positive_trade_days": 0.4200477326968974,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009395775824510687,
+                0.0030570286154912325
+              ],
+              "fold_mean_median": -0.000588867963836181,
+              "fold_mean_min": -0.031231655823342263,
+              "fold_mean_max": 0.015645822786016676,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_5pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.006219136585111113,
+              "median_trade": -0.017179453901892558,
+              "precision_positive_trade": 0.3873076923076923,
+              "profit_factor": 0.8460840315436255,
+              "mean_trade_day": -0.005896214608713606,
+              "positive_trade_days": 0.39588100686498856,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012324466599144114,
+                0.0011894843136371098
+              ],
+              "fold_mean_median": 0.00041576596533773836,
+              "fold_mean_min": -0.04240673601327602,
+              "fold_mean_max": 0.010705953556244345,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.007219136585111113,
+              "median_trade": -0.01817945390189256,
+              "precision_positive_trade": 0.37961538461538463,
+              "profit_factor": 0.824033209209563,
+              "mean_trade_day": -0.006896214608713607,
+              "positive_trade_days": 0.3890160183066362,
+              "block_boot_ci95_mean_trade_day": [
+                -0.013324466599144115,
+                0.000189484313637109
+              ],
+              "fold_mean_median": -0.0005842340346622623,
+              "fold_mean_min": -0.04340673601327602,
+              "fold_mean_max": 0.009705953556244344,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.008719136585111115,
+              "median_trade": -0.01967945390189256,
+              "precision_positive_trade": 0.3730769230769231,
+              "profit_factor": 0.7922084319003424,
+              "mean_trade_day": -0.008396214608713606,
+              "positive_trade_days": 0.37986270022883295,
+              "block_boot_ci95_mean_trade_day": [
+                -0.014824466599144114,
+                -0.001310515686362891
+              ],
+              "fold_mean_median": -0.002084234034662263,
+              "fold_mean_min": -0.04490673601327602,
+              "fold_mean_max": 0.008205953556244342,
+              "positive_folds": 5,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.011219136585111115,
+              "median_trade": -0.022179453901892562,
+              "precision_positive_trade": 0.36038461538461536,
+              "profit_factor": 0.7423412591458989,
+              "mean_trade_day": -0.010896214608713609,
+              "positive_trade_days": 0.36384439359267734,
+              "block_boot_ci95_mean_trade_day": [
+                -0.017324466599144116,
+                -0.003810515686362892
+              ],
+              "fold_mean_median": -0.004584234034662264,
+              "fold_mean_min": -0.047406736013276024,
+              "fold_mean_max": 0.005705953556244341,
+              "positive_folds": 2,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.0003820902400742121,
+              "median_trade": -0.011666103813861083,
+              "precision_positive_trade": 0.44153846153846155,
+              "profit_factor": 0.9905502834321162,
+              "mean_trade_day": -0.00015774907932454376,
+              "positive_trade_days": 0.4610983981693364,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007221793391030833,
+                0.007068981830776027
+              ],
+              "fold_mean_median": 0.004009717731400034,
+              "fold_mean_min": -0.038652657449978076,
+              "fold_mean_max": 0.03161638735045587,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.0013820902400742128,
+              "median_trade": -0.012666103813861084,
+              "precision_positive_trade": 0.4373076923076923,
+              "profit_factor": 0.9662866243563896,
+              "mean_trade_day": -0.0011577490793245443,
+              "positive_trade_days": 0.45423340961098396,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008221793391030834,
+                0.006068981830776027
+              ],
+              "fold_mean_median": 0.0030097177314000333,
+              "fold_mean_min": -0.03965265744997807,
+              "fold_mean_max": 0.030616387350455868,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.0028820902400742135,
+              "median_trade": -0.014166103813861084,
+              "precision_positive_trade": 0.43115384615384617,
+              "profit_factor": 0.9311214660947966,
+              "mean_trade_day": -0.0026577490793245444,
+              "positive_trade_days": 0.4496567505720824,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009721793391030834,
+                0.004568981830776027
+              ],
+              "fold_mean_median": 0.001509717731400033,
+              "fold_mean_min": -0.04115265744997808,
+              "fold_mean_max": 0.029116387350455863,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.005382090240074214,
+              "median_trade": -0.016666103813861084,
+              "precision_positive_trade": 0.4207692307692308,
+              "profit_factor": 0.875638895054804,
+              "mean_trade_day": -0.005157749079324545,
+              "positive_trade_days": 0.43363844393592677,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012221793391030834,
+                0.0020689818307760258
+              ],
+              "fold_mean_median": -0.0009902822685999679,
+              "fold_mean_min": -0.04365265744997807,
+              "fold_mean_max": 0.026616387350455864,
+              "positive_folds": 6,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": 0.0019683743282953056,
+              "median_trade": -0.004383205116574003,
+              "precision_positive_trade": 0.4584615384615385,
+              "profit_factor": 1.0758405081722235,
+              "mean_trade_day": 0.0020995055833709936,
+              "positive_trade_days": 0.4874141876430206,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0033659702811021457,
+                0.00780036530789639
+              ],
+              "fold_mean_median": 0.00351030064307186,
+              "fold_mean_min": -0.025599884994513773,
+              "fold_mean_max": 0.016481539251089184,
+              "positive_folds": 10,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": 0.0009683743282953051,
+              "median_trade": -0.005383205116574004,
+              "precision_positive_trade": 0.4511538461538461,
+              "profit_factor": 1.0365409339993332,
+              "mean_trade_day": 0.001099505583370993,
+              "positive_trade_days": 0.47368421052631576,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004365970281102146,
+                0.00680036530789639
+              ],
+              "fold_mean_median": 0.0025103006430718597,
+              "fold_mean_min": -0.02659988499451377,
+              "fold_mean_max": 0.015481539251089187,
+              "positive_folds": 9,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.0005316256717046949,
+              "median_trade": -0.006883205116574004,
+              "precision_positive_trade": 0.4373076923076923,
+              "profit_factor": 0.9805512825475109,
+              "mean_trade_day": -0.000400494416629007,
+              "positive_trade_days": 0.459954233409611,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005865970281102146,
+                0.005300365307896389
+              ],
+              "fold_mean_median": 0.0010103006430718599,
+              "fold_mean_min": -0.028099884994513772,
+              "fold_mean_max": 0.013981539251089185,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2600,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 2.9748283752860414,
+              "mean_trade": -0.003031625671704695,
+              "median_trade": -0.009383205116574004,
+              "precision_positive_trade": 0.41884615384615387,
+              "profit_factor": 0.8945994267298055,
+              "mean_trade_day": -0.002900494416629007,
+              "positive_trade_days": 0.43821510297482835,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008365970281102147,
+                0.002800365307896389
+              ],
+              "fold_mean_median": -0.0014896993569281397,
+              "fold_mean_min": -0.03059988499451377,
+              "fold_mean_max": 0.011481539251089187,
+              "positive_folds": 7,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_10pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0063116237372852725,
+              "median_trade": -0.017065277115301983,
+              "precision_positive_trade": 0.38749046529366893,
+              "profit_factor": 0.8435649296891554,
+              "mean_trade_day": -0.006311623737285272,
+              "positive_trade_days": 0.39244851258581237,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012559374196432166,
+                0.0006417336818924837
+              ],
+              "fold_mean_median": -0.0006843596277589714,
+              "fold_mean_min": -0.04240673601327602,
+              "fold_mean_max": 0.010705953556244345,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0073116237372852725,
+              "median_trade": -0.018065277115301984,
+              "precision_positive_trade": 0.37986270022883295,
+              "profit_factor": 0.8215191577044075,
+              "mean_trade_day": -0.0073116237372852725,
+              "positive_trade_days": 0.38558352402745993,
+              "block_boot_ci95_mean_trade_day": [
+                -0.013559374196432166,
+                -0.000358266318107517
+              ],
+              "fold_mean_median": -0.0016843596277589718,
+              "fold_mean_min": -0.04340673601327602,
+              "fold_mean_max": 0.009705953556244344,
+              "positive_folds": 5,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.008811623737285272,
+              "median_trade": -0.019565277115301982,
+              "precision_positive_trade": 0.37337909992372237,
+              "profit_factor": 0.7897031046936838,
+              "mean_trade_day": -0.008811623737285272,
+              "positive_trade_days": 0.37643020594965676,
+              "block_boot_ci95_mean_trade_day": [
+                -0.015059374196432166,
+                -0.0018582663181075164
+              ],
+              "fold_mean_median": -0.003184359627758973,
+              "fold_mean_min": -0.04490673601327602,
+              "fold_mean_max": 0.008205953556244342,
+              "positive_folds": 4,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.011311623737285273,
+              "median_trade": -0.022065277115301984,
+              "precision_positive_trade": 0.36003051106025935,
+              "profit_factor": 0.7398574935317345,
+              "mean_trade_day": -0.011311623737285274,
+              "positive_trade_days": 0.36041189931350115,
+              "block_boot_ci95_mean_trade_day": [
+                -0.017559374196432168,
+                -0.004358266318107518
+              ],
+              "fold_mean_median": -0.005684359627758973,
+              "fold_mean_min": -0.047406736013276024,
+              "fold_mean_max": 0.005705953556244341,
+              "positive_folds": 2,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0007261714886114916,
+              "median_trade": -0.011866456763307146,
+              "precision_positive_trade": 0.4405034324942792,
+              "profit_factor": 0.9821233581431261,
+              "mean_trade_day": -0.0007261714886114918,
+              "positive_trade_days": 0.459954233409611,
+              "block_boot_ci95_mean_trade_day": [
+                -0.00740005758482456,
+                0.006500508044982735
+              ],
+              "fold_mean_median": 0.0024507077028739594,
+              "fold_mean_min": -0.038652657449978076,
+              "fold_mean_max": 0.03161638735045587,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0017261714886114923,
+              "median_trade": -0.012866456763307145,
+              "precision_positive_trade": 0.43630816170861936,
+              "profit_factor": 0.958085873218781,
+              "mean_trade_day": -0.0017261714886114923,
+              "positive_trade_days": 0.45194508009153317,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008400057584824561,
+                0.005500508044982735
+              ],
+              "fold_mean_median": 0.001450707702873959,
+              "fold_mean_min": -0.03965265744997807,
+              "fold_mean_max": 0.030616387350455868,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0032261714886114927,
+              "median_trade": -0.014366456763307146,
+              "precision_positive_trade": 0.4302059496567506,
+              "profit_factor": 0.9232462751596479,
+              "mean_trade_day": -0.0032261714886114927,
+              "positive_trade_days": 0.448512585812357,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009900057584824562,
+                0.004000508044982734
+              ],
+              "fold_mean_median": -4.929229712604121e-05,
+              "fold_mean_min": -0.04115265744997808,
+              "fold_mean_max": 0.029116387350455863,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.005726171488611493,
+              "median_trade": -0.016866456763307145,
+              "precision_positive_trade": 0.41990846681922195,
+              "profit_factor": 0.8682726325411483,
+              "mean_trade_day": -0.005726171488611493,
+              "positive_trade_days": 0.4302059496567506,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012400057584824561,
+                0.001500508044982734
+              ],
+              "fold_mean_median": -0.0025492922971260424,
+              "fold_mean_min": -0.04365265744997807,
+              "fold_mean_max": 0.026616387350455864,
+              "positive_folds": 5,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": 0.001995463611382531,
+              "median_trade": -0.004348111312404906,
+              "precision_positive_trade": 0.4591914569031274,
+              "profit_factor": 1.0769845292028006,
+              "mean_trade_day": 0.001995463611382531,
+              "positive_trade_days": 0.4897025171624714,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0034524896559025874,
+                0.007709278486898654
+              ],
+              "fold_mean_median": 0.0034248007355584184,
+              "fold_mean_min": -0.025599884994513773,
+              "fold_mean_max": 0.016481539251089184,
+              "positive_folds": 10,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": 0.0009954636113825304,
+              "median_trade": -0.005348111312404905,
+              "precision_positive_trade": 0.45194508009153317,
+              "profit_factor": 1.0376122141908324,
+              "mean_trade_day": 0.0009954636113825301,
+              "positive_trade_days": 0.4759725400457666,
+              "block_boot_ci95_mean_trade_day": [
+                -0.004452489655902588,
+                0.006709278486898653
+              ],
+              "fold_mean_median": 0.0024248007355584175,
+              "fold_mean_min": -0.02659988499451377,
+              "fold_mean_max": 0.015481539251089187,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.0005045363886174699,
+              "median_trade": -0.006848111312404905,
+              "precision_positive_trade": 0.43821510297482835,
+              "profit_factor": 0.981518057602072,
+              "mean_trade_day": -0.00050453638861747,
+              "positive_trade_days": 0.4622425629290618,
+              "block_boot_ci95_mean_trade_day": [
+                -0.005952489655902588,
+                0.005209278486898654
+              ],
+              "fold_mean_median": 0.0009248007355584179,
+              "fold_mean_min": -0.028099884994513772,
+              "fold_mean_max": 0.013981539251089185,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2622,
+              "eligible_days": 876,
+              "trade_days": 874,
+              "coverage_trade_days": 0.997716894977169,
+              "avg_names_per_trade_day": 3.0,
+              "mean_trade": -0.00300453638861747,
+              "median_trade": -0.009348111312404905,
+              "precision_positive_trade": 0.41952707856598015,
+              "profit_factor": 0.8954038986887578,
+              "mean_trade_day": -0.00300453638861747,
+              "positive_trade_days": 0.43707093821510296,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008452489655902588,
+                0.0027092784868986536
+              ],
+              "fold_mean_median": -0.0015751992644415817,
+              "fold_mean_min": -0.03059988499451377,
+              "fold_mean_max": 0.011481539251089187,
+              "positive_folds": 7,
+              "fold_count": 14
+            }
+          }
+        }
+      },
+      "5": {
+        "top_1pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.005913963266253022,
+              "median_trade": -0.02310057034433385,
+              "precision_positive_trade": 0.3811188811188811,
+              "profit_factor": 0.8890180955677204,
+              "mean_trade_day": -0.0035812532843827577,
+              "positive_trade_days": 0.3907203907203907,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01568703741684687,
+                0.010227848859959898
+              ],
+              "fold_mean_median": 0.003240937068352372,
+              "fold_mean_min": -0.057975468487455245,
+              "fold_mean_max": 0.048890399690743144,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.006913963266253023,
+              "median_trade": -0.02410057034433385,
+              "precision_positive_trade": 0.37662337662337664,
+              "profit_factor": 0.8717489949256867,
+              "mean_trade_day": -0.004581253284382759,
+              "positive_trade_days": 0.38705738705738707,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01668703741684687,
+                0.009227848859959895
+              ],
+              "fold_mean_median": 0.0022409370683523725,
+              "fold_mean_min": -0.05897546848745525,
+              "fold_mean_max": 0.047890399690743136,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.008413963266253023,
+              "median_trade": -0.02560057034433385,
+              "precision_positive_trade": 0.3691308691308691,
+              "profit_factor": 0.8465963629969716,
+              "mean_trade_day": -0.006081253284382758,
+              "positive_trade_days": 0.38217338217338215,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01818703741684687,
+                0.0077278488599598965
+              ],
+              "fold_mean_median": 0.000740937068352372,
+              "fold_mean_min": -0.06047546848745525,
+              "fold_mean_max": 0.046390399690743135,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.010913963266253024,
+              "median_trade": -0.02810057034433385,
+              "precision_positive_trade": 0.3596403596403596,
+              "profit_factor": 0.806616746244958,
+              "mean_trade_day": -0.00858125328438276,
+              "positive_trade_days": 0.3724053724053724,
+              "block_boot_ci95_mean_trade_day": [
+                -0.020687037416846875,
+                0.005227848859959895
+              ],
+              "fold_mean_median": -0.0017590629316476289,
+              "fold_mean_min": -0.06297546848745525,
+              "fold_mean_max": 0.04389039969074313,
+              "positive_folds": 7,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.0005212832308922361,
+              "median_trade": -0.016285887620347807,
+              "precision_positive_trade": 0.43956043956043955,
+              "profit_factor": 0.9902646108241768,
+              "mean_trade_day": -0.0006032934538687356,
+              "positive_trade_days": 0.4590964590964591,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011861414041930902,
+                0.01237910185965396
+              ],
+              "fold_mean_median": -0.0014032458845702005,
+              "fold_mean_min": -0.05600321777814394,
+              "fold_mean_max": 0.07077213425716883,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.0015212832308922368,
+              "median_trade": -0.017285887620347808,
+              "precision_positive_trade": 0.43806193806193805,
+              "profit_factor": 0.9718838587078306,
+              "mean_trade_day": -0.0016032934538687364,
+              "positive_trade_days": 0.4517704517704518,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012861414041930903,
+                0.01137910185965396
+              ],
+              "fold_mean_median": -0.0024032458845702014,
+              "fold_mean_min": -0.05700321777814394,
+              "fold_mean_max": 0.06977213425716883,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.0030212832308922372,
+              "median_trade": -0.01878588762034781,
+              "precision_positive_trade": 0.43106893106893107,
+              "profit_factor": 0.9450231215601838,
+              "mean_trade_day": -0.003103293453868737,
+              "positive_trade_days": 0.44078144078144077,
+              "block_boot_ci95_mean_trade_day": [
+                -0.014361414041930904,
+                0.00987910185965396
+              ],
+              "fold_mean_median": -0.003903245884570202,
+              "fold_mean_min": -0.05850321777814394,
+              "fold_mean_max": 0.06827213425716883,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.005521283230892239,
+              "median_trade": -0.02128588762034781,
+              "precision_positive_trade": 0.42207792207792205,
+              "profit_factor": 0.9020841853453833,
+              "mean_trade_day": -0.005603293453868738,
+              "positive_trade_days": 0.4358974358974359,
+              "block_boot_ci95_mean_trade_day": [
+                -0.016861414041930905,
+                0.007379101859653959
+              ],
+              "fold_mean_median": -0.006403245884570202,
+              "fold_mean_min": -0.06100321777814394,
+              "fold_mean_max": 0.06577213425716882,
+              "positive_folds": 6,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": 0.0013842048426548025,
+              "median_trade": -0.006380976636629333,
+              "precision_positive_trade": 0.466033966033966,
+              "profit_factor": 1.038338872304221,
+              "mean_trade_day": 0.0008869753554029504,
+              "positive_trade_days": 0.47619047619047616,
+              "block_boot_ci95_mean_trade_day": [
+                -0.006929606134212013,
+                0.010444826538110788
+              ],
+              "fold_mean_median": 0.0032787428790686177,
+              "fold_mean_min": -0.03410522806612491,
+              "fold_mean_max": 0.03735376330209112,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": 0.00038420484265480175,
+              "median_trade": -0.007380976636629332,
+              "precision_positive_trade": 0.46253746253746253,
+              "profit_factor": 1.0104854448444027,
+              "mean_trade_day": -0.00011302464459705045,
+              "positive_trade_days": 0.4700854700854701,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007929606134212014,
+                0.009444826538110788
+              ],
+              "fold_mean_median": 0.0022787428790686168,
+              "fold_mean_min": -0.035105228066124906,
+              "fold_mean_max": 0.03635376330209112,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.0011157951573451987,
+              "median_trade": -0.008880976636629331,
+              "precision_positive_trade": 0.45354645354645357,
+              "profit_factor": 0.9702079689255613,
+              "mean_trade_day": -0.0016130246445970507,
+              "positive_trade_days": 0.45787545787545786,
+              "block_boot_ci95_mean_trade_day": [
+                -0.009429606134212013,
+                0.007944826538110787
+              ],
+              "fold_mean_median": 0.0007787428790686165,
+              "fold_mean_min": -0.03660522806612491,
+              "fold_mean_max": 0.034853763302091126,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2002,
+              "eligible_days": 876,
+              "trade_days": 819,
+              "coverage_trade_days": 0.934931506849315,
+              "avg_names_per_trade_day": 2.4444444444444446,
+              "mean_trade": -0.003615795157345199,
+              "median_trade": -0.011380976636629334,
+              "precision_positive_trade": 0.44005994005994004,
+              "profit_factor": 0.9068946068126295,
+              "mean_trade_day": -0.004113024644597051,
+              "positive_trade_days": 0.4432234432234432,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011929606134212015,
+                0.005444826538110787
+              ],
+              "fold_mean_median": -0.0017212571209313846,
+              "fold_mean_min": -0.03910522806612491,
+              "fold_mean_max": 0.032353763302091124,
+              "positive_folds": 5,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_5pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0069494541368387945,
+              "median_trade": -0.020901231629969996,
+              "precision_positive_trade": 0.3864341085271318,
+              "profit_factor": 0.8604749390912175,
+              "mean_trade_day": -0.007004696045936959,
+              "positive_trade_days": 0.4,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01678911915091943,
+                0.0035829534247966816
+              ],
+              "fold_mean_median": 0.0005285042727908112,
+              "fold_mean_min": -0.057097209821577045,
+              "fold_mean_max": 0.019673236606085442,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.007949454136838795,
+              "median_trade": -0.021901231629969996,
+              "precision_positive_trade": 0.3817829457364341,
+              "profit_factor": 0.8423509674040788,
+              "mean_trade_day": -0.00800469604593696,
+              "positive_trade_days": 0.39425287356321836,
+              "block_boot_ci95_mean_trade_day": [
+                -0.017789119150919432,
+                0.0025829534247966803
+              ],
+              "fold_mean_median": -0.0004714957272091901,
+              "fold_mean_min": -0.058097209821577046,
+              "fold_mean_max": 0.018673236606085445,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.009449454136838795,
+              "median_trade": -0.023401231629969994,
+              "precision_positive_trade": 0.3751937984496124,
+              "profit_factor": 0.8160021375019493,
+              "mean_trade_day": -0.009504696045936959,
+              "positive_trade_days": 0.39080459770114945,
+              "block_boot_ci95_mean_trade_day": [
+                -0.019289119150919434,
+                0.0010829534247966803
+              ],
+              "fold_mean_median": -0.0019714957272091893,
+              "fold_mean_min": -0.05959720982157704,
+              "fold_mean_max": 0.017173236606085444,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.011949454136838797,
+              "median_trade": -0.025901231629969997,
+              "precision_positive_trade": 0.36511627906976746,
+              "profit_factor": 0.7742387913696511,
+              "mean_trade_day": -0.012004696045936961,
+              "positive_trade_days": 0.37701149425287356,
+              "block_boot_ci95_mean_trade_day": [
+                -0.021789119150919432,
+                -0.0014170465752033207
+              ],
+              "fold_mean_median": -0.004471495727209191,
+              "fold_mean_min": -0.06209720982157704,
+              "fold_mean_max": 0.014673236606085441,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0005881925999712335,
+              "median_trade": -0.01596692350632012,
+              "precision_positive_trade": 0.43992248062015504,
+              "profit_factor": 0.9888005211170209,
+              "mean_trade_day": -0.0001506145669606309,
+              "positive_trade_days": 0.46781609195402296,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011608232459802569,
+                0.011686926881735752
+              ],
+              "fold_mean_median": 0.0010576354337905908,
+              "fold_mean_min": -0.05781910578512834,
+              "fold_mean_max": 0.05138450139256199,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0015881925999712341,
+              "median_trade": -0.01696692350632012,
+              "precision_positive_trade": 0.43682170542635657,
+              "profit_factor": 0.9700806432382494,
+              "mean_trade_day": -0.0011506145669606318,
+              "positive_trade_days": 0.45977011494252873,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01260823245980257,
+                0.010686926881735751
+              ],
+              "fold_mean_median": 5.7635433790589766e-05,
+              "fold_mean_min": -0.05881910578512834,
+              "fold_mean_max": 0.05038450139256199,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0030881925999712346,
+              "median_trade": -0.01846692350632012,
+              "precision_positive_trade": 0.43062015503875967,
+              "profit_factor": 0.9427397059857586,
+              "mean_trade_day": -0.002650614566960632,
+              "positive_trade_days": 0.45057471264367815,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01410823245980257,
+                0.00918692688173575
+              ],
+              "fold_mean_median": -0.0014423645662094108,
+              "fold_mean_min": -0.06031910578512834,
+              "fold_mean_max": 0.048884501392561994,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0055881925999712355,
+              "median_trade": -0.020966923506320123,
+              "precision_positive_trade": 0.4228682170542636,
+              "profit_factor": 0.8990650360029004,
+              "mean_trade_day": -0.005150614566960633,
+              "positive_trade_days": 0.4425287356321839,
+              "block_boot_ci95_mean_trade_day": [
+                -0.01660823245980257,
+                0.00668692688173575
+              ],
+              "fold_mean_median": -0.003942364566209411,
+              "fold_mean_min": -0.06281910578512834,
+              "fold_mean_max": 0.046384501392561985,
+              "positive_folds": 6,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": 0.0011471808510338532,
+              "median_trade": -0.006693173234437609,
+              "precision_positive_trade": 0.46124031007751937,
+              "profit_factor": 1.033722203305711,
+              "mean_trade_day": 0.0011539011884550017,
+              "positive_trade_days": 0.48160919540229885,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0064075556683324125,
+                0.009623399005049618
+              ],
+              "fold_mean_median": 0.0029383145617024754,
+              "fold_mean_min": -0.0321849476372455,
+              "fold_mean_max": 0.028774359504325484,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": 0.00014718085103385272,
+              "median_trade": -0.007693173234437609,
+              "precision_positive_trade": 0.4542635658914729,
+              "profit_factor": 1.0042583251872603,
+              "mean_trade_day": 0.000153901188455001,
+              "positive_trade_days": 0.47126436781609193,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007407555668332413,
+                0.008623399005049617
+              ],
+              "fold_mean_median": 0.0019383145617024747,
+              "fold_mean_min": -0.0331849476372455,
+              "fold_mean_max": 0.02777435950432548,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0013528191489661475,
+              "median_trade": -0.00919317323443761,
+              "precision_positive_trade": 0.4445736434108527,
+              "profit_factor": 0.9617719693537586,
+              "mean_trade_day": -0.001346098811544999,
+              "positive_trade_days": 0.4528735632183908,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008907555668332413,
+                0.007123399005049618
+              ],
+              "fold_mean_median": 0.00043831456170247444,
+              "fold_mean_min": -0.03468494763724549,
+              "fold_mean_max": 0.026274359504325485,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2580,
+              "eligible_days": 876,
+              "trade_days": 870,
+              "coverage_trade_days": 0.9931506849315068,
+              "avg_names_per_trade_day": 2.9655172413793105,
+              "mean_trade": -0.0038528191489661475,
+              "median_trade": -0.01169317323443761,
+              "precision_positive_trade": 0.4321705426356589,
+              "profit_factor": 0.8952783883865867,
+              "mean_trade_day": -0.0038460988115449997,
+              "positive_trade_days": 0.43448275862068964,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011407555668332413,
+                0.004623399005049617
+              ],
+              "fold_mean_median": -0.002061685438297526,
+              "fold_mean_min": -0.037184947637245495,
+              "fold_mean_max": 0.023774359504325483,
+              "positive_folds": 7,
+              "fold_count": 14
+            }
+          }
+        },
+        "top_10pct_train_threshold": {
+          "logistic": {
+            "gross": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.006838474090972592,
+              "median_trade": -0.02074962975116133,
+              "precision_positive_trade": 0.3866513233601841,
+              "profit_factor": 0.8620152768395744,
+              "mean_trade_day": -0.006569982827136248,
+              "positive_trade_days": 0.40022935779816515,
+              "block_boot_ci95_mean_trade_day": [
+                -0.016810408656190254,
+                0.003233074348824643
+              ],
+              "fold_mean_median": 0.0005285042727908112,
+              "fold_mean_min": -0.057097209821577045,
+              "fold_mean_max": 0.019673236606085442,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.007838474090972594,
+              "median_trade": -0.02174962975116133,
+              "precision_positive_trade": 0.38204833141542005,
+              "profit_factor": 0.8437818922609859,
+              "mean_trade_day": -0.0075699828271362495,
+              "positive_trade_days": 0.3956422018348624,
+              "block_boot_ci95_mean_trade_day": [
+                -0.017810408656190258,
+                0.002233074348824642
+              ],
+              "fold_mean_median": -0.0004714957272091901,
+              "fold_mean_min": -0.058097209821577046,
+              "fold_mean_max": 0.018673236606085445,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.009338474090972593,
+              "median_trade": -0.02324962975116133,
+              "precision_positive_trade": 0.3751438434982739,
+              "profit_factor": 0.8172781291840007,
+              "mean_trade_day": -0.009069982827136249,
+              "positive_trade_days": 0.39105504587155965,
+              "block_boot_ci95_mean_trade_day": [
+                -0.019310408656190256,
+                0.0007330743488246424
+              ],
+              "fold_mean_median": -0.0019714957272091893,
+              "fold_mean_min": -0.05959720982157704,
+              "fold_mean_max": 0.017173236606085444,
+              "positive_folds": 5,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.011838474090972594,
+              "median_trade": -0.02574962975116133,
+              "precision_positive_trade": 0.36517069428461835,
+              "profit_factor": 0.775279521269749,
+              "mean_trade_day": -0.01156998282713625,
+              "positive_trade_days": 0.37729357798165136,
+              "block_boot_ci95_mean_trade_day": [
+                -0.021810408656190255,
+                -0.0017669256511753588
+              ],
+              "fold_mean_median": -0.004471495727209191,
+              "fold_mean_min": -0.06209720982157704,
+              "fold_mean_max": 0.014673236606085441,
+              "positive_folds": 4,
+              "fold_count": 14
+            }
+          },
+          "mom20_liq": {
+            "gross": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.0007136929421613449,
+              "median_trade": -0.015831083768866855,
+              "precision_positive_trade": 0.4388185654008439,
+              "profit_factor": 0.98639197363493,
+              "mean_trade_day": -0.00046839195642687105,
+              "positive_trade_days": 0.46674311926605505,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011544366773390151,
+                0.011476178964546056
+              ],
+              "fold_mean_median": 0.0010576354337905908,
+              "fold_mean_min": -0.05781910578512834,
+              "fold_mean_max": 0.05138450139256199,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.0017136929421613459,
+              "median_trade": -0.016831083768866856,
+              "precision_positive_trade": 0.4357499041043345,
+              "profit_factor": 0.9676724838866241,
+              "mean_trade_day": -0.0014683919564268718,
+              "positive_trade_days": 0.45756880733944955,
+              "block_boot_ci95_mean_trade_day": [
+                -0.012544366773390154,
+                0.010476178964546057
+              ],
+              "fold_mean_median": 5.7635433790589766e-05,
+              "fold_mean_min": -0.05881910578512834,
+              "fold_mean_max": 0.05038450139256199,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.003213692942161346,
+              "median_trade": -0.018331083768866854,
+              "precision_positive_trade": 0.4296125815113157,
+              "profit_factor": 0.9403346777614879,
+              "mean_trade_day": -0.0029683919564268716,
+              "positive_trade_days": 0.44954128440366975,
+              "block_boot_ci95_mean_trade_day": [
+                -0.014044366773390153,
+                0.008976178964546055
+              ],
+              "fold_mean_median": -0.0014423645662094108,
+              "fold_mean_min": -0.06031910578512834,
+              "fold_mean_max": 0.048884501392561994,
+              "positive_folds": 6,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.005713692942161347,
+              "median_trade": -0.020831083768866856,
+              "precision_positive_trade": 0.4219409282700422,
+              "profit_factor": 0.8966711103548322,
+              "mean_trade_day": -0.005468391956426874,
+              "positive_trade_days": 0.4415137614678899,
+              "block_boot_ci95_mean_trade_day": [
+                -0.016544366773390155,
+                0.006476178964546054
+              ],
+              "fold_mean_median": -0.003942364566209411,
+              "fold_mean_min": -0.06281910578512834,
+              "fold_mean_max": 0.046384501392561985,
+              "positive_folds": 5,
+              "fold_count": 14
+            }
+          },
+          "rev20_liq": {
+            "gross": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": 0.0015914751186021684,
+              "median_trade": -0.006295743754424193,
+              "precision_positive_trade": 0.4629842731108554,
+              "profit_factor": 1.0470750808671614,
+              "mean_trade_day": 0.0016353354389096984,
+              "positive_trade_days": 0.48394495412844035,
+              "block_boot_ci95_mean_trade_day": [
+                -0.0061698331664496835,
+                0.00981567032549558
+              ],
+              "fold_mean_median": 0.0029383145617024754,
+              "fold_mean_min": -0.0321849476372455,
+              "fold_mean_max": 0.028774359504325484,
+              "positive_folds": 8,
+              "fold_count": 14
+            },
+            "low_10bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": 0.000591475118602168,
+              "median_trade": -0.007295743754424193,
+              "precision_positive_trade": 0.45607978519370923,
+              "profit_factor": 1.017219129176988,
+              "mean_trade_day": 0.0006353354389096975,
+              "positive_trade_days": 0.47477064220183485,
+              "block_boot_ci95_mean_trade_day": [
+                -0.007169833166449684,
+                0.008815670325495581
+              ],
+              "fold_mean_median": 0.0019383145617024747,
+              "fold_mean_min": -0.0331849476372455,
+              "fold_mean_max": 0.02777435950432548,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "base_25bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.0009085248813978322,
+              "median_trade": -0.008795743754424193,
+              "precision_positive_trade": 0.44649021864211735,
+              "profit_factor": 0.9741692020282768,
+              "mean_trade_day": -0.0008646645610903026,
+              "positive_trade_days": 0.45756880733944955,
+              "block_boot_ci95_mean_trade_day": [
+                -0.008669833166449684,
+                0.00731567032549558
+              ],
+              "fold_mean_median": 0.00043831456170247444,
+              "fold_mean_min": -0.03468494763724549,
+              "fold_mean_max": 0.026274359504325485,
+              "positive_folds": 7,
+              "fold_count": 14
+            },
+            "stress_50bp": {
+              "trades": 2607,
+              "eligible_days": 876,
+              "trade_days": 872,
+              "coverage_trade_days": 0.9954337899543378,
+              "avg_names_per_trade_day": 2.989678899082569,
+              "mean_trade": -0.0034085248813978323,
+              "median_trade": -0.011295743754424194,
+              "precision_positive_trade": 0.4342155734560798,
+              "profit_factor": 0.9067948406934987,
+              "mean_trade_day": -0.003364664561090303,
+              "positive_trade_days": 0.43922018348623854,
+              "block_boot_ci95_mean_trade_day": [
+                -0.011169833166449686,
+                0.0048156703254955795
+              ],
+              "fold_mean_median": -0.002061685438297526,
+              "fold_mean_min": -0.037184947637245495,
+              "fold_mean_max": 0.023774359504325483,
+              "positive_folds": 7,
+              "fold_count": 14
+            }
+          }
+        }
+      }
+    },
+    "threshold_audit": [
+      {
+        "fold": 1,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.521783317279005,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4695832409047664,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.450788104887544,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5276581385241257,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.48019569614901847,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.46401822667370035,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5460303205730043,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4936759600426905,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4757687254054836,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5532001309355974,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.500183368870315,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 1,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.48200133650566596,
+        "train_from_idx": 0,
+        "train_to_idx": 1259,
+        "test_from_idx": 1265,
+        "test_to_idx": 1327
+      },
+      {
+        "fold": 2,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5175288823735108,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4667636408964135,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.44867415354271434,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5240897150724733,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.47833273861230313,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4628931146558621,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5416227307810865,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4917736355958353,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.47489479441106547,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.548204385885574,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4987945131154126,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 2,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.48189829979123844,
+        "train_from_idx": 63,
+        "train_to_idx": 1322,
+        "test_from_idx": 1328,
+        "test_to_idx": 1390
+      },
+      {
+        "fold": 3,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5192433622579058,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.46633776917313263,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.44787028026737885,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.52911534677854,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4799696763375942,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.463478220237954,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5482424530789565,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4943369396642681,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4761701721909782,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5543903735068619,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.5000467769933288,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 3,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4818958454695698,
+        "train_from_idx": 126,
+        "train_to_idx": 1385,
+        "test_from_idx": 1391,
+        "test_to_idx": 1453
+      },
+      {
+        "fold": 4,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5171325966474399,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.46509579074569973,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.447357875669621,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5249627410691979,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4780919241291639,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.46259404663452913,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.543553442813477,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4920705835831427,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4749793653323052,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5512088338875745,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4992794466578241,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 4,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4821398821446291,
+        "train_from_idx": 189,
+        "train_to_idx": 1448,
+        "test_from_idx": 1454,
+        "test_to_idx": 1516
+      },
+      {
+        "fold": 5,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5091956248149955,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.45934853743495807,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.442428069450624,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5148899961554373,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.47117514408626193,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.45705110628332385,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5351419513059178,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4857589969000085,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.46972595999328803,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5431439849235186,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4931480743466564,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 5,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.47725609829672877,
+        "train_from_idx": 252,
+        "train_to_idx": 1511,
+        "test_from_idx": 1517,
+        "test_to_idx": 1579
+      },
+      {
+        "fold": 6,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5106487000614781,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.45826132699110433,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4406869259975064,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5177101816517369,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4702124577733974,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4550994776671565,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5383464105799445,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4847900172273117,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4677551592288093,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5477605029220054,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.49212299336736637,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 6,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4751025524767927,
+        "train_from_idx": 315,
+        "train_to_idx": 1574,
+        "test_from_idx": 1580,
+        "test_to_idx": 1642
+      },
+      {
+        "fold": 7,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.515043859294625,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.46070505291281244,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4425276936208305,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5205171575413062,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4726622911170303,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4571417096316729,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5397149439065436,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4870433893297157,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4697967730766957,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5481572828379835,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4951740054011398,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 7,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4778097576661643,
+        "train_from_idx": 378,
+        "train_to_idx": 1637,
+        "test_from_idx": 1643,
+        "test_to_idx": 1705
+      },
+      {
+        "fold": 8,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5082867069656223,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.45651804104750715,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4391144623662329,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5135254646610594,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4683457813897908,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.45378864778290057,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5325423035034236,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.48273455207264265,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.46670995505914514,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5411227483513261,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4913292606914597,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 8,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.47521088652146726,
+        "train_from_idx": 441,
+        "train_to_idx": 1700,
+        "test_from_idx": 1706,
+        "test_to_idx": 1768
+      },
+      {
+        "fold": 9,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5099541845486397,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4582441998102645,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.44076902392785083,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5139482333039709,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4693208792448586,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4548940085778602,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5328289948050254,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4835599321176071,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4675996079523107,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.542890410575119,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.49292073296897954,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 9,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.47678024565199684,
+        "train_from_idx": 504,
+        "train_to_idx": 1763,
+        "test_from_idx": 1769,
+        "test_to_idx": 1831
+      },
+      {
+        "fold": 10,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.47964661121387564,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.44575656371246164,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.43305694420765484,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4822587244944051,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4587048553426385,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4496891980343187,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4982020563899765,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4731183698103104,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4631912115831348,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.506596543056789,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4827859455056043,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 10,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4734850612822481,
+        "train_from_idx": 567,
+        "train_to_idx": 1826,
+        "test_from_idx": 1832,
+        "test_to_idx": 1894
+      },
+      {
+        "fold": 11,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.47555051722126834,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4432954335325382,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.43115520173595256,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4781602768200548,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.45616802961141545,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.44745706822457865,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4929265911357386,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4697270398160338,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4604210896803601,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.5011052584728898,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.47921951712557387,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 11,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.47045123107781306,
+        "train_from_idx": 630,
+        "train_to_idx": 1889,
+        "test_from_idx": 1895,
+        "test_to_idx": 1957
+      },
+      {
+        "fold": 12,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4715970738072314,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.44017711633298146,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4284242181924914,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4743870161281564,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.45317095573090166,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.44489817852842684,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4877020903373136,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4660046260380304,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4573023247616226,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.49516507428777856,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.475164324196953,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 12,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.46724311241911864,
+        "train_from_idx": 693,
+        "train_to_idx": 1952,
+        "test_from_idx": 1958,
+        "test_to_idx": 2020
+      },
+      {
+        "fold": 13,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.47081944977221685,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4391023147614043,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4274341343170642,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4741235124467897,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4523363048935141,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.44397631054351966,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4846177452786771,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4636376347011029,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.45521230763966464,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.49435613906144515,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.4735273811721652,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 13,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.46528303859813863,
+        "train_from_idx": 756,
+        "train_to_idx": 2015,
+        "test_from_idx": 2021,
+        "test_to_idx": 2083
+      },
+      {
+        "fold": 14,
+        "horizon": 1,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4614283399331758,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 1,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.43365284444774127,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 1,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4230291800309745,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 2,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4659407102139238,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 2,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.44713120437317566,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 2,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4395873244269645,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 3,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4774883461977053,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 3,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.45905325364644134,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 3,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.45132332782714263,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 5,
+        "coverage_target": 0.01,
+        "threshold_from_train_only": 0.4906612973065217,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 5,
+        "coverage_target": 0.05,
+        "threshold_from_train_only": 0.47066281867781734,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      },
+      {
+        "fold": 14,
+        "horizon": 5,
+        "coverage_target": 0.1,
+        "threshold_from_train_only": 0.4622523168372138,
+        "train_from_idx": 819,
+        "train_to_idx": 2078,
+        "test_from_idx": 2084,
+        "test_to_idx": 2140
+      }
+    ]
+  },
+  "research_status": "DEVELOPMENT_CONTAMINATED_NOT_SEALED",
+  "profitability_validated": false,
+  "created_at": "2026-09-28T14:41:09.577044+00:00",
+  "limitations": [
+    "2018-2026 was already inspected in v1/v2; this is challenger development evidence, not a sealed holdout.",
+    "Threshold quantiles are predeclared here but all three are tested; choosing one from this run counts as model selection.",
+    "Costs remain fixed stress scenarios rather than broker/size-specific realized execution costs.",
+    "Overlapping 2/3/5-day recommendations are evaluated as trade EV and clustered trade-day means, not as a fully capital-constrained portfolio."
+  ]
+}
