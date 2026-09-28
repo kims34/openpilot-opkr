@@ -1,156 +1,194 @@
 # IndexAlert Research Status
 
-Updated: 2026-09-29 KST
-Branch: `index-alert-research-v1`
-Master authority: `INDEXALERT_MASTER_SPEC.md`
-Promotion authority: **none yet** — all results remain PIT preliminary until final Judge blockers are removed.
+Updated: 2026-09-29 KST  
+Branch: `index-alert-research-v1`  
+Master authority: `INDEXALERT_MASTER_SPEC.md`  
+Promotion authority: **none yet** — all results remain PIT preliminary until Final Judge blockers and fresh prospective validation are removed.
 
-## Current direction
+## Current research principle
 
-The research center of gravity has moved from fixed barrier / UP-DOWN classification to **executable cost-adjusted NetReturn / NetEV distribution**.
+Use the Master Spec and prior research-room notes as references, not as unquestionable truth.  Current GitHub code, PIT lineage, CI artifacts and statistical/economic evidence take priority when they conflict with older notes.
 
-Legacy barrier models remain only as diagnostics and reference baselines.
+The research center of gravity remains **executable cost-adjusted NetReturn / NetEV distribution**. Legacy barrier and UP/DOWN models are diagnostics only.
 
-## Latest completed Core candidate
+Decision policy is now fixed for current research:
 
-GitHub Actions run: `36466349857` — **IndexAlert Research v1 Distributional NetEV**
+- conservative NetEV lower bound > 0
+- freeze original decision-time Top3
+- held/unfillable/vetoed names leave empty slots
+- **no rank-4+ backfill**
+- 0..3 trades and NO_TRADE are valid outputs
+- five-session purge around outcome/calibration boundaries
+- date-aware KOSPI tax, commission, spread and impact cost
 
-Candidate:
+## Code-integrity corrections completed
 
-`Ridge mean fixed-horizon NetReturn + purged calibration residual q25/q50/q75 by volatility tercile`
+### Distributional feature-override regression
 
-Admission:
+A feature-ablation refactor accidentally left a literal `\\n` and referenced an undefined `features` variable inside `distributional_walk_forward`.  This was corrected and regression-tested.
 
-`conservative NetEV lower bound > 0` → select **0 to 3**
+### Ablation workflow YAML regression
 
-Execution proxy:
+The ablation workflow also contained a literal `\\n` in the path list.  The workflow is fixed and now runs compile + regression tests before research execution.
 
-prior-close decision → next executable regular-session open → D+5 close → date-aware tax + commission + spread/impact allowance
+### Recency strict-Top3 consistency
 
-### Distributional NetEV v0 result
+The recency challenger previously sent all eligible names into stateful selection, permitting rank-4+ promotion after blocked positions.  It now freezes the original Top3 first, identical to the reference policy.
 
-- test dates: 430
-- trade days: 30
-- trade-day coverage: **6.98%**
-- selected trades: **84**
-- mean gross return / trade: **+0.7572%**
-- mean cost / trade: **0.3454%**
-- mean net return / trade: **+0.4118%**
-- win rate: 47.62%
-- Profit Factor: **1.2982**
-- trade ES95: **-6.35%**
-- date-cluster bootstrap point estimate: +0.2765%
-- date-cluster bootstrap 95% interval: **-0.7563% to +1.4187%**
-- portfolio total return: **+1.60%**
-- portfolio MDD: **-2.98%**
-- annualized volatility: ~4.12%
-- average gross exposure: ~5.58%
-- average cash weight: ~94.42%
+## Strict Distributional NetEV reference — reproduced
 
-Verdict: **NO_ROBUST_DISTRIBUTIONAL_EDGE_YET**
+The repaired pipeline reproduces the post-backfill-fix result exactly:
 
-Reason: mean, PF and MDD improved materially, but the date-cluster lower confidence bound remains negative and the selected sample is only 84 trades / 30 trade days.
+- test dates: **430**
+- trade days: **26**
+- selected trades: **47**
+- trade-day coverage: **6.05%**
+- mean gross return / trade: **+0.5899%**
+- mean cost / trade: **0.3936%**
+- mean net return / trade: **+0.1963%**
+- win rate: **46.81%**
+- Profit Factor: **1.1364**
+- trade ES95: **-5.93%**
+- date-cluster bootstrap point: **+0.1188%**
+- date-cluster 95% interval: **-1.1726% to +1.5552%**
+- portfolio total return: **+0.584%**
+- portfolio MDD: **-3.995%**
+- average gross exposure: **~4.85%**
 
-## Distribution calibration diagnostic
+Verdict: **NO_ROBUST_DISTRIBUTIONAL_EDGE_YET**.
 
-Target lower quantile: q25.
+Reason: point estimate and PF are positive but the date-cluster lower confidence bound remains negative and the sample is small.
 
-Observed:
+The earlier 84-trade / ~+0.41% result is **superseded** because it predated the strict Top3 no-backfill correction.
 
-- actual return >= predicted lower bound: **74.32%**
-- intended lower-bound coverage: 75%
-- actual inside q25-q75 interval: **45.53%**
-- nominal central q25-q75 interval: 50%
+## Recency challenger — rejected
 
-Interpretation: the simple calibration layer is directionally credible enough to continue research, but no formal exchangeability/conformal guarantee is claimed.
+One prespecified rolling 160-session training window was compared with expanding history. No window sweep was performed.
 
-## Counterfactual observable diagnostic
+Rolling-160 strict result:
 
-Within test rows with observable D+5 return:
+- trades: **85**
+- mean net return: **-1.5827%**
+- PF: **0.4467**
+- date-cluster 95% interval: **-4.1816% to -0.1542%**
+- portfolio total return: **-17.64%**
+- MDD: **-20.53%**
 
-- admitted mean fixed-horizon Net Return: **+0.4118%**
-- rejected mean fixed-horizon Net Return: **-0.0809%**
-- rejected positive-return rate: ~45.14%
+Decision: **KEEP_EXPANDING_REFERENCE**. Do not optimize recency windows from these results.
 
-This is evidence that the abstention gate is separating a more attractive subset, but confidence remains insufficient for promotion.
+## Feature-family ablation — latest completed
 
-## Year / drift note
+All variants use the same purged walk-forward, calibration, NetEV lower-bound admission, strict Top3 freeze and no-backfill execution policy.
 
-Earlier fixed-horizon and path-context challengers showed material 2025→2026 performance instability. This motivates one prespecified rolling-recency challenger against expanding history.
+### all_context reference
 
-No train-window sweep is allowed.
+- 47 trades
+- mean net: **+0.1963%**
+- PF: **1.1364**
+- cluster 95% low: **-1.1726%**
 
-## Important diagnostics already resolved
+### base_only
 
-### Leakage
+- 24 trades
+- mean net: **-1.4583%**
+- PF: **0.5278**
 
-- Decision-time no-fill names remain in the ranking universe.
-- Missing next-open fill leaves a slot empty; no future-aware promotion.
-- Learning boundaries are purged by the full five-session outcome horizon.
-- Distributional architecture uses a separate calibration block with purge on both sides.
-- Same-bar target/stop ambiguity is no longer the Core learning objective.
+### drop_market = base + residual
 
-### Cost
+- 32 trades
+- mean net: **-0.1314%**
+- PF: **0.9013**
 
-Historical KOSPI statutory sell tax is date-aware in the PIT engine.
+### drop_residual = base + market
 
-Legacy cost sensitivity showed that removing explicit tax/commission alone did not rescue the old signal, so research no longer treats fee reduction as the main path to improvement.
+Numerically identical to all_context in this sample:
 
-### Same-bar ambiguity
+- 47 trades
+- mean net: **+0.1963%**
+- PF: **1.1364**
 
-Optimistic target-first handling did not rescue the legacy strategy. Intraday first-hit data remains useful for future execution realism, but it is not the current source of the observed distributional improvement.
+### context_only = market + residual
 
-### Security scope
+Current strongest point estimate:
 
-Current PIT membership is valid for the full KOSPI listed-security universe, but official common-stock identity is not yet validated. Heuristic common-like filtering remains diagnostic only.
+- 62 trades / 24 trade days
+- mean gross: **+1.7123%**
+- mean cost: **0.2838%**
+- mean net: **+1.4285%**
+- PF: **2.0548**
+- ES95: **-7.22%**
+- date-cluster 95% interval: **-0.4804% to +3.2025%**
+- 2x cost-stress PF: **1.7757**
 
-### Post-entry missing bars
+This is promising but **not promotable** because the cluster lower bound remains negative and the selected sample is still small.
 
-The old barrier ledger had 1,245 post-entry missing-bar cases across ~594k labelled rows; only a very small number occurred among selected candidates in recent simple models. Exact halt/delisting economics remains a Final Judge blocker but is not currently the dominant performance driver.
+### market_only
 
-## Prior challenger findings
+- 24 trades
+- mean net: **-0.0628%**
+- PF: **0.9539**
 
-### Path-context
+### residual_only
 
-PIT-safe gap / intraday / range / close-location / trading-value-surprise features improved gross edge materially, but still produced negative post-cost mean and unstable confidence interval.
+- 0 admitted trades under conservative NetEV lower-bound rule.
 
-### Fixed-horizon label Logistic
+Interpretation: the strong `context_only` result is not explained by market state alone or residual relative strength alone.  It appears only when the two are combined under the fixed volatility-bucket calibration architecture. This interaction must survive longer history before it is treated as genuine edge.
 
-Learning next-open→D+5 direction improved stability versus the barrier label but remained negative after costs.
+Note: calibration always conditions residual quantiles on `vol20_rank` terciles. Therefore `market_only` is not a mathematically pure market-only ranking experiment; it is market-model features under the fixed volatility-calibration layer.
 
-### Path + fixed-horizon combination
+## Historical cost schedule
 
-Simple combination did **not** create synergy; it remained negative and worsened MDD. The combined classifier is rejected as a Core direction.
+The PIT engine now encodes exact effective-date KOSPI statutory sell tax for the modern price-limit regime:
 
-### Fixed-horizon Ridge positive-only
+- 2015-06-15 .. 2019-06-02: **30bp** statutory sell tax including rural special tax
+- 2019-06-03 .. 2020-12-31: **25bp**
+- 2021-2022: **23bp**
+- 2023: **20bp**
+- 2024: **18bp**
+- 2025: **15bp**
+- 2026: **20bp**
 
-Underperformed and is rejected as a standalone admission rule.
+Round-trip broker commission remains separate at 3bp in current research.
 
-## Current research priority
+## Long-history robustness — running
 
-Follow `INDEXALERT_MASTER_SPEC.md`.
+A new non-sealed robustness workflow is running on the PIT KOSPI universe from **2015-06-15 to 2026-09-28**.
 
-1. **Distributional NetEV v0** — retain as current Core challenger, not Champion.
-2. **One prespecified recency test** — expanding vs rolling 160-session training, with calibration/purge unchanged.
-3. If recency improves robustness, freeze that direction for further fresh validation; do not window-optimize.
-4. Feature-family ablation / marginal economic value / Remaining Alpha.
-5. Feature freshness / TTL and missingness semantics.
-6. Independent liquidity / volatility / systemic-risk veto diagnostics.
-7. Official common-stock security master + exact halt/delisting economics.
-8. Intraday fill-ratio × fill-time × fill-price + post-fill markout.
-9. Longer historical Judge, sealed holdout, Shadow S1 and Fresh Confirmation S2.
+Prespecified protocol:
+
+- initial train: 504 sessions (~2 years)
+- separate calibration: 126 sessions (~6 months)
+- purge: 5 sessions
+- OOS test block: 126 sessions (~6 months)
+- liquidity floor: ADV20 rank >= 20th percentile
+- strict original Top3 / no backfill
+- compare only `all_context_reference` vs `context_only_challenger`
+- no threshold/window/hyperparameter search
+
+This is a historical robustness test, **not** a sealed holdout, because the candidate architecture was already informed by later-period research.
+
+## Final Judge blockers still open
+
+1. Official common-stock security master; current PIT universe contains all KOSPI listed securities.
+2. Exact halt/delisting economics instead of synthetic planned-stop treatment for post-entry missing bars.
+3. Intraday fill ratio × fill time × fill price and post-fill markout.
+4. Recommendation latency/expiry and actual execution delay stress.
+5. Longer-history robustness completion and regime/year concentration analysis.
+6. Multiple-testing / research-ledger accounting across full policy search.
+7. Fresh sealed evidence: prospective Shadow S1 → frozen Fresh Confirmation S2.
 
 ## Promotion rule
 
-A candidate is not promoted because it merely loses less or has a positive point estimate.
+No candidate is promoted because it has a positive point estimate, attractive CAGR, or high PF alone.
 
-At minimum a preliminary promotion candidate requires:
+At minimum preliminary promotion requires:
 
 - positive cost-adjusted OOS mean Net Return
 - PF > 1
 - **positive date-cluster 95% lower bound**
-- acceptable MDD / ES / tail loss
-- non-degenerate coverage and sample size
-- no hidden degradation from costs, data quality or leakage
+- acceptable MDD / ES / tail dependence
+- non-degenerate coverage and effective sample size
+- stable performance across reasonable time/regime slices
+- no hidden leakage, backfill, data-quality or cost-model dependency
 
-Final Judge promotion additionally requires the unresolved security-master, halt/delisting, long-history, sealed-holdout and Shadow requirements.
+Final promotion additionally requires the unresolved security-master, halt/delisting, execution-realism, sealed-holdout and prospective Shadow requirements.
