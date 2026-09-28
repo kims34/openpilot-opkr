@@ -1,0 +1,73 @@
+name: IndexAlert Research v1
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_kospi_baseline.py'
+      - 'requirements.txt'
+      - '.github/workflows/index-alert-research-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  kospi-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: index-alert-research-v1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install research dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit syntax check
+        run: python -m py_compile research_kospi_baseline.py
+
+      - name: Run KOSPI PIT baseline research
+        run: |
+          mkdir -p research_results
+          python research_kospi_baseline.py \
+            --from-date 20250101 \
+            --to-date 20260925 \
+            --db /tmp/indexalert-research.sqlite \
+            --output research_results/kospi_baseline_20250101_20260925.json
+
+      - name: Persist reproducible result
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path('research_results/kospi_baseline_20250101_20260925.json')
+          d = json.loads(p.read_text(encoding='utf-8'))
+          summary = {
+              'run_id': d.get('run_id'),
+              'market': d.get('market'),
+              'from_date': d.get('from_date'),
+              'to_date': d.get('to_date'),
+              'trading_days': d.get('trading_days'),
+              'selection_days': d.get('selection_days'),
+              'selection_rows': d.get('selection_rows'),
+              'cost_scenarios': d.get('cost_scenarios'),
+              'models': d.get('models'),
+              'execution_misses': d.get('execution_misses'),
+              'limitations': d.get('limitations'),
+          }
+          pathlib.Path('research_results/kospi_baseline_latest_summary.json').write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name 'indexalert-research-bot'
+          git config user.email 'indexalert-research-bot@users.noreply.github.com'
+          git add research_results/kospi_baseline_20250101_20260925.json research_results/kospi_baseline_latest_summary.json
+          git commit -m 'Store KOSPI baseline research result' || exit 0
+          git push origin HEAD:index-alert-research-v1
