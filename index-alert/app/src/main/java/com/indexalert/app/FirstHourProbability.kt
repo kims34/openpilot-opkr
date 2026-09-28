@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,7 @@ import java.net.URL
 import java.util.Locale
 
 private const val FIRST_HOUR_MODEL = "4.0-first-hour"
+private val FirstHourBlack = Color.Black
 
 data class FirstHourEstimate(
     val available: Boolean,
@@ -152,20 +154,30 @@ fun FirstHourProbabilitySection(indexId: String, refreshKey: String = "") {
             Text(
                 "오늘 종가 > 전일 종가  ${String.format(Locale.US, "%.1f%%", e.probability)}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = FirstHourBlack
             )
             if (e.previousProbability != null && e.adjustmentPp != null) {
                 Text(
                     "개장후 ${String.format(Locale.US, "%.1f%%", e.previousProbability)} → 첫 1시간 ${String.format(Locale.US, "%.1f%%", e.probability)} " +
                         "(${String.format(Locale.US, "%+.1f%%p", e.adjustmentPp)})",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = FirstHourBlack
                 )
             }
             e.firstHourReturnPercent?.let {
-                Text("첫 1시간 수익률 ${String.format(Locale.US, "%+.2f%%", it)}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "첫 1시간 수익률 ${String.format(Locale.US, "%+.2f%%", it)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = FirstHourBlack
+                )
             }
             e.fromPreviousClosePercent?.let {
-                Text("전일 종가 대비 첫 1시간 종가 ${String.format(Locale.US, "%+.2f%%", it)}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "전일 종가 대비 첫 1시간 종가 ${String.format(Locale.US, "%+.2f%%", it)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = FirstHourBlack
+                )
             }
             Text("첫 1시간 완성봉 · SPY/QQQ 동조 · VIX · 거래량 반영 · ${e.targetDate ?: "오늘"} 종가 기준", style = MaterialTheme.typography.bodySmall)
 
@@ -180,7 +192,8 @@ fun FirstHourProbabilitySection(indexId: String, refreshKey: String = "") {
                     Text(
                         "실전 누적 ${e.prospectiveCount}회 · Brier ${String.format(Locale.US, "%.4f", e.prospectiveBrier)} " +
                             "/ 기존 ${String.format(Locale.US, "%.4f", e.prospectivePreviousBrier)} · 개선 ${String.format(Locale.US, "%+.4f", gain)}",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FirstHourBlack
                     )
                 } else {
                     Text("실전 성과는 적용 이후 매 거래일 종료 후 별도로 누적 검증합니다.", style = MaterialTheme.typography.bodySmall)
