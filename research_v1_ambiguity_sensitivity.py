@@ -2,8 +2,8 @@
 
 The primary policy remains conservative stop-first.  This diagnostic trains the
 current market-context logistic model only on the primary stop-first labels, then
-replays the *same prediction scores and decision-time ranks* against two outcome
-maps:
+replays the *same purged prediction scores and decision-time ranks* against two
+outcome maps:
 
 1. stop-first (primary executable-conservative bound)
 2. target-first (optimistic upper-bound sensitivity)
@@ -22,7 +22,8 @@ import pandas as pd
 from research_v1_context import add_context
 from research_v1_holdaware import evaluate_topk_only
 from research_v1_pit_labels import make_pit_supervised
-from research_v1_pit_run import _grade, _walk_forward_pit
+from research_v1_pit_run import _grade
+from research_v1_pit_run_purged import _walk_forward_pit
 from run_research_v1 import load_panel
 
 
@@ -32,6 +33,8 @@ def _row(name: str, candidate: dict) -> dict:
     return {
         "name": name,
         "trades": int(ex.get("trades") or 0),
+        "mean_gross_return": float(ex.get("mean_gross_return") or 0.0),
+        "mean_cost_return": float(ex.get("mean_cost_return") or 0.0),
         "mean_net_return": float(ex.get("mean_net_return") or 0.0),
         "profit_factor": float(ex.get("profit_factor") or 0.0),
         "cluster_low": float(ex.get("cluster_bootstrap_95_low") or 0.0),
@@ -74,8 +77,6 @@ def main():
         ambiguity_resolution_policy="target_first",
     )
 
-    # The decision universe/features must be identical.  Only the economic
-    # outcome assigned to ambiguous paths is permitted to differ.
     primary_keys = primary_frame[["decision_date", "symbol"]].reset_index(drop=True)
     optimistic_keys = optimistic_frame[["decision_date", "symbol"]].reset_index(drop=True)
     if not primary_keys.equals(optimistic_keys):
@@ -89,6 +90,7 @@ def main():
         args.train_days,
         args.test_days,
         context=True,
+        purge_days=args.horizon,
     )
 
     primary_result, primary_selected, _ = evaluate_topk_only(
@@ -101,9 +103,6 @@ def main():
     primary = _row("stop_first_primary", primary_result)
     optimistic = _row("target_first_optimistic_same_scores", optimistic_result)
 
-    # Same scores/ranks should select the same decision-symbol pairs.  An
-    # ambiguity can change exit economics but should not retroactively alter the
-    # decision-time candidate set.
     sel_cols = ["decision_date", "symbol"]
     same_selection = (
         primary_selected[sel_cols].reset_index(drop=True).equals(
@@ -124,7 +123,8 @@ def main():
     }
 
     report = {
-        "evaluation_stage": "PIT_PRELIMINARY_AMBIGUITY_BOUND",
+        "evaluation_stage": "PIT_PRELIMINARY_AMBIGUITY_BOUND_PURGED",
+        "purge_days": int(args.horizon),
         "scores_and_ranks_held_fixed": True,
         "selected_candidates_identical": same_selection,
         "primary_diagnostics": primary_diag,
