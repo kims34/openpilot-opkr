@@ -8,6 +8,7 @@ labelled as actual ETF pre/post trades or linked estimates and never rewrite
 completed cash history.
 """
 import extended_session_probability
+import extended_session_kospi_fallback  # patches KOSPI off-hours continuity
 import firsthour_nowcast_v40
 import next_day_probability_v33 as next_day_probability
 import open_nowcast_v39
