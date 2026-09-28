@@ -1,0 +1,58 @@
+name: IndexAlert Research v1 Distributional NetEV
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'INDEXALERT_MASTER_SPEC.md'
+      - 'research_v1_distributional_netev.py'
+      - 'research_v1_supervised_cache.py'
+      - 'research_v1_fixed_horizon_label.py'
+      - 'research_v1_context.py'
+      - '.github/workflows/indexalert-research-v1-distributional.yml'
+  workflow_dispatch:
+
+jobs:
+  distributional-netev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Restore marcap source
+        uses: actions/cache@v4
+        with:
+          path: research_data/marcap_raw
+          key: marcap-fast-v1-2024-01-01-2026-09-28
+          restore-keys: |
+            marcap-pit-v2-
+            marcap-pit-v1-
+      - name: Restore supervised PIT labels
+        uses: actions/cache@v4
+        with:
+          path: research_data/pit_supervised_v1
+          key: pit-supervised-v1-2024-01-01-2026-09-28-h5-t040-s025-c3
+      - name: Build PIT panel
+        run: |
+          python research_v1_marcap.py --start 2024-01-01 --end 2026-09-28 --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
+      - name: Run distributional executable NetEV
+        run: |
+          python research_v1_distributional_netev.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v1 --result-dir research_results/marcap_pit_distributional --horizon 5 --top-k 3 --train-days 160 --cal-days 40 --test-days 40
+          cat research_results/marcap_pit_distributional/summary.json
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-distributional-netev
+          path: research_results/marcap_pit_distributional/
+          if-no-files-found: warn
+          retention-days: 30
