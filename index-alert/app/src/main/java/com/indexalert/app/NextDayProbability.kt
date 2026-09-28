@@ -277,7 +277,7 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
     Card(
         Modifier.fillMaxWidth(),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(Modifier.padding(12.dp)) {
             val e = estimate
@@ -351,25 +351,25 @@ fun OneMonthSixBucketTable(m: OneMonthEstimate) {
 
     Spacer(Modifier.height(7.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Card(Modifier.weight(1f)) {
+        Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.Black)) {
             Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 Text("상승 3구간 합계", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Text(
                     pct1(upTotal),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = androidx.compose.ui.graphics.Color(0xFFD32F2F)
+                    color = androidx.compose.ui.graphics.Color.Black
                 )
             }
         }
-        Card(Modifier.weight(1f)) {
+        Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.Black)) {
             Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 Text("하락 3구간 합계", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Text(
                     pct1(downTotal),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = androidx.compose.ui.graphics.Color(0xFF1565C0)
+                    color = androidx.compose.ui.graphics.Color.Black
                 )
             }
         }

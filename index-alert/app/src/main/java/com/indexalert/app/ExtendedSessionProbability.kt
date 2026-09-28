@@ -136,7 +136,7 @@ fun ExtendedSessionProbabilitySection(indexId: String, refreshKey: String = "") 
     Card(
         Modifier.fillMaxWidth(),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(Modifier.padding(12.dp)) {
             val e = estimate
