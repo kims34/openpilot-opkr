@@ -22,6 +22,7 @@ on:
       - 'test_research_v1_core.py'
       - 'test_research_v1_portfolio.py'
       - 'test_research_v1_security_scope.py'
+      - 'test_research_v1_purged.py'
       - '.github/workflows/indexalert-research-v1-purged.yml'
   workflow_dispatch:
     inputs:
@@ -51,7 +52,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest==9.1.1 pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
       - name: Unit tests
-        run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py test_research_v1_security_scope.py
+        run: pytest -q test_research_v1_core.py test_research_v1_portfolio.py test_research_v1_security_scope.py test_research_v1_purged.py
       - name: Cache marcap yearly source files
         uses: actions/cache@v4
         with:
