@@ -4,8 +4,13 @@ marcap is derived from KRX daily all-security market-cap files and therefore
 reconstructs the set of securities present on each historical trading date. This
 removes the fixed-current-universe survivorship problem from the smoke dataset.
 
+The executable panel contains only interpretable positive-OHLC bars.  Separately,
+a lineage membership ledger preserves *all* KOSPI rows, including halted/invalid
+bars, so later diagnostics can distinguish a missing executable bar from a
+security disappearing from the historical membership universe.
+
 Phase 1 deliberately keeps *all KOSPI listed securities* because marcap does not
-carry an explicit common/preferred security-type field. The output is PIT for
+carry a validated common/preferred security-type field. The output is PIT for
 membership but is marked Judge-preliminary until a separately validated common-
 stock identity layer is attached.
 """
@@ -21,7 +26,7 @@ import pandas as pd
 import requests
 
 RAW_URL = "https://raw.githubusercontent.com/FinanceData/marcap/master/data/marcap-{year}.parquet"
-SCHEMA_VERSION = "marcap-kospi-pit-v1"
+SCHEMA_VERSION = "marcap-kospi-pit-v2"
 
 
 def _sha256(path: Path) -> str:
@@ -47,7 +52,6 @@ def _download_year(year: int, raw_dir: Path, timeout: int = 120) -> Path:
 def _normalise_year(path: Path, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
     df = pd.read_parquet(path)
     if "Date" not in df.columns:
-        # Some parquet writers preserve Date as the index.
         if df.index.name == "Date":
             df = df.reset_index()
         else:
@@ -62,8 +66,6 @@ def _normalise_year(path: Path, start: pd.Timestamp, end: pd.Timestamp) -> pd.Da
     if x.empty:
         return x
 
-    # Codes are identifiers, not numbers. Keep leading zeroes if parquet inferred
-    # numeric storage in any historical file.
     x["Code"] = x["Code"].astype(str).str.replace(r"\.0$", "", regex=True).str.zfill(6)
     for col in ["Open", "High", "Low", "Close", "Volume", "Amount", "Marcap"]:
         x[col] = pd.to_numeric(x[col], errors="coerce")
@@ -73,6 +75,7 @@ def _normalise_year(path: Path, start: pd.Timestamp, end: pd.Timestamp) -> pd.Da
         "symbol": x["Code"],
         "name": x["Name"].astype(str),
         "market": x["Market"].astype(str),
+        "dept": x["Dept"].astype(str) if "Dept" in x.columns else "",
         "open": x["Open"],
         "high": x["High"],
         "low": x["Low"],
@@ -88,9 +91,6 @@ def _normalise_year(path: Path, start: pd.Timestamp, end: pd.Timestamp) -> pd.Da
         "common_stock_identity_validated": False,
     })
 
-    # Preserve halted/zero-price rows in lineage but the trading panel must only
-    # contain bars whose OHLC can be interpreted by the execution engine. A zero
-    # volume row with valid positive OHLC remains allowed.
     valid = (
         out[["open", "high", "low", "close"]].notna().all(axis=1)
         & (out[["open", "high", "low", "close"]] > 0).all(axis=1)
@@ -99,8 +99,6 @@ def _normalise_year(path: Path, start: pd.Timestamp, end: pd.Timestamp) -> pd.Da
         & (out["low"] <= out["high"])
     )
     out["bar_valid_for_execution"] = valid
-    # Invalid bars are retained in a separate rejected output by caller; they
-    # must not be silently coerced into tradeable observations.
     return out.sort_values(["decision_date", "symbol"]).reset_index(drop=True)
 
 
@@ -116,12 +114,15 @@ def build(start: str, end: str, out_dir: str, raw_dir: str) -> dict:
 
     out = Path(out_dir)
     raw = Path(raw_dir)
+    lineage = out / "lineage"
     out.mkdir(parents=True, exist_ok=True)
     raw.mkdir(parents=True, exist_ok=True)
+    lineage.mkdir(parents=True, exist_ok=True)
 
     year_stats = []
     valid_frames = []
     rejected_frames = []
+    membership_frames = []
     hashes = {}
     for year in years_between(start_ts, end_ts):
         p = _download_year(year, raw)
@@ -130,6 +131,7 @@ def build(start: str, end: str, out_dir: str, raw_dir: str) -> dict:
         if frame.empty:
             year_stats.append({"year": year, "rows": 0, "valid_rows": 0})
             continue
+        membership_frames.append(frame.copy())
         valid = frame[frame["bar_valid_for_execution"]].copy()
         rejected = frame[~frame["bar_valid_for_execution"]].copy()
         valid_frames.append(valid)
@@ -147,16 +149,21 @@ def build(start: str, end: str, out_dir: str, raw_dir: str) -> dict:
     if not valid_frames:
         raise RuntimeError("no valid KOSPI marcap rows in requested range")
     panel = pd.concat(valid_frames, ignore_index=True).sort_values(["decision_date", "symbol"]).reset_index(drop=True)
+    membership = pd.concat(membership_frames, ignore_index=True).sort_values(["decision_date", "symbol"]).reset_index(drop=True)
     rejected = pd.concat(rejected_frames, ignore_index=True) if rejected_frames else pd.DataFrame(columns=panel.columns)
 
-    # One file per calendar year keeps existing load_panel() compatible and
-    # supports incremental caching.
     for year, g in panel.groupby(panel["decision_date"].dt.year):
         g.to_parquet(out / f"kospi-pit-{int(year)}.parquet", index=False)
     if not rejected.empty:
         rejected.to_parquet(out / "rejected_invalid_bars.parquet", index=False)
 
+    # Keep this under a subdirectory so load_panel(), which reads top-level
+    # executable parquet files, can never ingest the lineage rows accidentally.
+    membership.to_parquet(lineage / "membership_status.parquet", index=False)
+
     daily_counts = panel.groupby("decision_date")["symbol"].nunique()
+    membership_daily_counts = membership.groupby("decision_date")["symbol"].nunique()
+    invalid_membership = ~membership["bar_valid_for_execution"].fillna(False).astype(bool)
     stats = {
         "schema_version": SCHEMA_VERSION,
         "source": "FinanceData/marcap",
@@ -164,11 +171,17 @@ def build(start: str, end: str, out_dir: str, raw_dir: str) -> dict:
         "start": str(panel["decision_date"].min().date()),
         "end": str(panel["decision_date"].max().date()),
         "rows_written": int(len(panel)),
+        "membership_rows_preserved": int(len(membership)),
+        "membership_rows_without_executable_bar": int(invalid_membership.sum()),
+        "membership_lineage_path": "lineage/membership_status.parquet",
         "unique_symbols": int(panel["symbol"].nunique()),
         "trading_dates": int(panel["decision_date"].nunique()),
         "daily_universe_min": int(daily_counts.min()),
         "daily_universe_median": float(daily_counts.median()),
         "daily_universe_max": int(daily_counts.max()),
+        "membership_daily_universe_min": int(membership_daily_counts.min()),
+        "membership_daily_universe_median": float(membership_daily_counts.median()),
+        "membership_daily_universe_max": int(membership_daily_counts.max()),
         "point_in_time_universe": True,
         "survivorship_bias_possible": False,
         "security_scope": "ALL_KOSPI_LISTED_SECURITIES",
@@ -185,6 +198,7 @@ def build(start: str, end: str, out_dir: str, raw_dir: str) -> dict:
         "security_type": "ALL_KOSPI_SECURITIES_NOT_YET_COMMON_ONLY",
         "intraday": "DAILY_OHLC_ONLY",
         "same_bar_target_stop": "PRIMARY_ENGINE_USES_CONSERVATIVE_STOP_FIRST",
+        "membership_lineage": "ALL_KOSPI_ROWS_PRESERVED_SEPARATELY_INCLUDING_INVALID_OR_HALTED_BARS",
         "allowed_use": "PIT policy/model diagnostics and preliminary economic assessment",
         "forbidden_use": "Final KR-KOSPI Judge promotion until common-stock identity is validated",
     }, ensure_ascii=False, indent=2), encoding="utf-8")
