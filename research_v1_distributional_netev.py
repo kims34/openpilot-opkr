@@ -284,7 +284,11 @@ def main():
     lower_coverage = float((realised["fh_net_return"] >= realised["netev_low"]).mean()) if len(realised) else 0.0
     central_coverage = float(interval_mask.mean()) if len(realised) else 0.0
 
-    selected_keys = set(zip(pd.to_datetime(selected.get("decision_date", pd.Series(dtype="datetime64[ns]")).dt.date, selected.get("symbol", pd.Series(dtype=str)))) if not selected.empty else set()
+    if not selected.empty:
+        selected_dates = pd.to_datetime(selected["decision_date"]).dt.date
+        selected_keys = set(zip(selected_dates, selected["symbol"].astype(str)))
+    else:
+        selected_keys = set()
     realised["admitted"] = [
         (pd.Timestamp(d).date(), str(s)) in selected_keys
         for d, s in zip(realised["decision_date"], realised["symbol"])
