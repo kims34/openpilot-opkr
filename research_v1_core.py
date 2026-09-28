@@ -110,13 +110,17 @@ def classify_first_hit(
     entry_price: float,
     target_return: float,
     stop_return: float,
+    ambiguous_policy: str = "raise",
 ) -> tuple[str, Bar, float]:
     """Return TARGET/STOP/TIME using only information observable in the bars.
 
     If target and stop are both touched in the same daily bar, their order is
-    unknowable from OHLC and the observation is explicitly AMBIGUOUS.
-    Gap-through stops use the first executable open rather than the planned stop.
+    unknowable from OHLC. `raise` preserves strict ambiguity detection;
+    `stop_first` is a conservative executable sensitivity; `target_first` is an
+    optimistic sensitivity. Gap-through stops use the first executable open.
     """
+    if ambiguous_policy not in {"raise", "stop_first", "target_first"}:
+        raise ValueError(f"unsupported ambiguous_policy={ambiguous_policy}")
     if not future_bars:
         raise ValueError("future_bars required")
     target = entry_price * (1.0 + target_return)
@@ -130,7 +134,11 @@ def classify_first_hit(
         hit_target = bar.high >= target
         hit_stop = bar.low <= stop
         if hit_target and hit_stop:
-            raise AmbiguousFirstHit(f"both barriers touched on {bar.day}")
+            if ambiguous_policy == "raise":
+                raise AmbiguousFirstHit(f"both barriers touched on {bar.day}")
+            if ambiguous_policy == "stop_first":
+                return "STOP", bar, stop
+            return "TARGET", bar, target
         if hit_target:
             return "TARGET", bar, target
         if hit_stop:
@@ -148,11 +156,12 @@ def economic_outcome(
     target_return: float,
     stop_return: float,
     round_trip_cost_return: float,
+    ambiguous_policy: str = "raise",
 ) -> DecisionRecord:
     if not future_bars:
         raise ValueError("future_bars required")
     outcome, exit_bar, exit_price = classify_first_hit(
-        future_bars, entry_price, target_return, stop_return
+        future_bars, entry_price, target_return, stop_return, ambiguous_policy=ambiguous_policy
     )
     gross = pct_change(entry_price, exit_price)
     net = gross - round_trip_cost_return
