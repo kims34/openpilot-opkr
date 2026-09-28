@@ -1,0 +1,73 @@
+name: IndexAlert Research v1
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_core.py'
+      - 'research_v1_krx.py'
+      - 'run_research_v1.py'
+      - 'test_research_v1_core.py'
+      - '.github/workflows/indexalert-research-v1.yml'
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'KRX PIT data start (YYYY-MM-DD)'
+        required: false
+        default: '2025-01-01'
+      end:
+        description: 'KRX PIT data end (YYYY-MM-DD)'
+        required: false
+        default: '2026-09-28'
+
+jobs:
+  test-and-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pandas numpy
+
+      - name: Unit tests
+        run: pytest -q test_research_v1_core.py
+
+      - name: Build actual date-specific KOSPI PIT daily panel
+        env:
+          START_DATE: ${{ github.event.inputs.start || '2025-01-01' }}
+          END_DATE: ${{ github.event.inputs.end || '2026-09-28' }}
+        run: |
+          python research_v1_krx.py --start "$START_DATE" --end "$END_DATE" --sleep 0.10
+
+      - name: Run Baseline Judge v1
+        run: |
+          python run_research_v1.py --top-k 3 --horizon 5 --target 0.04 --stop -0.025 --participation 0.0005
+
+      - name: Show summary
+        if: always()
+        run: |
+          test -f research_results/summary.json && cat research_results/summary.json || true
+          test -f research_data/krx_daily/build_stats.json && cat research_data/krx_daily/build_stats.json || true
+          test -f research_data/krx_daily/failures.json && cat research_data/krx_daily/failures.json || true
+
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-results
+          path: |
+            research_results/
+            research_data/krx_daily/build_stats.json
+            research_data/krx_daily/failures.json
+          if-no-files-found: warn
+          retention-days: 30
