@@ -13,8 +13,8 @@ android {
         applicationId = "com.indexalert.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 40
-        versionName = "4.0"
+        versionCode = 41
+        versionName = "4.1"
 
         val backendUrl = envString("INDEXALERT_BACKEND_URL").ifBlank { "https://indexalert-runtime-production.up.railway.app" }
         val firebaseAppId = envString("FIREBASE_APP_ID").ifBlank { "1:610381086978:android:ae3fe34164da421b0e821b" }
