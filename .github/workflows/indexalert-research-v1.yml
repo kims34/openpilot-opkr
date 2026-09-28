@@ -21,9 +21,9 @@ on:
         required: false
         default: '2026-09-28'
       universe_size:
-        description: 'Current KOSPI large-cap smoke universe size'
+        description: 'Fixed non-PIT KOSPI smoke basket size'
         required: false
-        default: '50'
+        default: '30'
 
 jobs:
   smoke-test-and-backtest:
@@ -39,10 +39,10 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install research-only dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest pandas numpy
+          pip install pytest==9.1.1 pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0
 
       - name: Unit tests
         run: pytest -q test_research_v1_core.py
@@ -51,7 +51,7 @@ jobs:
         env:
           START_DATE: ${{ github.event.inputs.start || '2025-01-01' }}
           END_DATE: ${{ github.event.inputs.end || '2026-09-28' }}
-          UNIVERSE_SIZE: ${{ github.event.inputs.universe_size || '50' }}
+          UNIVERSE_SIZE: ${{ github.event.inputs.universe_size || '30' }}
         run: |
           python research_v1_public.py --start "$START_DATE" --end "$END_DATE" --universe-size "$UNIVERSE_SIZE" --sleep 0.10
 
