@@ -45,6 +45,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // v1.1: KOSPI100 -> KOSPI composite. Clear only the old local KOSPI ATH cache once.
+        val statePrefs = getSharedPreferences("state", Context.MODE_PRIVATE)
+        if (!statePrefs.getBoolean("kospi_composite_v1_migrated", false)) {
+            statePrefs.edit()
+                .remove("ath_cash_kospi100")
+                .remove("ath_ts_kospi100")
+                .remove("ath_day_kospi100")
+                .putBoolean("kospi_composite_v1_migrated", true)
+                .apply()
+        }
         createChannel(this)
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -109,9 +119,9 @@ val rules = listOf(
         "SCHD ETF 자체 가격 기준", "America/New_York"
     ),
     Rule(
-        "kospi100", "KOSPI 100", "KOSPI100.KS", null,
+        "kospi100", "KOSPI", "^KS11", null,
         emptyList(),
-        "KOSPI 100 지수 · 표시 전용 (알림 없음)", "Asia/Seoul"
+        "코스피 종합지수 · 표시 전용 (알림 없음)", "Asia/Seoul"
     )
 )
 
@@ -170,7 +180,7 @@ fun Home(
     var alertSettingsExpanded by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         Text("시장 하락 알리미", style = MaterialTheme.typography.headlineMedium)
-        Text("SPY · QQQ · SCHD · KOSPI100 / ATH 기준 현황", style = MaterialTheme.typography.bodyMedium)
+        Text("SPY · QQQ · SCHD · KOSPI / ATH 기준 현황", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(14.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -263,7 +273,7 @@ fun Home(
         Spacer(Modifier.height(18.dp))
         Text(
             "SPY · QQQ · SCHD는 정규장과 프리마켓·애프터마켓의 ETF 자체 가격을 서버가 감시합니다. " +
-                "KOSPI100은 지수 현황만 표시하며 알림을 보내지 않습니다. 개별종목 TOP10은 서버 캐시를 주기적으로 갱신합니다. " +
+                "KOSPI는 코스피 종합지수 현황만 표시하며 알림을 보내지 않습니다. 개별종목 TOP10은 서버 캐시를 주기적으로 갱신합니다. " +
                 "무료 프로토타입 시세는 공식 거래소 실시간 피드와 다를 수 있습니다.",
             style = MaterialTheme.typography.bodySmall
         )
@@ -339,7 +349,7 @@ object MarketEngine {
         if (baseData.high >= ath) { ath = baseData.high; athTs = baseData.highTs }
         prefs.edit().putString(key, ath.toString()).putLong("ath_ts_${rule.id}", athTs).apply()
         val current = baseData.current
-        val source = if (rule.id == "kospi100") "KOSPI 100 지수 · 로컬 보조 조회" else "ETF 자체 가격 · 로컬 보조 조회"
+        val source = if (rule.id == "kospi100") "KOSPI 종합지수 · 로컬 보조 조회" else "ETF 자체 가격 · 로컬 보조 조회"
         val dd = if (ath > 0) (current / ath - 1.0) * 100.0 else 0.0
         val dayChange = current - baseData.previousClose
         val dayChangePct = if (baseData.previousClose > 0) (current / baseData.previousClose - 1.0) * 100.0 else 0.0
