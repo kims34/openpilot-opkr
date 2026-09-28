@@ -1,10 +1,17 @@
-"""Prospective safety gate for promoted probability overlays.
+"""Prospective Brier safety gate for promoted probability overlays.
 
-Historical holdout validation remains the promotion prerequisite. This module
-adds a second, strictly prospective check after deployment. It compares paired
-Brier losses from the candidate and its exact reference model. A promoted
-candidate is only auto-disabled when live evidence is sufficiently strong that
-the whole 95% CI for mean Brier gain is below zero.
+Historical holdout validation remains the first promotion prerequisite.  This
+module adds a second, strictly prospective check after deployment.  It compares
+paired Brier losses from the raw candidate and its exact reference probability.
+
+Policy:
+- Before MIN_LIVE_N scored forecasts, keep the historically validated candidate
+  while collecting live evidence.
+- From MIN_LIVE_N onward, keep the candidate only when the full 95% confidence
+  interval for mean Brier gain is above zero.
+- If live advantage is inconclusive or negative, serve the previous/reference
+  probability.  The raw candidate must still be recorded before this gate so it
+  continues accumulating evidence and can automatically recover later.
 
 Positive gain = candidate has lower (better) Brier loss.
 """
@@ -15,6 +22,7 @@ from typing import Iterable, Sequence
 
 MIN_LIVE_N = 30
 Z95 = 1.959963984540054
+SERVING_POLICY_VERSION = "prospective-brier-ci95-v1"
 
 
 def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict:
@@ -35,6 +43,7 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
     n = len(rows)
     if not rows:
         return {
+            "policy_version": SERVING_POLICY_VERSION,
             "status": "historical_only",
             "n": 0,
             "min_n": int(min_n),
@@ -67,17 +76,18 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
     if n < int(min_n):
         status = "historical_only"
         fallback = False
-    elif ci_high is not None and ci_high < 0.0:
-        status = "fallback_previous"
-        fallback = True
     elif ci_low is not None and ci_low > 0.0:
         status = "live_confirmed"
         fallback = False
+    elif ci_high is not None and ci_high < 0.0:
+        status = "fallback_underperforming"
+        fallback = True
     else:
-        status = "live_inconclusive"
-        fallback = False
+        status = "fallback_inconclusive"
+        fallback = True
 
     return {
+        "policy_version": SERVING_POLICY_VERSION,
         "status": status,
         "n": n,
         "min_n": int(min_n),
@@ -91,15 +101,20 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
 
 
 def apply(result: dict, gate: dict, previous_key: str) -> dict:
-    """Expose candidate diagnostics and switch only the served probability.
+    """Expose diagnostics and switch only the served probability.
 
-    The caller must record the raw candidate before calling this function so a
-    fallback candidate keeps accumulating prospective evidence in shadow mode.
+    The caller must record the raw candidate before calling this function.  This
+    guarantees that a fallback candidate remains observable in shadow mode and
+    can automatically return if later prospective evidence becomes convincing.
     """
     out = result
     candidate = out.get("probability")
     previous = out.get(previous_key)
-    out["candidate_probability"] = candidate
+    out["live_candidate_probability"] = candidate
+    # Preserve any model-internal candidate field already present.
+    if "candidate_probability" not in out:
+        out["candidate_probability"] = candidate
+    out["live_gate_policy_version"] = gate.get("policy_version", SERVING_POLICY_VERSION)
     out["live_gate_status"] = gate.get("status")
     out["live_gate_n"] = gate.get("n", 0)
     out["live_gate_min_n"] = gate.get("min_n", MIN_LIVE_N)
@@ -113,7 +128,9 @@ def apply(result: dict, gate: dict, previous_key: str) -> dict:
         out["probability"] = previous
         out["served_probability"] = previous
         out["served_from"] = "previous_stage"
-        out["status"] = str(out.get("status") or "") + " · 실전 성능 저하 감지, 이전 단계 확률 사용"
+        status = str(out.get("status") or "").strip()
+        note = "실전 Brier 우위 미확인 · 안전 확률 사용"
+        out["status"] = f"{status} · {note}" if status else note
     else:
         out["served_probability"] = candidate
         out["served_from"] = "candidate"
