@@ -28,8 +28,19 @@ jobs:
       - name: Install minimal research dependencies
         run: pip install pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.2 numpy==2.4.6
 
-      - name: Syntax check
-        run: python -m py_compile research_kospi_clean_v2.py
+      - name: Apply audited one-line v2 fix and syntax check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('research_kospi_clean_v2.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'base_cols = ["date", "day_idx", "code", "name"] + FEATURES + list(BASELINES)'
+          new = 'base_cols = list(dict.fromkeys(["date", "day_idx", "code", "name"] + FEATURES + list(BASELINES)))'
+          if old not in s:
+              raise SystemExit('expected v2 patch target not found')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+          python -m py_compile research_kospi_clean_v2.py
 
       - name: Fetch historical KRX cross-sections
         run: |
@@ -79,10 +90,10 @@ jobs:
               json.dumps(s, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
           PY
 
-      - name: Persist reproducible v2 results
+      - name: Persist reproducible v2 results and audited fix
         run: |
           git config user.name 'indexalert-research-bot'
           git config user.email 'indexalert-research-bot@users.noreply.github.com'
-          git add research_results/kospi_clean_v2.json research_results/kospi_clean_v2_summary.json
+          git add research_kospi_clean_v2.py research_results/kospi_clean_v2.json research_results/kospi_clean_v2_summary.json
           git commit -m 'Store KOSPI clean v2 research result' || exit 0
           git push origin HEAD:index-alert-research-v1
