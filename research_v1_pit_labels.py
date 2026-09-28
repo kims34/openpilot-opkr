@@ -14,8 +14,14 @@ work must replace that approximation with exact delisting/halt economics.
 The default same-bar ambiguity policy remains conservative stop-first.  An
 explicit target-first option exists only to measure an optimistic upper bound;
 it must never be treated as executable evidence without intraday first-hit data.
+
+KOSPI statutory sell taxes are applied by entry year for historical fidelity.
+Round-trip broker commission is a separate parameter.  `explicit_bps` remains as
+an override for controlled sensitivity experiments only.
 """
 from __future__ import annotations
+
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -33,6 +39,33 @@ FEATURES = [
     "ret1", "ret5", "ret20", "vol20", "log_adv20",
     "ret5_rank", "ret20_rank", "vol20_rank", "adv20_rank",
 ]
+
+
+def kospi_statutory_sell_tax_bps(day) -> float:
+    """Historical KOSPI sell-side statutory tax in basis points.
+
+    Includes securities transaction tax plus the 15bp rural special tax.
+    Schedule used by the current research range:
+      2021-2022: 8bp + 15bp = 23bp
+      2023:      5bp + 15bp = 20bp
+      2024:      3bp + 15bp = 18bp
+      2025:      0bp + 15bp = 15bp
+      2026:      5bp + 15bp = 20bp
+    For dates after 2026 the current 2026 statutory rate is carried forward only
+    as a placeholder and must be re-verified before any future-date Judge run.
+    """
+    year = pd.Timestamp(day).year
+    if year <= 2020:
+        raise ValueError(f"KOSPI statutory tax schedule not encoded before 2021: {day}")
+    if year <= 2022:
+        return 23.0
+    if year == 2023:
+        return 20.0
+    if year == 2024:
+        return 18.0
+    if year == 2025:
+        return 15.0
+    return 20.0
 
 
 def _synthetic_missing_future_stop(
@@ -74,13 +107,16 @@ def make_pit_supervised(
     target_return: float = 0.04,
     stop_return: float = -0.025,
     half_spread_bps: float = 4.0,
-    explicit_bps: float = 23.0,
+    explicit_bps: float | None = None,
+    commission_round_trip_bps: float = 3.0,
     participation: float = 0.0005,
     impact_coefficient: float = 0.10,
     ambiguity_resolution_policy: str = "stop_first",
 ):
     if ambiguity_resolution_policy not in {"stop_first", "target_first"}:
         raise ValueError("ambiguity_resolution_policy must be stop_first or target_first")
+    if commission_round_trip_bps < 0:
+        raise ValueError("commission_round_trip_bps must be non-negative")
 
     x = add_features(raw_panel)
     x["log_adv20"] = np.log1p(x["adv20"].clip(lower=0))
@@ -90,6 +126,7 @@ def make_pit_supervised(
     dates, date_to_pos, by_symbol = build_lookup(x)
     rows = []
     record_map = {}
+    explicit_cost_counts: Counter[str] = Counter()
     diagnostics = {
         "ambiguous_same_bar": 0,
         "entry_no_fill": 0,
@@ -104,6 +141,13 @@ def make_pit_supervised(
         ),
         "entry_no_fill_policy": "retain_for_ranking_leave_slot_empty_no_retroactive_backfill",
         "post_entry_gap_policy": "planned_stop_on_first_missing_market_session_preliminary",
+        "cost_policy": (
+            "fixed_explicit_bps_override" if explicit_bps is not None
+            else "historical_KOSPI_statutory_sell_tax_by_entry_year_plus_round_trip_commission"
+        ),
+        "half_spread_bps_one_way": float(half_spread_bps),
+        "commission_round_trip_bps": float(commission_round_trip_bps),
+        "fixed_explicit_bps_override": float(explicit_bps) if explicit_bps is not None else None,
     }
 
     for row in x.itertuples(index=False):
@@ -144,8 +188,19 @@ def make_pit_supervised(
             rows.append(item)
             continue
 
+        if explicit_bps is None:
+            statutory_bps = kospi_statutory_sell_tax_bps(entry_ts)
+            applied_explicit_bps = statutory_bps + float(commission_round_trip_bps)
+            explicit_cost_counts[f"{entry_ts.year}:{applied_explicit_bps:.1f}"] += 1
+        else:
+            applied_explicit_bps = float(explicit_bps)
+            explicit_cost_counts[f"override:{applied_explicit_bps:.1f}"] += 1
+
         cost = cost_model_return(
-            half_spread_bps, explicit_bps, float(row.vol20), participation,
+            half_spread_bps,
+            applied_explicit_bps,
+            float(row.vol20),
+            participation,
             impact_coefficient,
         )
         future = []
@@ -189,8 +244,6 @@ def make_pit_supervised(
                 round_trip_cost_return=cost,
             )
             try:
-                # First detect ambiguity explicitly so diagnostics are identical
-                # under both sensitivity policies.
                 rec = economic_outcome(**kwargs)
                 was_ambiguous = False
             except AmbiguousFirstHit:
@@ -214,6 +267,7 @@ def make_pit_supervised(
         rows.append(item)
         diagnostics["eligible_rows_with_labels"] += 1
 
+    diagnostics["applied_explicit_cost_bps_counts"] = dict(sorted(explicit_cost_counts.items()))
     frame = pd.DataFrame(rows)
     if not frame.empty:
         frame = frame.sort_values(["decision_date", "symbol"]).reset_index(drop=True)
