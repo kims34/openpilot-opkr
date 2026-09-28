@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ import java.net.URL
 import java.util.Locale
 
 private const val AFTER_OPEN_MODEL = "3.9-open-nowcast"
+private val AfterOpenBlack = Color.Black
 
 data class AfterOpenEstimate(
     val available: Boolean,
@@ -152,17 +154,23 @@ fun AfterOpenProbabilitySection(indexId: String, refreshKey: String = "") {
             Text(
                 "오늘 종가 > 전일 종가  ${String.format(Locale.US, "%.1f%%", e.probability)}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = AfterOpenBlack
             )
             if (e.preopenProbability != null && e.adjustmentPp != null) {
                 Text(
                     "개장 전 ${String.format(Locale.US, "%.1f%%", e.preopenProbability)} → 개장후 ${String.format(Locale.US, "%.1f%%", e.probability)} " +
                         "(${String.format(Locale.US, "%+.1f%%p", e.adjustmentPp)})",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AfterOpenBlack
                 )
             }
             e.openingGapPercent?.let {
-                Text("시가 갭 ${String.format(Locale.US, "%+.2f%%", it)} 반영", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "시가 갭 ${String.format(Locale.US, "%+.2f%%", it)} 반영",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AfterOpenBlack
+                )
             }
             Text("개장 5분 이후 시가정보 반영 · ${e.targetDate ?: "오늘"} 정규장 종가 기준", style = MaterialTheme.typography.bodySmall)
 
@@ -176,7 +184,8 @@ fun AfterOpenProbabilitySection(indexId: String, refreshKey: String = "") {
                     Text(
                         "실전 누적 ${e.prospectiveCount}회 · Brier ${String.format(Locale.US, "%.4f", e.prospectiveBrier)} " +
                             "/ 개장전 ${String.format(Locale.US, "%.4f", e.prospectivePreopenBrier)} · 개선 ${String.format(Locale.US, "%+.4f", gain)}",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AfterOpenBlack
                     )
                 } else {
                     Text("실전 성과는 매 거래일 종료 후 누적 검증합니다.", style = MaterialTheme.typography.bodySmall)
