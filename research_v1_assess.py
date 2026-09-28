@@ -1,9 +1,4 @@
-"""Automatic suitability assessment for IndexAlert Research v1 smoke/Judge runs.
-
-This report intentionally separates engineering evidence from investment evidence.
-A non-PIT smoke universe can diagnose pipeline/model behavior but can never be
-promoted to a profitability claim or production trading recommendation.
-"""
+"""Automatic suitability assessment for IndexAlert Research v1 smoke/Judge runs."""
 from __future__ import annotations
 
 import json
@@ -34,12 +29,7 @@ def _row(name: str, m: dict, objective=None, admission_rule=None):
     }
 
 
-def _model_rows(ml: dict):
-    return [_row(name, m) for name, m in ml.get("models", {}).items()]
-
-
 def _classify(row: dict):
-    # Smoke-only descriptive grade. Not a production approval.
     trades = int(row.get("trades") or 0)
     net = float(row.get("mean_net_return") or 0.0)
     pf = float(row.get("profit_factor") or 0.0)
@@ -68,7 +58,9 @@ def main():
     ml = _load("research_results/public_smoke_ml/summary.json")
     selective = _load("research_results/public_smoke_selective/summary.json")
     holdaware = _load("research_results/public_smoke_holdaware/summary.json")
-    rows = _model_rows(ml)
+    context = _load("research_results/public_smoke_context/summary.json")
+
+    rows = [_row(name, m) for name, m in ml.get("models", {}).items()]
 
     sel = selective.get("result", {})
     if sel:
@@ -84,6 +76,9 @@ def main():
             objective="probability_positive_net_return",
             admission_rule="original_top3_only__held_names_leave_empty_slots",
         ))
+
+    for name, m in context.get("models", {}).items():
+        rows.append(_row(f"context_{name}", m))
 
     evaluated = []
     for row in rows:
@@ -105,11 +100,11 @@ def main():
         })
 
     judge_eligible = bool(ml.get("judge_eligible")) and bool(baseline.get("judge_eligible"))
-    if not judge_eligible:
-        overall = "ENGINEERING_VALIDATED__INVESTMENT_PERFORMANCE_UNVERIFIED"
-    else:
-        promising = [x for x in evaluated if x["smoke_grade"] == "PROMISING_SMOKE_ONLY"]
-        overall = "JUDGE_CANDIDATE_EXISTS" if promising else "NO_JUDGE_CANDIDATE"
+    overall = (
+        "ENGINEERING_VALIDATED__INVESTMENT_PERFORMANCE_UNVERIFIED"
+        if not judge_eligible
+        else ("JUDGE_CANDIDATE_EXISTS" if any(x["smoke_grade"] == "PROMISING_SMOKE_ONLY" for x in evaluated) else "NO_JUDGE_CANDIDATE")
+    )
 
     structural = []
     if any((x.get("backfill_mean_net_return") is not None and x.get("primary_rank_mean_net_return") is not None and x["backfill_mean_net_return"] < x["primary_rank_mean_net_return"]) for x in evaluated):
@@ -120,8 +115,20 @@ def main():
         structural.append("Strict abstention can choose cash; this is preferable to forcing statistically unsupported trades.")
     if holdaware:
         structural.append("Hold-aware original-top3-only policy is explicitly benchmarked against deeper-rank backfill.")
+    if context:
+        structural.append("Simple market breadth/residual-return context is benchmarked without increasing model complexity.")
     if not judge_eligible:
         structural.append("Current 30-stock fixed basket is non-PIT and survivorship/selection biased; results cannot establish real profitability.")
+
+    ranked = sorted(
+        evaluated,
+        key=lambda x: (
+            float(x.get("bootstrap_low") or -999),
+            float(x.get("mean_net_return") or -999),
+            float(x.get("profit_factor") or 0),
+        ),
+        reverse=True,
+    )
 
     report = {
         "overall_status": overall,
@@ -132,12 +139,13 @@ def main():
         ),
         "baseline_candidates": baseline_rows,
         "model_candidates": evaluated,
+        "best_smoke_candidate_by_conservative_sort": ranked[0] if ranked else None,
         "structural_issues": structural,
         "next_actions": [
             "Use 0..3 admission; do not promote lower ranks merely to fill empty slots.",
-            "Compare direct net-return prediction against binary success probability.",
-            "Do not add model complexity until a simple economic objective shows positive cost-adjusted edge.",
-            "If all simple objectives fail, improve information content with pre-registered market/sector/regime features rather than tuning barriers.",
+            "Prefer direct economic-value objectives only if they improve cost-adjusted OOS results.",
+            "Keep simple market/sector/regime context only if it improves the conservative lower bound, not just the point estimate.",
+            "Do not add model complexity until a simple objective shows positive cost-adjusted edge.",
             "Replace fixed smoke basket with authenticated PIT KOSPI universe before any profitability claim.",
         ],
     }
