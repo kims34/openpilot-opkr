@@ -7,3 +7,4 @@ beautifulsoup4==4.13.5
 exchange-calendars==4.13.2
 pykrx==1.2.9
 scikit-learn==1.7.2
+pyarrow==21.0.0
