@@ -4,9 +4,7 @@ on:
   push:
     branches: [index-alert-research-v1]
     paths:
-      - 'research_kospi_baseline.py'
-      - 'research_kospi_model_v1.py'
-      - 'research_kospi_full_v1.py'
+      - 'research_kospi_clean_v2.py'
       - '.github/workflows/index-alert-research-v1.yml'
   workflow_dispatch:
 
@@ -14,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  kospi-research-v1:
+  kospi-research-v2:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -28,69 +26,63 @@ jobs:
           python-version: '3.11'
 
       - name: Install minimal research dependencies
-        run: pip install pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.2 pykrx==1.2.9
+        run: pip install pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.2 numpy==2.4.6
 
-      - name: Syntax checks
-        run: |
-          python -m py_compile research_kospi_baseline.py
-          python -m py_compile research_kospi_model_v1.py
-          python -m py_compile research_kospi_full_v1.py
+      - name: Syntax check
+        run: python -m py_compile research_kospi_clean_v2.py
 
-      - name: Fetch required historical KRX cross-sections
+      - name: Fetch historical KRX cross-sections
         run: |
           mkdir -p /tmp/marcap/data
           for y in 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
-            echo "downloading marcap-$y.parquet"
             curl -fL --retry 3 --retry-delay 2 \
               "https://raw.githubusercontent.com/FinanceData/marcap/master/data/marcap-$y.parquet" \
               -o "/tmp/marcap/data/marcap-$y.parquet"
           done
-          ls -lh /tmp/marcap/data
 
-      - name: Run KOSPI PIT data build + baseline + walk-forward model tournament
+      - name: Run clean KOSPI walk-forward tournament
         run: |
-          rm -f /tmp/indexalert-research.sqlite
           mkdir -p research_results
-          python research_kospi_full_v1.py \
-            --from-date 20180102 \
-            --to-date 20260925 \
+          python research_kospi_clean_v2.py \
+            --from-date 2018-01-02 \
+            --to-date 2026-09-25 \
             --marcap-dir /tmp/marcap/data \
-            --db /tmp/indexalert-research.sqlite \
-            --output research_results/kospi_full_v1.json
+            --output research_results/kospi_clean_v2.json
 
-      - name: Create compact audit summary
+      - name: Create compact v2 summary
         run: |
           python - <<'PY'
           import json, pathlib
-          p = pathlib.Path('research_results/kospi_full_v1.json')
+          p = pathlib.Path('research_results/kospi_clean_v2.json')
           d = json.loads(p.read_text(encoding='utf-8'))
-          mt = d.get('model_tournament') or {}
-          compact = {
-              'research_version': d.get('research_version'),
-              'data_source': d.get('data_source'),
-              'from_date': d.get('from_date'),
-              'to_date': d.get('to_date'),
-              'trading_days': d.get('trading_days'),
-              'status': d.get('status'),
-              'profitability_validated': d.get('profitability_validated'),
-              'validation_note': d.get('validation_note'),
-              'baseline_models': (d.get('baseline') or {}).get('models'),
-              'walk_forward_models': mt.get('models'),
-              'walk_forward_brier': mt.get('brier'),
-              'walk_forward_folds': mt.get('folds'),
-              'observation_rows': mt.get('observation_rows'),
-              'cost_scenarios': mt.get('cost_scenarios'),
+          wf = d.get('walk_forward') or {}
+          s = {
+            'research_version': d.get('research_version'),
+            'model_version': d.get('model_version'),
+            'universe_version': d.get('universe_version'),
+            'data_source': d.get('data_source'),
+            'from_date': d.get('from_date'),
+            'to_date': d.get('to_date'),
+            'trading_days': d.get('trading_days'),
+            'raw_filtered_rows': d.get('raw_filtered_rows'),
+            'observation_rows': d.get('observation_rows'),
+            'common_share_rule': d.get('common_share_rule'),
+            'cost_scenarios': d.get('cost_scenarios'),
+            'research_status': d.get('research_status'),
+            'profitability_validated': d.get('profitability_validated'),
+            'models': wf.get('models'),
+            'calibration': wf.get('calibration'),
+            'folds': wf.get('folds'),
+            'limitations': d.get('limitations'),
           }
-          pathlib.Path('research_results/kospi_full_v1_summary.json').write_text(
-              json.dumps(compact, ensure_ascii=False, indent=2, allow_nan=False) + '\n',
-              encoding='utf-8',
-          )
+          pathlib.Path('research_results/kospi_clean_v2_summary.json').write_text(
+              json.dumps(s, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
           PY
 
-      - name: Persist reproducible results
+      - name: Persist reproducible v2 results
         run: |
           git config user.name 'indexalert-research-bot'
           git config user.email 'indexalert-research-bot@users.noreply.github.com'
-          git add research_results/kospi_full_v1.json research_results/kospi_full_v1_summary.json
-          git commit -m 'Store KOSPI full v1 research result' || exit 0
+          git add research_results/kospi_clean_v2.json research_results/kospi_clean_v2_summary.json
+          git commit -m 'Store KOSPI clean v2 research result' || exit 0
           git push origin HEAD:index-alert-research-v1
