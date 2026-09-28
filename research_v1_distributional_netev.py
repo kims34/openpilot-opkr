@@ -1,18 +1,14 @@
 """Distributional executable NetEV v0 for IndexAlert Master Spec.
 
-Primary target/evaluation is no longer the legacy fixed target/stop barrier.
-For the current daily-data stage, executable-return proxy is:
-
-    decision at prior close -> next executable regular-session open -> D+5 close
-    minus date-aware statutory tax, commission, spread and impact allowance.
+Primary target/evaluation is corporate-action-safe next-open -> D+5 executable
+cost-adjusted Net Return. Raw KRX OHLC is retained as execution evidence; feature
+returns, fixed-horizon labels and MTM marks use KRX base-price-adjusted daily
+fluctuation rates so splits/rights/consolidations do not create mechanical alpha.
 
 A simple Ridge predicts mean fixed-horizon Net Return. A purged calibration block
-then estimates residual quantiles conditional on contemporaneous volatility
-terciles. The conservative lower NetEV is predicted_mean + calibrated q25
-residual. Only lower NetEV > 0 is admitted, up to three names per day.
-
-This is deliberately simple and preliminary: no hyperparameter search, no
-intraday fill ratio/delay model, and no claim of final conformal coverage.
+estimates residual q25/q50/q75 conditional on contemporaneous volatility tercile.
+The conservative lower NetEV is predicted mean + calibrated q25 residual. Only
+lower NetEV > 0 is admitted, after freezing the original decision-time Top3.
 """
 from __future__ import annotations
 
@@ -31,7 +27,10 @@ from sklearn.preprocessing import StandardScaler
 
 from research_v1_context import CONTEXT_FEATURES, add_context
 from research_v1_core import DecisionRecord, date_cluster_bootstrap_mean, summarize
-from research_v1_fixed_horizon_label import add_fixed_horizon_target
+from research_v1_fixed_horizon_label import (
+    add_fixed_horizon_target,
+    economic_mark_panel_for_portfolio,
+)
 from research_v1_ml import stateful_select_records
 from research_v1_portfolio import simulate_portfolio, summary_dict
 from research_v1_supervised_cache import load_or_build
@@ -65,17 +64,20 @@ def _bucket(vol_rank: pd.Series) -> pd.Series:
 
 
 def _fixed_record_map(z: pd.DataFrame, horizon: int) -> dict:
+    """Build DecisionRecords on the corporate-action-safe economic price index."""
     records = {}
     valid = z[z["fh_label_available"].fillna(False).astype(bool)].copy()
     for r in valid.itertuples(index=False):
-        if pd.isna(r.fh_entry_open) or pd.isna(r.fh_exit_close) or pd.isna(r.fh_cost):
+        entry = getattr(r, "fh_entry_economic_price", np.nan)
+        exit_ = getattr(r, "fh_exit_economic_price", np.nan)
+        if pd.isna(entry) or pd.isna(exit_) or pd.isna(r.fh_cost):
             continue
         rec = DecisionRecord(
             decision_day=pd.Timestamp(r.decision_date).date(),
             entry_day=pd.Timestamp(r.entry_date).date(),
             symbol=str(r.symbol),
             score=0.0,
-            entry_price=float(r.fh_entry_open),
+            entry_price=float(entry),
             horizon=int(horizon),
             target_return=0.0,
             stop_return=0.0,
@@ -84,7 +86,7 @@ def _fixed_record_map(z: pd.DataFrame, horizon: int) -> dict:
             gross_return=float(r.fh_gross_return),
             net_return=float(r.fh_net_return),
             exit_day=pd.Timestamp(r.exit_date).date(),
-            exit_price=float(r.fh_exit_close),
+            exit_price=float(exit_),
         )
         records[(rec.decision_day, rec.symbol)] = rec
     return records
@@ -177,7 +179,7 @@ def distributional_walk_forward(
             start += test_days
             continue
         test = _apply_distribution(test, q)
-        test["model"] = "ridge_context_distributional_netev_v0"
+        test["model"] = "ridge_context_distributional_netev_v1_ca_safe"
         test["train_end"] = train_dates[-1]
         test["cal_start"] = cal_dates[0]
         test["cal_end"] = cal_dates[-1]
@@ -208,8 +210,9 @@ def _portfolio(raw, records, pred, horizon):
         pd.Timestamp(pred["decision_date"].max()).date(),
         max((r.exit_day for r in records), default=start),
     )
+    economic_panel = economic_mark_panel_for_portfolio(raw)
     _, p = simulate_portfolio(
-        raw,
+        economic_panel,
         records,
         horizon=horizon,
         initial_equity=1.0,
@@ -218,7 +221,9 @@ def _portfolio(raw, records, pred, horizon):
         evaluation_start=start,
         evaluation_end=end,
     )
-    return summary_dict(p)
+    result = summary_dict(p)
+    result["mark_policy"] = "KRX_FLUC_RT_CORPORATE_ACTION_SAFE_ECONOMIC_INDEX"
+    return result
 
 
 def _metric(records):
@@ -258,7 +263,6 @@ def _calendar_splits(records):
 
 
 def freeze_original_topk(eligible: pd.DataFrame, top_k: int) -> pd.DataFrame:
-    """Freeze decision-time ranks before portfolio-state/executability checks."""
     if eligible.empty:
         return eligible.copy()
     return (
@@ -272,7 +276,7 @@ def freeze_original_topk(eligible: pd.DataFrame, top_k: int) -> pd.DataFrame:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit")
-    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_v1")
+    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_v2_ca")
     ap.add_argument("--result-dir", default="research_results/marcap_pit_distributional")
     ap.add_argument("--horizon", type=int, default=5)
     ap.add_argument("--top-k", type=int, default=3)
@@ -312,10 +316,7 @@ def main():
     eligible = pred[pred["netev_low"] > 0].copy()
     frozen_topk = freeze_original_topk(eligible, args.top_k)
     records, selected, select_diag = stateful_select_records(
-        frozen_topk,
-        fixed_map,
-        top_k=args.top_k,
-        threshold=0.0,
+        frozen_topk, fixed_map, top_k=args.top_k, threshold=0.0,
     )
 
     realised = pred[pred["fh_label_available"].fillna(False).astype(bool)].copy()
@@ -337,12 +338,15 @@ def main():
     ]
     rejected = realised[~realised["admitted"]]
 
+    gap = pd.to_numeric(realised.get("fh_corporate_action_gap", pd.Series(dtype=float)), errors="coerce").dropna().abs()
     test_dates = int(pred["decision_date"].nunique())
     trade_days = int(selected["decision_date"].nunique()) if not selected.empty else 0
     report = {
-        "evaluation_stage": "PIT_PRELIMINARY_DISTRIBUTIONAL_EXECUTABLE_NETEV_V0",
+        "evaluation_stage": "PIT_PRELIMINARY_DISTRIBUTIONAL_EXECUTABLE_NETEV_V1_CA_SAFE",
         "master_spec_alignment": {
-            "primary_target": "next_executable_open_to_Dplus5_close_cost_adjusted_net_return",
+            "primary_target": "corporate_action_safe_next_open_to_Dplus5_close_cost_adjusted_net_return",
+            "feature_return_source": "KRX_FLUC_RT_VS_ADJUSTED_BASE_PRICE",
+            "portfolio_mark_source": "KRX_FLUC_RT_ECONOMIC_INDEX",
             "legacy_barrier_is_primary": False,
             "distribution": "Ridge mean + purged calibration residual q25/q50/q75 conditional on vol20 tercile",
             "admission": "netev_lower_bound_gt_0__freeze_original_top3__blocked_slot_stays_empty",
@@ -355,6 +359,12 @@ def main():
         "features": CONTEXT_FEATURES,
         "supervised_cache": meta,
         "legacy_label_diagnostics": label_diag,
+        "fixed_horizon_corporate_action_gap": {
+            "abs_gt_1pct": int((gap > 0.01).sum()) if len(gap) else 0,
+            "abs_gt_5pct": int((gap > 0.05).sum()) if len(gap) else 0,
+            "abs_gt_10pct": int((gap > 0.10).sum()) if len(gap) else 0,
+            "max_abs_gap": float(gap.max()) if len(gap) else 0.0,
+        },
         "prediction_rows": int(len(pred)),
         "realised_test_rows": int(len(realised)),
         "eligible_lower_bound_positive_rows": int(len(eligible)),
@@ -384,7 +394,8 @@ def main():
             "daily_open_proxy_not_intraday_fill_ratio_time_price",
             "common_stock_identity_not_yet_officially_validated",
             "exact_halt_delisting_economics_not_yet_joined",
-            "2024_2026_only_preliminary_history",
+            "corporate_action_economic_index_is_price_return_proxy_not_full_rights_cashflow_ledger",
+            "fresh_sealed_holdout_and_shadow_not_yet_completed",
         ],
     }
 
