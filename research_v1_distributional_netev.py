@@ -228,6 +228,18 @@ def _metric(records):
     }
 
 
+def freeze_original_topk(eligible: pd.DataFrame, top_k: int) -> pd.DataFrame:
+    """Freeze decision-time ranks before portfolio-state/executability checks."""
+    if eligible.empty:
+        return eligible.copy()
+    return (
+        eligible.sort_values(["decision_date", "score"], ascending=[True, False])
+        .groupby("decision_date", group_keys=False)
+        .head(top_k)
+        .copy()
+    )
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="research_data/marcap_kospi_pit")
@@ -273,12 +285,7 @@ def main():
     # A blocked/held name leaves an empty slot; ranks > top_k must never be
     # promoted retroactively, otherwise realised portfolio state changes the
     # candidate set and overstates the executable OOS edge.
-    frozen_topk = (
-        eligible.sort_values(["decision_date", "score"], ascending=[True, False])
-        .groupby("decision_date", group_keys=False)
-        .head(args.top_k)
-        .copy()
-    )
+    frozen_topk = freeze_original_topk(eligible, args.top_k)
     records, selected, select_diag = stateful_select_records(
         frozen_topk,
         fixed_map,
