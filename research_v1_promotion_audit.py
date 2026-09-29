@@ -72,9 +72,13 @@ def promotion_evidence_audit(
         and overall.get("cluster_bootstrap_95_low", 0.0) > 0
     )
     five = remove_best["5"]["metrics"]
+    # Frozen Short/Swing promotion contract: removing the five best decision
+    # days must preserve positive mean, PF>1 *and* a positive date-cluster LCB.
+    # Mean/PF alone can still be driven by a thin set of dependent dates.
     jackpot_independent = bool(
         five.get("mean_net_return", 0.0) > 0
         and five.get("profit_factor", 0.0) > 1.0
+        and five.get("cluster_bootstrap_95_low", 0.0) > 0
     )
     recent_robust = bool(
         len(recent_records) > 0
@@ -94,7 +98,7 @@ def promotion_evidence_audit(
     if not robust_overall:
         blockers.append("OVERALL_CLUSTER_LCB_NOT_POSITIVE")
     if not jackpot_independent:
-        blockers.append("BEST_5_DECISION_DAY_DEPENDENCE")
+        blockers.append("BEST_5_DECISION_DAY_ROBUSTNESS_FAILS_MEAN_PF_OR_CLUSTER_LCB")
     if len(recent_records) == 0:
         blockers.append("NO_ADMISSIONS_IN_LATEST_504_TEST_SESSIONS")
     elif not recent_robust:
