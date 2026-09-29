@@ -4,6 +4,8 @@ on:
     branches: [ index-alert-server, index-alert-shadow-ledger, index-alert-app-milestone, index-alert-monthly-10pct ]
     paths:
       - 'monitor.py'
+      - 'production_v30.py'
+      - 'execution_evidence_ledger.py'
       - 'next_day_probability.py'
       - 'next_day_probability_v31.py'
       - 'one_month_probability.py'
