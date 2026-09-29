@@ -4,6 +4,7 @@ import pandas as pd
 
 from research_v1_swing_cpcv import (
     aggregate_cpcv_views,
+    calibration_sensitivity,
     cpcv_assignments,
 )
 
@@ -53,6 +54,28 @@ class SwingCpcvProtocolTest(unittest.TestCase):
         self.assertEqual(out["fraction_positive_net_ev"], 0.5)
         self.assertEqual(out["fraction_pf_gt_1"], 0.5)
         self.assertEqual(out["fraction_positive_cluster_lcb"], 0.5)
+
+
+    def test_calibration_sensitivity_detects_sign_flip_and_abstention(self):
+        def row(cal, net, trades):
+            return {
+                "split": {"test_group_ids": [0, 1], "cal_group_id": cal},
+                "comparison_view": {
+                    "fixed_participation_cost_proxy_mean_net_return": net,
+                    "selected_records": trades,
+                },
+            }
+        out = calibration_sensitivity([
+            row(2, 0.01, 4),
+            row(3, -0.02, 0),
+            row(4, 0.03, 8),
+            row(5, -0.01, 2),
+        ])
+        self.assertEqual(out["test_combinations"], 1)
+        self.assertEqual(out["fraction_net_ev_sign_flip"], 1.0)
+        self.assertEqual(out["fraction_some_calibration_all_abstain"], 1.0)
+        self.assertAlmostEqual(out["median_net_ev_range"], 0.05)
+        self.assertEqual(out["median_trade_count_range"], 8.0)
 
     def test_each_test_combination_has_all_four_calibration_groups(self):
         dates = list(pd.date_range("2015-01-01", periods=1800, freq="B"))
