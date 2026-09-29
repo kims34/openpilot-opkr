@@ -2,177 +2,178 @@
 
 Purpose: prevent research-memory bias and repeated policy mining. This ledger records material experiments, their fixed question, outcome and disposition. It is not a performance marketing document.
 
+Updated: 2026-09-30 KST
+
 ## Governance
 
 - Production promotion is impossible from development results alone.
 - Primary economics: executable, cost-adjusted OOS NetReturn / NetEV.
 - Freeze original decision-time Top3; blocked/held/vetoed slots stay empty; no rank-4+ backfill.
 - 0..3 and NO_TRADE are valid.
-- Five-session purge around outcome boundaries for the 5-session target.
+- Five-session purge around outcome boundaries for the H5 target; horizon-matched purge/embargo for other frozen horizons.
 - Corporate-action-safe KRX base-price returns are mandatory for feature/label/MTM research.
 - Candidate changes must be identified before reading the candidate's test outcome. Do not relax q25, TopK, costs, recent-evidence requirements or execution assumptions to manufacture trades.
 - Keep negative experiments in the ledger.
 - A development candidate can only justify further falsification. Sealed holdout + prospective Shadow are required for actual promotion.
+- H5 is the Core development horizon. H10 is `REJECTED_CURRENT_CANDIDATE_DO_NOT_RETUNE`; do not sweep H6-H9 or retune H10 from completed outcomes. H20 is out of scope/archive evidence.
 
 ## Material completed experiments
 
 ### Legacy simple momentum / probability baselines
 Status: **REJECTED as current champion**.
 
-Reason: after realistic costs and corrected execution accounting, simple momentum/probability baselines did not establish positive robust OOS economic edge. Earlier optimistic outputs affected by execution-set mismatches or later-superseded data assumptions are not promotion evidence.
+After realistic costs and corrected execution accounting, simple momentum/probability baselines did not establish positive robust OOS economic edge. Earlier optimistic outputs affected by execution-set mismatches or superseded data assumptions are not promotion evidence.
 
 ### Purge / embargo correction
 Status: **ADOPTED as mandatory validation policy**.
 
-Finding: 5-session targets require a five-session boundary purge. Pre-purge ML results are superseded for promotion purposes.
+Five-session targets require a five-session boundary purge. Pre-purge ML results are superseded for promotion purposes.
 
 ### Rolling 160-session recency training
-Status: **REJECTED**.
+Status: **REJECTED / DO NOT SWEEP NEARBY WINDOWS**.
 
-Prespecified challenger result: roughly 85 trades, mean NetReturn -1.58%, PF 0.45, negative cluster lower bound and materially worse drawdown than the expanding reference. Do not sweep nearby recency windows from this failure.
+Prespecified challenger: 85 trades, mean NetReturn -1.583%, PF 0.447, cluster 95% interval -4.18% to -0.15%, portfolio total -17.64%, MDD -20.53%.
 
 ### Corporate-action-safe return axis
 Status: **ADOPTED as mandatory data policy**.
 
-Finding: raw close ratios can create false momentum, labels and MTM around splits/rights/capital actions. Current research uses KRX base-price-adjusted daily returns and fingerprinted fail-closed supervised caches. All raw-close promotion conclusions are superseded.
+Raw close ratios can create false momentum, labels and MTM around splits/rights/capital actions. Current research uses KRX base-price-adjusted daily returns and fingerprinted fail-closed supervised caches. Raw-close promotion conclusions are superseded.
 
 ### Long-history marginal Distributional NetEV
 Status: **REJECTED as robust edge**.
 
-2015-06-15 onward CA-safe long-history testing falsified the short-window optimism. Without a normal-market status layer, catastrophic non-standard-price observations dominated tail risk. With the preliminary fail-closed market-state overlay, point estimates improved but cluster lower bounds remained non-positive.
+2015-06-15 onward CA-safe long-history testing falsified short-window optimism. Without a normal-market status layer, catastrophic non-standard-price observations dominated tail risk. With the preliminary fail-closed market-state overlay, point estimates improved but cluster lower bounds remained non-positive.
 
 ### Selection-conditioned residual calibration
 Status: **KEEP AS DEVELOPMENTAL / NOT PROMOTABLE**.
 
-Fixed change: estimate residual q25/q50/q75 from calibration-day Top3 by predicted mean, while keeping model, quantile levels, Top3, costs and test threshold unchanged.
+Fixed change: estimate residual q25/q50/q75 from calibration-day Top3 by predicted mean while keeping model, quantile levels, Top3, costs and test threshold unchanged.
 
-Strongest developmental all-context result after the preliminary normal-market fail-closed overlay: about 278 trades, mean NetReturn +1.15%, PF 1.55, but cluster 95% lower bound remains below zero; best-five-decision-day removal turns the edge negative; no admissions in the latest 504 OOS test sessions. Positive history is concentrated in 2018-2021.
+Strongest compact all-context developmental result after the preliminary normal-market fail-closed overlay:
+- 278 executed entries / 137 trade days
+- mean NetReturn +1.150%
+- PF 1.546
+- cluster 95% lower bound remains below zero
+- 2x-cost mean +0.787%, PF 1.344
+- portfolio total +16.39%, CAGR ~1.83%, MDD -24.39%, Sharpe ~0.23
+- admissions concentrated in 2018-2021; none in 2022-2026 / latest 504 OOS sessions
+- remove-best-1 day: +0.694%, PF 1.326
+- remove-best-3: +0.053%, PF 1.025
+- remove-best-5: -0.362%, PF 0.836
 
-Important chronology: the normal-market >30.5% decision-day return veto was added after the selection-conditioned challenger was first developed. It is structurally justified as a data/market-state fail-closed rule, but its development-sample performance lift is not independent evidence. Freeze and validate it only on fresh evidence.
+The normal-market >30.5% decision-day return veto was added after the selection-conditioned challenger was first developed. It is structurally justified as a fail-closed market-state rule but remains preliminary until official historical security/status lineage is validated. Its development-sample performance lift is not independent evidence.
 
 ### EXP-2026-09-29-CA-PATH-01 — CA-safe daily path feature family
-Status: **REJECTED / DO NOT RETUNE**. GitHub Actions run `36549690847`.
+Status: **REJECTED / DO NOT RETUNE**. Action `36549690847`.
 
-Question: does one additional decision-close path-information family restore current, robust economic edge without changing model or thresholds?
+Frozen protocol: 2015-06-15 onward; Ridge mean NetReturn; selection-conditioned q25/q50/q75; train 504 / calibration 126 / test 126 / purge 5; costs unchanged; `netev_low > 0`; original Top3 frozen; preliminary normal-market fail-closed overlay after rank freeze; no backfill.
 
-Only change tested:
-- CA-safe opening gap relative to reconstructed KRX base price
-- same-session open-to-close return
-- same-session high-low range
-- close location in range
-- trading-value surprise vs prior 20 sessions
-- cross-sectional ranks of those path variables
-
-Frozen protocol: modern +/-30% price-limit regime from 2015-06-15; Ridge mean NetReturn; selection-conditioned q25/q50/q75 calibration; train 504 / calibration 126 / test 126 / purge 5; costs unchanged; `netev_low > 0`; original Top3 frozen; preliminary normal-market fail-closed overlay after rank freeze; no backfill.
-
-Result after normal-market fail-closed overlay:
+Result:
 - 88 trades
-- mean gross +0.716%
-- mean cost 0.386%
-- mean NetReturn **+0.330%**
-- PF **1.082**
-- date-cluster 95% lower bound **-3.959%**
-- ES95 **-26.41%**
-- portfolio total return **-4.40%**
-- CAGR **-0.54%**
-- MDD **-20.44%**
-- latest 504 OOS test sessions: **0 admissions**
-- remove best 1 decision day: mean NetReturn **-0.642%**, PF **0.846**
-- remove best 5 decision days: mean NetReturn **-2.668%**, PF **0.449**
+- mean gross +0.716%, cost 0.386%, NetReturn +0.330%
+- PF 1.082
+- date-cluster 95% LCB -3.959%
+- ES95 -26.41%
+- portfolio total -4.40%, CAGR -0.54%, MDD -20.44%
+- latest 504 OOS admissions 0
+- remove-best-1: -0.642%, PF 0.846
+- remove-best-5: -2.668%, PF 0.449
 
-Disposition: failed the preregistered cluster-LCB, extreme-day-independence, current-evidence and portfolio-economics criteria. It also underperformed the existing selection-conditioned reference on mean NetReturn, PF, cluster lower bound and tail loss. Do not tune alternate gap definitions, path thresholds or path-family subsets from this result.
+Failed cluster-LCB, extreme-day-independence, current-evidence and portfolio-economics criteria. Do not tune alternate gap definitions, path thresholds or path subsets from this result.
 
 ### EXP-2026-09-29-RECENT-GATE-01 — recent-regime gate waterfall
-Status: **COMPLETED DIAGNOSTIC / NO POLICY CHANGE**. GitHub Actions run `36555181788`.
+Status: **COMPLETED DIAGNOSTIC / NO POLICY CHANGE**. Action `36555181788`.
 
-Question: why does the strongest developmental selection-conditioned candidate produce no admissions in the recent regime?
+Latest 504 OOS sessions, 2024-08-20 through 2026-09-16:
+- original Top3 1,512
+- raw `pred_mean > 0` 1,464
+- raw-positive blocked by `netev_low <= 0`: 1,460
+- conservative `netev_low > 0`: 4 rows on 3 dates
+- all 4 removed by the preliminary non-standard-market veto
+- final admissions 0
+- mean Top3 `pred_mean` +1.410%
+- mean calibration penalty -9.934%
+- mean `netev_low` -8.523%
 
-Frozen protocol: same all-context mean model, selection-conditioned residual q25, train 504 / calibration 126 / test 126 / purge 5, same costs, original Top3, normal-market fail-closed veto, no backfill. No thresholds or quantile levels were changed.
-
-Latest 504 OOS sessions (2024-08-20 through 2026-09-16):
-- original Top3 rows: **1,512**
-- raw `pred_mean > 0`: **1,464**
-- raw-positive rows blocked by `netev_low <= 0`: **1,460**
-- conservative `netev_low > 0`: **4** rows on 3 dates
-- all four conservative-positive rows were removed by the preliminary non-standard-market veto
-- final admissions: **0**
-- original-Top3 mean `pred_mean`: **+1.410%**
-- original-Top3 mean calibration penalty (`netev_low - pred_mean`): **-9.934%**
-- original-Top3 mean `netev_low`: **-8.523%**
-
-2024 and 2025 each had zero conservative-positive Top3 rows; 2026 had four, all vetoed. The dominant recent bottleneck is therefore **uncertainty/calibration width**, with the market-status veto only affecting the tiny set that survives q25. Do not loosen q25 merely to manufacture trades.
-
-A realized-outcome audit of the q25-blocked rows was preregistered before reading its result. It will decide whether abstention is correctly protective or whether a conditional-q25 estimator is worth testing.
-
-## Preregistered / running experiments
+Diagnostic conclusion at that stage: uncertainty/calibration width was the dominant mechanical gate. This did **not** justify loosening q25; the preregistered realized-outcome audit below determined whether the blocked population actually had missed economic value.
 
 ### EXP-2026-09-29-UNCERTAINTY-AUDIT-01 — realized outcomes behind q25 veto
-Status: **RUNNING**.
+Status: **COMPLETED / KEEP_ABSTENTION / DO NOT TEST CONDITIONAL-q25 FROM THIS RESULT**. Action `36637333875`.
 
-No model or policy change. Measure realised 5-session NetReturn, PF, date-cluster CI, ES5 and remove-best-1/3/5-day robustness for original Top3, raw-positive Top3, q25-blocked raw-positive Top3 and conservative-positive Top3 in all OOS / 2022+ / 2024+ / latest-504 windows.
+No model or policy change. Realized 5-session economics were audited for original Top3, raw-positive Top3, q25-blocked raw-positive Top3 and conservative-positive Top3 across all OOS / 2022+ / 2024+ / latest-504 windows.
 
-Decision fixed before outcome:
-- if q25-blocked rows are economically weak or jackpot-dependent: keep abstention and seek orthogonal information;
-- if blocked rows have positive economics but wide conditional tails: test a conditional q25 estimator at the **same 25th-percentile target**;
-- do not change TopK, q-level, costs or admission threshold from this audit.
+Authoritative findings:
+- all-OOS q25-blocked: mean **-0.8432%**, PF **0.8425**, date-cluster 95% interval **[-1.4094%, -0.2782%]**; remove-best-5 mean -1.0534%, PF 0.8036.
+- 2022+ q25-blocked: mean **-1.2551%**, PF **0.8005**, cluster LCB -1.9933%.
+- 2024+ q25-blocked: mean **-0.7182%**, PF **0.8822**; interval includes zero but remove-best-5 falls to -1.2039%, PF 0.8035.
+- latest-504 q25-blocked: 1,460 rows / 1,374 realized, mean **-0.6263%**, PF **0.9012**, cluster interval **[-1.7606%, +0.5840%]**; remove-best-5 -1.2697%, PF 0.8011.
+- latest conservative-positive set: only 4 rows, mean **-22.5669%**, PF **0.1381**.
+- artifact states `common_stock_identity_validated=false`, `judge_eligible=false`; official common-stock identity and exact halt/delisting economics remain blockers.
+
+Preregistered decision: the q25-blocked pool is economically weak rather than a clearly positive population hidden by over-wide uncertainty. **Keep abstention. Do not weaken q25 and do not launch a conditional-q25 rescue experiment from this audit. Seek orthogonal PIT-valid information instead.**
 
 ### EXP-2026-09-29-POLICY-CAL-01 — policy-aligned calibration population
-Status: **PREREGISTERED, NOT YET READ**.
+Status: **COMPLETED / ADOPT STRUCTURAL ALIGNMENT / NO PERFORMANCE CHANGE / NOT PROMOTION EVIDENCE**. Action `36643183157`, artifact `11067383547`, SHA256 `c8dd6a016103cf33d9219622f416fda25715c1cac19b371714d9308f2cb2c26f`.
 
-Structural issue found before running the challenger: current selection-conditioned calibration freezes calibration-day Top3 by `pred_mean`, but does **not** apply the decision-time non-standard-market fail-closed veto before estimating residual quantiles, whereas the test/trade policy applies that veto after Top3 freeze.
-
-Prespecified challenger:
-1. calibration-day Top3 is frozen by `pred_mean` exactly as before;
-2. apply the same decision-time normal-market veto to those frozen calibration rows;
-3. vetoed slots stay empty; rank 4+ is never promoted;
+Prespecified only change:
+1. freeze calibration-day Top3 by `pred_mean` exactly as before;
+2. apply the same decision-time preliminary normal-market veto to those frozen calibration rows;
+3. vetoed slots stay empty; no rank-4+ backfill;
 4. estimate q25/q50/q75 residuals only from policy-eligible calibration Top3;
-5. mean model, features, q-levels, train/cal/test windows, costs, test Top3 and admission `netev_low > 0` remain unchanged.
+5. keep mean model, features, q-levels, train/cal/test windows, costs, test Top3 and `netev_low > 0` unchanged.
 
-This is a **population-alignment test, not a q25 relaxation**. It is kept only if calibration coverage and economic/tail robustness do not deteriorate. Any apparent performance gain remains development evidence and cannot promote without fresh sealed evidence.
+Result from the reproducible artifact:
+- reference and challenger each selected the **same 278 compact decision-date/symbol records**; direct row-key comparison found 0 reference-only and 0 challenger-only records.
+- compact portfolio results are exactly identical: total return +16.3863%, CAGR 1.8341%, MDD -24.3899%, Sharpe 0.2300, average gross exposure 5.2008%, 278 executed entries / 137 trade days.
+- compact cost stress is identical: 1x mean +1.1501%, PF 1.5461; 1.5x +0.9687%, PF 1.4413; 2x +0.7873%, PF 1.3440.
+- the exported selected CSVs differ only in the `model` identifier for the common selected rows; the selected decision-date/symbol/prediction/outcome set is unchanged.
+- the challenger changes calibration eligibility as intended but does not manufacture additional realized performance.
 
-## Next information family after CA-path failure
-
-Do **not** continue price-only feature/threshold mining. Prefer one genuinely independent PIT-valid information family.
-
-Current first candidate: **KRX investor-flow data**. Official KRX Data Marketplace states that final investor trading results for the day are provided after 20:00, so a day-D final-flow feature may only be used for the next eligible decision after publication. Before any performance test, establish official source/access, historical coverage, security mapping and `event_time/published_at/available_at/ingested_at` lineage. If a reproducible official historical feed cannot be obtained, do not substitute an undocumented same-day proxy merely to run a backtest.
+Disposition: keep the population alignment as a **developmental structural-consistency correction**, not as new alpha or promotion evidence. The underlying normal-market proxy remains preliminary pending official historical KRX security/status validation.
 
 ### EXP-2026-09-29-SWING-H10 — 10-session Swing Challenger
+Status: **REJECTED AS CURRENT CANDIDATE / DO NOT RETUNE**. Action `36568357047`.
 
-Status: **REJECTED AS CURRENT CANDIDATE / DO NOT RETUNE**. GitHub Actions run
-`36568357047`.
+Anchored developmental result: 122 records / 58 trade days; mean NetReturn +5.689%, PF 4.49, cluster 95% LCB +1.752%, MDD -5.86%, ES95/ES99 -10.44%/-12.77%, 2x-cost mean +5.325%.
 
-Developmental anchored walk-forward, selection-conditioned calibration and the
-post-rank normal-market fail-closed overlay produced 122 trades, mean NetReturn
-+5.689%, PF 4.49, cluster 95% LCB +1.752%, MDD -5.86% and 2x-cost mean +5.325%.
-
-The result is not current/general evidence:
-
-- admissions occurred only in 2018--2021;
-- latest-regime admissions were zero;
-- remove-best-5-decision-days mean stayed positive but cluster LCB fell below
-  zero;
-- official security/status and execution/capacity blockers remain open;
-- no sealed holdout or prospective Shadow was used.
-
-Disposition: archive the result and code for audit. Do not search H6--H9, loosen
-q25, alter costs or retune H10. A future Swing cycle requires a genuinely new
-PIT-valid information family and a new preregistration.
+Not current/general evidence: admissions only 2018-2021, recent admissions zero, best-day robustness insufficient under cluster uncertainty, official status/execution/capacity blockers open, and no sealed holdout/Shadow. Do not search H6-H9, loosen q25, alter costs or retune H10.
 
 ### EXP-2026-09-29-SWING-H20 — 20-session exploratory run
-
 Status: **OUT OF SCOPE / ARCHIVED**.
 
-H20 is outside the requested 5--10-session challenger range. Its results cannot
-select a production horizon or motivate nearby-horizon tuning.
+H20 is outside the requested 5-10-session challenger range. It cannot select a production horizon or motivate nearby-horizon tuning.
 
-### CPCV protocol correction
+### Corrected 60-case Purged CPCV — H5/H10 stability diagnostic
+Status: **COMPLETED / DOES NOT ESTABLISH ROBUST EDGE**. Action `36637351334`.
 
-The provisional implementation used one rotating calibration group per
-two-group test combination and attached a p25/80%-LCB pass rule. That verdict
-rule is rejected before use for promotion.
+Frozen protocol: six contiguous groups; every pair of test groups; each remaining group serves once as calibration; remaining three groups train; horizon-matched label-overlap purge + embargo; **60 cases per horizon**. CPCV is a stability diagnostic only; repeated test rows are not independent and CPCV cannot replace anchored walk-forward, sealed holdout or Shadow.
 
-Frozen replacement: six contiguous groups; every pair of test groups; each
-remaining group serves once as calibration; remaining three groups train;
-label-overlap purge plus horizon-length embargo; 60 cases total. CPCV is a
-stability diagnostic only, repeated test rows are not independent, and CPCV
-cannot substitute for anchored walk-forward, sealed holdout or Shadow.
+Authoritative reproducible results:
+- **H5:** median PF **0.381**; fraction positive NetEV **43.3%**; fraction date-cluster LCB > 0 **11.7%**.
+- **H10:** median PF **0.745**; fraction positive NetEV **50.0%**; fraction date-cluster LCB > 0 **33.3%**.
+
+The older 15-combination H10 CPCV result is historical/superseded. Conflicting old-chat recollections, including an H10 median PF near 0.454, are invalid for decisions; the completed 60-case artifact is authoritative.
+
+Earlier exit-137/143 CPCV failures were engineering memory/process failures caused by accumulating prediction DataFrames. Splitwise generate -> evaluate -> release fixed execution without changing the statistical protocol.
+
+## Next independent information family
+
+Do **not** continue price-only feature/threshold mining. The next research family must be genuinely independent and PIT-valid.
+
+First candidate: **official KRX investor-flow data**. Final day-D investor trading results are published after the trading session, so day-D final flow may only be used at the next eligible decision after publication. Before any performance test, establish:
+- official reproducible source/access;
+- historical coverage;
+- security mapping;
+- `event_time`, `published_at`, `available_at`, `ingested_at` lineage;
+- fail-closed behavior when publication/access is unavailable.
+
+A source/auth probe alone is not feature-promotion evidence. If reproducible official history cannot be obtained, do not substitute an undocumented same-day proxy merely to run a backtest.
+
+## Open Final Judge blockers / next work
+
+1. Obtain and validate real official historical KRX common-stock/security-status raw data with PIT availability lineage.
+2. Model exact halt, cleanup-trading and delisting economics/status rather than proxy inference.
+3. Establish official reproducible KRX investor-flow historical access/lineage before any performance test.
+4. Build empirical execution evidence: fill ratio, fill time/price, partial fills, post-fill markout, latency/expiry and capacity.
+5. Do **not** burn the sealed holdout until blockers, code and protocol are frozen.
+6. After a valid holdout, require prospective Shadow S1 then frozen Fresh Confirmation S2.
