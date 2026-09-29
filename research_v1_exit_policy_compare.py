@@ -68,6 +68,16 @@ def build_economic_ohlc_panel(raw: pd.DataFrame) -> pd.DataFrame:
     finite = close_gap[np.isfinite(close_gap)]
     if len(finite) and float(finite.max()) > 1e-10:
         raise RuntimeError("economic OHLC scaling failed close-index identity")
+    # Floating-point scaling can make an exact raw high==close become smaller by
+    # ~1e-16.  Normalize the economic bar to preserve OHLC ordering without
+    # changing any economically meaningful level.
+    x["economic_high"] = pd.concat(
+        [x["economic_high"], x["economic_open"], x["economic_close"]], axis=1
+    ).max(axis=1)
+    x["economic_low"] = pd.concat(
+        [x["economic_low"], x["economic_open"], x["economic_close"]], axis=1
+    ).min(axis=1)
+    x["economic_close_ohlc"] = x["economic_close"]
     return x
 
 
