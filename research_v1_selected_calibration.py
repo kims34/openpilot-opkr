@@ -1,0 +1,273 @@
+"""Selection-conditioned residual calibration challenger.
+
+Developmental challenger only; no promotion can come from this test.
+The mean model and q25/q50/q75 targets are unchanged. The only change is that
+residual quantiles are estimated from calibration rows that would have occupied
+the original top-3 ranks by predicted mean on each calibration day. This tests
+whether the current marginal calibration is failing because of winner's curse /
+post-selection shift.
+
+No quantile level, Top-K, threshold, train/cal/test window or feature family is
+searched in this experiment.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+import pandas as pd
+
+from research_v1_context import CONTEXT_FEATURES, add_context
+from research_v1_distributional_long_history import CONTEXT_ONLY, evaluate_candidate
+from research_v1_distributional_netev import (
+    Q_HIGH,
+    Q_LOW,
+    Q_MED,
+    _apply_distribution,
+    _bucket,
+    _fixed_record_map,
+    _pipe,
+    distributional_walk_forward,
+)
+from research_v1_fixed_horizon_label import add_fixed_horizon_target
+from research_v1_supervised_cache import load_or_build
+from run_research_v1 import load_panel
+
+
+def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
+    c = cal[cal["fh_label_available"].fillna(False).astype(bool)].copy()
+    c = c[c["pred_mean"].notna() & c["fh_net_return"].notna()].copy()
+    if c.empty:
+        return {}
+    ranked = (
+        c.sort_values(["decision_date", "pred_mean"], ascending=[True, False])
+        .groupby("decision_date", group_keys=False)
+        .head(int(top_k))
+        .copy()
+    )
+    ranked["residual"] = ranked["fh_net_return"].astype(float) - ranked["pred_mean"].astype(float)
+    ranked["vol_bucket"] = _bucket(ranked["vol20_rank"])
+    global_q = {
+        "low": float(ranked["residual"].quantile(Q_LOW)),
+        "med": float(ranked["residual"].quantile(Q_MED)),
+        "high": float(ranked["residual"].quantile(Q_HIGH)),
+        "n": int(len(ranked)),
+        "source": "calibration_daily_top3_by_pred_mean",
+    }
+    out = {"__global__": global_q}
+    for name, g in ranked.groupby("vol_bucket"):
+        if len(g) < 30:
+            out[str(name)] = {**global_q, "fallback_global": True, "bucket_n": int(len(g))}
+        else:
+            out[str(name)] = {
+                "low": float(g["residual"].quantile(Q_LOW)),
+                "med": float(g["residual"].quantile(Q_MED)),
+                "high": float(g["residual"].quantile(Q_HIGH)),
+                "n": int(len(g)),
+                "fallback_global": False,
+                "source": "calibration_daily_top3_by_pred_mean",
+            }
+    return out
+
+
+def selected_calibration_walk_forward(
+    z: pd.DataFrame,
+    *,
+    train_days: int,
+    cal_days: int,
+    test_days: int,
+    purge_days: int,
+    features: list[str],
+    top_k: int = 3,
+):
+    dates = sorted(pd.Timestamp(x) for x in z["decision_date"].drop_duplicates())
+    start = train_days + cal_days + 2 * purge_days
+    preds = []
+    folds = []
+    while start < len(dates):
+        test_dates = dates[start:start + test_days]
+        if not test_dates:
+            break
+        cal_end = start - purge_days
+        cal_start = cal_end - cal_days
+        train_end = cal_start - purge_days
+        if train_end <= 0:
+            start += test_days
+            continue
+        train_dates = dates[:train_end]
+        cal_dates = dates[cal_start:cal_end]
+
+        train = z[z["decision_date"].isin(train_dates)].copy()
+        cal = z[z["decision_date"].isin(cal_dates)].copy()
+        test = z[z["decision_date"].isin(test_dates)].copy()
+        train = train[train["fh_label_available"].fillna(False).astype(bool)].copy()
+        if train.empty or cal.empty or test.empty:
+            start += test_days
+            continue
+
+        model = _pipe(features)
+        model.fit(train[features], train["fh_net_return"].astype(float))
+        cal["pred_mean"] = model.predict(cal[features])
+        test["pred_mean"] = model.predict(test[features])
+        q = _selected_residual_quantiles(cal, top_k=top_k)
+        if not q:
+            start += test_days
+            continue
+        test = _apply_distribution(test, q)
+        test["model"] = "ridge_selected_top3_residual_q25_v0"
+        test["train_end"] = train_dates[-1]
+        test["cal_start"] = cal_dates[0]
+        test["cal_end"] = cal_dates[-1]
+        preds.append(test)
+        folds.append({
+            "test_start": str(test_dates[0].date()),
+            "test_end": str(test_dates[-1].date()),
+            "train_end": str(train_dates[-1].date()),
+            "cal_start": str(cal_dates[0].date()),
+            "cal_end": str(cal_dates[-1].date()),
+            "purge_days": int(purge_days),
+            "features": list(features),
+            "selection_conditioned_residual_quantiles": q,
+        })
+        start += test_days
+    if not preds:
+        return pd.DataFrame(), folds
+    return pd.concat(preds, ignore_index=True).sort_values(
+        ["decision_date", "score"], ascending=[True, False]
+    ), folds
+
+
+def _evaluate_with_runner(
+    z, fixed_map, raw, *, name, features, runner, train_days, cal_days,
+    test_days, horizon, top_k,
+):
+    pred, folds = runner(
+        z,
+        train_days=train_days,
+        cal_days=cal_days,
+        test_days=test_days,
+        purge_days=horizon,
+        features=features,
+    )
+    # Reuse the standard evaluator's metrics/selection implementation by
+    # temporarily providing a runner-compatible wrapper would duplicate work;
+    # keep a small local equivalent instead.
+    from research_v1_distributional_netev import _calendar_splits, _cost_stress, _metric, _portfolio, freeze_original_topk
+    from research_v1_distributional_long_history import _extreme_day_dependency
+    from research_v1_ml import stateful_select_records
+
+    eligible = pred[pred["netev_low"] > 0].copy()
+    frozen = freeze_original_topk(eligible, top_k)
+    records, selected, diag = stateful_select_records(frozen, fixed_map, top_k=top_k, threshold=0.0)
+    test_dates = int(pred["decision_date"].nunique())
+    trade_days = int(selected["decision_date"].nunique()) if not selected.empty else 0
+    result = {
+        "name": name,
+        "features": features,
+        "prediction_rows": int(len(pred)),
+        "eligible_lower_bound_positive_rows": int(len(eligible)),
+        "frozen_topk_rows": int(len(frozen)),
+        "selected_records": int(len(records)),
+        "test_dates": test_dates,
+        "trade_days": trade_days,
+        "trade_day_coverage": float(trade_days / test_dates) if test_dates else 0.0,
+        "selection_diagnostics": diag,
+        "metrics": _metric(records),
+        "cost_stress": _cost_stress(records),
+        "calendar_year_splits": _calendar_splits(records),
+        "extreme_day_dependency": _extreme_day_dependency(records),
+        "portfolio": _portfolio(raw, records, pred, horizon),
+        "folds": folds,
+    }
+    result["preliminary_pass"] = bool(
+        result["metrics"].get("mean_net_return", 0.0) > 0
+        and result["metrics"].get("profit_factor", 0.0) > 1.0
+        and result["metrics"].get("cluster_bootstrap_95_low", 0.0) > 0
+    )
+    return result, selected
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--cache", default="research_data/marcap_kospi_pit_long")
+    ap.add_argument("--supervised-cache", default="research_data/pit_supervised_long_v3_ca_fp")
+    ap.add_argument("--result-dir", default="research_results/marcap_pit_selected_calibration")
+    ap.add_argument("--horizon", type=int, default=5)
+    ap.add_argument("--top-k", type=int, default=3)
+    ap.add_argument("--train-days", type=int, default=504)
+    ap.add_argument("--cal-days", type=int, default=126)
+    ap.add_argument("--test-days", type=int, default=126)
+    args = ap.parse_args()
+
+    raw = load_panel(Path(args.cache))
+    frame, legacy_map, label_diag, cache_meta = load_or_build(
+        raw, Path(args.supervised_cache), horizon=args.horizon,
+        target_return=0.04, stop_return=-0.025, participation=0.0005,
+        commission_round_trip_bps=3.0,
+    )
+    frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
+    context = add_context(frame)
+    z = add_fixed_horizon_target(raw, context, legacy_map, args.horizon)
+    fixed_map = _fixed_record_map(z, args.horizon)
+
+    results = {}
+    selections = {}
+    for family, features in {
+        "all_context": CONTEXT_FEATURES,
+        "context_only": CONTEXT_ONLY,
+    }.items():
+        baseline, _ = evaluate_candidate(
+            z, fixed_map, raw,
+            name=f"{family}_marginal_q25_reference",
+            features=features,
+            train_days=args.train_days,
+            cal_days=args.cal_days,
+            test_days=args.test_days,
+            horizon=args.horizon,
+            top_k=args.top_k,
+        )
+        challenger, selected = _evaluate_with_runner(
+            z, fixed_map, raw,
+            name=f"{family}_selection_conditioned_q25",
+            features=features,
+            runner=lambda zz, **kw: selected_calibration_walk_forward(zz, top_k=args.top_k, **kw),
+            train_days=args.train_days,
+            cal_days=args.cal_days,
+            test_days=args.test_days,
+            horizon=args.horizon,
+            top_k=args.top_k,
+        )
+        results[family] = {"marginal_reference": baseline, "selection_conditioned": challenger}
+        selections[family] = selected
+
+    report = {
+        "evaluation_stage": "DEVELOPMENTAL_SELECTION_CONDITIONED_CALIBRATION_CHALLENGER_NOT_HOLDOUT",
+        "history_start": str(raw["decision_date"].min().date()),
+        "history_end": str(raw["decision_date"].max().date()),
+        "protocol": {
+            "quantile_levels_changed": False,
+            "q_low": Q_LOW,
+            "calibration_selection": "daily_top3_by_pred_mean_on_calibration_only",
+            "test_admission": "netev_low_gt_0__freeze_original_top3__no_backfill",
+            "hyperparameter_search": False,
+            "promotion_allowed": False,
+        },
+        "supervised_cache": cache_meta,
+        "label_diagnostics": label_diag,
+        "results": results,
+        "guardrail": (
+            "This is a development test motivated by diagnosed post-selection calibration failure. "
+            "Any improvement must later survive a sealed holdout and prospective Shadow."
+        ),
+    }
+    out = Path(args.result_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    for family, selected in selections.items():
+        selected.to_csv(out / f"{family}_selection_conditioned_selected.csv", index=False)
+    print("SELECTED_CALIBRATION=" + json.dumps(report, ensure_ascii=False), flush=True)
+
+
+if __name__ == "__main__":
+    main()
