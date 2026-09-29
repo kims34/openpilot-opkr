@@ -48,8 +48,8 @@ from run_research_v1 import load_panel
 def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
     """Estimate residual quantiles on calibration-only predicted-mean Top-K.
 
-    The ranking variable is model prediction only.  We deliberately do not use
-    a calibration residual-derived lower bound to decide which calibration rows
+    The ranking variable is model prediction only. We deliberately do not use a
+    calibration residual-derived lower bound to decide which calibration rows
     enter this estimator, because doing so would make selection depend on the
     same outcomes used to estimate the quantile.
     """
@@ -303,12 +303,11 @@ def main():
     }
     out = Path(args.result_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "summary.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    encoded = json.dumps(report, ensure_ascii=False, indent=2, default=str)
+    (out / "summary.json").write_text(encoded, encoding="utf-8")
     for family, selected in selections.items():
         selected.to_csv(out / f"{family}_selected.csv", index=False)
-    print("SELECTED_CALIBRATION=" + json.dumps(report, ensure_ascii=False), flush=True)
+    print("SELECTED_CALIBRATION=" + json.dumps(report, ensure_ascii=False, default=str), flush=True)
 
 
 if __name__ == "__main__":
