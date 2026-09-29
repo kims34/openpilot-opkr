@@ -187,3 +187,62 @@ Final Judge promotion additionally requires:
 8. Full long-history Final Judge
 
 Complex models are deferred until the above simple architecture produces robust positive OOS economics.
+
+## 13. Sol statistical freeze addendum — 2026-09-29
+
+### Horizon scope
+
+- Short H5 remains the Core development engine.
+- Swing is limited to H10. H20 is outside the requested 5--10-session scope and
+  is archived as out-of-scope evidence. Do not sweep H6--H9 or retune H10 from
+  the completed results.
+- H10 is `REJECTED_CURRENT_CANDIDATE_DO_NOT_RETUNE`: its positive aggregate
+  walk-forward result is confined to 2018--2021, has no recent admissions and
+  loses a positive cluster LCB after removing the best five decision days.
+
+### Anchored walk-forward
+
+- Primary development evidence uses train 504 / calibration 126 / test 126.
+- H5 and H10 share fold endpoints and common OOS decision dates. Purge and
+  embargo equal the evaluated horizon.
+- Purge removes observations with overlapping label intervals; embargo removes
+  the next H sessions after protected calibration/test blocks.
+- Calibration is disjoint and uses only outcomes available before each test
+  prediction. Test outcomes never choose thresholds, quantiles, TopK or costs.
+
+### Purged CPCV
+
+- CPCV is a secondary stability diagnostic only, never forward OOS, sealed
+  holdout evidence or a standalone promotion gate.
+- Use six contiguous groups, every two-group test combination and each of the
+  four remaining groups once as calibration; the other three groups train.
+  This produces 60 split/calibration cases.
+- Apply label-overlap purge and H-session embargo at all protected boundaries.
+  Keep path identities and never pool repeated test rows as independent trades.
+- Delete the provisional p25 NetEV/PF plus 80%-positive-LCB pass/fail rule.
+
+### Short-versus-Swing dominance
+
+- Compare daily portfolio NetReturn paths on the common OOS period, including
+  cash/no-trade days as zero return under identical capital rules.
+- Primary superiority requires the 95% lower bound of the paired H10-minus-H5
+  mean daily NetReturn to exceed zero under a 10-session moving-block bootstrap.
+- H10 must independently satisfy mean NetReturn > 0, PF > 1, date-cluster LCB >
+  0, 2x-cost mean > 0 and PF > 1, plus positive mean/PF/LCB after removing the
+  best five decision days.
+- The latest 504 common OOS sessions must contain admissions and have a positive
+  date-cluster LCB. H10 must not worsen portfolio MDD or daily ES95/ES99 versus
+  H5. Precision@Selected remains secondary.
+
+### Metrics, execution and holdout
+
+- Precision@Selected is the positive cost-adjusted outcome rate among selected
+  executable records. Report trade ES95/ES99 and daily-portfolio ES95/ES99.
+- The current fixed-participation square-root-impact estimate is a cost proxy,
+  not capacity-aware NetEV; reports must say so.
+- Official security/status, exact halt/delisting economics, partial fills,
+  fill-time/price, markout, latency/expiry and empirical capacity remain hard
+  promotion blockers.
+- Do not burn sealed holdout until blockers, code and protocol are frozen.
+  Holdout is one-shot and cannot tune the same model. Prospective Shadow S1 and
+  frozen Fresh Confirmation S2 remain mandatory after holdout.

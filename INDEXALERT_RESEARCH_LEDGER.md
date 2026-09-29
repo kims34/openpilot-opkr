@@ -135,3 +135,44 @@ This is a **population-alignment test, not a q25 relaxation**. It is kept only i
 Do **not** continue price-only feature/threshold mining. Prefer one genuinely independent PIT-valid information family.
 
 Current first candidate: **KRX investor-flow data**. Official KRX Data Marketplace states that final investor trading results for the day are provided after 20:00, so a day-D final-flow feature may only be used for the next eligible decision after publication. Before any performance test, establish official source/access, historical coverage, security mapping and `event_time/published_at/available_at/ingested_at` lineage. If a reproducible official historical feed cannot be obtained, do not substitute an undocumented same-day proxy merely to run a backtest.
+
+### EXP-2026-09-29-SWING-H10 — 10-session Swing Challenger
+
+Status: **REJECTED AS CURRENT CANDIDATE / DO NOT RETUNE**. GitHub Actions run
+`36568357047`.
+
+Developmental anchored walk-forward, selection-conditioned calibration and the
+post-rank normal-market fail-closed overlay produced 122 trades, mean NetReturn
++5.689%, PF 4.49, cluster 95% LCB +1.752%, MDD -5.86% and 2x-cost mean +5.325%.
+
+The result is not current/general evidence:
+
+- admissions occurred only in 2018--2021;
+- latest-regime admissions were zero;
+- remove-best-5-decision-days mean stayed positive but cluster LCB fell below
+  zero;
+- official security/status and execution/capacity blockers remain open;
+- no sealed holdout or prospective Shadow was used.
+
+Disposition: archive the result and code for audit. Do not search H6--H9, loosen
+q25, alter costs or retune H10. A future Swing cycle requires a genuinely new
+PIT-valid information family and a new preregistration.
+
+### EXP-2026-09-29-SWING-H20 — 20-session exploratory run
+
+Status: **OUT OF SCOPE / ARCHIVED**.
+
+H20 is outside the requested 5--10-session challenger range. Its results cannot
+select a production horizon or motivate nearby-horizon tuning.
+
+### CPCV protocol correction
+
+The provisional implementation used one rotating calibration group per
+two-group test combination and attached a p25/80%-LCB pass rule. That verdict
+rule is rejected before use for promotion.
+
+Frozen replacement: six contiguous groups; every pair of test groups; each
+remaining group serves once as calibration; remaining three groups train;
+label-overlap purge plus horizon-length embargo; 60 cases total. CPCV is a
+stability diagnostic only, repeated test rows are not independent, and CPCV
+cannot substitute for anchored walk-forward, sealed holdout or Shadow.
