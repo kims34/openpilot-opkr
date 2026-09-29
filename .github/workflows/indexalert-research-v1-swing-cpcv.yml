@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        horizon: [5, 10]
+        horizon: [5, 10, 20]
     runs-on: ubuntu-latest
     timeout-minutes: 240
     permissions:
