@@ -1,0 +1,31 @@
+name: IndexAlert Research v1 Promotion Audit Integrity
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_promotion_audit.py'
+      - 'test_research_v1_promotion_audit.py'
+      - '.github/workflows/indexalert-research-v1-promotion-audit-integrity.yml'
+  workflow_dispatch:
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 scikit-learn==1.7.2 pyarrow==21.0.0 requests==2.32.3
+      - name: Compile and test frozen promotion evidence rules
+        run: |
+          python -m py_compile research_v1_promotion_audit.py
+          python -m unittest test_research_v1_promotion_audit.py
