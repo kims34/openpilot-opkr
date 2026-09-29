@@ -100,31 +100,58 @@ Disposition: **ADOPT STRUCTURAL ALIGNMENT / NO PERFORMANCE CHANGE / NOT PROMOTIO
 - H20: out of scope/archive.
 - Price-only threshold/feature mining should stop; next information must be genuinely independent and PIT-valid.
 
-## 4. KRX status / investor-flow blockers
+## 4. KRX official status / investor-flow source state
 
-Official historical KRX common-stock/security-status coverage remains incomplete for the Judge period.
+Official KRX issue-statistics screens required by the status blocker are confirmed to exist, including trading-halt history (MDCSTAT213), cleanup-trading status (MDCSTAT237), delisting status (MDCSTAT238) and delisted-security price history (MDCSTAT239). Source availability is distinct from authenticated reproducible historical ingestion.
 
-Need before holdout/promotion:
-- real official historical common-stock/security-status raw data
-- stable security mapping
-- PIT availability lineage
-- exact halt, cleanup-trading and delisting status/economics
+### Official status adapter and source probe
 
-First independent feature candidate: official KRX investor-flow data. Before any performance test establish official reproducible historical access, coverage, mapping and `event_time/published_at/available_at/ingested_at`. Final day-D flow is only eligible for a later decision after publication. Authentication/source-probe success alone is not feature evidence. Do not use undocumented same-day substitutes.
+- `research_v1_krx_official_status.py` normalises official identity, halt, delisting and delisted-price evidence and fails closed on missing source/availability lineage.
+- `research_v1_krx_cleanup_status.py` now normalises official MDCSTAT237 cleanup-trading intervals, treats cleanup status as inclusive `[start,end]`, validates planned delisting occurs after cleanup end, and deliberately **does not invent execution returns/fills**.
+- Official KRX status integrity Action `36646910657` completed **successfully**, including cleanup-status fail-closed tests.
+- Metadata-only source probe `research_v1_krx_status_source_probe.py` was added; Action `36646695064` completed successfully at the infrastructure level.
+- Probe artifact `11068429448`, SHA256 `a58991a9f34384a84b32db4b988e0a842a8cbb7de6fa77efa77b3ac29461acc1` reports:
+  - `credentials_present=false`
+  - `status=AUTH_NOT_CONFIGURED`
+  - `judge_security_status_ready=false`
+  - no numeric market data persisted
 
-## 5. Current explicit unfinished-work registry
+Therefore official historical security/status ingestion is **externally blocked on KRX authenticated source credentials**, not on adapter/test readiness. Candidate low-level BLDs for MDCSTAT213/237 remain unpromoted until a live authenticated response validates them.
 
-Continue from the first unresolved item supported by latest GitHub state:
+### Investor flow
+
+- `research_v1_krx_investor_flow_probe.py` is source-feasibility only; it is not a feature test.
+- Action `36550623671`, artifact `11024238450`, SHA256 `e24ec0b86b22eaea6c54941cbaced3eb3f5333b81cde1f0fbcb483356db1eac8` also reports `credentials_present=false`, `AUTH_NOT_CONFIGURED`.
+- Day-D final investor flow remains ineligible until official access, historical coverage, stable mapping and `event_time/published_at/available_at/ingested_at` lineage are established. It must not be substituted with an undocumented same-day proxy.
+
+## 5. Execution realism infrastructure
+
+Current H5 fixed-horizon learning target assumes economic entry at the next regular-session open and exit at D+5 close, with modeled costs. That is **not empirical fill evidence**.
+
+New fail-closed module `research_v1_execution_evidence.py` requires prospective Shadow/live-style observations to preserve:
+- requested and filled quantity
+- full / partial / zero fill
+- recommendation timestamp and order-submission latency
+- first/final fill time
+- average fill price and reference open
+- 5-minute / 30-minute / close post-fill markouts
+- explicit empirical source attestation and ingestion timestamp
+
+Backtest/simulated fills cannot be relabeled empirical; zero-fill rows cannot carry fabricated fill price/timestamps; filled rows require markouts. Structural CI Action `36647064858` completed **successfully**. This closes the **schema/integrity preparation**, not the empirical evidence blocker. Actual prospective observations and empirical capacity remain missing.
+
+## 6. Current explicit unfinished-work registry
+
+Continue from the first unresolved/actionable item supported by latest GitHub state:
 1. **DONE:** corrected 60-case H5/H10 CPCV read and archived.
 2. **DONE:** `UNCERTAINTY-AUDIT-01` read; decision KEEP_ABSTENTION.
-3. **DONE:** `POLICY-CAL-01` read; adopt structural population alignment with no performance claim.
-4. **NEXT:** obtain/validate real official historical KRX common-stock/security-status raw data + PIT lineage; exact halt/cleanup/delisting economics.
-5. Establish official reproducible KRX investor-flow historical access/lineage before any performance test.
-6. Continue execution realism: empirical fill ratio/time/price, partial fills, post-fill markout, latency/expiry, empirical capacity.
-7. Keep sealed holdout untouched until blockers/code/protocol freeze; then Shadow S1 -> Fresh Confirmation S2.
-8. Separately re-verify current server + Android + FCM end-to-end health on latest branch heads before calling the operational app complete.
+3. **DONE:** `POLICY-CAL-01` read; structural population alignment only, no performance claim.
+4. **INFRA DONE / EXTERNAL BLOCKER:** official KRX status adapters + cleanup status + metadata probe are ready, but authenticated KRX historical source access is not configured. Do not claim Judge status readiness until real data + PIT lineage pass coverage audit.
+5. **EXTERNAL BLOCKER:** official KRX investor-flow probe is also `AUTH_NOT_CONFIGURED`; no performance test permitted.
+6. **SCHEMA DONE / DATA NEXT:** empirical execution evidence schema and CI are ready. Next collect prospective Shadow observations for fill ratio/time/price, partial/no fills, latency and markout; add empirical capacity evidence rather than relying only on square-root impact.
+7. Keep sealed holdout untouched until data/execution blockers, code and protocol are frozen; then Shadow S1 -> Fresh Confirmation S2.
+8. Separately re-verify current server + Android + FCM end-to-end health on latest branch heads; this can also become the transport layer for prospective Shadow/execution logging, but operational success must not be confused with model promotion.
 
-## 6. Realtime / server / Android legacy continuity
+## 7. Realtime / server / Android legacy continuity
 
 Audit anchors from the prior handoff:
 - probability/realtime lineage `index-alert-v41-research` previously @ `85bfd892ef8cc8e36b434983945cf45ce9d7e070`
@@ -144,7 +171,7 @@ Treat these as `LEGACY_CHAT_EVIDENCE`, not current proof. Re-test latest server/
 
 Older implementation-order note (`DB migration 001+ -> isolated KOSPI server skeleton -> exact FastAPI/Python schema -> Firebase payload -> Kotlin data class`) is `LEGACY_CHAT_PLANNING_CONTEXT`, not a frozen requirement.
 
-## 7. Continuation rule
+## 8. Continuation rule
 
 On every continuation:
 - re-read current Master Spec, Ledger, this snapshot and relevant branch HEAD/Actions
@@ -153,6 +180,6 @@ On every continuation:
 - if old chat conflicts with reproducible GitHub evidence, GitHub wins
 - commit each material result to Ledger/Status/Snapshot so chat history remains nonessential
 
-## 8. Old-chat deletion gate
+## 9. Old-chat deletion gate
 
 Older IndexAlert Chat/Work rooms remain unnecessary as a project-state dependency. Their material continuity information is preserved in GitHub. Deleting old chats does not delete GitHub code, Actions artifacts, Master Spec, Ledger or this snapshot.
