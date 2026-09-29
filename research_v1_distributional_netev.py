@@ -26,7 +26,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from research_v1_context import CONTEXT_FEATURES, add_context
-from research_v1_core import DecisionRecord, date_cluster_bootstrap_mean, summarize
+from research_v1_core import (
+    DecisionRecord,
+    date_cluster_bootstrap_mean,
+    expected_shortfall,
+    summarize,
+)
 from research_v1_fixed_horizon_label import (
     add_fixed_horizon_target,
     economic_mark_panel_for_portfolio,
@@ -229,8 +234,15 @@ def _portfolio(raw, records, pred, horizon):
 def _metric(records):
     s = summarize(records)
     point, lo, hi = date_cluster_bootstrap_mean(records) if records else (0.0, 0.0, 0.0)
+    net = [float(r.net_return) for r in records]
     return {
         **asdict(s),
+        # Precision@Selected is the fraction of admitted, executable records
+        # with positive cost-adjusted NetReturn.  Keep the legacy win_rate key
+        # for compatibility, but expose the protocol name used by the
+        # Short-vs-Swing comparison.
+        "precision_at_selected": float(s.win_rate),
+        "trade_expected_shortfall_99": expected_shortfall(net, 0.99),
         "cluster_bootstrap_mean_net_return": point,
         "cluster_bootstrap_95_low": lo,
         "cluster_bootstrap_95_high": hi,

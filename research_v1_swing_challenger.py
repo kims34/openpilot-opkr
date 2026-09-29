@@ -71,6 +71,34 @@ def _robustness_flags(candidate: dict) -> dict:
     return flags
 
 
+def _comparison_view(candidate: dict) -> dict:
+    """Expose the frozen Short-vs-Swing comparison fields without retuning."""
+    gate = candidate.get("market_eligibility_overlay", {})
+    metrics = gate.get("metrics", {})
+    portfolio = gate.get("portfolio", {})
+    return {
+        "selected_records": int(gate.get("selected_records", 0)),
+        "trade_days": int(gate.get("trade_days", 0)),
+        "trade_day_coverage": float(gate.get("trade_day_coverage", 0.0)),
+        "precision_at_selected": float(metrics.get("precision_at_selected", 0.0)),
+        "capacity_aware_net_ev_at_frozen_participation": float(
+            metrics.get("mean_net_return", 0.0)
+        ),
+        "profit_factor": float(metrics.get("profit_factor", 0.0)),
+        "mdd": float(portfolio.get("max_drawdown", 0.0)),
+        "es95": float(metrics.get("trade_expected_shortfall_95", 0.0)),
+        "es99": float(metrics.get("trade_expected_shortfall_99", 0.0)),
+        "date_cluster_lcb95": float(metrics.get("cluster_bootstrap_95_low", 0.0)),
+        "cost_model": {
+            "participation_of_adv": 0.0005,
+            "commission_round_trip_bps": 3.0,
+            "date_aware_statutory_tax": True,
+            "spread_impact_allowance": True,
+            "capacity_curve_available": False,
+        },
+    }
+
+
 def run_horizon(
     *,
     raw,
@@ -181,7 +209,15 @@ def run_horizon(
         "marginal_reference": marginal_reference,
         "primary_selection_conditioned": primary,
         "context_only_diagnostic": context_diag,
+        "walk_forward_comparison_view": _comparison_view(primary),
         "robustness_flags": flags,
+        "promotion_blockers": [
+            "purged_cpcv_not_yet_run",
+            "capacity_curve_not_available",
+            "intraday_fill_partial_fill_and_markout_not_available",
+            "sealed_holdout_not_run",
+            "prospective_shadow_not_run",
+        ],
         "verdict": verdict,
         "guardrail": (
             "H10 and H20 are preregistered independent challengers. A better historical point estimate "
