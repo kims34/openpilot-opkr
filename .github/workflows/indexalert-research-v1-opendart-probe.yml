@@ -1,0 +1,39 @@
+name: IndexAlert Research v1 OpenDART Probe
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_probe.py'
+      - '.github/workflows/indexalert-research-v1-opendart-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+      DART_API_KEY: ${{ secrets.DART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install requests==2.32.3
+      - name: Run metadata-only OpenDART probe
+        run: |
+          python -m py_compile research_v1_opendart_probe.py
+          python research_v1_opendart_probe.py
+          cat research_results/opendart_probe/summary.json
+      - name: Upload metadata-only probe result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-opendart-probe
+          path: research_results/opendart_probe/summary.json
+          if-no-files-found: warn
+          retention-days: 7
