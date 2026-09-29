@@ -16,6 +16,7 @@ Frozen comparison contract:
 from __future__ import annotations
 
 import argparse
+import gc
 import itertools
 import json
 from pathlib import Path
@@ -112,8 +113,14 @@ def cpcv_prediction_splits(
     features: list[str],
     top_k: int = TOP_K,
 ):
+    """Yield one fitted CPCV split at a time to cap peak resident memory.
+
+    The protocol is unchanged.  The previous implementation accumulated every
+    large test prediction frame in a Python list before evaluation, which can
+    exceed GitHub-hosted runner memory across 60 assignments.  Streaming keeps
+    at most one split prediction frame live at once.
+    """
     dates = sorted(pd.Timestamp(x) for x in z["decision_date"].drop_duplicates())
-    outputs = []
     for assignment in cpcv_assignments(dates, horizon=horizon):
         train_dates = assignment["train_dates"]
         cal_dates = assignment["cal_dates"]
@@ -150,8 +157,9 @@ def cpcv_prediction_splits(
             "test_days": int(len(test_dates)),
             "selection_conditioned_residual_quantiles": quantiles,
         }
-        outputs.append((pred, meta))
-    return outputs
+        yield pred, meta
+        del train, cal, test, model, pred
+        gc.collect()
 
 
 def _distribution(rows: list[dict], key: str) -> dict:
@@ -205,12 +213,11 @@ def run_cpcv(raw, supervised_cache: Path, horizon: int):
     frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
     z = add_fixed_horizon_target(raw, add_context(frame), legacy_map, horizon)
     fixed_map = _fixed_record_map(z, horizon)
-    split_predictions = cpcv_prediction_splits(
-        z, horizon=horizon, features=CONTEXT_FEATURES, top_k=TOP_K
-    )
     split_reports = []
     views = []
-    for pred, meta in split_predictions:
+    for pred, meta in cpcv_prediction_splits(
+        z, horizon=horizon, features=CONTEXT_FEATURES, top_k=TOP_K
+    ):
         result, _, _ = _evaluate_with_runner(
             z,
             fixed_map,
@@ -227,6 +234,8 @@ def run_cpcv(raw, supervised_cache: Path, horizon: int):
         view = _comparison_view(result)
         views.append(view)
         split_reports.append({"split": meta, "comparison_view": view})
+        del result, pred
+        gc.collect()
     aggregate = aggregate_cpcv_views(views)
     return {
         "evaluation_stage": "PURGED_CPCV_ROBUSTNESS_DIAGNOSTIC_NOT_DEPLOYMENT_NOT_HOLDOUT",
@@ -246,6 +255,7 @@ def run_cpcv(raw, supervised_cache: Path, horizon: int):
             "traditional_cpcv_can_use_future_training_relative_to_test": True,
             "deployment_or_promotion_evidence": False,
             "sealed_holdout_burned": False,
+            "split_predictions_streamed_for_memory_safety": True,
         },
         "supervised_cache": cache_meta,
         "label_diagnostics": label_diag,
@@ -275,4 +285,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
