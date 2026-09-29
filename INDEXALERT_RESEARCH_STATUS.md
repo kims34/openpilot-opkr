@@ -204,6 +204,49 @@ Do **not** relax q25, TopK, cost or recent-evidence standards just to create tra
 6. Multiple-testing / research-ledger accounting across the full policy search.
 7. Fresh sealed historical evidence followed by prospective Shadow S1 → frozen Fresh Confirmation S2.
 
+## Short-Swing preregistered challengers: current status
+
+The frozen H10/H20 challengers are independent developmental tests; their stronger point estimates do not modify or rescue the H5 strategy.
+
+### H10 walk-forward
+
+- 122 selected records / 58 trade days
+- capacity-aware mean NetEV: **+5.689%**
+- PF: **4.490**
+- date-cluster 95% LCB: **+1.752%**
+- MDD: **-5.86%**
+- ES95 / ES99: **-10.44% / -12.77%**
+- best-5-day removal and 2x-cost developmental checks passed
+
+### H10 purged CPCV
+
+Six groups, two test groups per combination, 15 combinations, purge=10 sessions.
+
+- median NetEV: **+5.448%**
+- worst combination NetEV: **-12.882%**
+- fraction positive NetEV: **53.3%**
+- fraction PF > 1: **53.3%**
+- fraction date-cluster LCB > 0: **46.7%**
+- verdict: **CPCV_DOES_NOT_ESTABLISH_ROBUST_EDGE**
+
+Therefore H10 remains developmental and is **not** a Champion or promotion candidate.
+
+### H20 walk-forward
+
+- 48 selected records / 23 trade days
+- capacity-aware mean NetEV: **+11.132%**
+- PF: **3.350**
+- date-cluster 95% LCB: **+3.328%**
+- MDD: **-10.69%**
+- ES95 / ES99: **-45.87% / -49.46%**
+- best-5-day removal and 2x-cost developmental checks passed
+
+H20 has materially worse tail loss than H10 and is not preferred by point estimate. Its identical purged-CPCV test is now running because H20 was already preregistered. No additional horizon sweep is allowed from these results.
+
+### Official KRX identity/status integrity
+
+The official-status adapter is fail-closed. A current KRX basic-info snapshot cannot establish historical identity/security-type coverage back to 2015. Until historical identity/status lineage covers the Judge period, official common-stock/status integrity remains a Final Judge blocker.
+
 ## Promotion rule
 
 No candidate is promoted because of a positive point estimate, PF or CAGR alone.
