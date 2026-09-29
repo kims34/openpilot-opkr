@@ -1,25 +1,59 @@
-"""Reusable PIT supervised cache with explicit version validation.
+"""Reusable PIT supervised cache with source fingerprint validation.
 
 The cache contains expensive feature/legacy-label rows and exact DecisionRecord
-fields.  A cache is reusable only when its schema/version matches the current
-corporate-action-safe PIT policy; stale caches fail closed and are rebuilt.
+fields. A cache is reusable only when both its schema/policy and the underlying
+PIT source fingerprint match. A different date range, universe or raw market
+content fails closed and forces a rebuild.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from research_v1_core import DecisionRecord
 from research_v1_pit_labels import make_pit_supervised
 
-CACHE_VERSION = "pit-supervised-cache-v2-ca-safe"
+CACHE_VERSION = "pit-supervised-cache-v3-ca-safe-source-fingerprint"
 REQUIRED_FEATURE_RETURN_POLICY = "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS"
 
 
 class StaleSupervisedCache(RuntimeError):
     pass
+
+
+def _source_fingerprint(raw: pd.DataFrame) -> dict:
+    """Return an order-insensitive fingerprint of the PIT source used by the cache."""
+    required = ["decision_date", "symbol"]
+    missing = [c for c in required if c not in raw.columns]
+    if missing:
+        raise ValueError(f"raw PIT source missing required columns: {missing}")
+
+    cols = [
+        c for c in (
+            "decision_date", "symbol", "open", "high", "low", "close",
+            "volume", "value", "ChangesRatio", "krx_change_return",
+        )
+        if c in raw.columns
+    ]
+    view = raw[cols].copy()
+    view["decision_date"] = pd.to_datetime(view["decision_date"], errors="coerce")
+    view["symbol"] = view["symbol"].astype(str)
+    hashes = pd.util.hash_pandas_object(view, index=False).to_numpy(dtype=np.uint64)
+    xor_hash = int(np.bitwise_xor.reduce(hashes)) if len(hashes) else 0
+    sum_hash = int(hashes.sum(dtype=np.uint64)) if len(hashes) else 0
+    dates = view["decision_date"].dropna()
+    return {
+        "rows": int(len(view)),
+        "symbols": int(view["symbol"].nunique()),
+        "date_min": str(dates.min().date()) if len(dates) else None,
+        "date_max": str(dates.max().date()) if len(dates) else None,
+        "columns": cols,
+        "hash_xor_u64": str(xor_hash),
+        "hash_sum_u64": str(sum_hash),
+    }
 
 
 def build_cache(
@@ -32,6 +66,7 @@ def build_cache(
     participation: float = 0.0005,
     commission_round_trip_bps: float = 3.0,
 ):
+    source_fingerprint = _source_fingerprint(raw)
     frame, record_map, diagnostics = make_pit_supervised(
         raw,
         horizon=horizon,
@@ -64,6 +99,7 @@ def build_cache(
     meta = {
         "version": CACHE_VERSION,
         "feature_return_policy": diagnostics.get("feature_return_policy"),
+        "source_fingerprint": source_fingerprint,
         "horizon": int(horizon),
         "target_return": float(target_return),
         "stop_return": float(stop_return),
@@ -77,7 +113,7 @@ def build_cache(
     return merged, record_map, diagnostics
 
 
-def _validate_meta(meta: dict, cache_dir: Path) -> None:
+def _validate_meta(meta: dict, cache_dir: Path, expected_source_fingerprint: dict | None = None) -> None:
     if meta.get("version") != CACHE_VERSION:
         raise StaleSupervisedCache(
             f"stale supervised cache version in {cache_dir}: {meta.get('version')} != {CACHE_VERSION}"
@@ -86,15 +122,22 @@ def _validate_meta(meta: dict, cache_dir: Path) -> None:
         raise StaleSupervisedCache(
             f"stale feature return policy in {cache_dir}: {meta.get('feature_return_policy')}"
         )
+    if expected_source_fingerprint is not None:
+        cached = meta.get("source_fingerprint")
+        if cached != expected_source_fingerprint:
+            raise StaleSupervisedCache(
+                f"PIT source fingerprint mismatch in {cache_dir}: cached={cached} expected={expected_source_fingerprint}"
+            )
 
 
-def load_cache(cache_dir: Path):
+def load_cache(cache_dir: Path, raw: pd.DataFrame | None = None):
     p = cache_dir / "supervised.parquet"
     m = cache_dir / "meta.json"
     if not p.exists() or not m.exists():
         raise FileNotFoundError(cache_dir)
     meta = json.loads(m.read_text(encoding="utf-8"))
-    _validate_meta(meta, cache_dir)
+    expected = _source_fingerprint(raw) if raw is not None else None
+    _validate_meta(meta, cache_dir, expected)
     frame = pd.read_parquet(p)
     frame["decision_date"] = pd.to_datetime(frame["decision_date"])
     record_map = {}
@@ -122,7 +165,7 @@ def load_cache(cache_dir: Path):
 
 def load_or_build(raw: pd.DataFrame, cache_dir: Path, **kwargs):
     try:
-        return load_cache(cache_dir)
+        return load_cache(cache_dir, raw=raw)
     except (FileNotFoundError, StaleSupervisedCache):
         cache_dir.mkdir(parents=True, exist_ok=True)
         for name in ("supervised.parquet", "meta.json"):
