@@ -17,9 +17,15 @@ This is developmental source evidence, not Final-Judge market-data lineage. FRED
 
 ## Conservative availability rule
 
-To avoid assuming FRED has published an observation at the instant the underlying U.S. market closes, an observation dated U.S. day `t` is eligible only for Korean decisions on or after calendar date `t + 2 days`.
+Pre-run integrity correction: the initially written `t + 2 calendar days` rule is superseded before any result was observed.
 
-This deliberately sacrifices freshness to prevent same-day publication-time leakage. No forward fill across the availability boundary is allowed; after eligibility, the latest available observation may be carried through non-U.S. trading days.
+For an observation dated U.S. trading day `t`, find the **next NASDAQ trading observation after `t`**. The observation from `t` becomes eligible only for Korean decisions whose calendar date is **at least one calendar day after that next U.S. trading observation**.
+
+Examples:
+- U.S. Monday observation -> next U.S. trading observation Tuesday -> first eligible Korean calendar date Wednesday.
+- U.S. Friday observation -> next U.S. trading observation Monday -> first eligible Korean calendar date Tuesday.
+
+This deliberately sacrifices freshness to cover FRED publication lag and weekend/holiday effects. No forward use before the eligibility boundary is allowed; after eligibility, the latest eligible observation may be carried through non-U.S. trading days.
 
 ## Added features only
 
