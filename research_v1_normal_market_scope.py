@@ -153,9 +153,12 @@ def main():
 
     out = Path(args.result_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Fold metadata contains pandas.Timestamp values from the PIT walk-forward.
+    # Serialisation must not make an otherwise completed research run fail.
+    encoded = json.dumps(report, ensure_ascii=False, indent=2, default=str)
+    (out / "summary.json").write_text(encoded, encoding="utf-8")
     challenger_selected.to_csv(out / "pre_rank_normal_market_selected.csv", index=False)
-    print("NORMAL_MARKET_SCOPE=" + json.dumps(report, ensure_ascii=False), flush=True)
+    print("NORMAL_MARKET_SCOPE=" + json.dumps(report, ensure_ascii=False, default=str), flush=True)
 
 
 if __name__ == "__main__":
