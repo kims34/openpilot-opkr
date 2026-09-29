@@ -16,7 +16,7 @@ from research_v1_swing_challenger import (
 
 class SwingChallengerProtocolTest(unittest.TestCase):
     def test_preregistered_horizons(self):
-        self.assertEqual(ALLOWED_SWING_HORIZONS, (10, 20))
+        self.assertEqual(ALLOWED_SWING_HORIZONS, (10,))
         self.assertEqual(TOP_K, 3)
         self.assertEqual(TRAIN_DAYS, 504)
         self.assertEqual(CAL_DAYS, 126)
@@ -93,10 +93,11 @@ class SwingChallengerProtocolTest(unittest.TestCase):
         }
         view = _comparison_view(candidate)
         self.assertEqual(view["selected_records"], 2)
-        self.assertEqual(view["capacity_aware_net_ev_at_frozen_participation"], 0.01)
+        self.assertEqual(view["fixed_participation_cost_proxy_mean_net_return"], 0.01)
         self.assertEqual(view["es99"], -0.03)
         self.assertFalse(view["cost_model"]["capacity_curve_available"])
 
 
 if __name__ == "__main__":
     unittest.main()
+

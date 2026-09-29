@@ -8,6 +8,8 @@ on:
       - 'test_research_v1_swing_cpcv.py'
       - 'research_v1_swing_challenger.py'
       - 'test_research_v1_swing_challenger.py'
+      - 'research_v1_short_swing_compare.py'
+      - 'test_research_v1_short_swing_compare.py'
       - 'research_v1_selected_calibration.py'
       - 'research_v1_distributional_long_history.py'
       - 'research_v1_distributional_netev.py'
@@ -52,6 +54,7 @@ jobs:
           python -m unittest \
             test_research_v1_swing_cpcv.py \
             test_research_v1_swing_challenger.py \
+            test_research_v1_short_swing_compare.py \
             test_research_v1_market_eligibility.py \
             test_research_v1_corporate_action_returns.py \
             test_research_v1_pit_tax.py \
@@ -94,3 +97,4 @@ jobs:
           path: research_results/cpcv_h${{ matrix.horizon }}/
           if-no-files-found: warn
           retention-days: 30
+

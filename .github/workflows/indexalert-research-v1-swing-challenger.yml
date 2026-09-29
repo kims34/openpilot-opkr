@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        horizon: [10, 20]
+        horizon: [10]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
@@ -100,3 +100,4 @@ jobs:
           path: research_results/swing_h${{ matrix.horizon }}/
           if-no-files-found: warn
           retention-days: 30
+

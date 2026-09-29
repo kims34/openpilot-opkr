@@ -1,8 +1,7 @@
 """Preregistered Swing Challenger for IndexAlert research.
 
 This module does NOT modify the existing 5-session Short research policy.
-It evaluates two separately named swing horizons through independent CI jobs:
-10 sessions (~2 trading weeks) and 20 sessions (~4 trading weeks).
+It evaluates the separately named H10 swing challenger through an independent CI job.
 
 Frozen policy for each horizon:
 - corporate-action-safe PIT features/labels/MTM
@@ -36,7 +35,7 @@ from research_v1_selected_calibration import _evaluate_with_runner, selected_cal
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
-ALLOWED_SWING_HORIZONS = (10, 20)
+ALLOWED_SWING_HORIZONS = (10,)
 TRAIN_DAYS = 504
 CAL_DAYS = 126
 TEST_DAYS = 126
@@ -81,7 +80,7 @@ def _comparison_view(candidate: dict) -> dict:
         "trade_days": int(gate.get("trade_days", 0)),
         "trade_day_coverage": float(gate.get("trade_day_coverage", 0.0)),
         "precision_at_selected": float(metrics.get("precision_at_selected", 0.0)),
-        "capacity_aware_net_ev_at_frozen_participation": float(
+        "fixed_participation_cost_proxy_mean_net_return": float(
             metrics.get("mean_net_return", 0.0)
         ),
         "profit_factor": float(metrics.get("profit_factor", 0.0)),
@@ -184,7 +183,7 @@ def run_horizon(
         "strategy_family": "Swing Challenger",
         "short_strategy_modified": False,
         "horizon_sessions": int(horizon),
-        "horizon_label": "~2_trading_weeks" if horizon == 10 else "~4_trading_weeks",
+        "horizon_label": "~2_trading_weeks",
         "history_start": str(raw["decision_date"].min().date()),
         "history_end": str(raw["decision_date"].max().date()),
         "protocol": {
@@ -220,7 +219,7 @@ def run_horizon(
         ],
         "verdict": verdict,
         "guardrail": (
-            "H10 and H20 are preregistered independent challengers. A better historical point estimate "
+            "H10 is a preregistered independent challenger. A better historical point estimate "
             "does not select a production winner. Any surviving candidate still requires fresh sealed "
             "evidence and prospective Shadow before promotion."
         ),
@@ -274,3 +273,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

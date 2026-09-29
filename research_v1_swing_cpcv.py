@@ -9,7 +9,7 @@ Frozen comparison contract:
 - H5 is the unchanged Short reference; H10 is the only Swing challenger.
 - identical PIT/CA-safe panel, feature family, cost model and admission policy
 - six contiguous date groups, two test groups per combination
-- one whole, non-test group reserved for independent residual calibration
+- each of the four remaining groups serves once as independent residual calibration
 - training observations purged around both test and calibration label windows
 - original Top3 freeze, post-rank normal-market veto, no backfill
 """
@@ -78,34 +78,30 @@ def cpcv_assignments(
     groups = [list(map(int, x)) for x in np.array_split(np.arange(len(ordered)), n_groups)]
     assignments = []
     all_positions = set(range(len(ordered)))
-    for split_id, test_group_ids in enumerate(
-        itertools.combinations(range(n_groups), n_test_groups)
-    ):
+    split_id = 0
+    for test_group_ids in itertools.combinations(range(n_groups), n_test_groups):
         remaining = [g for g in range(n_groups) if g not in test_group_ids]
-        cal_group_id = remaining[split_id % len(remaining)]
         test_positions = set().union(*(set(groups[g]) for g in test_group_ids))
-        cal_group_positions = groups[cal_group_id]
-        cal_positions = set(cal_group_positions[-min(cal_days, len(cal_group_positions)):])
-        excluded_groups = set(test_group_ids) | {cal_group_id}
-        train_positions = set().union(
-            *(set(groups[g]) for g in range(n_groups) if g not in excluded_groups)
-        )
-        protected = test_positions | cal_positions
-        train_positions -= _blocked_by_label_overlap(
-            train_positions, protected, horizon
-        )
-        # Explicitly guard against a future refactor accidentally reintroducing
-        # overlap through unused dates from the calibration group.
-        train_positions &= all_positions - test_positions - set(cal_group_positions)
-        assignments.append({
-            "split_id": int(split_id),
-            "test_group_ids": list(map(int, test_group_ids)),
-            "cal_group_id": int(cal_group_id),
-            "train_dates": [ordered[i] for i in sorted(train_positions)],
-            "cal_dates": [ordered[i] for i in sorted(cal_positions)],
-            "test_dates": [ordered[i] for i in sorted(test_positions)],
-            "purge_days": int(horizon),
-        })
+        for cal_group_id in remaining:
+            cal_group_positions = groups[cal_group_id]
+            cal_positions = set(cal_group_positions[-min(cal_days, len(cal_group_positions)):])
+            excluded_groups = set(test_group_ids) | {cal_group_id}
+            train_positions = set().union(
+                *(set(groups[g]) for g in range(n_groups) if g not in excluded_groups)
+            )
+            protected = test_positions | cal_positions
+            train_positions -= _blocked_by_label_overlap(train_positions, protected, horizon)
+            train_positions &= all_positions - test_positions - set(cal_group_positions)
+            assignments.append({
+                "split_id": int(split_id),
+                "test_group_ids": list(map(int, test_group_ids)),
+                "cal_group_id": int(cal_group_id),
+                "train_dates": [ordered[i] for i in sorted(train_positions)],
+                "cal_dates": [ordered[i] for i in sorted(cal_positions)],
+                "test_dates": [ordered[i] for i in sorted(test_positions)],
+                "purge_days": int(horizon),
+            })
+            split_id += 1
     return assignments
 
 
@@ -175,7 +171,7 @@ def _distribution(rows: list[dict], key: str) -> dict:
 def aggregate_cpcv_views(views: list[dict]) -> dict:
     keys = [
         "precision_at_selected",
-        "capacity_aware_net_ev_at_frozen_participation",
+        "fixed_participation_cost_proxy_mean_net_return",
         "profit_factor",
         "mdd",
         "es95",
@@ -185,7 +181,7 @@ def aggregate_cpcv_views(views: list[dict]) -> dict:
     out = {key: _distribution(views, key) for key in keys}
     out["splits_evaluated"] = int(len(views))
     out["fraction_positive_net_ev"] = float(np.mean([
-        v["capacity_aware_net_ev_at_frozen_participation"] > 0.0 for v in views
+        v["fixed_participation_cost_proxy_mean_net_return"] > 0.0 for v in views
     ])) if views else 0.0
     out["fraction_pf_gt_1"] = float(np.mean([
         v["profit_factor"] > 1.0 for v in views
@@ -240,7 +236,9 @@ def run_cpcv(raw, supervised_cache: Path, horizon: int):
         "protocol": {
             "groups": CPCV_GROUPS,
             "test_groups_per_combination": CPCV_TEST_GROUPS,
-            "expected_combinations": 15,
+            "test_combinations": 15,
+            "calibration_assignments_per_test_combination": 4,
+            "expected_assignments": 60,
             "purge_equals_horizon": True,
             "calibration_group_disjoint": True,
             "selection_conditioned_q25": True,
@@ -253,14 +251,7 @@ def run_cpcv(raw, supervised_cache: Path, horizon: int):
         "label_diagnostics": label_diag,
         "aggregate": aggregate,
         "splits": split_reports,
-        "verdict": (
-            "CPCV_ROBUSTNESS_SUPPORT_ONLY_NOT_PROMOTION"
-            if aggregate["splits_evaluated"] >= 10
-            and aggregate["capacity_aware_net_ev_at_frozen_participation"]["p25"] > 0.0
-            and aggregate["profit_factor"]["p25"] > 1.0
-            and aggregate["fraction_positive_cluster_lcb"] >= 0.80
-            else "CPCV_DOES_NOT_ESTABLISH_ROBUST_EDGE"
-        ),
+        "verdict": "CPCV_STABILITY_DIAGNOSTIC_ONLY_NO_PROMOTION_VERDICT",
     }
 
 
@@ -284,3 +275,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
