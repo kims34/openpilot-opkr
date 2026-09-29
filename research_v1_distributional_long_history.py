@@ -3,6 +3,12 @@
 This is NOT a sealed holdout. The architecture was informed by later-period
 research, so 2015-2026 is used only as a historical robustness/falsification test.
 No threshold/window/hyperparameter search is allowed.
+
+The report also contains a prespecified market-structure diagnostic overlay:
+after original Top-K is frozen, decision-day securities outside the normal KOSPI
++/-30% price-limit envelope are vetoed and the slot stays empty.  This isolates
+non-standard trading states (cleanup trading / listing special regimes / status
+issues) without promoting lower-ranked names.
 """
 from __future__ import annotations
 
@@ -21,6 +27,7 @@ from research_v1_distributional_netev import (
     freeze_original_topk,
 )
 from research_v1_fixed_horizon_label import add_fixed_horizon_target
+from research_v1_market_eligibility import veto_frozen_topk_nonstandard_market
 from research_v1_ml import stateful_select_records
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
@@ -56,31 +63,10 @@ def _extreme_day_dependency(records):
     return out
 
 
-def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_days, test_days, horizon, top_k):
-    pred, folds = distributional_walk_forward(
-        z,
-        train_days=train_days,
-        cal_days=cal_days,
-        test_days=test_days,
-        purge_days=horizon,
-        features=features,
-    )
-    if pred.empty:
-        return {"name": name, "features": features, "error": "no_predictions"}, pred
-
-    eligible = pred[pred["netev_low"] > 0].copy()
-    frozen = freeze_original_topk(eligible, top_k)
-    records, selected, selection_diag = stateful_select_records(
-        frozen, fixed_map, top_k=top_k, threshold=0.0,
-    )
+def _evaluate_selected(raw, pred, records, selected, selection_diag, horizon):
     test_dates = int(pred["decision_date"].nunique())
     trade_days = int(selected["decision_date"].nunique()) if not selected.empty else 0
     result = {
-        "name": name,
-        "features": features,
-        "prediction_rows": int(len(pred)),
-        "eligible_lower_bound_positive_rows": int(len(eligible)),
-        "frozen_topk_rows": int(len(frozen)),
         "selected_records": int(len(records)),
         "test_dates": test_dates,
         "trade_days": trade_days,
@@ -91,14 +77,70 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
         "calendar_year_splits": _calendar_splits(records),
         "extreme_day_dependency": _extreme_day_dependency(records),
         "portfolio": _portfolio(raw, records, pred, horizon),
-        "folds": folds,
     }
     result["preliminary_pass"] = bool(
         result["metrics"].get("mean_net_return", 0.0) > 0
         and result["metrics"].get("profit_factor", 0.0) > 1.0
         and result["metrics"].get("cluster_bootstrap_95_low", 0.0) > 0
     )
-    return result, selected
+    return result
+
+
+def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_days, test_days, horizon, top_k):
+    pred, folds = distributional_walk_forward(
+        z,
+        train_days=train_days,
+        cal_days=cal_days,
+        test_days=test_days,
+        purge_days=horizon,
+        features=features,
+    )
+    if pred.empty:
+        return {"name": name, "features": features, "error": "no_predictions"}, pred, pred
+
+    eligible = pred[pred["netev_low"] > 0].copy()
+    frozen = freeze_original_topk(eligible, top_k)
+
+    # Reference: current strict Top3/no-backfill policy.
+    records, selected, selection_diag = stateful_select_records(
+        frozen, fixed_map, top_k=top_k, threshold=0.0,
+    )
+    reference = _evaluate_selected(
+        raw, pred, records, selected, selection_diag, horizon
+    )
+
+    # Market-structure overlay: freeze Top3 first, then hard-veto exceptional
+    # decision-day market states.  Do not promote rank 4/5.
+    normal_frozen, vetoed_frozen, gate_diag = veto_frozen_topk_nonstandard_market(frozen)
+    gate_records, gate_selected, gate_selection_diag = stateful_select_records(
+        normal_frozen, fixed_map, top_k=top_k, threshold=0.0,
+    )
+    gate_result = _evaluate_selected(
+        raw, pred, gate_records, gate_selected, gate_selection_diag, horizon
+    )
+    gate_result["market_eligibility_diagnostics"] = gate_diag
+    gate_result["vetoed_frozen_rows"] = int(len(vetoed_frozen))
+    gate_result["vetoed_examples"] = (
+        vetoed_frozen[
+            [c for c in ["decision_date", "symbol", "ret1", "score", "netev_low"] if c in vetoed_frozen.columns]
+        ]
+        .sort_values([c for c in ["decision_date", "score"] if c in vetoed_frozen.columns], ascending=[True, False][:len([c for c in ["decision_date", "score"] if c in vetoed_frozen.columns])])
+        .head(50)
+        .to_dict("records")
+        if len(vetoed_frozen) else []
+    )
+
+    result = {
+        "name": name,
+        "features": features,
+        "prediction_rows": int(len(pred)),
+        "eligible_lower_bound_positive_rows": int(len(eligible)),
+        "frozen_topk_rows": int(len(frozen)),
+        **reference,
+        "market_eligibility_overlay": gate_result,
+        "folds": folds,
+    }
+    return result, selected, gate_selected
 
 
 def main():
@@ -134,7 +176,7 @@ def main():
         "all_context_reference": CONTEXT_FEATURES,
         "context_only_challenger": CONTEXT_ONLY,
     }.items():
-        result, selected = evaluate_candidate(
+        result, selected, gate_selected = evaluate_candidate(
             z, fixed_map, raw,
             name=name,
             features=features,
@@ -146,15 +188,27 @@ def main():
         )
         models[name] = result
         selections[name] = selected
+        selections[f"{name}_normal_market_overlay"] = gate_selected
 
     ref = models["all_context_reference"].get("metrics", {})
     ctx = models["context_only_challenger"].get("metrics", {})
+    ref_gate = models["all_context_reference"].get("market_eligibility_overlay", {}).get("metrics", {})
+    ctx_gate = models["context_only_challenger"].get("market_eligibility_overlay", {}).get("metrics", {})
     comparison = {
         "mean_net_return_delta_context_minus_reference": float(ctx.get("mean_net_return", 0.0) - ref.get("mean_net_return", 0.0)),
         "profit_factor_delta_context_minus_reference": float(ctx.get("profit_factor", 0.0) - ref.get("profit_factor", 0.0)),
         "cluster_low_delta_context_minus_reference": float(ctx.get("cluster_bootstrap_95_low", 0.0) - ref.get("cluster_bootstrap_95_low", 0.0)),
+        "market_gate_delta": {
+            "all_context_mean_net": float(ref_gate.get("mean_net_return", 0.0) - ref.get("mean_net_return", 0.0)),
+            "all_context_profit_factor": float(ref_gate.get("profit_factor", 0.0) - ref.get("profit_factor", 0.0)),
+            "all_context_cluster_low": float(ref_gate.get("cluster_bootstrap_95_low", 0.0) - ref.get("cluster_bootstrap_95_low", 0.0)),
+            "context_only_mean_net": float(ctx_gate.get("mean_net_return", 0.0) - ctx.get("mean_net_return", 0.0)),
+            "context_only_profit_factor": float(ctx_gate.get("profit_factor", 0.0) - ctx.get("profit_factor", 0.0)),
+            "context_only_cluster_low": float(ctx_gate.get("cluster_bootstrap_95_low", 0.0) - ctx.get("cluster_bootstrap_95_low", 0.0)),
+        },
     }
 
+    gate_pass = models["context_only_challenger"].get("market_eligibility_overlay", {}).get("preliminary_pass", False)
     report = {
         "evaluation_stage": "LONG_HISTORY_CA_SAFE_ROBUSTNESS_NOT_SEALED_HOLDOUT",
         "history_start": str(raw["decision_date"].min().date()),
@@ -168,6 +222,9 @@ def main():
             "purge_days": args.horizon,
             "liquidity_floor": "adv20_rank_ge_0.20",
             "admission": "netev_low_gt_0__freeze_original_top3__blocked_slot_stays_empty",
+            "market_eligibility_overlay": (
+                "post_rank_hard_veto_if_abs_decision_day_KRX_base_return_gt_30.5pct__no_backfill"
+            ),
             "hyperparameter_search": False,
             "holdout_claim": False,
         },
@@ -182,8 +239,8 @@ def main():
         ),
     }
     report["verdict"] = (
-        "ROBUSTNESS_SUPPORTS_CONTINUED_RESEARCH"
-        if models["context_only_challenger"].get("preliminary_pass", False)
+        "MARKET_GATE_ROBUSTNESS_SUPPORTS_CONTINUED_RESEARCH"
+        if gate_pass
         else "LONG_HISTORY_DOES_NOT_YET_ESTABLISH_ROBUST_EDGE"
     )
 
