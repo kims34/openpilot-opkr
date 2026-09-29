@@ -182,3 +182,4 @@ def test_structural_coverage_never_claims_judge_ready_by_itself():
     assert out["structural_inputs_ready_for_coverage_check"] is True
     assert out["judge_security_status_ready"] is False
     assert out["availability_lineage_complete"] is True
+    assert out["identity_snapshot_start"] == "2026-09-29"\n    assert out["identity_snapshot_end"] == "2026-09-29"\n    assert out["identity_span_covers_requested_period"] is False\n    assert out["identity_history_gap"] is True\n
