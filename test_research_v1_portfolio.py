@@ -3,7 +3,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from research_v1_core import Bar, economic_outcome
+from research_v1_core import Bar, economic_outcome, expected_shortfall
 from research_v1_portfolio import filter_executable_records, simulate_portfolio
 from research_v1_distributional_netev import freeze_original_topk
 
@@ -56,6 +56,29 @@ def test_mtm_path_and_mdd_are_finite():
     assert summary.end_equity > 0
 
 
+def test_daily_portfolio_es_uses_mtm_daily_return_path():
+    panel = _panel()
+    days = [d.date() for d in pd.bdate_range("2026-01-02", periods=6)]
+    rec = economic_outcome(
+        decision_day=days[0],
+        symbol="B",
+        score=1.0,
+        entry_price=99,
+        future_bars=[_bar(days[i], 100 - i) for i in range(1, 6)],
+        target_return=0.20,
+        stop_return=-0.20,
+        round_trip_cost_return=0.002,
+    )
+    path, summary = simulate_portfolio(
+        panel, [rec], horizon=5, evaluation_start=days[0], evaluation_end=days[-1]
+    )
+    daily = path["daily_return"].astype(float).tolist()
+    assert summary.daily_expected_shortfall_95 == pytest.approx(expected_shortfall(daily, 0.95))
+    assert summary.daily_expected_shortfall_99 == pytest.approx(expected_shortfall(daily, 0.99))
+    assert summary.daily_expected_shortfall_95 <= 0.0
+    assert summary.daily_expected_shortfall_99 <= 0.0
+
+
 def test_duplicate_symbol_is_not_pyramided_while_open():
     panel = _panel()
     days = [d.date() for d in pd.bdate_range("2026-01-02", periods=6)]
@@ -102,7 +125,8 @@ def test_empty_strategy_can_represent_full_cash_window():
     assert len(path) == 6
     assert summary.total_return == pytest.approx(0.0)
     assert summary.average_cash_weight == pytest.approx(1.0)
-
+    assert summary.daily_expected_shortfall_95 == pytest.approx(0.0)
+    assert summary.daily_expected_shortfall_99 == pytest.approx(0.0)
 
 
 def test_distributional_freezes_original_top3_without_backfill():
