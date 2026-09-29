@@ -59,22 +59,44 @@ def _robustness_flags(candidate: dict) -> dict:
         default={},
     ) or {}
     cost2 = _safe(gate, "cost_stress", "2.0", default={}) or {}
+
+    # Frozen Master-Spec contract: best-5 removal must preserve positive mean,
+    # PF>1 and positive date-cluster LCB. 2x-cost must preserve positive mean
+    # and PF>1. These are conjunctions, not point-estimate-only checks.
+    best5_robust = bool(
+        float(best5.get("mean_net_return", 0.0)) > 0.0
+        and float(best5.get("profit_factor", 0.0)) > 1.0
+        and float(best5.get("cluster_bootstrap_95_low", 0.0)) > 0.0
+    )
+    cost2_robust = bool(
+        float(cost2.get("mean_net_return", 0.0)) > 0.0
+        and float(cost2.get("profit_factor", 0.0)) > 1.0
+    )
     flags = {
         "positive_mean_net": float(metrics.get("mean_net_return", 0.0)) > 0.0,
         "profit_factor_gt_1": float(metrics.get("profit_factor", 0.0)) > 1.0,
         "positive_date_cluster_lcb": float(metrics.get("cluster_bootstrap_95_low", 0.0)) > 0.0,
-        "positive_after_remove_best_5_days": float(best5.get("mean_net_return", 0.0)) > 0.0,
-        "positive_at_2x_cost": float(cost2.get("mean_net_return", 0.0)) > 0.0,
+        "positive_after_remove_best_5_days": best5_robust,
+        "positive_at_2x_cost": cost2_robust,
     }
     flags["all_developmental_robustness_checks_pass"] = all(flags.values())
     return flags
 
 
 def _comparison_view(candidate: dict) -> dict:
-    """Expose the frozen Short-vs-Swing comparison fields without retuning."""
+    """Expose the frozen Short-vs-Swing comparison fields without retuning.
+
+    Master-Spec dominance uses *daily portfolio* ES95/ES99, not trade-level ES.
+    Keep both families explicit; the legacy ``es95``/``es99`` comparison keys
+    now intentionally point to the daily portfolio tail-risk metrics.
+    """
     gate = candidate.get("market_eligibility_overlay", {})
     metrics = gate.get("metrics", {})
     portfolio = gate.get("portfolio", {})
+    trade_es95 = float(metrics.get("trade_expected_shortfall_95", 0.0))
+    trade_es99 = float(metrics.get("trade_expected_shortfall_99", 0.0))
+    daily_es95 = float(portfolio.get("daily_expected_shortfall_95", 0.0))
+    daily_es99 = float(portfolio.get("daily_expected_shortfall_99", 0.0))
     return {
         "selected_records": int(gate.get("selected_records", 0)),
         "trade_days": int(gate.get("trade_days", 0)),
@@ -85,8 +107,12 @@ def _comparison_view(candidate: dict) -> dict:
         ),
         "profit_factor": float(metrics.get("profit_factor", 0.0)),
         "mdd": float(portfolio.get("max_drawdown", 0.0)),
-        "es95": float(metrics.get("trade_expected_shortfall_95", 0.0)),
-        "es99": float(metrics.get("trade_expected_shortfall_99", 0.0)),
+        "es95": daily_es95,
+        "es99": daily_es99,
+        "daily_portfolio_es95": daily_es95,
+        "daily_portfolio_es99": daily_es99,
+        "trade_es95": trade_es95,
+        "trade_es99": trade_es99,
         "date_cluster_lcb95": float(metrics.get("cluster_bootstrap_95_low", 0.0)),
         "cost_model": {
             "participation_of_adv": 0.0005,
