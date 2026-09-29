@@ -20,6 +20,7 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from research_v1_context import CONTEXT_FEATURES, add_context
@@ -43,6 +44,34 @@ from research_v1_market_eligibility import veto_frozen_topk_nonstandard_market
 from research_v1_ml import stateful_select_records
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
+
+
+def _cluster_bootstrap_q25_diagnostic(frame: pd.DataFrame, *, reps: int = 400) -> dict:
+    """Date-cluster bootstrap uncertainty for calibration q25; diagnostic only."""
+    if frame.empty:
+        return {"rows": 0, "days": 0, "q25": None, "bootstrap_p05": None, "bootstrap_p95": None}
+    work = frame[["decision_date", "residual"]].dropna().copy()
+    days = list(work["decision_date"].drop_duplicates())
+    if not days:
+        return {"rows": 0, "days": 0, "q25": None, "bootstrap_p05": None, "bootstrap_p95": None}
+    by_day = {d: work.loc[work["decision_date"] == d, "residual"].to_numpy(dtype=float) for d in days}
+    rng = np.random.default_rng(20260930)
+    qs = []
+    for _ in range(int(reps)):
+        sampled = rng.choice(days, size=len(days), replace=True)
+        vals = np.concatenate([by_day[d] for d in sampled])
+        qs.append(float(np.quantile(vals, Q_LOW)))
+    return {
+        "rows": int(len(work)),
+        "days": int(len(days)),
+        "q25": float(work["residual"].quantile(Q_LOW)),
+        "bootstrap_p05": float(np.quantile(qs, 0.05)),
+        "bootstrap_p95": float(np.quantile(qs, 0.95)),
+        "bootstrap_width_90": float(np.quantile(qs, 0.95) - np.quantile(qs, 0.05)),
+        "reps": int(reps),
+        "cluster": "decision_date",
+        "diagnostic_only": True,
+    }
 
 
 def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
@@ -73,6 +102,7 @@ def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
         "high": float(ranked["residual"].quantile(Q_HIGH)),
         "n": int(len(ranked)),
         "source": "calibration_daily_top3_by_pred_mean",
+        "q25_uncertainty": _cluster_bootstrap_q25_diagnostic(ranked),
     }
     out = {"__global__": global_q}
     for name, g in ranked.groupby("vol_bucket"):
@@ -90,6 +120,7 @@ def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
                 "n": int(len(g)),
                 "fallback_global": False,
                 "source": "calibration_daily_top3_by_pred_mean",
+                "q25_uncertainty": _cluster_bootstrap_q25_diagnostic(g),
             }
     return out
 
