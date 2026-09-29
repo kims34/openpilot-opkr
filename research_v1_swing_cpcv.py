@@ -200,6 +200,56 @@ def aggregate_cpcv_views(views: list[dict]) -> dict:
     return out
 
 
+def calibration_sensitivity(split_reports: list[dict]) -> dict:
+    """Measure how much results move when only the calibration group changes."""
+    grouped = {}
+    for row in split_reports:
+        key = tuple(row["split"]["test_group_ids"])
+        grouped.setdefault(key, []).append(row["comparison_view"])
+    rows = []
+    for key, views in sorted(grouped.items()):
+        net = np.asarray([
+            float(v["fixed_participation_cost_proxy_mean_net_return"]) for v in views
+        ], dtype=float)
+        trades = np.asarray([float(v["selected_records"]) for v in views], dtype=float)
+        signs = np.sign(net)
+        nonzero = signs[signs != 0]
+        rows.append({
+            "test_group_ids": list(key),
+            "calibrations": int(len(views)),
+            "net_ev_min": float(np.min(net)),
+            "net_ev_max": float(np.max(net)),
+            "net_ev_range": float(np.max(net) - np.min(net)),
+            "trade_count_min": int(np.min(trades)),
+            "trade_count_max": int(np.max(trades)),
+            "trade_count_range": int(np.max(trades) - np.min(trades)),
+            "net_ev_sign_flip_across_calibration": bool(
+                len(nonzero) > 0 and np.min(nonzero) < 0 < np.max(nonzero)
+            ),
+            "all_abstain_for_some_calibration": bool(np.any(trades == 0)),
+        })
+    return {
+        "test_combinations": int(len(rows)),
+        "fraction_net_ev_sign_flip": float(np.mean([
+            r["net_ev_sign_flip_across_calibration"] for r in rows
+        ])) if rows else 0.0,
+        "fraction_some_calibration_all_abstain": float(np.mean([
+            r["all_abstain_for_some_calibration"] for r in rows
+        ])) if rows else 0.0,
+        "median_net_ev_range": float(np.median([
+            r["net_ev_range"] for r in rows
+        ])) if rows else 0.0,
+        "median_trade_count_range": float(np.median([
+            r["trade_count_range"] for r in rows
+        ])) if rows else 0.0,
+        "by_test_combination": rows,
+        "interpretation": (
+            "Large within-test variation means admission is calibration-sensitive; "
+            "this is a robustness diagnostic, not a threshold-tuning target."
+        ),
+    }
+
+
 def run_cpcv(raw, supervised_cache: Path, horizon: int):
     frame, legacy_map, label_diag, cache_meta = load_or_build(
         raw,
@@ -260,6 +310,7 @@ def run_cpcv(raw, supervised_cache: Path, horizon: int):
         "supervised_cache": cache_meta,
         "label_diagnostics": label_diag,
         "aggregate": aggregate,
+        "calibration_sensitivity": calibration_sensitivity(split_reports),
         "splits": split_reports,
         "verdict": "CPCV_STABILITY_DIAGNOSTIC_ONLY_NO_PROMOTION_VERDICT",
     }
