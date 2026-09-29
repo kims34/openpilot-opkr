@@ -36,6 +36,10 @@ class CoverageAudit:
     requested_start: str
     requested_end: str
     identity_asof_dates: int
+    identity_snapshot_start: str | None
+    identity_snapshot_end: str | None
+    identity_span_covers_requested_period: bool
+    identity_history_gap: bool
     halt_rows: int
     delist_rows: int
     delist_price_rows: int
@@ -326,11 +330,30 @@ def audit_official_coverage(
     identity_dates = 0 if identity_snapshots is None or identity_snapshots.empty else int(
         pd.to_datetime(identity_snapshots["decision_date"]).dt.normalize().nunique()
     )
+    req_start = pd.Timestamp(requested_start).normalize()
+    req_end = pd.Timestamp(requested_end).normalize()
+    identity_start = None
+    identity_end = None
+    if identity_dates > 0:
+        identity_norm = pd.to_datetime(identity_snapshots["decision_date"]).dt.normalize()
+        identity_start = identity_norm.min()
+        identity_end = identity_norm.max()
+    identity_span_covers = bool(
+        identity_start is not None
+        and identity_end is not None
+        and identity_start <= req_start
+        and identity_end >= req_end
+    )
+    identity_history_gap = not identity_span_covers
     structurally_ready = bool(all(official) and lineage_complete and identity_dates > 0)
     audit = CoverageAudit(
         requested_start=str(pd.Timestamp(requested_start).date()),
         requested_end=str(pd.Timestamp(requested_end).date()),
         identity_asof_dates=identity_dates,
+        identity_snapshot_start=None if identity_start is None else str(identity_start.date()),
+        identity_snapshot_end=None if identity_end is None else str(identity_end.date()),
+        identity_span_covers_requested_period=identity_span_covers,
+        identity_history_gap=identity_history_gap,
         halt_rows=0 if halts is None else int(len(halts)),
         delist_rows=0 if delistings is None else int(len(delistings)),
         delist_price_rows=0 if delisted_prices is None else int(len(delisted_prices)),
@@ -346,7 +369,7 @@ def audit_official_coverage(
     out = asdict(audit)
     out["structural_inputs_ready_for_coverage_check"] = structurally_ready
     out["guardrail"] = (
-        "Official source labels and available_at lineage are necessary but not sufficient. "
+        "Official source labels, available_at lineage, and an identity span covering the requested period are necessary but not sufficient. "
         "Do not set Judge-ready until full requested-period/source coverage is independently verified."
     )
     return out
