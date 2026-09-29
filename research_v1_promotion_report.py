@@ -24,6 +24,7 @@ def _metrics(df: pd.DataFrame, seed: int = 1729, boot: int = 2000) -> dict:
             "win_rate": 0.0,
             "profit_factor": 0.0,
             "trade_expected_shortfall_95": 0.0,
+            "trade_expected_shortfall_99": 0.0,
             "cluster_bootstrap_mean_net_return": 0.0,
             "cluster_bootstrap_95_low": 0.0,
             "cluster_bootstrap_95_high": 0.0,
@@ -32,8 +33,11 @@ def _metrics(df: pd.DataFrame, seed: int = 1729, boot: int = 2000) -> dict:
     gains = float(x[x > 0].sum())
     losses = float(-x[x < 0].sum())
     pf = gains / losses if losses > 0 else (float("inf") if gains > 0 else 0.0)
-    k = max(1, int(np.ceil(len(x) * 0.05)))
-    es = float(np.sort(x)[:k].mean())
+    k95 = max(1, int(np.ceil(len(x) * 0.05)))
+    k99 = max(1, int(np.ceil(len(x) * 0.01)))
+    ordered = np.sort(x)
+    es95 = float(ordered[:k95].mean())
+    es99 = float(ordered[:k99].mean())
 
     daily = (
         df.assign(_net=pd.to_numeric(df["fh_net_return"], errors="coerce"))
@@ -57,7 +61,8 @@ def _metrics(df: pd.DataFrame, seed: int = 1729, boot: int = 2000) -> dict:
         "mean_net_return": float(x.mean()),
         "win_rate": float((x > 0).mean()),
         "profit_factor": float(pf),
-        "trade_expected_shortfall_95": es,
+        "trade_expected_shortfall_95": es95,
+        "trade_expected_shortfall_99": es99,
         "cluster_bootstrap_mean_net_return": cluster_mean,
         "cluster_bootstrap_95_low": float(lo),
         "cluster_bootstrap_95_high": float(hi),
@@ -89,6 +94,56 @@ def _stress_2x(df: pd.DataFrame) -> dict:
         "profit_factor": float(gains / losses) if losses > 0 else (float("inf") if gains > 0 else 0.0),
         "win_rate": float((net > 0).mean()),
     }
+
+
+def _frozen_evidence_flags_and_blockers(
+    overall: dict,
+    after5: dict,
+    recent_metrics: dict,
+    stress2: dict,
+    *,
+    recent_records: int,
+) -> tuple[dict, list[str]]:
+    """Apply the frozen Master-Spec promotion evidence conjunctions."""
+    overall_robust = bool(
+        overall.get("mean_net_return", 0.0) > 0
+        and overall.get("profit_factor", 0.0) > 1
+        and overall.get("cluster_bootstrap_95_low", 0.0) > 0
+    )
+    jackpot_independent = bool(
+        after5.get("mean_net_return", 0.0) > 0
+        and after5.get("profit_factor", 0.0) > 1
+        and after5.get("cluster_bootstrap_95_low", 0.0) > 0
+    )
+    recent_robust = bool(
+        recent_records > 0
+        and recent_metrics.get("mean_net_return", 0.0) > 0
+        and recent_metrics.get("profit_factor", 0.0) > 1
+        and recent_metrics.get("cluster_bootstrap_95_low", 0.0) > 0
+    )
+    cost2_ok = bool(
+        stress2.get("mean_net_return", 0.0) > 0
+        and stress2.get("profit_factor", 0.0) > 1
+    )
+
+    blockers = []
+    if not overall_robust:
+        blockers.append("OVERALL_CLUSTER_LCB_NOT_POSITIVE")
+    if not jackpot_independent:
+        blockers.append("BEST_5_DECISION_DAY_ROBUSTNESS_FAILS_MEAN_PF_OR_CLUSTER_LCB")
+    if recent_records == 0:
+        blockers.append("NO_ADMISSIONS_IN_LATEST_504_TEST_SESSIONS")
+    elif not recent_robust:
+        blockers.append("RECENT_504_SESSION_EDGE_NOT_ROBUST")
+    if not cost2_ok:
+        blockers.append("FAILS_2X_COST_STRESS")
+
+    return {
+        "overall_robust": overall_robust,
+        "jackpot_independent_after_best5_days": jackpot_independent,
+        "recent_504_session_robust": recent_robust,
+        "cost_2x_survives": cost2_ok,
+    }, blockers
 
 
 def main():
@@ -124,33 +179,14 @@ def main():
         remove[str(n)] = {"remaining_records": int(len(kept)), "metrics": _metrics(kept)}
     recent_metrics = _metrics(recent_df)
     stress2 = _stress_2x(selected)
-
-    overall_robust = bool(
-        overall["mean_net_return"] > 0
-        and overall["profit_factor"] > 1
-        and overall["cluster_bootstrap_95_low"] > 0
-    )
     after5 = remove["5"]["metrics"]
-    jackpot_independent = bool(after5["mean_net_return"] > 0 and after5["profit_factor"] > 1)
-    recent_robust = bool(
-        len(recent_df) > 0
-        and recent_metrics["mean_net_return"] > 0
-        and recent_metrics["profit_factor"] > 1
-        and recent_metrics["cluster_bootstrap_95_low"] > 0
+    evidence_flags, blockers = _frozen_evidence_flags_and_blockers(
+        overall,
+        after5,
+        recent_metrics,
+        stress2,
+        recent_records=int(len(recent_df)),
     )
-    cost2_ok = bool(stress2["mean_net_return"] > 0 and stress2["profit_factor"] > 1)
-
-    blockers = []
-    if not overall_robust:
-        blockers.append("OVERALL_CLUSTER_LCB_NOT_POSITIVE")
-    if not jackpot_independent:
-        blockers.append("BEST_5_DECISION_DAY_DEPENDENCE")
-    if len(recent_df) == 0:
-        blockers.append("NO_ADMISSIONS_IN_LATEST_504_TEST_SESSIONS")
-    elif not recent_robust:
-        blockers.append("RECENT_504_SESSION_EDGE_NOT_ROBUST")
-    if not cost2_ok:
-        blockers.append("FAILS_2X_COST_STRESS")
 
     portfolio = (
         summary["results"]["all_context"]["selection_conditioned"]
@@ -172,12 +208,7 @@ def main():
         },
         "cost_2x": stress2,
         "portfolio_snapshot": portfolio,
-        "evidence_flags": {
-            "overall_robust": overall_robust,
-            "jackpot_independent_after_best5_days": jackpot_independent,
-            "recent_504_session_robust": recent_robust,
-            "cost_2x_survives": cost2_ok,
-        },
+        "evidence_flags": evidence_flags,
         "blockers": blockers,
         "classification": "DEVELOPMENTAL_NOT_CURRENTLY_PROMOTABLE" if blockers else "DEVELOPMENTAL_CURRENT_EDGE_CANDIDATE",
         "production_promotion_allowed": False,
