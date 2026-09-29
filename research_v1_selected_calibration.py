@@ -1,11 +1,15 @@
 """Selection-conditioned residual calibration challenger.
 
 Developmental challenger only; no promotion can come from this test.
-The mean model and q25/q50/q75 targets are unchanged. The only change is that
-residual quantiles are estimated from calibration rows that would have occupied
-the original top-3 ranks by predicted mean on each calibration day. This tests
-whether the current marginal calibration is failing because of winner's curse /
-post-selection shift.
+The mean model and q25/q50/q75 targets are unchanged. The only calibration
+change is that residual quantiles are estimated from calibration rows that
+would have occupied the original top-3 ranks by predicted mean on each
+calibration day. This tests winner's-curse / post-selection shift without using
+test outcomes or a label-informed test threshold.
+
+Evaluation follows the same strict policy as the long-history reference:
+original Top-3 is frozen first; the normal-market eligibility veto is then
+applied; blocked slots stay empty and rank 4/5 are never promoted.
 
 No quantile level, Top-K, threshold, train/cal/test window or feature family is
 searched in this experiment.
@@ -19,7 +23,11 @@ from pathlib import Path
 import pandas as pd
 
 from research_v1_context import CONTEXT_FEATURES, add_context
-from research_v1_distributional_long_history import CONTEXT_ONLY, evaluate_candidate
+from research_v1_distributional_long_history import (
+    CONTEXT_ONLY,
+    _evaluate_selected,
+    evaluate_candidate,
+)
 from research_v1_distributional_netev import (
     Q_HIGH,
     Q_LOW,
@@ -28,14 +36,23 @@ from research_v1_distributional_netev import (
     _bucket,
     _fixed_record_map,
     _pipe,
-    distributional_walk_forward,
+    freeze_original_topk,
 )
 from research_v1_fixed_horizon_label import add_fixed_horizon_target
+from research_v1_market_eligibility import veto_frozen_topk_nonstandard_market
+from research_v1_ml import stateful_select_records
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
 
 def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
+    """Estimate residual quantiles on calibration-only predicted-mean Top-K.
+
+    The ranking variable is model prediction only.  We deliberately do not use
+    a calibration residual-derived lower bound to decide which calibration rows
+    enter this estimator, because doing so would make selection depend on the
+    same outcomes used to estimate the quantile.
+    """
     c = cal[cal["fh_label_available"].fillna(False).astype(bool)].copy()
     c = c[c["pred_mean"].notna() & c["fh_net_return"].notna()].copy()
     if c.empty:
@@ -46,7 +63,9 @@ def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
         .head(int(top_k))
         .copy()
     )
-    ranked["residual"] = ranked["fh_net_return"].astype(float) - ranked["pred_mean"].astype(float)
+    ranked["residual"] = (
+        ranked["fh_net_return"].astype(float) - ranked["pred_mean"].astype(float)
+    )
     ranked["vol_bucket"] = _bucket(ranked["vol20_rank"])
     global_q = {
         "low": float(ranked["residual"].quantile(Q_LOW)),
@@ -58,7 +77,11 @@ def _selected_residual_quantiles(cal: pd.DataFrame, top_k: int = 3) -> dict:
     out = {"__global__": global_q}
     for name, g in ranked.groupby("vol_bucket"):
         if len(g) < 30:
-            out[str(name)] = {**global_q, "fallback_global": True, "bucket_n": int(len(g))}
+            out[str(name)] = {
+                **global_q,
+                "fallback_global": True,
+                "bucket_n": int(len(g)),
+            }
         else:
             out[str(name)] = {
                 "low": float(g["residual"].quantile(Q_LOW)),
@@ -150,42 +173,44 @@ def _evaluate_with_runner(
         purge_days=horizon,
         features=features,
     )
-    # Reuse the standard evaluator's metrics/selection implementation by
-    # temporarily providing a runner-compatible wrapper would duplicate work;
-    # keep a small local equivalent instead.
-    from research_v1_distributional_netev import _calendar_splits, _cost_stress, _metric, _portfolio, freeze_original_topk
-    from research_v1_distributional_long_history import _extreme_day_dependency
-    from research_v1_ml import stateful_select_records
+    if pred.empty:
+        empty = {
+            "name": name,
+            "features": features,
+            "error": "no_predictions",
+            "folds": folds,
+        }
+        return empty, pd.DataFrame(), pd.DataFrame()
 
     eligible = pred[pred["netev_low"] > 0].copy()
     frozen = freeze_original_topk(eligible, top_k)
-    records, selected, diag = stateful_select_records(frozen, fixed_map, top_k=top_k, threshold=0.0)
-    test_dates = int(pred["decision_date"].nunique())
-    trade_days = int(selected["decision_date"].nunique()) if not selected.empty else 0
+
+    records, selected, diag = stateful_select_records(
+        frozen, fixed_map, top_k=top_k, threshold=0.0
+    )
+    reference = _evaluate_selected(raw, pred, records, selected, diag, horizon)
+
+    normal_frozen, vetoed_frozen, gate_diag = veto_frozen_topk_nonstandard_market(frozen)
+    gate_records, gate_selected, gate_diag_selection = stateful_select_records(
+        normal_frozen, fixed_map, top_k=top_k, threshold=0.0
+    )
+    gate_result = _evaluate_selected(
+        raw, pred, gate_records, gate_selected, gate_diag_selection, horizon
+    )
+    gate_result["market_eligibility_diagnostics"] = gate_diag
+    gate_result["vetoed_frozen_rows"] = int(len(vetoed_frozen))
+
     result = {
         "name": name,
         "features": features,
         "prediction_rows": int(len(pred)),
         "eligible_lower_bound_positive_rows": int(len(eligible)),
         "frozen_topk_rows": int(len(frozen)),
-        "selected_records": int(len(records)),
-        "test_dates": test_dates,
-        "trade_days": trade_days,
-        "trade_day_coverage": float(trade_days / test_dates) if test_dates else 0.0,
-        "selection_diagnostics": diag,
-        "metrics": _metric(records),
-        "cost_stress": _cost_stress(records),
-        "calendar_year_splits": _calendar_splits(records),
-        "extreme_day_dependency": _extreme_day_dependency(records),
-        "portfolio": _portfolio(raw, records, pred, horizon),
+        **reference,
+        "market_eligibility_overlay": gate_result,
         "folds": folds,
     }
-    result["preliminary_pass"] = bool(
-        result["metrics"].get("mean_net_return", 0.0) > 0
-        and result["metrics"].get("profit_factor", 0.0) > 1.0
-        and result["metrics"].get("cluster_bootstrap_95_low", 0.0) > 0
-    )
-    return result, selected
+    return result, selected, gate_selected
 
 
 def main():
@@ -202,8 +227,12 @@ def main():
 
     raw = load_panel(Path(args.cache))
     frame, legacy_map, label_diag, cache_meta = load_or_build(
-        raw, Path(args.supervised_cache), horizon=args.horizon,
-        target_return=0.04, stop_return=-0.025, participation=0.0005,
+        raw,
+        Path(args.supervised_cache),
+        horizon=args.horizon,
+        target_return=0.04,
+        stop_return=-0.025,
+        participation=0.0005,
         commission_round_trip_bps=3.0,
     )
     frame = frame[frame["adv20_rank"] >= 0.20].copy().reset_index(drop=True)
@@ -217,7 +246,7 @@ def main():
         "all_context": CONTEXT_FEATURES,
         "context_only": CONTEXT_ONLY,
     }.items():
-        baseline, _ = evaluate_candidate(
+        baseline, _, baseline_gate_selected = evaluate_candidate(
             z, fixed_map, raw,
             name=f"{family}_marginal_q25_reference",
             features=features,
@@ -227,19 +256,26 @@ def main():
             horizon=args.horizon,
             top_k=args.top_k,
         )
-        challenger, selected = _evaluate_with_runner(
+        challenger, selected, gate_selected = _evaluate_with_runner(
             z, fixed_map, raw,
             name=f"{family}_selection_conditioned_q25",
             features=features,
-            runner=lambda zz, **kw: selected_calibration_walk_forward(zz, top_k=args.top_k, **kw),
+            runner=lambda zz, **kw: selected_calibration_walk_forward(
+                zz, top_k=args.top_k, **kw
+            ),
             train_days=args.train_days,
             cal_days=args.cal_days,
             test_days=args.test_days,
             horizon=args.horizon,
             top_k=args.top_k,
         )
-        results[family] = {"marginal_reference": baseline, "selection_conditioned": challenger}
+        results[family] = {
+            "marginal_reference": baseline,
+            "selection_conditioned": challenger,
+        }
         selections[family] = selected
+        selections[f"{family}_selection_conditioned_normal_market"] = gate_selected
+        selections[f"{family}_marginal_normal_market"] = baseline_gate_selected
 
     report = {
         "evaluation_stage": "DEVELOPMENTAL_SELECTION_CONDITIONED_CALIBRATION_CHALLENGER_NOT_HOLDOUT",
@@ -249,7 +285,11 @@ def main():
             "quantile_levels_changed": False,
             "q_low": Q_LOW,
             "calibration_selection": "daily_top3_by_pred_mean_on_calibration_only",
+            "calibration_test_outcome_leakage": False,
             "test_admission": "netev_low_gt_0__freeze_original_top3__no_backfill",
+            "market_eligibility_overlay": (
+                "post_rank_hard_veto_if_abs_decision_day_KRX_base_return_gt_30.5pct__no_backfill"
+            ),
             "hyperparameter_search": False,
             "promotion_allowed": False,
         },
@@ -263,9 +303,11 @@ def main():
     }
     out = Path(args.result_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out / "summary.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     for family, selected in selections.items():
-        selected.to_csv(out / f"{family}_selection_conditioned_selected.csv", index=False)
+        selected.to_csv(out / f"{family}_selected.csv", index=False)
     print("SELECTED_CALIBRATION=" + json.dumps(report, ensure_ascii=False), flush=True)
 
 
