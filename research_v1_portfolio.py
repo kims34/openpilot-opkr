@@ -15,7 +15,7 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
-from research_v1_core import DecisionRecord
+from research_v1_core import DecisionRecord, expected_shortfall
 
 
 @dataclass
@@ -33,6 +33,8 @@ class PortfolioSummary:
     total_return: float
     cagr_252: float
     max_drawdown: float
+    daily_expected_shortfall_95: float
+    daily_expected_shortfall_99: float
     annualized_volatility: float
     sharpe_0rf: float
     average_cash_weight: float
@@ -118,7 +120,24 @@ def simulate_portfolio(
     sessions = [d for d in all_sessions if evaluation_start <= d <= evaluation_end]
     if not sessions:
         empty = pd.DataFrame(columns=["date", "equity", "cash", "cash_weight", "gross_exposure", "positions", "daily_return"])
-        summary = PortfolioSummary(0, initial_equity, initial_equity, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0, 0, prefiltered_duplicates, 0)
+        summary = PortfolioSummary(
+            sessions=0,
+            start_equity=float(initial_equity),
+            end_equity=float(initial_equity),
+            total_return=0.0,
+            cagr_252=0.0,
+            max_drawdown=0.0,
+            daily_expected_shortfall_95=0.0,
+            daily_expected_shortfall_99=0.0,
+            annualized_volatility=0.0,
+            sharpe_0rf=0.0,
+            average_cash_weight=1.0,
+            average_gross_exposure=0.0,
+            max_concurrent_positions=0,
+            entries_executed=0,
+            duplicate_entries_suppressed=int(prefiltered_duplicates),
+            insufficient_cash_entries=0,
+        )
         return empty, summary
 
     close_map = {
@@ -208,6 +227,8 @@ def simulate_portfolio(
         total_return=float(total_return),
         cagr_252=float(cagr),
         max_drawdown=_mdd_from_equity(df["equity"].tolist()),
+        daily_expected_shortfall_95=expected_shortfall(dret.tolist(), 0.95),
+        daily_expected_shortfall_99=expected_shortfall(dret.tolist(), 0.99),
         annualized_volatility=float(vol_ann),
         sharpe_0rf=sharpe,
         average_cash_weight=float(df["cash_weight"].mean()),
