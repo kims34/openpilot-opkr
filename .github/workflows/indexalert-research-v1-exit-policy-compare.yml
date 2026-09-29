@@ -5,6 +5,7 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_exit_policy_compare.py'
+      - 'research_v1_exit_policy_compare_fast.py'
       - 'test_research_v1_exit_policy_compare.py'
       - 'research_v1_core.py'
       - 'research_v1_distributional_netev.py'
@@ -35,7 +36,7 @@ jobs:
           pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
       - name: Compile and test exit policy integrity
         run: |
-          python -m py_compile research_v1_exit_policy_compare.py research_v1_core.py research_v1_fixed_horizon_label.py
+          python -m py_compile research_v1_exit_policy_compare.py research_v1_exit_policy_compare_fast.py research_v1_core.py research_v1_fixed_horizon_label.py
           python -m unittest test_research_v1_exit_policy_compare.py test_research_v1_corporate_action_returns.py test_research_v1_pit_tax.py
       - name: Restore short marcap source
         uses: actions/cache@v4
@@ -55,7 +56,7 @@ jobs:
           python research_v1_marcap.py --start 2024-01-01 --end 2026-09-28 --out research_data/marcap_kospi_pit --raw research_data/marcap_raw
       - name: Run short exit-policy comparison
         run: |
-          python research_v1_exit_policy_compare.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v2_ca --result-dir research_results/exit_policy_short --horizon 5 --top-k 3 --target 0.04 --stop=-0.025 --train-days 160 --cal-days 40 --test-days 40
+          python research_v1_exit_policy_compare_fast.py --cache research_data/marcap_kospi_pit --supervised-cache research_data/pit_supervised_v2_ca --result-dir research_results/exit_policy_short --horizon 5 --top-k 3 --target 0.04 --stop=-0.025 --train-days 160 --cal-days 40 --test-days 40
           cat research_results/exit_policy_short/summary.json
       - name: Upload short result
         if: always()
@@ -83,7 +84,7 @@ jobs:
           pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
       - name: Compile and test exit policy integrity
         run: |
-          python -m py_compile research_v1_exit_policy_compare.py research_v1_core.py research_v1_fixed_horizon_label.py
+          python -m py_compile research_v1_exit_policy_compare.py research_v1_exit_policy_compare_fast.py research_v1_core.py research_v1_fixed_horizon_label.py
           python -m unittest test_research_v1_exit_policy_compare.py test_research_v1_corporate_action_returns.py test_research_v1_pit_tax.py
       - name: Restore long marcap source
         uses: actions/cache@v4
@@ -100,7 +101,7 @@ jobs:
           python research_v1_marcap.py --start 2015-06-15 --end 2026-09-28 --out research_data/marcap_kospi_pit_long --raw research_data/marcap_raw_long
       - name: Run long exit-policy comparison
         run: |
-          python research_v1_exit_policy_compare.py --cache research_data/marcap_kospi_pit_long --supervised-cache research_data/pit_supervised_long_v2_ca --result-dir research_results/exit_policy_long --horizon 5 --top-k 3 --target 0.04 --stop=-0.025 --train-days 504 --cal-days 126 --test-days 126
+          python research_v1_exit_policy_compare_fast.py --cache research_data/marcap_kospi_pit_long --supervised-cache research_data/pit_supervised_long_v2_ca --result-dir research_results/exit_policy_long --horizon 5 --top-k 3 --target 0.04 --stop=-0.025 --train-days 504 --cal-days 126 --test-days 126
           cat research_results/exit_policy_long/summary.json
       - name: Upload long result
         if: always()
