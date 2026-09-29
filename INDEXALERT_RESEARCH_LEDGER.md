@@ -50,14 +50,12 @@ Strongest developmental all-context result after the preliminary normal-market f
 
 Important chronology: the normal-market >30.5% decision-day return veto was added after the selection-conditioned challenger was first developed. It is structurally justified as a data/market-state fail-closed rule, but its development-sample performance lift is not independent evidence. Freeze and validate it only on fresh evidence.
 
-## Active prespecified experiment
-
 ### EXP-2026-09-29-CA-PATH-01 — CA-safe daily path feature family
-Status: **RUNNING** at registration; GitHub Actions run `36549690847`.
+Status: **REJECTED / DO NOT RETUNE**. GitHub Actions run `36549690847`.
 
 Question: does one additional decision-close path-information family restore current, robust economic edge without changing model or thresholds?
 
-Only change:
+Only change tested:
 - CA-safe opening gap relative to reconstructed KRX base price
 - same-session open-to-close return
 - same-session high-low range
@@ -65,28 +63,27 @@ Only change:
 - trading-value surprise vs prior 20 sessions
 - cross-sectional ranks of those path variables
 
-Frozen protocol:
-- history: modern +/-30% price-limit regime, 2015-06-15 onward
-- Ridge mean NetReturn model
-- selection-conditioned q25/q50/q75 residual calibration
-- initial train 504 / calibration 126 / test 126 / purge 5
-- cost model unchanged
-- `netev_low > 0`
-- freeze original Top3
-- preliminary normal-market fail-closed overlay after rank freeze
-- no backfill
+Frozen protocol: modern +/-30% price-limit regime from 2015-06-15; Ridge mean NetReturn; selection-conditioned q25/q50/q75 calibration; train 504 / calibration 126 / test 126 / purge 5; costs unchanged; `netev_low > 0`; original Top3 frozen; preliminary normal-market fail-closed overlay after rank freeze; no backfill.
 
-Predeclared continuation criteria:
-1. mean cost-adjusted OOS NetReturn > 0;
-2. PF > 1;
-3. date-cluster 95% lower bound > 0;
-4. after removing best 5 decision days, mean NetReturn > 0 and PF > 1;
-5. at least one admission in latest 504 OOS test sessions and positive recent mean;
-6. no material worsening of tail loss / MDD;
-7. no integrity/test/lineage failure.
+Result after normal-market fail-closed overlay:
+- 88 trades
+- mean gross +0.716%
+- mean cost 0.386%
+- mean NetReturn **+0.330%**
+- PF **1.082**
+- date-cluster 95% lower bound **-3.959%**
+- ES95 **-26.41%**
+- portfolio total return **-4.40%**
+- CAGR **-0.54%**
+- MDD **-20.44%**
+- latest 504 OOS test sessions: **0 admissions**
+- remove best 1 decision day: mean NetReturn **-0.642%**, PF **0.846**
+- remove best 5 decision days: mean NetReturn **-2.668%**, PF **0.449**
 
-Even if all criteria pass, this family is development-motivated rather than sealed. A pass means freeze for further falsification, not production promotion. A fail means do not tune the path definitions from this result.
+Disposition: failed the preregistered cluster-LCB, extreme-day-independence, current-evidence and portfolio-economics criteria. It also underperformed the existing selection-conditioned reference on mean NetReturn, PF, cluster lower bound and tail loss. Do not tune alternate gap definitions, path thresholds or path-family subsets from this result.
 
-## Next information family if CA-path fails
+## Next information family after CA-path failure
 
-Do **not** continue price-only feature/threshold mining. Prefer one genuinely independent PIT-valid information family. Current first candidate is KRX investor-flow data, but availability must be respected: final investor trading data are post-close and therefore may only enter the next eligible decision after publication. Official source/access/available_at lineage must be established before any performance test.
+Do **not** continue price-only feature/threshold mining. Prefer one genuinely independent PIT-valid information family.
+
+Current first candidate: **KRX investor-flow data**. Official KRX Data Marketplace states that final investor trading results for the day are provided after 20:00, so a day-D final-flow feature may only be used for the next eligible decision after publication. Before any performance test, establish official source/access, historical coverage, security mapping and `event_time/published_at/available_at/ingested_at` lineage. If a reproducible official historical feed cannot be obtained, do not substitute an undocumented same-day proxy merely to run a backtest.
