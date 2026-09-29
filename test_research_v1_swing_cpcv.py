@@ -1,6 +1,9 @@
 import unittest
 
+import numpy as np
 import pandas as pd
+
+from research_v1_selected_calibration import _cluster_bootstrap_q25_diagnostic
 
 from research_v1_swing_cpcv import (
     aggregate_cpcv_views,
@@ -89,6 +92,20 @@ class SwingCpcvProtocolTest(unittest.TestCase):
             self.assertEqual(cal_groups, set(range(6)) - set(test_groups))
 
 
+    def test_q25_uncertainty_diagnostic_is_deterministic_and_clustered(self):
+        rows = []
+        for day, base in zip(pd.date_range("2026-01-01", periods=20, freq="B"), np.linspace(-0.03, 0.03, 20)):
+            for j in range(3):
+                rows.append({"decision_date": day, "residual": float(base + j * 0.001)})
+        frame = pd.DataFrame(rows)
+        a = _cluster_bootstrap_q25_diagnostic(frame, reps=100)
+        b = _cluster_bootstrap_q25_diagnostic(frame, reps=100)
+        self.assertEqual(a, b)
+        self.assertEqual(a["rows"], 60)
+        self.assertEqual(a["days"], 20)
+        self.assertGreaterEqual(a["bootstrap_p95"], a["bootstrap_p05"])
+        self.assertTrue(a["diagnostic_only"])
+
+
 if __name__ == "__main__":
     unittest.main()
-
