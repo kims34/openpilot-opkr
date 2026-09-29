@@ -6,6 +6,8 @@ on:
     paths:
       - 'research_v1_krx_official_status.py'
       - 'test_research_v1_krx_official_status.py'
+      - 'research_v1_krx_cleanup_status.py'
+      - 'test_research_v1_krx_cleanup_status.py'
       - '.github/workflows/indexalert-research-v1-krx-official-status.yml'
   workflow_dispatch:
 
@@ -25,7 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
-      - name: Compile and test fail-closed KRX official status adapter
+      - name: Compile and test fail-closed KRX official status adapters
         run: |
-          python -m py_compile research_v1_krx_official_status.py
-          python -m pytest -q test_research_v1_krx_official_status.py
+          python -m py_compile research_v1_krx_official_status.py research_v1_krx_cleanup_status.py
+          python -m pytest -q test_research_v1_krx_official_status.py test_research_v1_krx_cleanup_status.py
