@@ -1,0 +1,59 @@
+name: IndexAlert Research v1 Selected Calibration
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_selected_calibration.py'
+      - 'research_v1_distributional_netev.py'
+      - 'research_v1_distributional_long_history.py'
+      - 'research_v1_supervised_cache.py'
+      - 'research_v1_fixed_horizon_label.py'
+      - '.github/workflows/indexalert-research-v1-selected-calibration.yml'
+  workflow_dispatch:
+
+jobs:
+  selected-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Compile and run integrity tests
+        run: |
+          python -m py_compile research_v1_selected_calibration.py research_v1_distributional_netev.py research_v1_distributional_long_history.py research_v1_supervised_cache.py
+          python -m unittest test_research_v1_distributional_netev.py test_research_v1_corporate_action_returns.py test_research_v1_pit_tax.py test_research_v1_supervised_cache.py
+      - name: Restore long-history marcap source
+        uses: actions/cache@v4
+        with:
+          path: research_data/marcap_raw_long
+          key: marcap-long-v1-2015-06-15-2026-09-28
+      - name: Restore fingerprinted CA-safe supervised PIT labels
+        uses: actions/cache@v4
+        with:
+          path: research_data/pit_supervised_long_v3_ca_fp
+          key: pit-supervised-long-v3-ca-fp-2015-06-15-2026-09-28-h5-c3
+      - name: Build long PIT panel v3
+        run: |
+          python research_v1_marcap.py --start 2015-06-15 --end 2026-09-28 --out research_data/marcap_kospi_pit_long --raw research_data/marcap_raw_long
+      - name: Compare marginal vs selection-conditioned q25 calibration
+        run: |
+          python research_v1_selected_calibration.py --cache research_data/marcap_kospi_pit_long --supervised-cache research_data/pit_supervised_long_v3_ca_fp --result-dir research_results/marcap_pit_selected_calibration --horizon 5 --top-k 3 --train-days 504 --cal-days 126 --test-days 126
+          cat research_results/marcap_pit_selected_calibration/summary.json
+      - name: Upload challenger result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-selected-calibration
+          path: research_results/marcap_pit_selected_calibration/
+          if-no-files-found: warn
+          retention-days: 30
