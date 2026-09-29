@@ -82,6 +82,54 @@ Result after normal-market fail-closed overlay:
 
 Disposition: failed the preregistered cluster-LCB, extreme-day-independence, current-evidence and portfolio-economics criteria. It also underperformed the existing selection-conditioned reference on mean NetReturn, PF, cluster lower bound and tail loss. Do not tune alternate gap definitions, path thresholds or path-family subsets from this result.
 
+### EXP-2026-09-29-RECENT-GATE-01 — recent-regime gate waterfall
+Status: **COMPLETED DIAGNOSTIC / NO POLICY CHANGE**. GitHub Actions run `36555181788`.
+
+Question: why does the strongest developmental selection-conditioned candidate produce no admissions in the recent regime?
+
+Frozen protocol: same all-context mean model, selection-conditioned residual q25, train 504 / calibration 126 / test 126 / purge 5, same costs, original Top3, normal-market fail-closed veto, no backfill. No thresholds or quantile levels were changed.
+
+Latest 504 OOS sessions (2024-08-20 through 2026-09-16):
+- original Top3 rows: **1,512**
+- raw `pred_mean > 0`: **1,464**
+- raw-positive rows blocked by `netev_low <= 0`: **1,460**
+- conservative `netev_low > 0`: **4** rows on 3 dates
+- all four conservative-positive rows were removed by the preliminary non-standard-market veto
+- final admissions: **0**
+- original-Top3 mean `pred_mean`: **+1.410%**
+- original-Top3 mean calibration penalty (`netev_low - pred_mean`): **-9.934%**
+- original-Top3 mean `netev_low`: **-8.523%**
+
+2024 and 2025 each had zero conservative-positive Top3 rows; 2026 had four, all vetoed. The dominant recent bottleneck is therefore **uncertainty/calibration width**, with the market-status veto only affecting the tiny set that survives q25. Do not loosen q25 merely to manufacture trades.
+
+A realized-outcome audit of the q25-blocked rows was preregistered before reading its result. It will decide whether abstention is correctly protective or whether a conditional-q25 estimator is worth testing.
+
+## Preregistered / running experiments
+
+### EXP-2026-09-29-UNCERTAINTY-AUDIT-01 — realized outcomes behind q25 veto
+Status: **RUNNING**.
+
+No model or policy change. Measure realised 5-session NetReturn, PF, date-cluster CI, ES5 and remove-best-1/3/5-day robustness for original Top3, raw-positive Top3, q25-blocked raw-positive Top3 and conservative-positive Top3 in all OOS / 2022+ / 2024+ / latest-504 windows.
+
+Decision fixed before outcome:
+- if q25-blocked rows are economically weak or jackpot-dependent: keep abstention and seek orthogonal information;
+- if blocked rows have positive economics but wide conditional tails: test a conditional q25 estimator at the **same 25th-percentile target**;
+- do not change TopK, q-level, costs or admission threshold from this audit.
+
+### EXP-2026-09-29-POLICY-CAL-01 — policy-aligned calibration population
+Status: **PREREGISTERED, NOT YET READ**.
+
+Structural issue found before running the challenger: current selection-conditioned calibration freezes calibration-day Top3 by `pred_mean`, but does **not** apply the decision-time non-standard-market fail-closed veto before estimating residual quantiles, whereas the test/trade policy applies that veto after Top3 freeze.
+
+Prespecified challenger:
+1. calibration-day Top3 is frozen by `pred_mean` exactly as before;
+2. apply the same decision-time normal-market veto to those frozen calibration rows;
+3. vetoed slots stay empty; rank 4+ is never promoted;
+4. estimate q25/q50/q75 residuals only from policy-eligible calibration Top3;
+5. mean model, features, q-levels, train/cal/test windows, costs, test Top3 and admission `netev_low > 0` remain unchanged.
+
+This is a **population-alignment test, not a q25 relaxation**. It is kept only if calibration coverage and economic/tail robustness do not deteriorate. Any apparent performance gain remains development evidence and cannot promote without fresh sealed evidence.
+
 ## Next information family after CA-path failure
 
 Do **not** continue price-only feature/threshold mining. Prefer one genuinely independent PIT-valid information family.
