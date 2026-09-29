@@ -1,265 +1,168 @@
 # IndexAlert Research Status
 
-Updated: 2026-09-29 KST  
+Updated: 2026-09-30 KST  
 Branch: `index-alert-research-v1`  
 Master authority: `INDEXALERT_MASTER_SPEC.md`  
+Experiment authority: `INDEXALERT_RESEARCH_LEDGER.md`  
 Promotion authority: **none yet** — development evidence cannot promote a live strategy without sealed holdout + prospective Shadow.
 
-## Current research principle
+## Current bottom line
 
-Use the Master Spec and prior research-room notes as references, not unquestionable truth. Current GitHub code, PIT lineage, CI artifacts and statistical/economic evidence take priority when they conflict with older notes.
+The current price/volume/context stack is **not ready for live short-term investment recommendations**.
 
-Primary target is **executable, cost-adjusted 5-session NetReturn / NetEV distribution**. Legacy barrier and UP/DOWN models are diagnostics only.
+The research process is materially stronger than earlier versions — PIT discipline, corporate-action-safe returns, strict Top3/no-backfill, realistic costs, abstention, purged validation and reproducible CI are in place — but the current evidence does not establish a robust, recent, execution-ready edge.
 
-Decision policy:
+Do **not** relax q25, TopK, costs, recent-evidence requirements, horizon or execution assumptions merely to create trades.
 
-- conservative lower NetEV > 0
-- freeze original decision-time Top3
-- held/unfillable/vetoed names leave empty slots
-- **no rank-4+ backfill**
-- 0..3 trades and NO_TRADE are valid outputs
-- five-session purge around train/calibration/test outcome boundaries
-- date-aware KOSPI statutory tax + commission + spread/impact allowance
-- normal-market fail-closed veto after Top3 freeze when decision-day KRX base-price return is outside +/-30% plus 50bp tolerance; blocked slots remain empty
+## Frozen policy / validation rules
 
-## Major data-integrity correction: corporate-action-safe returns
+- H5 is the Core development horizon.
+- H10 is `REJECTED_CURRENT_CANDIDATE_DO_NOT_RETUNE`; do not sweep H6-H9 or retune H10 from completed outcomes.
+- H20 is out-of-scope/archive evidence.
+- Anchored walk-forward: train 504 / calibration 126 / test 126.
+- Horizon-matched label-overlap purge and embargo.
+- Original decision-time Top3 is frozen; vetoed/held/unfillable slots remain empty; **no rank-4+ backfill**.
+- 0..3 trades and NO_TRADE are valid.
+- Corporate-action-safe KRX base-price returns are mandatory.
+- Primary evidence is executable, cost-adjusted NetReturn/NetEV with PF, date-cluster uncertainty, tail risk, drawdown, cost stress and execution/capacity realism.
+- Sealed holdout is one-shot and stays sealed until data/execution blockers, code and protocol are frozen.
+- After holdout: prospective Shadow S1 -> frozen Fresh Confirmation S2.
 
-All raw-close-based feature/label conclusions are now superseded.
+## Current H5 developmental reference
 
-Current CA-safe policy:
+Selection-conditioned residual calibration with the preliminary post-rank normal-market fail-closed overlay remains a developmental reference, not a Champion.
 
-- `ret1` = KRX `FLUC_RT / ChangesRatio` base-price-adjusted daily return
-- `ret5/ret20` and volatility = compounded CA-safe daily returns
-- market breadth / market median / residual returns use the same CA-safe return axis
-- fixed-horizon economic return starts from next executable open and compounds KRX base-price-adjusted returns through D+5 close
-- research MTM uses a corporate-action-safe economic price index rather than raw share-count × close
-- supervised cache is fingerprinted and fail-closed against stale pre-CA-safe caches
+Compact result:
+- 278 executed entries / 137 trade days
+- mean NetReturn **+1.150%**
+- PF **1.546**
+- cluster 95% lower bound remains below zero
+- 2x-cost mean **+0.787%**, PF **1.344**
+- portfolio total **+16.39%**
+- CAGR **~1.83%**
+- MDD **-24.39%**
+- Sharpe **~0.23**
+- average gross exposure **~5.20%**
 
-Synthetic split and cache-integrity tests are included in CI.
+Failure modes:
+- positive admissions are concentrated in **2018-2021**
+- no admissions in 2022-2026 / latest 504 OOS sessions
+- remove-best-5 decision days turns mean NetReturn negative and PF below 1
+- official historical security/status and execution/capacity blockers remain open
 
-## Normal-market eligibility gate
+Classification: **DEVELOPMENTAL_NOT_CURRENTLY_PROMOTABLE**.
 
-KRX normal equities use a +/-30% daily price limit, while liquidation/cleanup trading is exempt. The research engine therefore treats decision-day absolute KRX base-price return >30.5% as a **non-standard market-state signal**, not an alpha threshold.
+## Recent-gate and uncertainty audit
 
-The gate:
+The recent gate diagnostic showed that q25 uncertainty width mechanically blocks almost all recent raw-positive Top3 rows. The preregistered realized-outcome audit then tested whether those blocked rows were actually valuable.
 
-- uses decision-time information only
-- is applied after original Top3 is frozen
-- never backfills rank 4/5
-- remains preliminary until official KRX security-status/security-master data is joined
+`EXP-2026-09-29-UNCERTAINTY-AUDIT-01`, Action `36637333875`: **COMPLETED**.
 
-Historical audit confirmed that many vetoed observations had -67% to -98% one-day returns and correspond to non-standard states such as cleanup trading.
+Key realized results:
+- all-OOS q25-blocked: mean **-0.8432%**, PF **0.8425**, cluster 95% interval **[-1.4094%, -0.2782%]**
+- 2022+ q25-blocked: mean **-1.2551%**, PF **0.8005**
+- latest-504 q25-blocked: mean **-0.6263%**, PF **0.9012**; remove-best-5 **-1.2697%**, PF **0.8011**
+- latest conservative-positive subset: only 4 rows, mean **-22.5669%**, PF **0.1381**
 
-## CA-safe long-history robustness: completed
+Decision: **KEEP_ABSTENTION**. The blocked pool is economically weak, so do not weaken q25 and do not launch a conditional-q25 rescue experiment from this result. Seek orthogonal PIT-valid information.
 
-Period: **2015-06-15 .. 2026-09-23**  
-Protocol: initial train 504 sessions, independent calibration 126, purge 5, OOS test 126, ADV20 rank >=20th percentile, strict Top3/no-backfill.  
-This is a falsification/robustness test, **not a sealed holdout**.
+The audit artifact also reports `common_stock_identity_validated=false` and `judge_eligible=false`; official common-stock identity and exact halt/delisting economics remain hard blockers.
 
-### all_context without normal-market gate
+## Policy-aligned calibration
 
-- 115 trades / 51 trade days / 2.42% trade-day coverage
-- mean net: **-6.50% / trade**
-- PF: **0.370**
-- cluster 95% interval: **-18.80% to -4.29%**
-- ES95: **-71.0%**
-- portfolio total return: **-71.5%**
-- MDD: **-73.3%**
+`EXP-2026-09-29-POLICY-CAL-01`, Action `36643183157`: **COMPLETED**.
 
-### context_only without normal-market gate
+The only change was to apply the same preliminary normal-market veto to calibration-day frozen Top3 before estimating residual q25/q50/q75, with no backfill and no change to model, features, q-level, windows, costs or admission threshold.
 
-- 92 trades / 45 trade days / 2.14% coverage
-- mean net: **-4.74% / trade**
-- PF: **0.491**
-- cluster 95% interval: **-19.00% to -3.09%**
-- ES95: **-70.2%**
-- portfolio total return: **-65.5%**
-- MDD: **-71.1%**
+Result:
+- reference and challenger selected the **same 278 compact decision-date/symbol records**
+- direct comparison found 0 reference-only and 0 challenger-only records
+- compact portfolio and cost-stress results are exactly identical
+- selected CSV differences are only in the `model` identifier
 
-Conclusion: the short-window positive result **does not survive long history without a market-status fail-closed layer**.
+Disposition: **ADOPT STRUCTURAL ALIGNMENT / NO PERFORMANCE CHANGE / NOT PROMOTION EVIDENCE**. This aligns calibration population with the decision policy without manufacturing performance. The underlying normal-market proxy is still preliminary pending official historical KRX status validation.
 
-### context_only + normal-market fail-closed overlay
+## Corrected Purged CPCV — authoritative result
 
-- 80 trades / 34 trade days / 1.62% coverage
-- mean gross: **+0.731%**
-- mean cost: **0.378%**
-- mean net: **+0.353% / trade**
-- PF: **1.082**
-- cluster 95% interval: **-7.85% to +3.19%**
-- 2x-cost mean: **-0.025%**, PF **0.994**
+Action `36637351334`: **COMPLETED SUCCESSFULLY**.
 
-This removes obvious non-standard price-limit exceptions but **still does not establish robust edge**. 2026 includes a severe cleanup/delisting-related loss cluster and the confidence interval remains wide.
+Frozen protocol: six contiguous groups; every pair of test groups; each remaining group once as calibration; remaining three groups train; horizon-matched purge/embargo; **60 cases per horizon**. CPCV is a secondary stability diagnostic only.
 
-Long-history verdict: **LONG_HISTORY_DOES_NOT_YET_ESTABLISH_ROBUST_EDGE**.
+Authoritative results:
+- **H5:** median PF **0.381**; positive NetEV cases **43.3%**; date-cluster LCB > 0 **11.7%**
+- **H10:** median PF **0.745**; positive NetEV cases **50.0%**; date-cluster LCB > 0 **33.3%**
 
-## Selection-conditioned calibration: current strongest developmental direction
+Verdict: **CPCV_DOES_NOT_ESTABLISH_ROBUST_EDGE** for either horizon.
 
-Diagnosed issue: marginal residual calibration severely underestimates winner's-curse/post-selection error for names selected near the top of the cross-section.
+The former H10 **15-combination** CPCV section and its numbers are **historical and superseded**. Conflicting old-chat recollections, including H10 median PF ~0.454, are not valid evidence. Earlier exit-137/143 failures were implementation memory/process failures; splitwise generate -> evaluate -> release fixed execution without changing the frozen protocol.
 
-Developmental challenger keeps model, q25/q50/q75 levels, Top3 rule and test threshold fixed, but estimates calibration residual quantiles from **calibration-day Top3 by predicted mean only**. Test outcomes are not used to select calibration rows.
+## Other completed negative evidence
 
-### all_context + selection-conditioned calibration + normal-market fail-closed
-
-- 278 trades / 137 trade days
-- trade-day coverage: **6.51%**
-- mean net: **+1.150% / trade**
-- PF: **1.546**
-- win rate: **52.16%**
-- ES95: **-20.64%**
-- cluster 95% interval: **-0.489% to +2.193%**
-- 2x-cost mean: **+0.787%**, PF **1.344**
-- portfolio total return: **+16.39%**
-- CAGR: **~1.83%**
-- MDD: **-24.39%**
-- Sharpe (0rf): **~0.23**
-- average gross exposure: **~5.20%**
-
-Important failure modes:
-
-- admissions occur only in **2018-2021** in the completed long-history test
-- **no admissions in 2022-2026**
-- remove best 1 decision day: mean net **+0.694%**, PF **1.326**
-- remove best 3 decision days: mean net **+0.053%**, PF **1.025**
-- remove best 5 decision days: mean net **-0.362%**, PF **0.836**
-
-Interpretation: this is not a current general-purpose Champion. It is a **developmental regime-specialist / dormant candidate** whose positive average depends materially on a handful of strong historical decision days. Overall cluster lower bound is still negative.
-
-### context_only + selection-conditioned calibration
-
-- 21 trades / 9 trade days
-- mean net: **+6.92%**
-- PF: **1.98**
-- cluster 95% lower bound: **-5.66%**
-
-This sample is far too small for promotion and remains research-only.
-
-## Promotion-evidence audit
-
-A separate no-tuning audit has been added to CI. It does not change model predictions or thresholds. It checks:
-
-- overall date-cluster 95% lower bound
-- remove-best 1/3/5 decision-day dependence
-- latest 504 test-session evidence
-- 2x cost stress
-- tail loss / portfolio drawdown snapshot
-
-Expected current classification for the strongest developmental candidate is **DEVELOPMENTAL_NOT_CURRENTLY_PROMOTABLE** because the cluster LCB is negative, the best-5-day removal fails, and recent-session admissions are absent.
-
-## Recency challenger: rejected
-
-Rolling-160 strict Top3 result:
-
+### Rolling-160 recency challenger
 - 85 trades
-- mean net: **-1.583%**
-- PF: **0.447**
-- cluster 95% interval: **-4.18% to -0.15%**
-- portfolio total return: **-17.64%**
-- MDD: **-20.53%**
+- mean -1.583%, PF 0.447
+- cluster 95% interval -4.18% to -0.15%
+- portfolio -17.64%, MDD -20.53%
 
-Decision: **KEEP_EXPANDING_REFERENCE**. Do not sweep/tune recency windows from this result.
+Disposition: rejected; do not sweep nearby windows.
 
-## Historical tax schedule
+### CA-safe path family — Action `36549690847`
+- 88 trades
+- mean NetReturn +0.330%, PF 1.082
+- cluster LCB -3.959%
+- ES95 -26.41%
+- portfolio -4.40%, MDD -20.44%
+- latest-504 admissions 0
+- remove-best-5 -2.668%, PF 0.449
 
-Current PIT engine uses exact effective-date KOSPI statutory sell tax in the modern price-limit regime:
+Disposition: rejected; do not retune price-path definitions/subsets from this outcome.
 
-- 2015-06-15 .. 2019-06-02: **30bp**
-- 2019-06-03 .. 2020-12-31: **25bp**
-- 2021-2022: **23bp**
-- 2023: **20bp**
-- 2024: **18bp**
-- 2025: **15bp**
-- 2026: **20bp**
+## H10 / H20
 
-Round-trip broker commission remains separate at 3bp in current research.
+### H10
+Anchored developmental result was strong by point estimate (122 records / 58 days; mean +5.689%, PF 4.49, cluster LCB +1.752%, MDD -5.86%), but admissions occurred only in 2018-2021, recent admissions were zero, stability did not survive corrected CPCV, and hard blockers remain open.
 
-## Current independent judgment
+Disposition: **REJECTED_CURRENT_CANDIDATE_DO_NOT_RETUNE**.
 
-The current price/volume/context-only research stack is **not yet suitable for live short-term investment recommendations**.
+### H20
+Out of the requested 5-10-session scope. Archive only; it cannot select a production horizon or motivate nearby-horizon tuning.
 
-What has improved:
+## Data-integrity state
 
-- PIT discipline and leakage protection are materially stronger
-- corporate-action distortion has been removed from features/labels/MTM
-- post-selection calibration is now explicitly tested
-- normal vs non-standard KRX market states are fail-closed
-- strict Top3/no-backfill and abstention are enforced
+Current research uses:
+- KRX base-price-adjusted CA-safe daily returns for features and labels
+- CA-safe economic price index for MTM
+- fingerprinted fail-closed supervised caches
+- exact-date KOSPI statutory sell tax + separate round-trip commission
+- post-rank preliminary normal-market fail-closed veto; blocked slots remain empty
 
-What remains weak:
+The >30.5% decision-day CA-safe return rule is a **market-state fail-closed proxy**, not alpha. It remains preliminary until historical official security/status data covers the Judge period.
 
-- no positive cluster lower bound
-- no robust recent evidence
-- extreme-day dependence remains material
-- risk-adjusted portfolio performance is poor even for the strongest developmental candidate
-- current data stack lacks official security status, investor flow, disclosure/event and richer sector/peer signals that may be needed for current edge
+## Next independent information family
 
-Do **not** relax q25, TopK, cost or recent-evidence standards just to create trades.
+Do **not** continue price-only threshold/feature mining.
+
+First candidate: **official KRX investor-flow data**. Before any performance test, establish an official reproducible historical source with:
+- historical coverage and stable security mapping
+- `event_time`
+- `published_at`
+- `available_at`
+- `ingested_at`
+- fail-closed handling when data is unavailable
+
+Final day-D investor trading results are only eligible for a later decision after their publication time. Authentication/source-probe success alone is not feature evidence. Do not substitute undocumented same-day proxies if official reproducible history cannot be established.
 
 ## Final Judge blockers still open
 
-1. Official common-stock/security-status master; current PIT source alone does not conclusively classify all non-standard issues.
-2. Exact cleanup-trading / halt / delisting economics and status joins rather than proxy inference.
-3. Current-regime signal expansion using genuinely PIT-valid sources (flows, disclosures/events, sector/peer) without contaminating historical availability.
-4. Intraday fill ratio × fill time × fill price and post-fill markout.
-5. Recommendation latency/expiry and execution-delay stress.
-6. Multiple-testing / research-ledger accounting across the full policy search.
-7. Fresh sealed historical evidence followed by prospective Shadow S1 → frozen Fresh Confirmation S2.
-
-## Short-Swing preregistered challengers: current status
-
-The frozen H10/H20 challengers are independent developmental tests; their stronger point estimates do not modify or rescue the H5 strategy.
-
-### H10 walk-forward
-
-- 122 selected records / 58 trade days
-- capacity-aware mean NetEV: **+5.689%**
-- PF: **4.490**
-- date-cluster 95% LCB: **+1.752%**
-- MDD: **-5.86%**
-- ES95 / ES99: **-10.44% / -12.77%**
-- best-5-day removal and 2x-cost developmental checks passed
-
-### H10 purged CPCV
-
-Six groups, two test groups per combination, 15 combinations, purge=10 sessions.
-
-- median NetEV: **+5.448%**
-- worst combination NetEV: **-12.882%**
-- fraction positive NetEV: **53.3%**
-- fraction PF > 1: **53.3%**
-- fraction date-cluster LCB > 0: **46.7%**
-- verdict: **CPCV_DOES_NOT_ESTABLISH_ROBUST_EDGE**
-
-Therefore H10 remains developmental and is **not** a Champion or promotion candidate.
-
-### H20 walk-forward
-
-- 48 selected records / 23 trade days
-- capacity-aware mean NetEV: **+11.132%**
-- PF: **3.350**
-- date-cluster 95% LCB: **+3.328%**
-- MDD: **-10.69%**
-- ES95 / ES99: **-45.87% / -49.46%**
-- best-5-day removal and 2x-cost developmental checks passed
-
-H20 has materially worse tail loss than H10 and is not preferred by point estimate. Its identical purged-CPCV test is now running because H20 was already preregistered. No additional horizon sweep is allowed from these results.
-
-### Official KRX identity/status integrity
-
-The official-status adapter is fail-closed. A current KRX basic-info snapshot cannot establish historical identity/security-type coverage back to 2015. Until historical identity/status lineage covers the Judge period, official common-stock/status integrity remains a Final Judge blocker.
+1. Official historical common-stock/security-status master with PIT availability lineage.
+2. Exact trading-halt, cleanup-trading and delisting economics/status joins.
+3. Reproducible official KRX investor-flow historical access/lineage before performance testing.
+4. Empirical fill ratio, fill time, fill price and partial-fill behavior.
+5. Post-fill markout, recommendation latency/expiry and execution-delay stress.
+6. Empirical capacity rather than only a square-root impact cost proxy.
+7. Research-ledger/multiple-testing discipline across the full policy search.
+8. One-shot sealed holdout only after blockers/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
 
 ## Promotion rule
 
-No candidate is promoted because of a positive point estimate, PF or CAGR alone.
-
-Preliminary evidence requires at least:
-
-- positive cost-adjusted OOS mean Net Return
-- PF > 1
-- **positive date-cluster 95% lower bound**
-- no material dependence on a handful of best decision days
-- credible recent-regime evidence for a current general-purpose strategy
-- acceptable MDD / ES / tail dependence
-- reasonable cost-stress survival
-- no hidden leakage, backfill, corporate-action, market-status or cache-lineage dependency
-
-Final promotion additionally requires official security/status data, execution realism, sealed holdout and prospective Shadow.
+Positive mean, PF or CAGR alone cannot promote a candidate. At minimum, evidence must show positive cost-adjusted OOS economics, PF > 1, positive date-cluster lower bound, robustness to best-day removal, credible recent evidence, acceptable MDD/ES/tail dependence, cost-stress survival, PIT correctness, official status integrity and execution realism. Final promotion additionally requires the sealed holdout and prospective confirmation sequence.
