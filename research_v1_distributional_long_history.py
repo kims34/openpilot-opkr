@@ -101,7 +101,6 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
     eligible = pred[pred["netev_low"] > 0].copy()
     frozen = freeze_original_topk(eligible, top_k)
 
-    # Reference: current strict Top3/no-backfill policy.
     records, selected, selection_diag = stateful_select_records(
         frozen, fixed_map, top_k=top_k, threshold=0.0,
     )
@@ -109,8 +108,6 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
         raw, pred, records, selected, selection_diag, horizon
     )
 
-    # Market-structure overlay: freeze Top3 first, then hard-veto exceptional
-    # decision-day market states.  Do not promote rank 4/5.
     normal_frozen, vetoed_frozen, gate_diag = veto_frozen_topk_nonstandard_market(frozen)
     gate_records, gate_selected, gate_selection_diag = stateful_select_records(
         normal_frozen, fixed_map, top_k=top_k, threshold=0.0,
@@ -120,15 +117,19 @@ def evaluate_candidate(z, fixed_map, raw, *, name, features, train_days, cal_day
     )
     gate_result["market_eligibility_diagnostics"] = gate_diag
     gate_result["vetoed_frozen_rows"] = int(len(vetoed_frozen))
-    gate_result["vetoed_examples"] = (
-        vetoed_frozen[
-            [c for c in ["decision_date", "symbol", "ret1", "score", "netev_low"] if c in vetoed_frozen.columns]
+    if len(vetoed_frozen):
+        cols = [
+            c for c in ["decision_date", "symbol", "ret1", "score", "netev_low"]
+            if c in vetoed_frozen.columns
         ]
-        .sort_values([c for c in ["decision_date", "score"] if c in vetoed_frozen.columns], ascending=[True, False][:len([c for c in ["decision_date", "score"] if c in vetoed_frozen.columns])])
-        .head(50)
-        .to_dict("records")
-        if len(vetoed_frozen) else []
-    )
+        sort_cols = [c for c in ["decision_date", "score"] if c in vetoed_frozen.columns]
+        examples = vetoed_frozen[cols].copy()
+        if sort_cols:
+            ascending = [True if c == "decision_date" else False for c in sort_cols]
+            examples = examples.sort_values(sort_cols, ascending=ascending)
+        gate_result["vetoed_examples"] = examples.head(50).to_dict("records")
+    else:
+        gate_result["vetoed_examples"] = []
 
     result = {
         "name": name,
@@ -246,11 +247,12 @@ def main():
 
     out = Path(args.result_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    encoded = json.dumps(report, ensure_ascii=False, indent=2, default=str)
+    (out / "summary.json").write_text(encoded, encoding="utf-8")
     for name, selected in selections.items():
         if hasattr(selected, "to_csv"):
             selected.to_csv(out / f"{name}_selected.csv", index=False)
-    print("DISTRIBUTIONAL_LONG_HISTORY=" + json.dumps(report, ensure_ascii=False), flush=True)
+    print("DISTRIBUTIONAL_LONG_HISTORY=" + json.dumps(report, ensure_ascii=False, default=str), flush=True)
 
 
 if __name__ == "__main__":
