@@ -1,5 +1,9 @@
 name: IndexAlert Research v1 Short-Swing Purged CPCV
 
+concurrency:
+  group: indexalert-research-v1-swing-cpcv-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [index-alert-research-v1]
