@@ -5,6 +5,8 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_selected_calibration.py'
+      - 'research_v1_promotion_report.py'
+      - 'research_v1_promotion_audit.py'
       - 'research_v1_market_eligibility.py'
       - 'research_v1_distributional_netev.py'
       - 'research_v1_distributional_long_history.py'
@@ -32,7 +34,7 @@ jobs:
           pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
       - name: Compile and run integrity tests
         run: |
-          python -m py_compile research_v1_selected_calibration.py research_v1_market_eligibility.py research_v1_distributional_netev.py research_v1_distributional_long_history.py research_v1_supervised_cache.py
+          python -m py_compile research_v1_selected_calibration.py research_v1_promotion_report.py research_v1_promotion_audit.py research_v1_market_eligibility.py research_v1_distributional_netev.py research_v1_distributional_long_history.py research_v1_supervised_cache.py
           python -m unittest test_research_v1_distributional_netev.py test_research_v1_market_eligibility.py test_research_v1_corporate_action_returns.py test_research_v1_pit_tax.py test_research_v1_supervised_cache.py
       - name: Restore long-history marcap source
         uses: actions/cache@v4
@@ -51,6 +53,10 @@ jobs:
         run: |
           python research_v1_selected_calibration.py --cache research_data/marcap_kospi_pit_long --supervised-cache research_data/pit_supervised_long_v3_ca_fp --result-dir research_results/marcap_pit_selected_calibration --horizon 5 --top-k 3 --train-days 504 --cal-days 126 --test-days 126
           cat research_results/marcap_pit_selected_calibration/summary.json
+      - name: Audit promotion evidence without changing the model
+        run: |
+          python research_v1_promotion_report.py --result-dir research_results/marcap_pit_selected_calibration --pit-cache research_data/marcap_kospi_pit_long --recent-sessions 504
+          cat research_results/marcap_pit_selected_calibration/promotion_audit.json
       - name: Upload challenger result
         if: always()
         uses: actions/upload-artifact@v4
