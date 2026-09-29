@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
+import execution_evidence_ledger
 import monitor
 import production
 import production_v27
@@ -161,3 +162,7 @@ def _evaluate_kospi(index_id: str):
 
 # v24 owns the dynamic fourth-card evaluator used throughout the later stack.
 production_v24._evaluate_kospi100 = _evaluate_kospi
+
+# Protected, immutable operational ledger for future empirical fill/latency/
+# markout evidence.  This does not alter served recommendations or promotion.
+execution_evidence_ledger.attach(app)
