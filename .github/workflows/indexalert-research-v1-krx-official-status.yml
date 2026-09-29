@@ -1,0 +1,31 @@
+name: IndexAlert Research v1 Official KRX Status Integrity
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_official_status.py'
+      - 'test_research_v1_krx_official_status.py'
+      - '.github/workflows/indexalert-research-v1-krx-official-status.yml'
+  workflow_dispatch:
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
+      - name: Compile and test fail-closed KRX official status adapter
+        run: |
+          python -m py_compile research_v1_krx_official_status.py
+          python -m pytest -q test_research_v1_krx_official_status.py
