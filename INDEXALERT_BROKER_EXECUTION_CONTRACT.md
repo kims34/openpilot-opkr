@@ -225,3 +225,19 @@ Requires all Final Judge/statistical gates, live execution evidence, operational
 Current work remains on the research/data/execution-evidence blockers defined by `INDEXALERT_MASTER_SPEC.md`, `INDEXALERT_RESEARCH_LEDGER.md` and `INDEXALERT_CONTINUITY_SNAPSHOT.md`.
 
 Only maintain broker-neutral interfaces/data compatibility until the promotion state makes Kiwoom integration appropriate.
+
+## 14. Default user-control surface
+
+The future consumer UX must follow `INDEXALERT_AUTOMATION_UX_CONTRACT.md`.
+
+After broker connection, routine user controls are intentionally restricted to:
+- automated operation enabled / disabled; and
+- maximum automated-operation capital in KRW.
+
+Stop-loss %, take-profit %, holdings count, per-symbol weights, holding period, entry threshold, replacement and re-entry rules are not routine user settings. They are engine-owned decisions governed by the validated Decision / Risk / Execution policies.
+
+The user's capital input is a hard ceiling, not a target. The engine may retain any fraction of it as cash, including 100%. `NO_TRADE` must remain valid whenever expected-return/risk/execution requirements are not met.
+
+Before any new exposure, conservative committed-capital accounting must include current automated positions, reserved open buy orders, partial-fill residual exposure, uncertain submissions and applicable cash buffers. A plan is forbidden if projected committed automated capital would exceed the user ceiling.
+
+The user retains explicit authority to enable/disable automation, use the Kill Switch and set the capital ceiling. Internal safety limits remain mandatory and may be stricter than the user ceiling, but they are not intended to become expert configuration knobs in the default UX.
