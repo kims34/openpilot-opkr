@@ -21,7 +21,7 @@ class PushSelfTestTests(unittest.TestCase):
             token=self.token,
             platform="android",
             protocol=2,
-            client_build="4.4-44",
+            client_build="4.5-45",
         )
 
     def tearDown(self):
@@ -63,11 +63,41 @@ class PushSelfTestTests(unittest.TestCase):
         newer = push_self_test.PushSelfTestBody(
             token=self.token,
             protocol=2,
-            client_build="4.4-45",
+            client_build="4.5-46",
         )
         out = push_self_test.request_self_test(newer)
         self.assertTrue(out["queued"])
         self.assertEqual(send.call_count, 2)
+
+    @patch("push_self_test.monitor.init_firebase", return_value=True)
+    def test_transient_send_failure_retries_same_event_without_duplicate_row(self, _firebase):
+        with patch("push_self_test.messaging.send", side_effect=RuntimeError("temporary")):
+            with self.assertRaises(HTTPException) as cm:
+                push_self_test.request_self_test(self.body)
+            self.assertEqual(cm.exception.status_code, 503)
+
+        with monitor.db() as con:
+            before = con.execute(
+                "SELECT event_id,sent,COUNT(*) OVER() FROM deliveries WHERE token=? AND index_id=?",
+                (self.token, push_self_test.INDEX_ID),
+            ).fetchone()
+        self.assertEqual(before[1], 0)
+        self.assertEqual(before[2], 1)
+
+        with patch("push_self_test.messaging.send", return_value="projects/test/messages/retry") as send:
+            out = push_self_test.request_self_test(self.body)
+        self.assertTrue(out["queued"])
+        self.assertFalse(out["already_sent"])
+        self.assertEqual(send.call_count, 1)
+
+        with monitor.db() as con:
+            after = con.execute(
+                "SELECT event_id,sent,COUNT(*) OVER() FROM deliveries WHERE token=? AND index_id=?",
+                (self.token, push_self_test.INDEX_ID),
+            ).fetchone()
+        self.assertEqual(after[0], before[0])
+        self.assertEqual(after[1], 1)
+        self.assertEqual(after[2], 1)
 
     @patch("push_self_test.monitor.init_firebase", return_value=True)
     @patch("push_self_test.messaging.send", return_value="projects/test/messages/1")
@@ -92,7 +122,7 @@ class PushSelfTestTests(unittest.TestCase):
         body = push_self_test.PushSelfTestBody(
             token="x" * 40,
             protocol=2,
-            client_build="4.4-44",
+            client_build="4.5-45",
         )
         with self.assertRaises(HTTPException):
             push_self_test.request_self_test(body)
