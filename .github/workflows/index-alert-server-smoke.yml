@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install test dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install -r requirements.txt
       - name: Syntax and regression checks
         run: |
           python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v30.py production_v31.py execution_evidence_ledger.py push_receipts.py push_health.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
