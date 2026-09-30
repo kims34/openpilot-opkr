@@ -185,8 +185,10 @@ Final Judge promotion additionally requires:
 - exact halt / delisting economics
 - longer historical evidence
 - sealed holdout
-- Shadow S1
+- trading-policy Shadow S1
 - frozen Fresh Confirmation S2
+
+`Shadow S1` here means the staged automated-trading prospective decision mode defined below: it submits **no broker orders** and creates no broker-fill evidence. It is distinct from the legacy probability-model challenger ledger in `probability_shadow.py` / `SHADOW_LEDGER_RELEASE.md`.
 
 ## 12. Current immediate research order
 
@@ -257,8 +259,8 @@ Complex models are deferred until the above simple architecture produces robust 
   fill-time/price, markout, latency/expiry and empirical capacity remain hard
   promotion blockers.
 - Do not burn sealed holdout until blockers, code and protocol are frozen.
-  Holdout is one-shot and cannot tune the same model. Prospective Shadow S1 and
-  frozen Fresh Confirmation S2 remain mandatory after holdout.
+  Holdout is one-shot and cannot tune the same model. Prospective trading-policy
+  Shadow S1 and frozen Fresh Confirmation S2 remain mandatory after holdout.
 
 ## 14. Future broker automation and Kiwoom REST boundary — 2026-09-30
 
@@ -275,6 +277,14 @@ The required execution promotion sequence is:
 `Research / Backtest -> Shadow -> Kiwoom Paper API -> Tiny Live -> Limited Live -> Production`
 
 No stage may be skipped merely because broker connectivity works.
+
+The evidence semantics of these stages are frozen:
+- **SHADOW:** records prospective broker-neutral decisions/intended actions only. It submits no broker order and cannot produce empirical fill, partial-fill, slippage or capacity evidence.
+- **PAPER:** sends orders only to an approved paper/simulation broker environment. Its returned order/fill state is operational adapter/reconciliation evidence, not evidence of real-market fill quality or capacity.
+- **TINY_LIVE / LIMITED_LIVE / LIVE:** real-account broker execution observations are the only tier eligible to contribute to empirical live fill/slippage/partial-fill/latency/markout/capacity evidence. Structurally valid live rows alone do not satisfy promotion; sample sufficiency, tails, capacity and all statistical/prospective gates remain separate.
+- The older probability-model `shadow` ledger is a different concept and must never be counted as trading-policy Shadow S1 or execution evidence.
+
+Canonical execution-evidence details are frozen in `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md`.
 
 ### Separation of concerns
 
