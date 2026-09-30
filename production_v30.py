@@ -16,6 +16,7 @@ import monitor
 import production
 import production_v27
 import production_v29
+import push_health
 
 app = production_v29.app
 SEOUL = production_v27.SEOUL
@@ -166,3 +167,7 @@ production_v24._evaluate_kospi100 = _evaluate_kospi
 # Protected, immutable operational ledger for future empirical fill/latency/
 # markout evidence.  This does not alter served recommendations or promotion.
 execution_evidence_ledger.attach(app)
+
+# Sanitized aggregate push-health endpoint. No FCM token or device payload is
+# returned; this is operational observability only.
+push_health.attach(app)
