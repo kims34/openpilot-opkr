@@ -35,7 +35,7 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
             markout_5m_price=70100,
             markout_30m_price=70300,
             markout_close_price=70500,
-            source=e.SOURCE,
+            source=e.LIVE_EXECUTION_SOURCE,
             ingested_at="2026-09-30T06:40:00Z",
         )
         data.update(updates)
@@ -47,13 +47,33 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
         self.assertTrue(first["created"])
         self.assertFalse(second["created"])
         self.assertEqual(first["observation_key"], second["observation_key"])
-        self.assertEqual(e.summary()["full_fill"], 1)
+        s = e.summary()
+        self.assertEqual(s["full_fill"], 1)
+        self.assertEqual(s["live_observations"], 1)
+        self.assertTrue(s["contains_live_execution_evidence"])
 
     def test_same_key_different_payload_is_rejected(self):
         e.record(self.full_fill())
         with self.assertRaises(HTTPException) as cm:
             e.record(self.full_fill(avg_fill_price=70010))
         self.assertEqual(cm.exception.status_code, 409)
+
+    def test_paper_and_live_same_decision_can_coexist(self):
+        live = e.record(self.full_fill(source=e.LIVE_EXECUTION_SOURCE))
+        paper = e.record(self.full_fill(source=e.PAPER_EXECUTION_SOURCE))
+        self.assertNotEqual(live["observation_key"], paper["observation_key"])
+        s = e.summary()
+        self.assertEqual(s["observations"], 2)
+        self.assertEqual(s["live_observations"], 1)
+        self.assertEqual(s["paper_observations"], 1)
+
+    def test_paper_only_is_not_live_execution_evidence(self):
+        e.record(self.full_fill(source=e.PAPER_EXECUTION_SOURCE))
+        s = e.summary()
+        self.assertEqual(s["paper_observations"], 1)
+        self.assertEqual(s["live_observations"], 0)
+        self.assertFalse(s["contains_live_execution_evidence"])
+        self.assertFalse(s["promotion_ready"])
 
     def test_partial_and_zero_fill_are_preserved(self):
         e.record(self.full_fill(symbol="660", requested_qty=20, filled_qty=5))
@@ -80,9 +100,37 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
         with self.assertRaises(HTTPException):
             e.record(self.full_fill(markout_5m_price=None))
 
-    def test_source_must_be_empirical(self):
-        with self.assertRaises(HTTPException):
-            e.record(self.full_fill(source="BACKTEST_SIMULATED_FILL"))
+    def test_shadow_and_simulated_sources_are_rejected(self):
+        for source in (
+            e.SHADOW_DECISION_SOURCE,
+            e.LEGACY_SHADOW_FILL_SOURCE,
+            "BACKTEST_SIMULATED_FILL",
+        ):
+            with self.subTest(source=source):
+                with self.assertRaises(HTTPException):
+                    e.record(self.full_fill(source=source))
+
+    def test_legacy_shadow_rows_are_preserved_but_quarantined_in_summary(self):
+        e.init_db()
+        with monitor.db() as con:
+            con.execute("""
+                INSERT INTO execution_evidence(
+                    observation_key,decision_date,symbol,side,recommendation_at,order_submitted_at,
+                    requested_qty,filled_qty,first_fill_at,final_fill_at,avg_fill_price,reference_open,
+                    markout_5m_price,markout_30m_price,markout_close_price,source,ingested_at,payload_hash,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                "legacy-key", "2026-09-29", "005930", "BUY",
+                "2026-09-29T23:30:00+00:00", "2026-09-29T23:30:01+00:00",
+                10.0, 10.0, "2026-09-29T23:30:02+00:00", "2026-09-29T23:30:03+00:00",
+                70000.0, 69900.0, 70100.0, 70300.0, 70500.0,
+                e.LEGACY_SHADOW_FILL_SOURCE, "2026-09-30T06:40:00+00:00", "legacy-hash",
+                "2026-09-30T06:40:00+00:00",
+            ))
+        s = e.summary()
+        self.assertEqual(s["legacy_shadow_fill_observations"], 1)
+        self.assertEqual(s["live_observations"], 0)
+        self.assertFalse(s["contains_live_execution_evidence"])
 
     def test_logging_auth_fails_closed(self):
         with patch.dict(os.environ, {}, clear=True):
