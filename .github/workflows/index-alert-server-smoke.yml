@@ -11,8 +11,10 @@ on:
       - 'production_v31.py'
       - 'execution_evidence_ledger.py'
       - 'push_receipts.py'
+      - 'push_self_test.py'
       - 'push_health.py'
       - 'test_push_receipts.py'
+      - 'test_push_self_test.py'
       - 'test_push_health.py'
       - 'market_basis.py'
       - 'fx_basis.py'
@@ -44,8 +46,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Syntax and regression checks
         run: |
-          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v30.py production_v31.py execution_evidence_ledger.py push_receipts.py push_health.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
-          python -m unittest -v test_push_receipts.py test_push_health.py test_market_basis.py test_fx_basis.py test_laggards_direction.py
+          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v30.py production_v31.py execution_evidence_ledger.py push_receipts.py push_self_test.py push_health.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
+          python -m unittest -v test_push_receipts.py test_push_self_test.py test_push_health.py test_market_basis.py test_fx_basis.py test_laggards_direction.py
       - name: Wait for production deployment and verify API
         run: |
           set -u -o pipefail
@@ -76,7 +78,9 @@ jobs:
           assert isinstance(push_health.get('sent_deliveries'), int), push_health
           assert isinstance(push_health.get('received_deliveries'), int), push_health
           assert isinstance(push_health.get('unconfirmed_sent_deliveries'), int), push_health
-          assert '/push-ack' in (openapi.get('paths') or {}), openapi.get('paths')
+          paths=openapi.get('paths') or {}
+          assert '/push-ack' in paths, paths
+          assert '/push-self-test' in paths, paths
 
           by_id={row.get('id'): row for row in status.get('indices', [])}
           for key in ('sp500','ndx','djdiv'):
