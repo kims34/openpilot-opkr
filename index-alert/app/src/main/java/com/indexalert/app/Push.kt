@@ -12,16 +12,23 @@ import androidx.work.*
 import java.util.concurrent.TimeUnit
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import org.json.JSONObject
 import org.json.JSONArray
 
 object PushBridge {
+    private enum class ReceiptResult { SUCCESS, RETRY, DROP }
+
     fun configured(): Boolean = BuildConfig.INDEXALERT_BACKEND_URL.isNotBlank() &&
         BuildConfig.FIREBASE_APP_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() &&
         BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() && BuildConfig.FIREBASE_SENDER_ID.isNotBlank()
 
     fun notificationsEnabled(ctx: Context): Boolean =
         (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).areNotificationsEnabled()
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 
     fun tryInit(ctx: Context): Boolean {
         if (!configured()) return false
@@ -41,6 +48,19 @@ object PushBridge {
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
         WorkManager.getInstance(ctx).enqueueUniqueWork("push-registration", ExistingWorkPolicy.REPLACE, request)
+    }
+
+    fun scheduleReceipt(ctx: Context, eventId: String) {
+        if (!configured() || eventId.isBlank()) return
+        val request = OneTimeWorkRequestBuilder<PushReceiptWorker>()
+            .setInputData(workDataOf("event_id" to eventId))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork(
+            "push-receipt-${sha256(eventId).take(24)}",
+            ExistingWorkPolicy.KEEP,
+            request,
+        )
     }
 
     @Synchronized
@@ -67,10 +87,71 @@ object PushBridge {
                 .put("protocol", 2).put("enabled_levels", enabled).toString()
             c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val reply = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
-            reply.optBoolean("ok") && reply.optBoolean("registered") &&
+            val ready = reply.optBoolean("ok") && reply.optBoolean("registered") &&
                 reply.optBoolean("firebase") && reply.optInt("protocol") >= 2
+            if (ready) {
+                // Store only a one-way hash for delivery acknowledgements. The raw
+                // FCM token remains confined to Firebase registration and /register.
+                prefs.edit().putString("push_token_hash", sha256(token)).apply()
+            }
+            ready
         } finally { c.disconnect() }
     }.getOrDefault(false)
+
+    private fun ackDelivery(ctx: Context, eventId: String): ReceiptResult {
+        if (!configured()) return ReceiptResult.DROP
+        val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
+        val tokenHash = prefs.getString("push_token_hash", "").orEmpty()
+        if (tokenHash.length != 64) {
+            scheduleSync(ctx)
+            return ReceiptResult.RETRY
+        }
+        return try {
+            val c = URL(BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/') + "/push-ack")
+                .openConnection() as HttpURLConnection
+            try {
+                c.requestMethod = "POST"
+                c.connectTimeout = 10000
+                c.readTimeout = 10000
+                c.doOutput = true
+                c.setRequestProperty("Content-Type", "application/json")
+                val body = JSONObject()
+                    .put("event_id", eventId)
+                    .put("token_hash", tokenHash)
+                    .put("notifications_enabled", notificationsEnabled(ctx))
+                    .put("protocol", 2)
+                    .toString()
+                c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                val code = c.responseCode
+                when {
+                    code in 200..299 -> {
+                        val text = c.inputStream.bufferedReader().use { it.readText() }
+                        val reply = runCatching { JSONObject(text) }.getOrNull()
+                        if (reply?.optBoolean("ok") == true && reply.optBoolean("acknowledged")) {
+                            ReceiptResult.SUCCESS
+                        } else {
+                            ReceiptResult.RETRY
+                        }
+                    }
+                    code == 404 -> {
+                        // Registration may be racing a Firebase token refresh. Re-sync
+                        // once before giving up on an old/unknown event.
+                        scheduleSync(ctx)
+                        ReceiptResult.RETRY
+                    }
+                    code == 408 || code == 425 || code == 429 || code >= 500 -> ReceiptResult.RETRY
+                    else -> ReceiptResult.DROP
+                }
+            } finally { c.disconnect() }
+        } catch (_: Exception) {
+            ReceiptResult.RETRY
+        }
+    }
+
+    fun runReceipt(ctx: Context, eventId: String, attempt: Int): Result = when (ackDelivery(ctx, eventId)) {
+        ReceiptResult.SUCCESS, ReceiptResult.DROP -> Result.success()
+        ReceiptResult.RETRY -> if (attempt >= 4) Result.success() else Result.retry()
+    }
 }
 
 class RegistrationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
@@ -89,6 +170,14 @@ class RegistrationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
     }
 }
 
+class PushReceiptWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
+    override fun doWork(): Result {
+        val eventId = inputData.getString("event_id").orEmpty()
+        if (eventId.isBlank()) return Result.success()
+        return PushBridge.runReceipt(applicationContext, eventId, runAttemptCount)
+    }
+}
+
 class AlertFirebaseService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
@@ -101,8 +190,13 @@ class AlertFirebaseService : FirebaseMessagingService() {
         val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
         val id = message.data["index_id"] ?: return
         val threshold = message.data["threshold"]?.toIntOrNull() ?: return
-        if (!prefs.getBoolean("enabled_${id}_${threshold}", true)) return
         val eventId = message.data["event_id"] ?: message.messageId ?: return
+
+        // Receipt means the data message reached this FirebaseMessagingService.
+        // Send it even if a local threshold preference suppresses presentation.
+        PushBridge.scheduleReceipt(ctx, eventId)
+
+        if (!prefs.getBoolean("enabled_${id}_${threshold}", true)) return
         val title = message.data["title"] ?: message.notification?.title ?: "지수 하락 알림"
         val body = message.data["body"] ?: message.notification?.body ?: return
         synchronized(HistoryStore) {
