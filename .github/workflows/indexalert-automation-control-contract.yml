@@ -1,0 +1,25 @@
+name: IndexAlert Automation Control Contract
+
+on:
+  push:
+    branches:
+      - index-alert-auto-ux-contract
+      - index-alert-research-v1
+    paths:
+      - 'indexalert_automation_control.py'
+      - 'test_indexalert_automation_control.py'
+      - 'INDEXALERT_AUTOMATION_UX_CONTRACT.md'
+      - '.github/workflows/indexalert-automation-control-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run automation control contract tests
+        run: python -m unittest -v test_indexalert_automation_control.py
