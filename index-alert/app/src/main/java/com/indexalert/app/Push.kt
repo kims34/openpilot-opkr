@@ -18,6 +18,7 @@ import org.json.JSONArray
 
 object PushBridge {
     private enum class ReceiptResult { SUCCESS, RETRY, DROP }
+    private enum class SelfTestResult { SUCCESS, RETRY, DROP }
 
     fun configured(): Boolean = BuildConfig.INDEXALERT_BACKEND_URL.isNotBlank() &&
         BuildConfig.FIREBASE_APP_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() &&
@@ -29,6 +30,8 @@ object PushBridge {
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+    private fun clientBuild(): String = "${BuildConfig.VERSION_NAME}-${BuildConfig.VERSION_CODE}"
 
     fun tryInit(ctx: Context): Boolean {
         if (!configured()) return false
@@ -48,6 +51,20 @@ object PushBridge {
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
         WorkManager.getInstance(ctx).enqueueUniqueWork("push-registration", ExistingWorkPolicy.REPLACE, request)
+    }
+
+    private fun scheduleSelfTest(ctx: Context) {
+        val build = clientBuild()
+        val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("push_self_test_done_$build", false)) return
+        val request = OneTimeWorkRequestBuilder<PushSelfTestWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork(
+            "push-self-test-$build",
+            ExistingWorkPolicy.KEEP,
+            request,
+        )
     }
 
     fun scheduleReceipt(ctx: Context, eventId: String) {
@@ -77,7 +94,7 @@ object PushBridge {
         }.map { it.first })) }
         val c = URL(BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/') + "/register")
             .openConnection() as HttpURLConnection
-        try {
+        val ready = try {
             c.requestMethod = "POST"
             c.connectTimeout = 10000
             c.readTimeout = 10000
@@ -87,16 +104,72 @@ object PushBridge {
                 .put("protocol", 2).put("enabled_levels", enabled).toString()
             c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val reply = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
-            val ready = reply.optBoolean("ok") && reply.optBoolean("registered") &&
+            reply.optBoolean("ok") && reply.optBoolean("registered") &&
                 reply.optBoolean("firebase") && reply.optInt("protocol") >= 2
-            if (ready) {
-                // Store only a one-way hash for delivery acknowledgements. The raw
-                // FCM token remains confined to Firebase registration and /register.
-                prefs.edit().putString("push_token_hash", sha256(token)).apply()
-            }
-            ready
         } finally { c.disconnect() }
+        if (ready) {
+            // Store only a one-way hash for delivery acknowledgements. The raw
+            // FCM token remains confined to Firebase registration/self-test calls.
+            prefs.edit().putString("push_token_hash", sha256(token)).apply()
+            scheduleSelfTest(ctx)
+        }
+        ready
     }.getOrDefault(false)
+
+    private fun requestSelfTest(ctx: Context): SelfTestResult {
+        if (!configured() || !notificationsEnabled(ctx)) return SelfTestResult.DROP
+        return try {
+            val token = Tasks.await(FirebaseMessaging.getInstance().token, 15, TimeUnit.SECONDS)
+            val c = URL(BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/') + "/push-self-test")
+                .openConnection() as HttpURLConnection
+            try {
+                c.requestMethod = "POST"
+                c.connectTimeout = 10000
+                c.readTimeout = 10000
+                c.doOutput = true
+                c.setRequestProperty("Content-Type", "application/json")
+                val body = JSONObject()
+                    .put("token", token)
+                    .put("platform", "android")
+                    .put("protocol", 2)
+                    .put("client_build", clientBuild())
+                    .toString()
+                c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                val code = c.responseCode
+                when {
+                    code in 200..299 -> {
+                        val text = c.inputStream.bufferedReader().use { it.readText() }
+                        val reply = runCatching { JSONObject(text) }.getOrNull()
+                        if (reply?.optBoolean("ok") == true) SelfTestResult.SUCCESS else SelfTestResult.RETRY
+                    }
+                    code == 404 || code == 408 || code == 425 || code == 429 || code >= 500 -> SelfTestResult.RETRY
+                    else -> SelfTestResult.DROP
+                }
+            } finally { c.disconnect() }
+        } catch (_: Exception) {
+            SelfTestResult.RETRY
+        }
+    }
+
+    fun runSelfTest(ctx: Context, attempt: Int): ListenableWorker.Result {
+        val build = clientBuild()
+        val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("push_self_test_done_$build", false)) {
+            return ListenableWorker.Result.success()
+        }
+        return when (requestSelfTest(ctx)) {
+            SelfTestResult.SUCCESS -> {
+                prefs.edit().putBoolean("push_self_test_done_$build", true).apply()
+                ListenableWorker.Result.success()
+            }
+            SelfTestResult.DROP -> ListenableWorker.Result.success()
+            SelfTestResult.RETRY -> if (attempt >= 4) {
+                ListenableWorker.Result.success()
+            } else {
+                ListenableWorker.Result.retry()
+            }
+        }
+    }
 
     private fun ackDelivery(ctx: Context, eventId: String): ReceiptResult {
         if (!configured()) return ReceiptResult.DROP
@@ -176,6 +249,10 @@ class RegistrationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
         }
         return Result.retry()
     }
+}
+
+class PushSelfTestWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
+    override fun doWork(): Result = PushBridge.runSelfTest(applicationContext, runAttemptCount)
 }
 
 class PushReceiptWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
