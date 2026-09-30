@@ -1,16 +1,21 @@
-"""Prospective-only shadow forecasts for probability challengers.
+"""Prospective-only probability-challenger shadow forecasts.
 
-Shadow forecasts never change the probability served by IndexAlert.  They are
-written before the target session opens and scored only after that target close
-exists in completed price history.  This gives future-only evidence for model
-promotion without repeatedly mining the same historical sample.
+Naming boundary: this module is NOT the automated-trading `SHADOW` execution
+stage. It never submits broker orders and cannot create Paper/Live execution
+evidence. It records frozen probability-model challengers before the target
+session opens and scores them only after that target close exists in completed
+price history.
+
+This gives future-only evidence for probability-model calibration/serving
+without repeatedly mining the same historical sample. Automated-trading staged
+execution evidence is governed separately by INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md.
 """
 import os
 import sqlite3
 
 DB_PATH = os.getenv("INDEXALERT_DB", "/tmp/indexalert.db")
 
-# Pre-registered, low-risk calibration challengers.  These are intentionally
+# Pre-registered, low-risk calibration challengers. These are intentionally
 # simple and frozen: changing a formula gets a new model name so prospective
 # histories remain comparable and immutable.
 SHADOW_MODELS = {
@@ -33,11 +38,12 @@ def _probabilities(result):
 
 
 def record_shadow_forecasts(symbol, result, rows, now, db_path=None):
-    """Score old shadows and immutably record today's pre-open challengers.
+    """Score old probability shadows and immutably record today's challengers.
 
-    Returns aggregate prospective Brier scores by shadow model.  The function
-    is deliberately independent of the served model's table so a shadow bug
-    cannot modify production forecast records.
+    Returns aggregate prospective Brier scores by shadow model. The function is
+    deliberately independent of the served model's table so a probability
+    challenger bug cannot modify production forecast records. This function
+    does not represent the trading-execution Shadow stage.
     """
     path = db_path or DB_PATH
     prices = dict(rows)
@@ -69,8 +75,8 @@ def record_shadow_forecasts(symbol, result, rows, now, db_path=None):
                     (int(prices[target] > prices[as_of]), now, model, symbol, as_of),
                 )
 
-        # Like the production ledger, only a forecast that existed before the
-        # target open is eligible. INSERT OR IGNORE makes it immutable.
+        # Like the production probability ledger, only a forecast that existed
+        # before target open is eligible. INSERT OR IGNORE makes it immutable.
         if now < float(result["target_open"]):
             for model, probability in _probabilities(result).items():
                 con.execute(
