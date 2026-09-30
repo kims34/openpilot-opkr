@@ -7,7 +7,9 @@ on:
       - 'production.py'
       - 'production_fixed.py'
       - 'production_v17.py'
+      - 'production_v30.py'
       - 'production_v31.py'
+      - 'execution_evidence_ledger.py'
       - 'market_basis.py'
       - 'fx_basis.py'
       - 'laggards.py'
@@ -38,7 +40,7 @@ jobs:
         run: pip install requests beautifulsoup4
       - name: Syntax and regression checks
         run: |
-          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v31.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
+          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v30.py production_v31.py execution_evidence_ledger.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
           python -m unittest -v test_market_basis.py test_fx_basis.py test_laggards_direction.py
       - name: Wait for production deployment and verify API
         run: |
@@ -56,6 +58,7 @@ jobs:
           movers=json.load(open('/tmp/laggards.json'))
           data=json.load(open('/tmp/prob.json'))
           assert health.get('ok') is True, health
+          assert health.get('firebase') is True, health
 
           by_id={row.get('id'): row for row in status.get('indices', [])}
           for key in ('sp500','ndx','djdiv'):
