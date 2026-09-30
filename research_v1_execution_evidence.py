@@ -1,11 +1,16 @@
-"""Fail-closed schema and diagnostics for empirical IndexAlert execution evidence.
+"""Fail-closed schema and diagnostics for IndexAlert execution evidence.
 
-This module does not simulate fills. It validates *observed* Shadow/live-style
-execution records so backtest assumptions cannot be mislabeled as empirical
-execution evidence.
+Execution evidence is tiered so Shadow decisions cannot be mislabeled as broker
+fills:
+- SHADOW records decisions/intents only and are not accepted by this fill schema.
+- PAPER records actual responses from a supported paper/simulation broker.
+  They are operational evidence, not live-market fill evidence.
+- LIVE records actual real-account broker executions and is the only source that
+  can contribute to empirical live fill/slippage/partial-fill evidence.
 
-It is intentionally separate from alpha/model selection. Missing fills, partial
-fills, latency and markouts are outcomes to preserve, not records to drop.
+This module does not simulate fills. Missing fills, partial fills, latency and
+markouts are outcomes to preserve, not records to drop. Backtest/synthetic
+fills and Shadow would-be fills are rejected.
 """
 from __future__ import annotations
 
@@ -15,7 +20,15 @@ import numpy as np
 import pandas as pd
 
 
-EMPIRICAL_EXECUTION_SOURCE = "PROSPECTIVE_SHADOW_EXECUTION_LOG"
+SHADOW_DECISION_SOURCE = "PROSPECTIVE_SHADOW_DECISION_LOG"
+PAPER_EXECUTION_SOURCE = "PROSPECTIVE_PAPER_EXECUTION_LOG"
+LIVE_EXECUTION_SOURCE = "PROSPECTIVE_LIVE_EXECUTION_LOG"
+ACCEPTED_EXECUTION_SOURCES = frozenset({PAPER_EXECUTION_SOURCE, LIVE_EXECUTION_SOURCE})
+
+# Backward-compatible import alias only. New code must use LIVE_EXECUTION_SOURCE
+# explicitly; the former Shadow-labelled value was conceptually incorrect for
+# empirical broker-fill evidence.
+EMPIRICAL_EXECUTION_SOURCE = LIVE_EXECUTION_SOURCE
 
 
 class ExecutionEvidenceError(ValueError):
@@ -45,6 +58,8 @@ REQUIRED_COLUMNS = {
 @dataclass(frozen=True)
 class ExecutionAudit:
     observations: int
+    paper_observations: int
+    live_observations: int
     filled_observations: int
     no_fill_observations: int
     partial_fill_observations: int
@@ -56,9 +71,13 @@ class ExecutionAudit:
     median_markout_5m_bps: float | None
     median_markout_30m_bps: float | None
     median_markout_close_bps: float | None
-    empirical_source_only: bool
+    accepted_execution_sources_only: bool
+    contains_paper_execution_evidence: bool
+    contains_live_execution_evidence: bool
+    live_execution_source_only: bool
     complete_markout_for_fills: bool
     structural_execution_evidence_ready: bool
+    live_empirical_execution_evidence_ready: bool
 
 
 def _ts(series: pd.Series) -> pd.Series:
@@ -71,11 +90,14 @@ def _finite_median(series: pd.Series) -> float | None:
 
 
 def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
-    """Validate empirical execution rows and derive non-model diagnostics.
+    """Validate broker execution rows and derive non-model diagnostics.
 
     Zero-fill rows are valid and must remain in the evidence set. Filled rows
     require timestamps, price and markouts. BUY is the only currently supported
     side because IndexAlert's frozen research policy is long-only Top3.
+
+    Shadow decisions are intentionally rejected here because SHADOW submits no
+    broker order. Paper and live observations remain distinguishable in `source`.
     """
     if table is None:
         raise ExecutionEvidenceError("execution evidence table is None")
@@ -94,6 +116,19 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("current frozen execution schema supports BUY only")
     if x["decision_date"].isna().any() or x["symbol"].eq("").any():
         raise ExecutionEvidenceError("invalid decision_date or symbol")
+
+    sources = x["source"].astype(str).str.strip()
+    if sources.eq(SHADOW_DECISION_SOURCE).any():
+        raise ExecutionEvidenceError(
+            "Shadow decisions cannot carry broker fill evidence; use a separate Shadow decision/intention log"
+        )
+    bad_sources = sorted(set(sources) - set(ACCEPTED_EXECUTION_SOURCES))
+    if bad_sources:
+        raise ExecutionEvidenceError(
+            "execution source must be PAPER or LIVE broker evidence; "
+            f"unsupported sources: {bad_sources}"
+        )
+    x["source"] = sources
 
     for c in ["recommendation_at", "order_submitted_at", "first_fill_at", "final_fill_at", "ingested_at"]:
         x[c] = _ts(x[c])
@@ -135,19 +170,21 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     if (x.loc[filled, "final_fill_at"] < x.loc[filled, "first_fill_at"]).any():
         raise ExecutionEvidenceError("final fill cannot precede first fill")
 
-    # No-fill observations must not fabricate execution timestamps/prices.
-    if x.loc[no_fill, ["first_fill_at", "final_fill_at", "avg_fill_price"]].notna().any().any():
-        raise ExecutionEvidenceError("zero-fill rows must not contain fill timestamps/prices")
-
-    if not x["source"].astype(str).eq(EMPIRICAL_EXECUTION_SOURCE).all():
-        raise ExecutionEvidenceError(
-            f"source must be exactly {EMPIRICAL_EXECUTION_SOURCE}; simulated/backtest fills are not empirical evidence"
-        )
+    # No-fill observations must not fabricate execution timestamps/prices or markouts.
+    no_fill_fields = [
+        "first_fill_at", "final_fill_at", "avg_fill_price",
+        "markout_5m_price", "markout_30m_price", "markout_close_price",
+    ]
+    if x.loc[no_fill, no_fill_fields].notna().any().any():
+        raise ExecutionEvidenceError("zero-fill rows must not contain fill timestamps/prices/markouts")
 
     x["fill_ratio"] = x["filled_qty"] / x["requested_qty"]
     x["partial_fill"] = (x["fill_ratio"] > 0) & (x["fill_ratio"] < 1)
     x["full_fill"] = x["fill_ratio"].eq(1.0)
     x["no_fill"] = x["fill_ratio"].eq(0.0)
+    x["execution_tier"] = np.where(
+        x["source"].eq(LIVE_EXECUTION_SOURCE), "LIVE", "PAPER"
+    )
     x["submit_latency_ms"] = (
         x["order_submitted_at"] - x["recommendation_at"]
     ).dt.total_seconds() * 1000.0
@@ -178,12 +215,23 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
 def audit_execution_evidence(table: pd.DataFrame) -> dict:
     x = validate_execution_observations(table)
     filled = x["filled_qty"] > 0
+    live = x["source"].eq(LIVE_EXECUTION_SOURCE)
+    paper = x["source"].eq(PAPER_EXECUTION_SOURCE)
+    live_filled = live & filled
+
     complete_markout = bool(
         x.loc[filled, ["markout_5m_price", "markout_30m_price", "markout_close_price"]]
         .notna().all().all()
     ) if filled.any() else False
+    live_complete_markout = bool(
+        x.loc[live_filled, ["markout_5m_price", "markout_30m_price", "markout_close_price"]]
+        .notna().all().all()
+    ) if live_filled.any() else False
+
     audit = ExecutionAudit(
         observations=int(len(x)),
+        paper_observations=int(paper.sum()),
+        live_observations=int(live.sum()),
         filled_observations=int(filled.sum()),
         no_fill_observations=int(x["no_fill"].sum()),
         partial_fill_observations=int(x["partial_fill"].sum()),
@@ -195,15 +243,22 @@ def audit_execution_evidence(table: pd.DataFrame) -> dict:
         median_markout_5m_bps=_finite_median(x["markout_5m_bps"]),
         median_markout_30m_bps=_finite_median(x["markout_30m_bps"]),
         median_markout_close_bps=_finite_median(x["markout_close_bps"]),
-        empirical_source_only=bool(x["source"].eq(EMPIRICAL_EXECUTION_SOURCE).all()),
+        accepted_execution_sources_only=bool(x["source"].isin(ACCEPTED_EXECUTION_SOURCES).all()),
+        contains_paper_execution_evidence=bool(paper.any()),
+        contains_live_execution_evidence=bool(live.any()),
+        live_execution_source_only=bool(live.all()),
         complete_markout_for_fills=complete_markout,
-        # Structural only. No sample-size or performance threshold is invented here.
+        # Structural only: either broker execution tier may validate the shape,
+        # but PAPER evidence does not establish real-market fill quality.
         structural_execution_evidence_ready=bool(filled.any() and complete_markout),
+        # Still structural only; no sufficiency threshold is invented here.
+        live_empirical_execution_evidence_ready=bool(live_filled.any() and live_complete_markout),
     )
     out = asdict(audit)
     out["promotion_ready"] = False
     out["promotion_note"] = (
-        "structural schema validation is not a promotion gate; sample sufficiency, capacity, tails, "
-        "sealed holdout and prospective confirmation remain separate requirements"
+        "Paper observations validate broker/execution plumbing only. Only LIVE observations may count toward "
+        "empirical market-fill evidence, and even LIVE structural validity is not a promotion gate; sample "
+        "sufficiency, capacity, tails, sealed holdout and prospective confirmation remain separate requirements."
     )
     return out
