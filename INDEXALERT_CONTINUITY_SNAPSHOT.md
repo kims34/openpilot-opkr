@@ -139,6 +139,8 @@ New fail-closed module `research_v1_execution_evidence.py` requires prospective 
 
 Backtest/simulated fills cannot be relabeled empirical; zero-fill rows cannot carry fabricated fill price/timestamps; filled rows require markouts. Structural CI Action `36647064858` completed **successfully**. This closes the **schema/integrity preparation**, not the empirical evidence blocker. Actual prospective observations and empirical capacity remain missing.
 
+The current production server also has `execution_evidence_ledger.py` and broker-neutral `/execution-evidence` interfaces, but the verified production `/push-health` snapshot reports `execution_logging_configured=false`. Therefore production collection readiness must not be confused with schema readiness; prospective execution evidence is not yet being collected through the protected write path.
+
 ## 6. Current explicit unfinished-work registry
 
 Continue from the first unresolved/actionable item supported by latest GitHub state:
@@ -147,30 +149,61 @@ Continue from the first unresolved/actionable item supported by latest GitHub st
 3. **DONE:** `POLICY-CAL-01` read; structural population alignment only, no performance claim.
 4. **INFRA DONE / EXTERNAL BLOCKER:** official KRX status adapters + cleanup status + metadata probe are ready, but authenticated KRX historical source access is not configured. Do not claim Judge status readiness until real data + PIT lineage pass coverage audit.
 5. **EXTERNAL BLOCKER:** official KRX investor-flow probe is also `AUTH_NOT_CONFIGURED`; no performance test permitted.
-6. **SCHEMA DONE / DATA NEXT:** empirical execution evidence schema and CI are ready. Next collect prospective Shadow observations for fill ratio/time/price, partial/no fills, latency and markout; add empirical capacity evidence rather than relying only on square-root impact.
+6. **SCHEMA DONE / DATA NEXT:** empirical execution evidence schema and CI are ready. Production ledger interfaces exist, but `execution_logging_configured=false`; protected collection configuration and then prospective Shadow observations for fill ratio/time/price, partial/no fills, latency and markout remain next. Add empirical capacity evidence rather than relying only on square-root impact.
 7. Keep sealed holdout untouched until data/execution blockers, code and protocol are frozen; then Shadow S1 -> Fresh Confirmation S2.
-8. Separately re-verify current server + Android + FCM end-to-end health on latest branch heads; this can also become the transport layer for prospective Shadow/execution logging, but operational success must not be confused with model promotion.
-9. **PRODUCT CONTRACT DONE / LIVE STILL DISABLED:** minimal-control automated-operation UX is frozen in `INDEXALERT_AUTOMATION_UX_CONTRACT.md` and enforced by broker-neutral `indexalert_automation_control.py`. User-facing routine controls are automation ON/OFF and maximum automation capital only; the maximum is a hard ceiling, never an investment target; `NO_TRADE`/cash retention remain valid. Action `36664662044` passed the contract tests on the feature branch. Future broker/live implementation must preserve this contract without bypassing promotion gates.
+8. **SERVER/ANDROID CODE+DEPLOY VERIFIED / PHYSICAL E2E PENDING:** latest server production and Android build are verified as described in section 7. The remaining notification transport gate is one current-build physical handset receipt that changes the server aggregate from `received_deliveries=0` to at least one acknowledged receipt. Do not call FCM end-to-end fully verified before that happens.
+9. **PRODUCT CONTRACT DONE / LIVE STILL DISABLED:** minimal-control automated-operation UX is frozen in `INDEXALERT_AUTOMATION_UX_CONTRACT.md` and enforced by broker-neutral `indexalert_automation_control.py`. User-facing routine controls are automation ON/OFF and maximum automation capital only; the maximum is a hard ceiling, never an investment target; `NO_TRADE`/cash retention remain valid. Action `36664662044` passed the contract tests. Future broker/live implementation must preserve this contract without bypassing promotion gates.
 
-## 7. Realtime / server / Android legacy continuity
+## 7. Realtime / server / Android operational verification
 
-Audit anchors from the prior handoff:
+### Current server branch / production
+
+- `index-alert-server` verified head: `b4b619edc12bf946e95b1a62c22037a08db367f7` (`Install full server requirements in smoke CI`).
+- Previous smoke failure was a CI dependency defect (`fastapi` / `apscheduler` absent from the smoke environment), not an application-logic failure. Workflow now installs full `requirements.txt`.
+- Server Smoke Action `36665043317` completed **successfully**. The local syntax/regression phase passed **23 tests**.
+- Railway production deployment `bcdbe39d-840f-4df5-b72c-6114ffe9f53f` completed **SUCCESS** from the same `b4b619ed...` source commit. This is a fresh source build, not a redeploy of the prior snapshot.
+- Production smoke subsequently validated `/health`, `/push-health`, `/openapi.json`, `/status`, `/laggards` and `/next-day-probabilities`, including `/push-ack` API presence, basis checks and probability payload checks.
+
+Verified production push-health snapshot after deployment:
+- `ok=true`
+- `firebase=true`
+- `registered_devices=1`
+- `pending_deliveries=0`
+- `sent_deliveries=1`
+- `received_deliveries=0`
+- `unconfirmed_sent_deliveries=1`
+- `last_client_receipt_at=null`
+- `client_receipts_supported=true`
+- `execution_logging_configured=false`
+- `tokens_exposed=false`
+
+Interpretation: server/Firebase transport, registration accounting and receipt endpoint are operational, but **there is no current-build handset receipt yet**. A server `sent` record is not proof that the phone received/presented the message.
+
+### Current Android build
+
+- `index-alert-build` verified head: `55d72dc576131d1f8c2f6f01b9f4951a2e088911` (`Fix WorkManager receipt result type`).
+- Prior build failure was a Kotlin type ambiguity between standard `Result` and WorkManager `Result`; the fix explicitly returns `ListenableWorker.Result` without changing notification/trading semantics.
+- APK Action `36665289417` completed **successfully**; Gradle built debug and unsigned release variants and uploaded all artifacts.
+- Debug artifact: `IndexAlert-v4.4-debug`, artifact ID `11076077796`, SHA256 `b195fa90e0e5d074bc1c0764918eb78e23537da693b9eb514547fb1fc48033be`, expires 2026-12-29.
+- Unsigned release artifact: `IndexAlert-v4.4-unsigned-release`, artifact ID `11075977955`, SHA256 `b5f0e090e167af076510eb831a83e38506793b796acdd9c9587878cb2e7afa70`, expires 2026-12-29.
+- Current `Push.kt` registers only when notification permission is available, stores only a SHA256 token hash for acknowledgements, receives FCM data messages, records/schedules an `event_id` receipt and POSTs `/push-ack` through WorkManager with bounded retries.
+
+### Physical E2E gate
+
+The next current-version notification gate is deliberately simple and operational, not statistical:
+1. install/run the current debug build on the target Android handset and allow notifications;
+2. let the app register its current FCM token with production;
+3. send/receive one benign IndexAlert test notification carrying an `event_id` through the normal server/FCM path;
+4. confirm the phone receives it and production `/push-health` reports `received_deliveries >= 1`, `unconfirmed_sent_deliveries` correspondingly reduced and non-null `last_client_receipt_at`.
+
+Until this gate passes, classify current notification health as **CODE/BUILD/SERVER VERIFIED; PHYSICAL CLIENT RECEIPT PENDING**.
+
+Historical audit anchors only:
 - probability/realtime lineage `index-alert-v41-research` previously @ `85bfd892ef8cc8e36b434983945cf45ce9d7e070`
-- server lineage `index-alert-server` previously @ `ccde47271fd85c3d5a880d7e18531131d625c309`
-- Android/build lineage `index-alert-build` previously @ `d8f61cf2712eb91651b0ce25810aef0209697e00`
+- old server anchor `ccde47271fd85c3d5a880d7e18531131d625c309`
+- old Android/build anchor `d8f61cf2712eb91651b0ce25810aef0209697e00`
 
-These are historical anchors only; always re-fetch current heads before work.
-
-Legacy chat operational evidence preserved for deletion safety:
-- an IndexAlert APK was installed on a Galaxy S25-class handset in the earlier operator-shell/FCM track
-- client FCM token acquisition/copy worked
-- server token registration was reported successful
-- a server test push reached Firebase HTTP v1
-- handset-visible notification delivery was not preserved as a separately verified current final checkpoint
-
-Treat these as `LEGACY_CHAT_EVIDENCE`, not current proof. Re-test latest server/build before declaring current end-to-end notification health.
-
-Older implementation-order note (`DB migration 001+ -> isolated KOSPI server skeleton -> exact FastAPI/Python schema -> Firebase payload -> Kotlin data class`) is `LEGACY_CHAT_PLANNING_CONTEXT`, not a frozen requirement.
+Older chat operational evidence (old APK install/token registration/test push) remains `LEGACY_CHAT_EVIDENCE`; it does not substitute for the current physical E2E gate above.
 
 ## 8. Continuation rule
 
