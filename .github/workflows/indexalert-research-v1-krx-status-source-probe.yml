@@ -17,6 +17,7 @@ jobs:
     env:
       KRX_ID: ${{ secrets.KRX_ID }}
       KRX_PW: ${{ secrets.KRX_PW }}
+      KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
