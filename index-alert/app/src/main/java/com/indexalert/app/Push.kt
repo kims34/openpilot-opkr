@@ -148,9 +148,17 @@ object PushBridge {
         }
     }
 
-    fun runReceipt(ctx: Context, eventId: String, attempt: Int): Result = when (ackDelivery(ctx, eventId)) {
-        ReceiptResult.SUCCESS, ReceiptResult.DROP -> Result.success()
-        ReceiptResult.RETRY -> if (attempt >= 4) Result.success() else Result.retry()
+    fun runReceipt(
+        ctx: Context,
+        eventId: String,
+        attempt: Int,
+    ): ListenableWorker.Result = when (ackDelivery(ctx, eventId)) {
+        ReceiptResult.SUCCESS, ReceiptResult.DROP -> ListenableWorker.Result.success()
+        ReceiptResult.RETRY -> if (attempt >= 4) {
+            ListenableWorker.Result.success()
+        } else {
+            ListenableWorker.Result.retry()
+        }
     }
 }
 
