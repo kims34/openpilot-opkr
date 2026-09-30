@@ -2,9 +2,11 @@
 
 The self-test is operational transport verification only. It is isolated from
 market-threshold rules and trading/research decisions. A registered Android
-client may request at most one self-test delivery for its own FCM token and a
-specific client build identifier. The resulting event is recorded in the normal
-delivery ledger so the existing privacy-safe /push-ack path can prove receipt.
+client may request at most one successfully-sent self-test delivery for its own
+FCM token and a specific client build identifier. An unsent row is retried using
+its original event_id so transient provider failures do not create duplicates.
+The resulting event is recorded in the normal delivery ledger so the existing
+privacy-safe /push-ack path can prove receipt.
 """
 from __future__ import annotations
 
@@ -62,34 +64,42 @@ def request_self_test(body: PushSelfTestBody) -> dict:
     cycle = f"android-{build}"
     with monitor.db() as con:
         existing = con.execute(
-            """SELECT event_id,sent FROM deliveries
+            """SELECT event_id,sent,payload FROM deliveries
                WHERE token=? AND index_id=? AND cycle=? AND threshold=? LIMIT 1""",
             (token, INDEX_ID, cycle, THRESHOLD),
         ).fetchone()
-        if existing:
+        if existing and bool(existing[1]):
             return {
                 "ok": True,
                 "queued": False,
-                "already_sent": bool(existing[1]),
+                "already_sent": True,
                 "client_build": build,
             }
 
-        event_id = str(uuid.uuid4())
-        data = {
-            "index_id": INDEX_ID,
-            "threshold": str(THRESHOLD),
-            "event_id": event_id,
-            "cycle": cycle,
-            "kind": "push_self_test",
-            "title": "IndexAlert 연결 확인",
-            "body": "알림 연결이 정상적으로 설정되었습니다.",
-        }
-        payload = json.dumps(data, ensure_ascii=False, sort_keys=True)
-        con.execute(
-            """INSERT INTO deliveries(token,index_id,cycle,threshold,event_id,payload,created,sent)
-               VALUES(?,?,?,?,?,?,?,0)""",
-            (token, INDEX_ID, cycle, THRESHOLD, event_id, payload, time.time()),
-        )
+        if existing:
+            # Reuse the exact unsent event so retries remain idempotent.
+            event_id = str(existing[0])
+            try:
+                data = json.loads(existing[2])
+            except Exception as exc:
+                raise HTTPException(500, "invalid stored self-test payload") from exc
+        else:
+            event_id = str(uuid.uuid4())
+            data = {
+                "index_id": INDEX_ID,
+                "threshold": str(THRESHOLD),
+                "event_id": event_id,
+                "cycle": cycle,
+                "kind": "push_self_test",
+                "title": "IndexAlert 연결 확인",
+                "body": "알림 연결이 정상적으로 설정되었습니다.",
+            }
+            payload = json.dumps(data, ensure_ascii=False, sort_keys=True)
+            con.execute(
+                """INSERT INTO deliveries(token,index_id,cycle,threshold,event_id,payload,created,sent)
+                   VALUES(?,?,?,?,?,?,?,0)""",
+                (token, INDEX_ID, cycle, THRESHOLD, event_id, payload, time.time()),
+            )
 
     try:
         messaging.send(
@@ -106,8 +116,7 @@ def request_self_test(body: PushSelfTestBody) -> dict:
             con.execute("DELETE FROM deliveries WHERE token=?", (token,))
         raise HTTPException(410, "device token is no longer registered")
     except Exception as exc:
-        # Keep the unsent row retryable by a later same-build request without
-        # leaking token/provider details in the response or logs.
+        # Leave sent=0 so the same build/event can retry without duplication.
         print("push self-test send failed:", type(exc).__name__, flush=True)
         raise HTTPException(503, "push self-test send failed") from exc
 
