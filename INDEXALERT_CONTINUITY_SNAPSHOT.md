@@ -150,6 +150,7 @@ Continue from the first unresolved/actionable item supported by latest GitHub st
 6. **SCHEMA DONE / DATA NEXT:** empirical execution evidence schema and CI are ready. Next collect prospective Shadow observations for fill ratio/time/price, partial/no fills, latency and markout; add empirical capacity evidence rather than relying only on square-root impact.
 7. Keep sealed holdout untouched until data/execution blockers, code and protocol are frozen; then Shadow S1 -> Fresh Confirmation S2.
 8. Separately re-verify current server + Android + FCM end-to-end health on latest branch heads; this can also become the transport layer for prospective Shadow/execution logging, but operational success must not be confused with model promotion.
+9. **PRODUCT CONTRACT DONE / LIVE STILL DISABLED:** minimal-control automated-operation UX is frozen in `INDEXALERT_AUTOMATION_UX_CONTRACT.md` and enforced by broker-neutral `indexalert_automation_control.py`. User-facing routine controls are automation ON/OFF and maximum automation capital only; the maximum is a hard ceiling, never an investment target; `NO_TRADE`/cash retention remain valid. Action `36664662044` passed the contract tests on the feature branch. Future broker/live implementation must preserve this contract without bypassing promotion gates.
 
 ## 7. Realtime / server / Android legacy continuity
 
@@ -183,3 +184,14 @@ On every continuation:
 ## 9. Old-chat deletion gate
 
 Older IndexAlert Chat/Work rooms remain unnecessary as a project-state dependency. Their material continuity information is preserved in GitHub. Deleting old chats does not delete GitHub code, Actions artifacts, Master Spec, Ledger or this snapshot.
+
+## 10. Frozen automated-operation product UX
+
+The long-term default UX is intentionally simple:
+- connect an eligible broker account;
+- choose whether automated operation is enabled;
+- set `max_automation_capital_krw`.
+
+The user is not required to tune stop-loss, take-profit, number of holdings, position weights, holding period, replacement or re-entry parameters. The validated Decision / Risk / Execution Engine owns those decisions beneath the user's hard capital ceiling and all internal safety/promotion gates.
+
+The ceiling may remain partly or entirely unused. No candidate passing the frozen economic/risk/execution standard means `NO_TRADE` and cash. Increasing the ceiling never changes admission standards. Disabling automation blocks new automated exposure; broker reconciliation and safe-stop handling still govern existing orders/positions.
