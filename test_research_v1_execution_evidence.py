@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 
 from research_v1_execution_evidence import (
-    EMPIRICAL_EXECUTION_SOURCE,
+    LIVE_EXECUTION_SOURCE,
+    PAPER_EXECUTION_SOURCE,
+    SHADOW_DECISION_SOURCE,
     ExecutionEvidenceError,
     audit_execution_evidence,
     validate_execution_observations,
@@ -29,7 +31,7 @@ class TestExecutionEvidence(unittest.TestCase):
                 "markout_5m_price": 70100,
                 "markout_30m_price": 70300,
                 "markout_close_price": 70500,
-                "source": EMPIRICAL_EXECUTION_SOURCE,
+                "source": LIVE_EXECUTION_SOURCE,
                 "ingested_at": "2026-09-29T06:40:00Z",
             },
             {
@@ -47,7 +49,7 @@ class TestExecutionEvidence(unittest.TestCase):
                 "markout_5m_price": 119800,
                 "markout_30m_price": 120100,
                 "markout_close_price": 119500,
-                "source": EMPIRICAL_EXECUTION_SOURCE,
+                "source": PAPER_EXECUTION_SOURCE,
                 "ingested_at": "2026-09-29T06:40:00Z",
             },
             {
@@ -65,7 +67,7 @@ class TestExecutionEvidence(unittest.TestCase):
                 "markout_5m_price": np.nan,
                 "markout_30m_price": np.nan,
                 "markout_close_price": np.nan,
-                "source": EMPIRICAL_EXECUTION_SOURCE,
+                "source": PAPER_EXECUTION_SOURCE,
                 "ingested_at": "2026-09-29T06:40:00Z",
             },
         ])
@@ -75,15 +77,37 @@ class TestExecutionEvidence(unittest.TestCase):
         self.assertEqual(x["full_fill"].tolist(), [True, False, False])
         self.assertEqual(x["partial_fill"].tolist(), [False, True, False])
         self.assertEqual(x["no_fill"].tolist(), [False, False, True])
+        self.assertEqual(x["execution_tier"].tolist(), ["LIVE", "PAPER", "PAPER"])
         self.assertAlmostEqual(float(x.loc[1, "fill_ratio"]), 0.25)
 
-    def test_audit_is_structural_not_promotion(self):
+    def test_audit_separates_paper_and_live_and_never_promotes(self):
         a = audit_execution_evidence(self._rows())
         self.assertEqual(a["observations"], 3)
+        self.assertEqual(a["paper_observations"], 2)
+        self.assertEqual(a["live_observations"], 1)
         self.assertEqual(a["no_fill_observations"], 1)
         self.assertEqual(a["partial_fill_observations"], 1)
+        self.assertTrue(a["contains_paper_execution_evidence"])
+        self.assertTrue(a["contains_live_execution_evidence"])
+        self.assertFalse(a["live_execution_source_only"])
         self.assertTrue(a["structural_execution_evidence_ready"])
+        self.assertTrue(a["live_empirical_execution_evidence_ready"])
         self.assertFalse(a["promotion_ready"])
+
+    def test_paper_only_is_not_live_empirical_evidence(self):
+        rows = self._rows()
+        rows["source"] = PAPER_EXECUTION_SOURCE
+        a = audit_execution_evidence(rows)
+        self.assertTrue(a["structural_execution_evidence_ready"])
+        self.assertFalse(a["contains_live_execution_evidence"])
+        self.assertFalse(a["live_empirical_execution_evidence_ready"])
+        self.assertFalse(a["promotion_ready"])
+
+    def test_shadow_decision_source_rejected_from_fill_schema(self):
+        rows = self._rows()
+        rows.loc[0, "source"] = SHADOW_DECISION_SOURCE
+        with self.assertRaises(ExecutionEvidenceError):
+            validate_execution_observations(rows)
 
     def test_simulated_source_rejected(self):
         rows = self._rows()
@@ -103,9 +127,14 @@ class TestExecutionEvidence(unittest.TestCase):
         with self.assertRaises(ExecutionEvidenceError):
             validate_execution_observations(rows)
 
-    def test_zero_fill_cannot_have_fake_fill_price(self):
+    def test_zero_fill_cannot_have_fake_fill_price_or_markout(self):
         rows = self._rows()
         rows.loc[2, "avg_fill_price"] = 300100
+        with self.assertRaises(ExecutionEvidenceError):
+            validate_execution_observations(rows)
+
+        rows = self._rows()
+        rows.loc[2, "markout_5m_price"] = 300100
         with self.assertRaises(ExecutionEvidenceError):
             validate_execution_observations(rows)
 
