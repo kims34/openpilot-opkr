@@ -27,6 +27,7 @@ COPY production_v29.py .
 COPY production_v30.py .
 COPY execution_evidence_ledger.py .
 COPY push_receipts.py .
+COPY push_self_test.py .
 COPY push_health.py .
 COPY market_basis.py .
 COPY fx_basis.py .
