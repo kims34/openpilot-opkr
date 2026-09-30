@@ -1,6 +1,6 @@
 # IndexAlert Master Spec — Current Research Authority
 
-Updated: 2026-09-29 KST
+Updated: 2026-09-30 KST
 Branch: `index-alert-research-v1`
 
 This document supersedes earlier research notes when they conflict with the architecture below.
@@ -10,6 +10,8 @@ This document supersedes earlier research notes when they conflict with the arch
 Select **0 to 3 short-term candidates** only when the conservative, executable, cost-adjusted economic edge remains positive after uncertainty, execution and tail-risk controls.
 
 The system is not a forced Top-3 stock picker and is not optimized primarily for raw hit rate, Precision@3, or an UP/DOWN label.
+
+Long-term product objective: after the Alpha/selection engine has passed the required external statistical and prospective validation gates, IndexAlert may progress to broker-assisted automated execution. Broker automation is downstream of research validation and must never be used to justify weaker Alpha evidence.
 
 ## 2. Current Core architecture
 
@@ -31,6 +33,17 @@ The system is not a forced Top-3 stock picker and is not optimized primarily for
 → `Stay / exit / replace`
 → `Joint-tail / concentration risk`
 → **TRADE 0–3 / WATCH / REJECT**
+
+Future broker execution is a downstream, separately gated layer:
+
+`Broker-neutral decision intent`
+→ `Pre-trade Health Gate`
+→ `Broker Adapter`
+→ `Order state machine`
+→ `Broker-authoritative reconciliation`
+→ `Execution/PnL evidence ledger`
+
+The prediction/decision engine must not contain Kiwoom- or broker-specific order logic.
 
 ## 3. Objective hierarchy
 
@@ -246,3 +259,85 @@ Complex models are deferred until the above simple architecture produces robust 
 - Do not burn sealed holdout until blockers, code and protocol are frozen.
   Holdout is one-shot and cannot tune the same model. Prospective Shadow S1 and
   frozen Fresh Confirmation S2 remain mandatory after holdout.
+
+## 14. Future broker automation and Kiwoom REST boundary — 2026-09-30
+
+### Priority
+
+- Current KOSPI Alpha/prediction/selection research and statistical validation remain first priority.
+- Broker automation must not delay or restructure current research/backtest/validation solely for connectivity.
+- At the present stage, maintain only broker-neutral interface/data compatibility. **Real-account order submission remains disabled.**
+
+### Promotion sequence
+
+The required execution promotion sequence is:
+
+`Research / Backtest -> Shadow -> Kiwoom Paper API -> Tiny Live -> Limited Live -> Production`
+
+No stage may be skipped merely because broker connectivity works.
+
+### Separation of concerns
+
+- Core prediction and decision engines emit broker-neutral decisions such as `BUY`, `HOLD`, `EXIT`, `REPLACE`, `NO_TRADE`.
+- Broker-specific authentication, account, order, amend/cancel and execution logic belongs behind a separate `BrokerAdapter` interface.
+- Kiwoom Securities REST is one future adapter implementation; broker-specific code must not be embedded in the Alpha/model layer so additional brokers can be added later.
+- The detailed future execution boundary is defined in `INDEXALERT_BROKER_EXECUTION_CONTRACT.md`.
+
+### Order safety and reconciliation
+
+Future automated execution must manage the complete lifecycle rather than simply send an order:
+
+`decision -> pre-trade gate -> submit -> acknowledgement -> partial/full/unfilled/rejected -> amend/cancel -> broker balance/position query -> reconciliation -> realised execution/PnL record`.
+
+Mandatory design constraints include:
+- idempotency / duplicate-order prevention;
+- cancel/fill and amend/fill race handling;
+- explicit remaining quantity after partial fills;
+- timeout/unknown-result recovery by querying broker state before retry;
+- reconnect and resynchronisation;
+- market holiday, VI, halt and price-limit handling;
+- orderable cash and actual holdings checks;
+- fees, tax, slippage and rate-limit handling;
+- fail-closed behavior on stale data, API failure or unresolved reconciliation.
+
+When internal state and the real broker/account disagree, the broker state is authoritative and new automatic orders are blocked until reconciliation succeeds.
+
+### Modes and independent controls
+
+Execution must have explicit deny-by-default modes:
+
+`MASTER_OFF`, `SHADOW`, `PAPER`, `TINY_LIVE`, `LIMITED_LIVE`, `LIVE`.
+
+The system must never create a real order unless the user has explicitly activated a live-capable mode and all promotion/safety gates pass.
+
+Independent safety controls must include at least:
+- daily maximum loss;
+- per-symbol maximum value;
+- total invested/gross-exposure cap;
+- simultaneous-position cap;
+- per-order maximum value;
+- abnormal repeat-order breaker;
+- Kill Switch / emergency global automation stop.
+
+### Immediate pre-trade Health Gate
+
+A model `BUY` never directly authorizes an order. Immediately before any future executable order, revalidate:
+- system/broker health;
+- prediction freshness;
+- current executable NetEV;
+- liquidity/capacity;
+- account and market tradability;
+- applicable risk limits and orderable amount;
+- holdings/open-order/reconciliation state.
+
+Any failed required check produces no order.
+
+### Secrets and Kiwoom implementation gate
+
+API keys, secrets, account authentication material and tokens must not be committed to code/GitHub or stored in logs/DB plaintext. Use deployment-appropriate secret management and redacted logging.
+
+When Kiwoom REST implementation actually begins, the team must first re-check the **then-current official Kiwoom Securities REST API documentation** for endpoints, authentication/token behavior, production/paper environments, order/amend/cancel schemas, order/execution status behavior, documented rate limits and error semantics. Do not implement from remembered or stale API specifications.
+
+### Current disposition
+
+Do not implement or activate real Kiwoom ordering while the Alpha engine remains below its statistical/external-validation gates. Continue current research blockers and prospective execution-evidence work first; broker integration starts only when the defined promotion stage is reached.
