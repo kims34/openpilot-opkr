@@ -1,9 +1,17 @@
-"""Immutable prospective execution-evidence ledger for IndexAlert.
+"""Immutable prospective broker execution-evidence ledger for IndexAlert.
 
-This is operational evidence infrastructure, not model promotion logic. Records
-must describe observed Shadow/live-style execution outcomes. The endpoint is
-fail-closed unless INDEXALERT_EXECUTION_LOG_TOKEN is configured, and existing
-observations cannot be overwritten with different data.
+This is operational evidence infrastructure, not model promotion logic.
+Execution tiers are deliberately separated:
+- SHADOW decisions submit no broker order and are rejected by this fill ledger.
+- PAPER observations are actual responses from an approved paper/simulation
+  broker environment; they validate plumbing, not live-market fill quality.
+- LIVE observations are actual real-account broker executions and are the only
+  rows that may later contribute to empirical live fill/slippage evidence.
+
+The endpoint is fail-closed unless INDEXALERT_EXECUTION_LOG_TOKEN is configured.
+Existing observations are immutable. Historical rows written under the former
+`PROSPECTIVE_SHADOW_EXECUTION_LOG` label are preserved but quarantined in
+summary output as legacy-invalid-for-live-evidence; they are never rewritten.
 """
 from __future__ import annotations
 
@@ -19,7 +27,15 @@ from pydantic import BaseModel
 
 import monitor
 
-SOURCE = "PROSPECTIVE_SHADOW_EXECUTION_LOG"
+SHADOW_DECISION_SOURCE = "PROSPECTIVE_SHADOW_DECISION_LOG"
+PAPER_EXECUTION_SOURCE = "PROSPECTIVE_PAPER_EXECUTION_LOG"
+LIVE_EXECUTION_SOURCE = "PROSPECTIVE_LIVE_EXECUTION_LOG"
+LEGACY_SHADOW_FILL_SOURCE = "PROSPECTIVE_SHADOW_EXECUTION_LOG"
+ACCEPTED_EXECUTION_SOURCES = frozenset({PAPER_EXECUTION_SOURCE, LIVE_EXECUTION_SOURCE})
+
+# Deprecated compatibility alias for code that imports SOURCE. New callers must
+# still send an explicit `source` in the request body; the model has no default.
+SOURCE = LIVE_EXECUTION_SOURCE
 
 
 class ExecutionObservation(BaseModel):
@@ -37,7 +53,7 @@ class ExecutionObservation(BaseModel):
     markout_5m_price: float | None = None
     markout_30m_price: float | None = None
     markout_close_price: float | None = None
-    source: str = SOURCE
+    source: str
     ingested_at: str | None = None
 
 
@@ -129,8 +145,14 @@ def init_db() -> None:
 def _normalise(body: ExecutionObservation) -> dict:
     if str(body.side).strip().upper() != "BUY":
         raise HTTPException(400, "current frozen execution evidence supports BUY only")
-    if str(body.source).strip() != SOURCE:
-        raise HTTPException(400, f"source must be {SOURCE}")
+
+    source = str(body.source).strip()
+    if source == SHADOW_DECISION_SOURCE:
+        raise HTTPException(400, "Shadow decisions cannot be recorded as broker fill evidence")
+    if source == LEGACY_SHADOW_FILL_SOURCE:
+        raise HTTPException(400, "legacy Shadow fill source is closed; use explicit PAPER or LIVE broker source")
+    if source not in ACCEPTED_EXECUTION_SOURCES:
+        raise HTTPException(400, "source must be PROSPECTIVE_PAPER_EXECUTION_LOG or PROSPECTIVE_LIVE_EXECUTION_LOG")
 
     recommendation = _utc(body.recommendation_at, "recommendation_at")
     submitted = _utc(body.order_submitted_at, "order_submitted_at")
@@ -182,11 +204,13 @@ def _normalise(body: ExecutionObservation) -> dict:
         "markout_5m_price": m5,
         "markout_30m_price": m30,
         "markout_close_price": mc,
-        "source": SOURCE,
+        "source": source,
         "ingested_at": ingested.isoformat(),
     }
+    # V2 key includes source so Paper and Live evidence for the same decision can
+    # coexist without collision. Existing legacy keys remain immutable in DB.
     item["observation_key"] = hashlib.sha256(
-        f"{item['decision_date']}|{item['symbol']}|{item['recommendation_at']}".encode()
+        f"v2|{item['source']}|{item['decision_date']}|{item['symbol']}|{item['recommendation_at']}".encode()
     ).hexdigest()
     payload_json = json.dumps(item, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     item["payload_hash"] = hashlib.sha256(payload_json.encode()).hexdigest()
@@ -204,7 +228,12 @@ def record(body: ExecutionObservation) -> dict:
         if old:
             if old[0] != item["payload_hash"]:
                 raise HTTPException(409, "immutable execution observation already exists with different payload")
-            return {"ok": True, "created": False, "observation_key": item["observation_key"]}
+            return {
+                "ok": True,
+                "created": False,
+                "observation_key": item["observation_key"],
+                "source": item["source"],
+            }
         con.execute("""
             INSERT INTO execution_evidence(
                 observation_key,decision_date,symbol,side,recommendation_at,order_submitted_at,
@@ -218,7 +247,12 @@ def record(body: ExecutionObservation) -> dict:
             item["markout_5m_price"], item["markout_30m_price"], item["markout_close_price"], item["source"],
             item["ingested_at"], item["payload_hash"], datetime.now(timezone.utc).isoformat(),
         ))
-    return {"ok": True, "created": True, "observation_key": item["observation_key"]}
+    return {
+        "ok": True,
+        "created": True,
+        "observation_key": item["observation_key"],
+        "source": item["source"],
+    }
 
 
 def summary() -> dict:
@@ -232,14 +266,36 @@ def summary() -> dict:
                    AVG(filled_qty/requested_qty)
             FROM execution_evidence
         """).fetchone()
+        source_rows = con.execute("""
+            SELECT source, COUNT(*) FROM execution_evidence GROUP BY source
+        """).fetchall()
+
+    source_counts = {str(source): int(count) for source, count in source_rows}
+    paper = source_counts.get(PAPER_EXECUTION_SOURCE, 0)
+    live = source_counts.get(LIVE_EXECUTION_SOURCE, 0)
+    legacy = source_counts.get(LEGACY_SHADOW_FILL_SOURCE, 0)
+    shadow_decision_misfiled = source_counts.get(SHADOW_DECISION_SOURCE, 0)
+    recognized = {PAPER_EXECUTION_SOURCE, LIVE_EXECUTION_SOURCE, LEGACY_SHADOW_FILL_SOURCE, SHADOW_DECISION_SOURCE}
+    unrecognized = sum(count for source, count in source_counts.items() if source not in recognized)
+
     return {
         "observations": int(row[0] or 0),
         "no_fill": int(row[1] or 0),
         "partial_fill": int(row[2] or 0),
         "full_fill": int(row[3] or 0),
         "mean_fill_ratio": None if row[4] is None else float(row[4]),
+        "paper_observations": int(paper),
+        "live_observations": int(live),
+        "legacy_shadow_fill_observations": int(legacy),
+        "misfiled_shadow_decision_observations": int(shadow_decision_misfiled),
+        "unrecognized_source_observations": int(unrecognized),
+        "contains_live_execution_evidence": bool(live > 0),
         "promotion_ready": False,
-        "note": "operational evidence count only; model promotion gates remain separate",
+        "note": (
+            "PAPER validates broker plumbing only. LIVE is the only tier eligible to contribute to empirical "
+            "market-fill evidence. Legacy Shadow-labelled fill rows are preserved but excluded from that claim; "
+            "model promotion gates remain separate."
+        ),
     }
 
 
