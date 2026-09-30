@@ -131,23 +131,27 @@ Frozen tiers:
 Backtest/synthetic/would-be Shadow fills are forbidden as empirical evidence. Zero-fill observations remain valid; filled observations require actual fill timestamps/price and required markouts. No minimum sample threshold has been invented merely to declare readiness.
 
 Research implementation:
-- `research_v1_execution_evidence.py` now rejects Shadow fill records and distinguishes PAPER vs LIVE.
+- `research_v1_execution_evidence.py` rejects Shadow fill records and distinguishes PAPER vs LIVE.
 - PAPER-only evidence may be structurally valid but cannot set `live_empirical_execution_evidence_ready=true`.
 - `promotion_ready` remains false by construction because statistical/capacity/holdout/prospective gates are separate.
 - Execution Evidence Integrity Action `36668905306` on commit `0d6b97e988ff1fdeb54e9aa545303e101759f6cf` completed **successfully**.
 
 Server implementation:
-- `execution_evidence_ledger.py` on `index-alert-server` now accepts only explicit PAPER or LIVE sources for new fill records.
+- `execution_evidence_ledger.py` on `index-alert-server` accepts only explicit PAPER or LIVE sources for new fill records.
 - Shadow decision source and former `PROSPECTIVE_SHADOW_EXECUTION_LOG` are rejected for new writes.
 - new observation identity includes source so PAPER and LIVE evidence for the same decision cannot collide.
 - historical legacy Shadow-labelled rows, if any, are not deleted or rewritten; summary quarantines them as `legacy_shadow_fill` and excludes them from live-evidence claims.
 - Server Tests Action `36669071810` on server commit `65855916afd52d081453bc511b6b82df3ec948b1` completed **successfully**, including the full unittest suite.
 
-Production distinction:
-- Railway production `indexalert-runtime` still runs previously deployed server commit `1c4aef25dcad385e73037ed73d9cbce8f80689d3`, deployment `27887acd-2c75-42d5-9b33-d4a2e527a6f8`, with protected execution-log token and persistent `/data` volume.
-- The corrected PAPER/LIVE ledger semantics are **CODE+CI VERIFIED BUT NOT YET CONFIRMED DEPLOYED TO PRODUCTION** as of this snapshot.
-- No synthetic execution rows were inserted.
-- Even after deployment, empirical blocker remains open until genuine prospective LIVE observations exist and later pass sufficiency/capacity/risk gates.
+Production deployment:
+- Railway production service `indexalert-runtime` now runs server commit `65855916afd52d081453bc511b6b82df3ec948b1`.
+- deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` completed **SUCCESS** on 2026-09-30 KST.
+- the corrected PAPER/LIVE ledger semantics are therefore production-active.
+- persistent `/data` volume remained mounted and `production_v31:app` reached application startup successfully.
+- Railway healthcheck `GET /health` returned **200 OK** during deployment.
+- protected `INDEXALERT_EXECUTION_LOG_TOKEN` remains configured; no secret value is stored in this snapshot.
+- no synthetic execution rows were inserted.
+- deployment/health success is operational evidence only. The empirical blocker remains open until genuine prospective LIVE observations exist and later pass sufficiency/capacity/risk gates.
 
 ## 5. Broker / automation product boundary
 
@@ -171,10 +175,11 @@ Action `36664662044` passed the product-contract tests. Real-account Kiwoom orde
 
 ### Server / Railway
 
-- latest server code audited in this snapshot: `index-alert-server` commit `65855916afd52d081453bc511b6b82df3ec948b1`.
+- latest server production commit: `65855916afd52d081453bc511b6b82df3ec948b1`.
 - latest server full test run `36669071810` = success.
-- production is still verified at deployment `27887acd-2c75-42d5-9b33-d4a2e527a6f8` / commit `1c4aef25dcad385e73037ed73d9cbce8f80689d3` until a later Railway deployment is explicitly verified.
-- protected execution evidence collection is configured in production, but the newly corrected evidence-tier code must not be claimed production-active until that later deployment is verified.
+- Railway deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` = **SUCCESS** on the same commit.
+- startup completed under `production_v31:app`; persistent `/data` volume mounted; Railway `/health` = **200 OK**.
+- protected execution evidence collection and corrected evidence-tier semantics are production-active.
 
 Last directly verified production push-health snapshot before the execution-logging environment update:
 - `ok=true`
@@ -186,7 +191,7 @@ Last directly verified production push-health snapshot before the execution-logg
 - `unconfirmed_sent_deliveries=1`
 - `last_client_receipt_at=null`
 - `client_receipts_supported=true`
-- old `execution_logging_configured=false` was superseded by verified Railway environment configuration + successful deployment, but a fresh external endpoint read was not available from the tool environment.
+- old `execution_logging_configured=false` was superseded by verified Railway configuration and successful deployment, but a fresh external `/push-health` read has not been independently obtained from the current tool environment.
 
 A server `sent` record is not proof the handset received/presented the notification.
 
@@ -206,10 +211,10 @@ Continue from the first actionable unresolved item supported by latest GitHub st
 1. **DONE:** corrected 60-case H5/H10 CPCV archived.
 2. **DONE:** Uncertainty Audit -> KEEP_ABSTENTION.
 3. **DONE:** Policy Calibration -> structural alignment only.
-4. **DONE (contract/adapter preparation) / EXTERNAL DATA-AUTH BLOCKER:** KRX source routes are now explicitly separated; obtain an authorized reproducible historical status source + coverage/PIT lineage before Judge readiness.
+4. **DONE (contract/adapter preparation) / EXTERNAL DATA-AUTH BLOCKER:** KRX source routes are explicitly separated; obtain an authorized reproducible historical status source + coverage/PIT lineage before Judge readiness.
 5. **EXTERNAL DATA-AUTH BLOCKER:** establish authorized investor-flow history/mapping/availability lineage before any performance test.
-6. **DONE (evidence semantics):** Shadow/Paper/Live execution evidence tiers corrected; research CI and server full tests pass.
-7. **DEPLOYMENT CHECK NEXT:** verify whether server commit `65855916...` is deployed to Railway; if not, do not claim production uses corrected evidence semantics. Deployment does not authorize trading.
+6. **DONE:** Shadow/Paper/Live execution evidence semantics corrected; research CI and server full tests pass.
+7. **DONE:** corrected execution ledger deployed to Railway production as deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba`; `/health` 200 OK. Deployment does not authorize trading.
 8. **EMPIRICAL DATA BLOCKER:** collect genuine execution evidence only at the appropriate staged mode. Shadow supplies decisions, Paper supplies plumbing evidence, Tiny Live+ supplies real empirical fill evidence. Do not fabricate rows.
 9. Keep sealed holdout untouched until official data/execution blockers, code and protocol are frozen; then follow the frozen holdout -> Shadow S1 -> Fresh Confirmation S2 sequence.
 10. **PHYSICAL E2E PENDING:** one current Android-build handset receipt is still required for full notification end-to-end verification.
