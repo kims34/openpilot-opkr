@@ -139,7 +139,9 @@ New fail-closed module `research_v1_execution_evidence.py` requires prospective 
 
 Backtest/simulated fills cannot be relabeled empirical; zero-fill rows cannot carry fabricated fill price/timestamps; filled rows require markouts. Structural CI Action `36647064858` completed **successfully**. This closes the **schema/integrity preparation**, not the empirical evidence blocker. Actual prospective observations and empirical capacity remain missing.
 
-The current production server also has `execution_evidence_ledger.py` and broker-neutral `/execution-evidence` interfaces, but the verified production `/push-health` snapshot reports `execution_logging_configured=false`. Therefore production collection readiness must not be confused with schema readiness; prospective execution evidence is not yet being collected through the protected write path.
+The production server has `execution_evidence_ledger.py` attached through the active `production_v31:app` stack and broker-neutral protected `/execution-evidence` and `/execution-evidence/summary` interfaces. On 2026-09-30 KST, Railway production service `indexalert-runtime` was configured with the protected `INDEXALERT_EXECUTION_LOG_TOKEN` environment variable and redeployed successfully as deployment `27887acd-2c75-42d5-9b33-d4a2e527a6f8` from server commit `1c4aef25dcad385e73037ed73d9cbce8f80689d3`. The service uses the persistent `/data` volume and `/health` passed during deployment.
+
+Disposition: **PROTECTED COLLECTION CONFIGURED / EMPIRICAL DATA NEXT**. No synthetic execution observations were inserted. No claim is made that the empirical execution blocker is closed: prospective Shadow observations for fill ratio/time/price, partial/no fills, order latency, expiry, markout and empirical capacity still have to be accumulated. The current tool environment could not resolve the public Railway hostname for a fresh external GET, so the prior `/push-health` field `execution_logging_configured=false` is superseded by verified Railway configuration+successful redeployment, but a fresh endpoint read remains a separate operational confirmation rather than scientific evidence.
 
 ## 6. Current explicit unfinished-work registry
 
@@ -149,7 +151,7 @@ Continue from the first unresolved/actionable item supported by latest GitHub st
 3. **DONE:** `POLICY-CAL-01` read; structural population alignment only, no performance claim.
 4. **INFRA DONE / EXTERNAL BLOCKER:** official KRX status adapters + cleanup status + metadata probe are ready, but authenticated KRX historical source access is not configured. Do not claim Judge status readiness until real data + PIT lineage pass coverage audit.
 5. **EXTERNAL BLOCKER:** official KRX investor-flow probe is also `AUTH_NOT_CONFIGURED`; no performance test permitted.
-6. **SCHEMA DONE / DATA NEXT:** empirical execution evidence schema and CI are ready. Production ledger interfaces exist, but `execution_logging_configured=false`; protected collection configuration and then prospective Shadow observations for fill ratio/time/price, partial/no fills, latency and markout remain next. Add empirical capacity evidence rather than relying only on square-root impact.
+6. **PROTECTED COLLECTION CONFIGURED / DATA NEXT:** empirical execution evidence schema, CI, production ledger interfaces, protected production token and successful Railway deployment are ready. The remaining blocker is real prospective Shadow execution evidence: fill ratio/time/price, partial/no fills, latency/expiry, markout and empirical capacity. Do not create synthetic rows or relabel modeled fills empirical.
 7. Keep sealed holdout untouched until data/execution blockers, code and protocol are frozen; then Shadow S1 -> Fresh Confirmation S2.
 8. **SERVER/ANDROID CODE+DEPLOY VERIFIED / PHYSICAL E2E PENDING:** latest server production and Android build are verified as described in section 7. The remaining notification transport gate is one current-build physical handset receipt that changes the server aggregate from `received_deliveries=0` to at least one acknowledged receipt. Do not call FCM end-to-end fully verified before that happens.
 9. **PRODUCT CONTRACT DONE / LIVE STILL DISABLED:** minimal-control automated-operation UX is frozen in `INDEXALERT_AUTOMATION_UX_CONTRACT.md` and enforced by broker-neutral `indexalert_automation_control.py`. User-facing routine controls are automation ON/OFF and maximum automation capital only; the maximum is a hard ceiling, never an investment target; `NO_TRADE`/cash retention remain valid. Action `36664662044` passed the contract tests. Future broker/live implementation must preserve this contract without bypassing promotion gates.
@@ -158,13 +160,13 @@ Continue from the first unresolved/actionable item supported by latest GitHub st
 
 ### Current server branch / production
 
-- `index-alert-server` verified head: `b4b619edc12bf946e95b1a62c22037a08db367f7` (`Install full server requirements in smoke CI`).
-- Previous smoke failure was a CI dependency defect (`fastapi` / `apscheduler` absent from the smoke environment), not an application-logic failure. Workflow now installs full `requirements.txt`.
-- Server Smoke Action `36665043317` completed **successfully**. The local syntax/regression phase passed **23 tests**.
-- Railway production deployment `bcdbe39d-840f-4df5-b72c-6114ffe9f53f` completed **SUCCESS** from the same `b4b619ed...` source commit. This is a fresh source build, not a redeploy of the prior snapshot.
-- Production smoke subsequently validated `/health`, `/push-health`, `/openapi.json`, `/status`, `/laggards` and `/next-day-probabilities`, including `/push-ack` API presence, basis checks and probability payload checks.
+- `index-alert-server` verified head: `1c4aef25dcad385e73037ed73d9cbce8f80689d3` (`Test retry of unsent push self-test`).
+- The current self-test path is operational transport verification only: registered Android protocol-2 clients may request one per build, successful duplicates are suppressed, and an unsent attempt is retried with the same `event_id` rather than creating duplicate proof.
+- Server Smoke Action `36666736721` completed **successfully** on this head.
+- Server Tests Action `36666736780` completed **successfully** on this head.
+- Railway production deployment `27887acd-2c75-42d5-9b33-d4a2e527a6f8` completed **SUCCESS** from the same server head after protected execution-evidence logging configuration. The service start command is `production_v31:app`, the persistent volume is mounted at `/data`, and `/health` succeeded.
 
-Verified production push-health snapshot after deployment:
+Last directly verified production push-health snapshot before the execution-logging environment update:
 - `ok=true`
 - `firebase=true`
 - `registered_devices=1`
@@ -174,14 +176,14 @@ Verified production push-health snapshot after deployment:
 - `unconfirmed_sent_deliveries=1`
 - `last_client_receipt_at=null`
 - `client_receipts_supported=true`
-- `execution_logging_configured=false`
+- `execution_logging_configured=false` — **superseded by the later verified Railway environment configuration and successful deployment above; fresh external endpoint reread still pending**
 - `tokens_exposed=false`
 
-Interpretation: server/Firebase transport, registration accounting and receipt endpoint are operational, but **there is no current-build handset receipt yet**. A server `sent` record is not proof that the phone received/presented the message.
+Interpretation: server/Firebase transport, registration accounting and receipt endpoint are operational, and protected execution-evidence collection is now configured in Railway. However, **there is still no current-build handset receipt and no empirical execution observation yet**. A server `sent` record is not proof that the phone received/presented the message, and configured logging is not empirical execution evidence.
 
 ### Current Android build
 
-- `index-alert-build` verified head: `55d72dc576131d1f8c2f6f01b9f4951a2e088911` (`Fix WorkManager receipt result type`).
+- `index-alert-build` verified head at the last audit: `55d72dc576131d1f8c2f6f01b9f4951a2e088911` (`Fix WorkManager receipt result type`). Re-fetch this head before future Android edits.
 - Prior build failure was a Kotlin type ambiguity between standard `Result` and WorkManager `Result`; the fix explicitly returns `ListenableWorker.Result` without changing notification/trading semantics.
 - APK Action `36665289417` completed **successfully**; Gradle built debug and unsigned release variants and uploaded all artifacts.
 - Debug artifact: `IndexAlert-v4.4-debug`, artifact ID `11076077796`, SHA256 `b195fa90e0e5d074bc1c0764918eb78e23537da693b9eb514547fb1fc48033be`, expires 2026-12-29.
@@ -193,7 +195,7 @@ Interpretation: server/Firebase transport, registration accounting and receipt e
 The next current-version notification gate is deliberately simple and operational, not statistical:
 1. install/run the current debug build on the target Android handset and allow notifications;
 2. let the app register its current FCM token with production;
-3. send/receive one benign IndexAlert test notification carrying an `event_id` through the normal server/FCM path;
+3. use the isolated `/push-self-test` path for the registered current build so it traverses server -> FCM -> client without touching market-threshold or trading state;
 4. confirm the phone receives it and production `/push-health` reports `received_deliveries >= 1`, `unconfirmed_sent_deliveries` correspondingly reduced and non-null `last_client_receipt_at`.
 
 Until this gate passes, classify current notification health as **CODE/BUILD/SERVER VERIFIED; PHYSICAL CLIENT RECEIPT PENDING**.
