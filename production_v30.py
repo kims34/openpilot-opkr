@@ -18,6 +18,7 @@ import production_v27
 import production_v29
 import push_health
 import push_receipts
+import push_self_test
 
 app = production_v29.app
 SEOUL = production_v27.SEOUL
@@ -172,6 +173,11 @@ execution_evidence_ledger.attach(app)
 # Privacy-safe client delivery acknowledgements prove that a push reached a
 # currently registered handset without exposing its raw FCM token.
 push_receipts.attach(app)
+
+# Registered Android clients can request one isolated, non-market self-test per
+# app build. This proves server -> FCM -> client -> /push-ack without touching
+# market threshold history, recommendation logic or trading state.
+push_self_test.attach(app)
 
 # Sanitized aggregate push-health endpoint. No FCM token or device payload is
 # returned; this is operational observability only.
