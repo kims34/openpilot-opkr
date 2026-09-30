@@ -1,4 +1,6 @@
-# IndexAlert prospective shadow ledger
+# IndexAlert prospective probability-forecast shadow ledger
+
+> **Naming boundary:** this file describes the legacy/realtime **probability-model challenger shadow ledger** only. It is not the staged automated-trading `SHADOW` mode, it does not submit broker orders, and it does not create Paper/Live execution evidence. Automated-trading execution evidence follows `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md` and the staged promotion path in `INDEXALERT_BROKER_EXECUTION_CONTRACT.md`.
 
 The served next-close model is the currently validated production model (`3.3-calibration-gated` at this release), protected by the prospective Brier serving gate.
 
@@ -6,9 +8,9 @@ Frozen challenger probabilities are recorded before the serving gate and before 
 
 After at least 30 paired prospective outcomes for a serving stage, the candidate is served only when the 95% confidence interval for paired Brier gain is entirely above zero. Inconclusive or negative evidence falls back to that stage's reference probability while prospective recording continues, so a later recovery can be detected automatically.
 
-The 60-session milestone report is informational only; it compares the current production model with frozen shadows and never auto-promotes a challenger.
+The 60-session milestone report is informational only; it compares the current production model with frozen probability challengers and never auto-promotes a trading policy.
 
-The ledger uses `INDEXALERT_DB`; production persists it on the Railway `/data` volume.
+The probability ledger uses `INDEXALERT_DB`; production persists it on the Railway `/data` volume.
 
 ## v4.0 delivery hardening (2026-09-28)
 
