@@ -341,3 +341,22 @@ When Kiwoom REST implementation actually begins, the team must first re-check th
 ### Current disposition
 
 Do not implement or activate real Kiwoom ordering while the Alpha engine remains below its statistical/external-validation gates. Continue current research blockers and prospective execution-evidence work first; broker integration starts only when the defined promotion stage is reached.
+
+## 15. Frozen automated-operation UX contract — 2026-09-30
+
+The final default automated-trading UX must minimize user configuration. After connecting an eligible broker account, the routine user-facing controls are limited to:
+
+- automated operation enabled / disabled; and
+- `max_automation_capital_krw`.
+
+`max_automation_capital_krw` is a **hard upper bound, never an investment target**. The engine may deploy any amount from 0 KRW up to that ceiling. If no opportunity passes conservative executable NetEV, uncertainty, tail-risk, liquidity, capacity, tradability and execution gates, the correct result is `NO_TRADE` and cash remains uninvested.
+
+Users must not be required to configure stop-loss %, take-profit %, number of holdings, per-symbol weights, entry thresholds, holding periods, replacement rules or re-entry rules. Those are owned by the validated Decision / Risk / Execution Engine. Internal risk controls may be stricter than the user's maximum and remain mandatory without becoming routine consumer UX knobs.
+
+The user retains final authority to connect/disconnect the broker, enable/disable automation, use the Kill Switch and set/lower/increase the maximum capital ceiling. Increasing the ceiling never relaxes admission/risk standards and never forces immediate investment.
+
+Future pre-trade capital accounting must conservatively include automated positions, reserved open buy orders, partial-fill residuals, uncertain submissions and applicable fee/tax buffers such that:
+
+`projected_committed_automation_capital_krw <= max_automation_capital_krw`
+
+Pre-existing/manual holdings are outside automated control unless a separately explicit future contract opts them in. Full product/control details are frozen in `INDEXALERT_AUTOMATION_UX_CONTRACT.md`; broker/order lifecycle details remain in `INDEXALERT_BROKER_EXECUTION_CONTRACT.md`.
