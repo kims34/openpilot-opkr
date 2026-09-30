@@ -5,6 +5,15 @@ never persists KRX numeric market rows. It records only reachability, row
 counts, column names, source identifiers and errors needed to decide whether a
 future historical PIT ingestion job can be built reproducibly.
 
+Authentication routes are deliberately distinguished:
+- KRX_ID/KRX_PW: Data Marketplace authenticated web-session route used by the
+  pinned exploratory client below.
+- KRX OpenAPI AUTH_KEY: separate official OpenAPI route requiring an
+  authentication-key application plus per-API usage approval. This probe does
+  not substitute an AUTH_KEY for web-session access and does not claim that the
+  required halt/cleanup/delisting datasets are available in the public OpenAPI
+  catalog until an exact official API service mapping is documented.
+
 Important: source reachability does not close the Final Judge blocker. Historical
 coverage, point-in-time availability, security mapping and exact event/economic
 semantics must still be audited before `judge_security_status_ready=True`.
@@ -44,11 +53,30 @@ def _try(name: str, fn: Callable[[], Any]) -> dict[str, Any]:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    configured = bool(os.getenv("KRX_ID")) and bool(os.getenv("KRX_PW"))
+    session_configured = bool(os.getenv("KRX_ID")) and bool(os.getenv("KRX_PW"))
+    openapi_key_present = bool(os.getenv("KRX_OPENAPI_AUTH_KEY"))
     report: dict[str, Any] = {
         "purpose": "OFFICIAL_KRX_STATUS_SOURCE_FEASIBILITY_ONLY_NOT_PERFORMANCE_RESEARCH",
         "numeric_market_data_persisted": False,
-        "credentials_present": configured,
+        # Backward-compatible field: this means the web-session route only.
+        "credentials_present": session_configured,
+        "data_marketplace_session_credentials_present": session_configured,
+        "official_openapi_auth_key_present": openapi_key_present,
+        "active_probe_access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+        "openapi_route_status": (
+            "KEY_PRESENT_BUT_REQUIRED_STATUS_API_MAPPING_NOT_ESTABLISHED"
+            if openapi_key_present
+            else "AUTH_KEY_NOT_CONFIGURED_AND_REQUIRED_STATUS_API_MAPPING_NOT_ESTABLISHED"
+        ),
+        "source_route_policy": {
+            "data_marketplace_session": (
+                "KRX_ID/KRX_PW may be used only for authenticated Data Marketplace source-feasibility checks"
+            ),
+            "official_openapi": (
+                "AUTH_KEY is a separate KRX OpenAPI credential and may be used only after the exact required API service is identified and approved"
+            ),
+            "no_auth_substitution": True,
+        },
         "pinned_krx_data_api_commit": PINNED_KRX_DATA_API,
         "official_screen_contracts": {
             "trading_halt": "MDCSTAT213 / KRX issue statistics trading-halt history",
@@ -60,16 +88,17 @@ def main() -> None:
             "trading_halt": "dbms/MDC/STAT/issue/MDCSTAT21301",
             "cleanup_trading": "dbms/MDC/STAT/issue/MDCSTAT23701",
         },
-        "status": "AUTH_NOT_CONFIGURED" if not configured else "PENDING",
+        "status": "AUTH_NOT_CONFIGURED" if not session_configured else "PENDING",
         "judge_security_status_ready": False,
         "why_not_judge_ready": [
+            "exact official access/product contract for historical halt/cleanup/delisting data is not yet established",
             "historical common-stock identity coverage not yet reconstructed and audited",
             "event_time/published_at/available_at/ingested_at lineage not yet complete",
             "halt/cleanup/delisting event and execution economics not yet joined to decisions",
         ],
     }
 
-    if not configured:
+    if not session_configured:
         (OUT / "summary.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
         )
@@ -80,7 +109,8 @@ def main() -> None:
 
     probes: list[dict[str, Any]] = []
 
-    # Catalog-backed sources are already defined by the pinned client.
+    # Catalog-backed Data Marketplace sources already defined by the pinned
+    # session client. These are not KRX OpenAPI AUTH_KEY calls.
     probes.append(_try("listed_stocks_current_identity", lambda: fetch("listed_stocks", auth=True)))
     probes.append(_try(
         "new_listing_history_sample",
@@ -91,9 +121,10 @@ def main() -> None:
         lambda: fetch("delisted", strtDd="20240101", endDd="20241231", auth=True),
     ))
 
-    # The pinned catalog does not expose MDCSTAT213/237. Probe the KRX low-level
-    # transport explicitly, but treat these BLDs as candidates until a live
-    # authenticated response validates them. No numeric rows are persisted.
+    # The pinned session catalog does not expose MDCSTAT213/237. Probe the KRX
+    # Data Marketplace low-level transport explicitly, but keep these BLDs as
+    # candidates until a live authenticated response validates them. No numeric
+    # rows are persisted. This is not equivalent to an approved KRX OpenAPI.
     session = get_krx_auth().session
 
     def halt_probe():
