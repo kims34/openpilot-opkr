@@ -56,7 +56,7 @@ class KRXSourceDataAdmission:
     public_contract_evidence_current: bool
     pit_lineage_structurally_valid: bool
     historical_coverage_structurally_complete: bool
-    source_family_consistent: bool
+    source_family_and_scope_consistent: bool
     source_data_structurally_admissible: bool
     eligible_for_experiment_registry_review: bool
     feature_performance_testing_authorized: bool
@@ -129,8 +129,11 @@ def assess_investor_flow_source_data_admission(
     )
     lineage_valid = bool(lineage.get("lineage_structurally_valid") is True)
     coverage_complete = bool(coverage.get("coverage_structurally_complete") is True)
-    family_consistent = bool(
+    family_scope_consistent = bool(
         gates.get("source_family") == batch.get("source_family") == "KRX_INVESTOR_FLOW"
+        and str(gates.get("intended_use_scope") or "")
+        == str(batch.get("intended_use_scope") or "")
+        and bool(str(gates.get("intended_use_scope") or "").strip())
     )
 
     structurally_admissible = bool(
@@ -139,7 +142,7 @@ def assess_investor_flow_source_data_admission(
         and public_current
         and lineage_valid
         and coverage_complete
-        and family_consistent
+        and family_scope_consistent
     )
     result = KRXSourceDataAdmission(
         source_family="KRX_INVESTOR_FLOW",
@@ -150,7 +153,7 @@ def assess_investor_flow_source_data_admission(
         public_contract_evidence_current=public_current,
         pit_lineage_structurally_valid=lineage_valid,
         historical_coverage_structurally_complete=coverage_complete,
-        source_family_consistent=family_consistent,
+        source_family_and_scope_consistent=family_scope_consistent,
         source_data_structurally_admissible=structurally_admissible,
         eligible_for_experiment_registry_review=structurally_admissible,
         # The experiment ledger/preregistration, statistical protocol and all
@@ -169,7 +172,7 @@ def assess_investor_flow_source_data_admission(
             ("PUBLIC_CONTRACT_EVIDENCE_NOT_CURRENT", public_current),
             ("PIT_LINEAGE_NOT_STRUCTURALLY_VALID", lineage_valid),
             ("HISTORICAL_COVERAGE_NOT_STRUCTURALLY_COMPLETE", coverage_complete),
-            ("SOURCE_FAMILY_MISMATCH", family_consistent),
+            ("SOURCE_FAMILY_OR_USE_SCOPE_MISMATCH", family_scope_consistent),
         )
         if not ok
     ]
