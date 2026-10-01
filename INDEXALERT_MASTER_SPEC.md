@@ -417,3 +417,7 @@ Canonical evidence: `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md`.
 A user-operated smoke test against the Kiwoom **mock/demo host only** completed `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FILLS_OK`. This closes only the demo/read-only connectivity plumbing check. It does not establish real-account broker provenance, real-market execution quality, status-event economics, execution sufficiency, KRX source approval, promotion readiness, sealed-holdout authorization, or live-order authorization.
 
 Accordingly `genuine_live_provenance_verified=false`, `empirical_execution_blocker_closed=false`, `sealed_holdout_authorized=false`, and `live_trading_authorized=false` remain unchanged. No order-create/amend/cancel or real-account endpoint is authorized by this evidence.
+
+## 17. Continuous Research Governance — 2026-10-02
+
+Canonical contract: `INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md`. After a Core is frozen, continuous research runs in an isolated Research Lab. Trials must be preregistered and fingerprinted before outcomes; post-result protocol changes invalidate the trial; sealed holdout is forbidden for discovery/tuning; an accepted result is only `ACCEPTED_CHALLENGER` and has no production or live-order authority. Core replacement remains a separate versioned promotion requiring all applicable frozen external, execution, holdout, Shadow S1 and Fresh Confirmation S2 gates.
