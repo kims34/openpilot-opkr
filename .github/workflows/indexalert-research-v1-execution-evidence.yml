@@ -8,7 +8,11 @@ on:
       - 'test_research_v1_execution_evidence.py'
       - 'research_v1_execution_sufficiency_protocol.py'
       - 'test_research_v1_execution_sufficiency_protocol.py'
+      - 'research_v1_execution_sufficiency_assessment.py'
+      - 'test_research_v1_execution_sufficiency_assessment.py'
       - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'
+      - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md'
+      - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json'
       - 'test_research_v1_execution_evidence_contract.py'
       - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
   workflow_dispatch:
@@ -31,5 +35,5 @@ jobs:
           pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
       - name: Compile and test fail-closed empirical execution evidence schema
         run: |
-          python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py
-          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_evidence_contract.py
+          python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py research_v1_execution_sufficiency_assessment.py
+          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_evidence_contract.py
