@@ -14,8 +14,8 @@ from research_v1_krx_status_source_probe import (
 )
 
 
-def test_status_probe_without_credentials_blocks_gate_a():
-    out = status_gate_audit(session_configured=False)
+def test_status_probe_without_authorized_request_blocks_gate_a():
+    out = status_gate_audit(request_authorized=False)
     assert out["gates"]["A"]["status"] == "BLOCKED"
     assert out["gates"]["C"]["status"] == "BLOCKED"
     assert out["gates"]["D"]["status"] == "BLOCKED"
@@ -24,16 +24,16 @@ def test_status_probe_without_credentials_blocks_gate_a():
     assert out["sealed_holdout_authorized_by_source_audit_alone"] is False
 
 
-def test_status_probe_with_credentials_still_cannot_close_contract():
-    out = status_gate_audit(session_configured=True)
+def test_status_probe_authorized_tiny_request_still_cannot_close_contract():
+    out = status_gate_audit(request_authorized=True)
     assert out["gates"]["A"]["status"] == "PARTIAL"
     assert all(out["gates"][gate]["status"] != "PASS" for gate in "ABCDEF")
     assert out["source_contract_closed_for_declared_scope"] is False
     assert out["alpha_or_final_judge_promotion_authorized"] is False
 
 
-def test_investor_probe_without_credentials_blocks_gate_a_and_performance_path():
-    out = investor_gate_audit(session_configured=False)
+def test_investor_probe_without_authorized_request_blocks_gate_a_and_performance_path():
+    out = investor_gate_audit(request_authorized=False)
     assert out["gates"]["A"]["status"] == "BLOCKED"
     assert out["gates"]["C"]["status"] == "BLOCKED"
     assert out["gates"]["D"]["status"] == "PARTIAL"
@@ -41,8 +41,8 @@ def test_investor_probe_without_credentials_blocks_gate_a_and_performance_path()
     assert out["live_trading_authorized_by_source_audit_alone"] is False
 
 
-def test_investor_probe_with_credentials_remains_source_open():
-    out = investor_gate_audit(session_configured=True)
+def test_investor_probe_authorized_tiny_request_remains_source_open():
+    out = investor_gate_audit(request_authorized=True)
     assert out["gates"]["A"]["status"] == "PARTIAL"
     assert out["source_contract_closed_for_declared_scope"] is False
     assert out["sealed_holdout_authorized_by_source_audit_alone"] is False
@@ -67,9 +67,10 @@ def test_status_probe_artifact_is_bound_to_public_contract_evidence():
         "candidate_low_level_blds_not_yet_promoted_to_contract": {"halt": "candidate"},
         "source_route_policy": {"no_auth_substitution": True},
     }
-    out = finalise_status_report(report, session_configured=False)
+    out = finalise_status_report(report, request_authorized=False)
     assert out["public_contract_evidence_version"] == PUBLIC_EVIDENCE_VERSION
     assert out["public_contract_evidence_fingerprint_sha256"] == public_evidence_fingerprint_sha256()
+    assert out["authenticated_request_attempted"] is False
     assert len(out["probe_contract_fingerprint_sha256"]) == 64
     assert len(out["probe_result_fingerprint_sha256"]) == 64
 
@@ -80,9 +81,10 @@ def test_investor_probe_artifact_is_bound_to_public_contract_evidence():
         "available_at_policy_if_adopted": "after official publication",
         "source_route_policy": {"no_auth_substitution": True},
     }
-    out = finalise_investor_report(report, session_configured=False)
+    out = finalise_investor_report(report, request_authorized=False)
     assert out["public_contract_evidence_version"] == PUBLIC_EVIDENCE_VERSION
     assert out["public_contract_evidence_fingerprint_sha256"] == public_evidence_fingerprint_sha256()
     assert out["feature_performance_testing_authorized"] is False
+    assert out["authenticated_request_attempted"] is False
     assert len(out["probe_contract_fingerprint_sha256"]) == 64
     assert len(out["probe_result_fingerprint_sha256"]) == 64
