@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 SEOUL = ZoneInfo("Asia/Seoul")
 ECOS_STAT_CODE = "731Y003"
 ECOS_ITEM_CODE = "0000003"
+PUBLIC_BASIS_CONTRACT = "ecos-1530-fail-closed-v1"
 ECOS_API_KEY = os.getenv("ECOS_API_KEY", "sample").strip() or "sample"
 ECOS_URL = (
     "https://ecos.bok.or.kr/api/StatisticSearch/"
@@ -89,6 +90,7 @@ def public_basis_fields(extra: dict | None) -> dict:
             "day_change_percent": None,
             "basis_verified": False,
             "basis_provider": None,
+            "basis_contract": PUBLIC_BASIS_CONTRACT,
         }
 
     return {
@@ -98,6 +100,7 @@ def public_basis_fields(extra: dict | None) -> dict:
         "day_change_percent": percent,
         "basis_verified": True,
         "basis_provider": basis_provider,
+        "basis_contract": PUBLIC_BASIS_CONTRACT,
     }
 
 
