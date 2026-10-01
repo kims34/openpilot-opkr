@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import production_v31
 from push_build_registration import (
+    PHYSICAL_E2E_BINDING_CONTRACT,
     REGISTRATION_BUILD_CONTRACT,
     SELF_TEST_TRIGGER_CONTRACT,
     RegisterBodyV32,
     _clean_client_build,
     _init_device_build_db,
     _latest_registered_build,
+    _latest_registered_device_build,
     _record_device_build,
     attach,
     push_health_v32,
