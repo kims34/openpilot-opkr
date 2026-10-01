@@ -55,16 +55,19 @@ jobs:
           set -u -o pipefail
           BASE='https://indexalert-runtime-production.up.railway.app'
           for i in $(seq 1 30); do
+            validation_rc=1
             if curl -fsS --max-time 15 "$BASE/health" >/tmp/health.json && \
                curl -fsS --max-time 15 "$BASE/push-health" >/tmp/push-health.json && \
                curl -fsS --max-time 15 "$BASE/openapi.json" >/tmp/openapi.json && \
                curl -fsS --max-time 30 "$BASE/status" >/tmp/status.json && \
                curl -fsS --max-time 30 "$BASE/laggards" >/tmp/laggards.json && \
                curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
-              if python - <<'PY'
+              python - <<'PY'
           import json
           from datetime import datetime
           from zoneinfo import ZoneInfo
+
+          EXPECTED_FX_CONTRACT='ecos-1530-fail-closed-v1'
           health=json.load(open('/tmp/health.json'))
           push_health=json.load(open('/tmp/push-health.json'))
           openapi=json.load(open('/tmp/openapi.json'))
@@ -109,7 +112,26 @@ jobs:
               assert isinstance(row.get('previous_close_date'), str) and row['previous_close_date'], (key,row)
 
           fx=by_id.get('usdkrw') or {}
-          assert fx.get('basis_verified') is True, fx
+          # A missing contract marker means the newest runtime has not reached
+          # production yet. That is a normal retry condition, not evidence that
+          # the old runtime satisfies the new fail-closed contract.
+          if fx.get('basis_contract') != EXPECTED_FX_CONTRACT:
+              print('production FX fail-closed contract not deployed yet', json.dumps(fx, ensure_ascii=False))
+              raise SystemExit(1)
+
+          # During startup ECOS may not be ready yet. That transitional state is
+          # allowed only if every public comparison field is null. A fallback
+          # previous close/day change under basis_verified=false is a hard data-
+          # integrity failure and must stop the workflow rather than be retried.
+          if fx.get('basis_verified') is not True:
+              guarded=('previous_close','previous_close_date','day_change','day_change_percent','basis_provider')
+              unsafe={key: fx.get(key) for key in guarded if fx.get(key) is not None}
+              if unsafe:
+                  print('UNSAFE_UNVERIFIED_FX_BASIS', json.dumps({'unsafe':unsafe,'fx':fx}, ensure_ascii=False))
+                  raise SystemExit(2)
+              print('SAFE_UNVERIFIED_FX_BASIS_WAITING_FOR_ECOS', json.dumps(fx, ensure_ascii=False))
+              raise SystemExit(1)
+
           assert isinstance(fx.get('last_value'), (int,float)) and fx['last_value'] > 0, fx
           assert isinstance(fx.get('previous_close'), (int,float)) and fx['previous_close'] > 0, fx
           assert isinstance(fx.get('previous_close_date'), str) and fx['previous_close_date'], fx
@@ -173,8 +195,13 @@ jobs:
               assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
           print(json.dumps({'status': by_id, 'push_health': push_health, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
           PY
-              then
+              validation_rc=$?
+              if [ "$validation_rc" -eq 0 ]; then
                 exit 0
+              fi
+              if [ "$validation_rc" -eq 2 ]; then
+                echo 'production integrity violation: unverified USD/KRW basis leaked comparison fields' >&2
+                exit 2
               fi
             fi
             echo "production validation not ready yet: attempt $i/30"
