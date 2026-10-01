@@ -5,18 +5,10 @@ never persists KRX numeric market rows. It records only reachability, row
 counts, column names, source identifiers and errors needed to decide whether a
 future historical PIT ingestion job can be built reproducibly.
 
-Authentication routes are deliberately distinguished:
-- KRX_ID/KRX_PW: Data Marketplace authenticated web-session route used by the
-  pinned exploratory client below.
-- KRX OpenAPI AUTH_KEY: separate official OpenAPI route requiring an
-  authentication-key application plus per-API usage approval. This probe does
-  not substitute an AUTH_KEY for web-session access and does not claim that the
-  required halt/cleanup/delisting datasets are available in the public OpenAPI
-  catalog until an exact official API service mapping is documented.
-
-Important: source reachability does not close the Final Judge blocker. Historical
-coverage, point-in-time availability, security mapping and exact event/economic
-semantics must still be audited before `judge_security_status_ready=True`.
+Credentials are not authorization. KRX_ID/KRX_PW plus a non-secret
+KRX_AUTH_EVIDENCE_REF are required before this probe makes an authenticated
+Data Marketplace request. KRX OpenAPI AUTH_KEY is a separate route and is never
+substituted for the web-session route.
 """
 from __future__ import annotations
 
@@ -26,6 +18,10 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from research_v1_krx_auth_preflight import (
+    DATA_MARKETPLACE_ROUTE,
+    evaluate_auth_preflight,
+)
 from research_v1_krx_public_evidence import (
     PUBLIC_EVIDENCE_VERSION,
     public_evidence_fingerprint_sha256,
@@ -62,7 +58,7 @@ def _frame_meta(df) -> dict[str, Any]:
 def _try(name: str, fn: Callable[[], Any]) -> dict[str, Any]:
     try:
         return {"name": name, **_frame_meta(fn())}
-    except Exception as exc:  # source probe must retain fail-closed diagnostics
+    except Exception as exc:
         return {
             "name": name,
             "reachable": False,
@@ -71,15 +67,10 @@ def _try(name: str, fn: Callable[[], Any]) -> dict[str, Any]:
         }
 
 
-def source_gate_audit(*, session_configured: bool) -> dict:
-    """Map this tiny probe to the frozen A-F source contract conservatively.
-
-    A successful tiny authenticated request can improve evidence, but this probe
-    is structurally incapable of closing historical coverage, PIT lineage or
-    licensing. It therefore never returns all PASS.
-    """
+def source_gate_audit(*, request_authorized: bool) -> dict:
+    """Map this tiny probe to the frozen A-F source contract conservatively."""
     statuses = {
-        "A": "PARTIAL" if session_configured else "BLOCKED",
+        "A": "PARTIAL" if request_authorized else "BLOCKED",
         "B": "PARTIAL",
         "C": "BLOCKED",
         "D": "BLOCKED",
@@ -88,28 +79,15 @@ def source_gate_audit(*, session_configured: bool) -> dict:
     }
     evidence = {
         "A": (
-            "Data Marketplace session credentials are present and the probe may exercise the authenticated route, "
-            "but the exact authorized historical product/access contract for the full status reconstruction is not closed."
-            if session_configured
-            else "KRX_ID/KRX_PW are absent in the active runtime, so the authenticated Data Marketplace route is not exercised."
+            "Route-specific Data Marketplace credentials and a non-secret authorization evidence reference are present, so the tiny authenticated probe may be exercised; the full historical product/access contract remains open."
+            if request_authorized
+            else "The active runtime has not satisfied both route-specific credentials and authorization-evidence requirements, so no authenticated Data Marketplace request is attempted."
         ),
-        "B": (
-            "MDCSTAT213/237/238/239 screen families are identified, but some low-level mappings remain provisional "
-            "and exact approved service/schema equivalence for the complete historical family is not closed."
-        ),
-        "C": (
-            "The tiny source probe does not reconstruct or independently audit full requested-period common-stock/status coverage."
-        ),
-        "D": (
-            "Record-level historical event_time/published_at/available_at/ingested_at lineage across all required status families is not established."
-        ),
-        "E": (
-            "The client revision, route metadata, schema metadata and fail-closed diagnostics are reproducible, "
-            "but end-to-end historical acquisition and coverage reproducibility remain open."
-        ),
-        "F": (
-            "Internal research and external/commercial use are separated by contract, but rights for the final selected historical route remain unverified."
-        ),
+        "B": "MDCSTAT213/237/238/239 screen families are identified, but some low-level mappings remain provisional and exact approved service/schema equivalence for the complete historical family is not closed.",
+        "C": "The tiny source probe does not reconstruct or independently audit full requested-period common-stock/status coverage.",
+        "D": "Record-level historical event_time/published_at/available_at/ingested_at lineage across all required status families is not established.",
+        "E": "The client revision, route metadata, schema metadata and fail-closed diagnostics are reproducible, but end-to-end historical acquisition and coverage reproducibility remain open.",
+        "F": "Internal research and external/commercial use are separated by contract, but rights for the final selected historical route remain unverified.",
     }
     return audit_source_gates(
         source_family=SOURCE_FAMILY,
@@ -119,10 +97,10 @@ def source_gate_audit(*, session_configured: bool) -> dict:
     )
 
 
-def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dict[str, Any]:
+def _finalise_report(report: dict[str, Any], *, request_authorized: bool) -> dict[str, Any]:
     public_evidence_fingerprint = public_evidence_fingerprint_sha256()
-    report["authenticated_request_attempted"] = bool(session_configured)
-    report["source_gate_audit"] = source_gate_audit(session_configured=session_configured)
+    report["authenticated_request_attempted"] = bool(request_authorized)
+    report["source_gate_audit"] = source_gate_audit(request_authorized=request_authorized)
     report["public_contract_evidence_version"] = PUBLIC_EVIDENCE_VERSION
     report["public_contract_evidence_fingerprint_sha256"] = public_evidence_fingerprint
     contract_material = {
@@ -137,19 +115,19 @@ def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dic
         "source_route_policy": report["source_route_policy"],
         "public_contract_evidence_version": PUBLIC_EVIDENCE_VERSION,
         "public_contract_evidence_fingerprint_sha256": public_evidence_fingerprint,
+        "authorization_preflight_required": True,
     }
     report["probe_contract_fingerprint_sha256"] = _canonical_sha256(contract_material)
     result_material = {
-        key: value
-        for key, value in report.items()
+        key: value for key, value in report.items()
         if key not in {"probe_result_fingerprint_sha256"}
     }
     report["probe_result_fingerprint_sha256"] = _canonical_sha256(result_material)
     return report
 
 
-def _write_report(report: dict[str, Any], *, session_configured: bool) -> None:
-    final = _finalise_report(report, session_configured=session_configured)
+def _write_report(report: dict[str, Any], *, request_authorized: bool) -> None:
+    final = _finalise_report(report, request_authorized=request_authorized)
     (OUT / "summary.json").write_text(
         json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -158,28 +136,39 @@ def _write_report(report: dict[str, Any], *, session_configured: bool) -> None:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    session_configured = bool(os.getenv("KRX_ID")) and bool(os.getenv("KRX_PW"))
-    openapi_key_present = bool(os.getenv("KRX_OPENAPI_AUTH_KEY"))
+    environment = {
+        "KRX_ID": os.getenv("KRX_ID"),
+        "KRX_PW": os.getenv("KRX_PW"),
+        "KRX_OPENAPI_AUTH_KEY": os.getenv("KRX_OPENAPI_AUTH_KEY"),
+    }
+    session_credentials_present = bool(environment["KRX_ID"]) and bool(environment["KRX_PW"])
+    openapi_key_present = bool(environment["KRX_OPENAPI_AUTH_KEY"])
+    auth_ref = os.getenv("KRX_AUTH_EVIDENCE_REF")
+    preflight = evaluate_auth_preflight(
+        source_family=SOURCE_FAMILY,
+        access_route=DATA_MARKETPLACE_ROUTE,
+        environment=environment,
+        authorization_evidence_reference=auth_ref,
+    )
+    request_authorized = bool(preflight["request_attempt_authorized"])
+
     report: dict[str, Any] = {
         "purpose": "OFFICIAL_KRX_STATUS_SOURCE_FEASIBILITY_ONLY_NOT_PERFORMANCE_RESEARCH",
         "numeric_market_data_persisted": False,
-        # Backward-compatible field: this means the web-session route only.
-        "credentials_present": session_configured,
-        "data_marketplace_session_credentials_present": session_configured,
+        "credentials_present": session_credentials_present,
+        "data_marketplace_session_credentials_present": session_credentials_present,
         "official_openapi_auth_key_present": openapi_key_present,
-        "active_probe_access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+        "authorization_evidence_reference_present": preflight["authorization_evidence_reference_present"],
+        "authorization_preflight": preflight,
+        "active_probe_access_route": DATA_MARKETPLACE_ROUTE,
         "openapi_route_status": (
             "KEY_PRESENT_BUT_REQUIRED_STATUS_API_MAPPING_NOT_ESTABLISHED"
             if openapi_key_present
             else "AUTH_KEY_NOT_CONFIGURED_AND_REQUIRED_STATUS_API_MAPPING_NOT_ESTABLISHED"
         ),
         "source_route_policy": {
-            "data_marketplace_session": (
-                "KRX_ID/KRX_PW may be used only for authenticated Data Marketplace source-feasibility checks"
-            ),
-            "official_openapi": (
-                "AUTH_KEY is a separate KRX OpenAPI credential and may be used only after the exact required API service is identified and approved"
-            ),
+            "data_marketplace_session": "KRX_ID/KRX_PW plus a non-secret authorization evidence reference are required for the tiny authenticated Data Marketplace source-feasibility check",
+            "official_openapi": "AUTH_KEY is a separate KRX OpenAPI credential and may be used only after the exact required API service is identified and approved",
             "no_auth_substitution": True,
         },
         "pinned_krx_data_api_commit": PINNED_KRX_DATA_API,
@@ -193,26 +182,23 @@ def main() -> None:
             "trading_halt": "dbms/MDC/STAT/issue/MDCSTAT21301",
             "cleanup_trading": "dbms/MDC/STAT/issue/MDCSTAT23701",
         },
-        "status": "AUTH_NOT_CONFIGURED" if not session_configured else "PENDING",
+        "status": "PENDING" if request_authorized else "AUTHORIZATION_PREFLIGHT_BLOCKED",
         "judge_security_status_ready": False,
         "why_not_judge_ready": [
             "exact official access/product contract for historical halt/cleanup/delisting data is not yet established",
-            "historical common-stock identity coverage not yet reconstructed and audited",
+            "historical common-stock identity coverage not yet reconstructed and audited on real data",
             "event_time/published_at/available_at/ingested_at lineage not yet complete",
             "halt/cleanup/delisting event and execution economics not yet joined to decisions",
         ],
     }
 
-    if not session_configured:
-        _write_report(report, session_configured=False)
+    if not request_authorized:
+        _write_report(report, request_authorized=False)
         return
 
     from krx_data_api import fetch, get_krx_auth, transport
 
     probes: list[dict[str, Any]] = []
-
-    # Catalog-backed Data Marketplace sources already defined by the pinned
-    # session client. These are not KRX OpenAPI AUTH_KEY calls.
     probes.append(_try("listed_stocks_current_identity", lambda: fetch("listed_stocks", auth=True)))
     probes.append(_try(
         "new_listing_history_sample",
@@ -223,10 +209,6 @@ def main() -> None:
         lambda: fetch("delisted", strtDd="20240101", endDd="20241231", auth=True),
     ))
 
-    # The pinned session catalog does not expose MDCSTAT213/237. Probe the KRX
-    # Data Marketplace low-level transport explicitly, but keep these BLDs as
-    # candidates until a live authenticated response validates them. No numeric
-    # rows are persisted. This is not equivalent to an approved KRX OpenAPI.
     session = get_krx_auth().session
 
     def halt_probe():
@@ -277,7 +259,7 @@ def main() -> None:
     )
     report["candidate_blds_live_validated"] = bool(candidate_ok)
     report["judge_security_status_ready"] = False
-    _write_report(report, session_configured=True)
+    _write_report(report, request_authorized=True)
 
 
 if __name__ == "__main__":
