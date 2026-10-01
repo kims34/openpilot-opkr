@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -35,6 +36,11 @@ PRICE_TIMEZONES = {
 SEOUL = ZoneInfo("Asia/Seoul")
 
 _base_evaluate = monitor.evaluate
+
+
+def _runtime_revision() -> str | None:
+    revision = os.getenv("INDEXALERT_DEPLOY_TRIGGER", "").strip()
+    return revision or None
 
 
 def _snapshot_id(index_id: str) -> str:
@@ -289,6 +295,8 @@ app.router.routes = [
 @app.get("/status")
 def status_v31():
     payload = _old_status()
+    if isinstance(payload, dict):
+        payload["runtime_revision"] = _runtime_revision()
     indices = payload.get("indices", []) if isinstance(payload, dict) else []
     for row in indices:
         index_id = str(row.get("id") or "")
@@ -329,6 +337,7 @@ def history_v31(index_id: str, snapshot_id: str = ""):
         raise HTTPException(409, "market snapshot changed during chart load; refresh")
 
     if isinstance(payload, dict):
+        payload["runtime_revision"] = _runtime_revision()
         payload["price_timezone"] = PRICE_TIMEZONES[index_id]
         payload["snapshot_id"] = after
         extra = dict(production.EXTRA_STATE.get(index_id) or {})
