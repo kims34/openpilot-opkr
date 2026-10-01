@@ -1,0 +1,27 @@
+name: IndexAlert Continuous Research Governance
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md'
+      - 'research_v1_continuous_research.py'
+      - 'test_research_v1_continuous_research.py'
+      - '.github/workflows/indexalert-continuous-research-governance.yml'
+  workflow_dispatch:
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and test fail-closed continuous research governance
+        run: |
+          python -m py_compile research_v1_continuous_research.py
+          python -m unittest test_research_v1_continuous_research.py
