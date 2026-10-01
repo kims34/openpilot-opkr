@@ -88,6 +88,8 @@ The authorization boundary remains three separate layers:
 2. matching validated non-secret structured authorization evidence;
 3. exact per-run consent for one tiny authenticated request.
 
+Canonical runtime/configuration names are `KRX_AUTH_EVIDENCE_JSON` for the structured non-secret authorization record and `KRX_EXPLICIT_PROBE_CONSENT` for the exact per-run request-consent sentinel. An opaque approval reference alone is not validated evidence.
+
 Canonical components include:
 - `research_v1_krx_authorization_evidence.py`
 - `research_v1_krx_auth_readiness.py`
@@ -105,7 +107,7 @@ Canonical components include:
 Frozen future source flow:
 `structured authorization-evidence validation -> network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
-Push workflows remain dry-run only. No authenticated KRX request has yet been demonstrated; Gate A remains BLOCKED. Real route credentials, genuine approval evidence, full history, stable IDs, record-level PIT evidence and exact use rights remain external blockers.
+Push workflows remain dry-run only. No authenticated KRX request has yet been demonstrated; **Gate A remains BLOCKED**. Real route credentials, genuine approval evidence, full history, stable IDs, record-level PIT evidence and exact use rights remain external blockers.
 
 Latest source-governance reference: KRX integrity Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission.
 
@@ -116,22 +118,11 @@ Final Judge requires exact halt/delisting economics. Structural status-event con
 Canonical contract: `INDEXALERT_KRX_STATUS_ECONOMICS_CONTRACT.md`.  
 Executable audit: `research_v1_krx_status_economics.py`.
 
-The audit now requires:
-- independently attested complete affected-position scope;
-- exact position-ID coverage;
-- `affected_qty = verified_exit_fill_qty + verified_recovery_qty` for every affected position;
-- no unresolved/over-resolved quantity;
-- actual accepted broker execution evidence for filled quantity;
-- accepted official/broker cash-recovery evidence for recovery quantity, including verified zero recovery when applicable;
-- explicit fees/taxes;
-- timezone-aware economic availability;
-- matching source-contract fingerprint.
-
-It explicitly rejects backtest/synthetic/modelled fills, market-open assumptions, Shadow/Paper fill substitution, daily OHLC and MDCSTAT239 daily price rows as proof that an IndexAlert order filled.
+The audit requires independently attested complete affected-position scope, exact position-ID coverage, quantity conservation, accepted actual execution/recovery evidence, explicit fees/taxes, timezone-aware economic availability and matching source-contract lineage. It rejects backtest/synthetic/modelled fills, market-open assumptions, Shadow/Paper fill substitution, daily OHLC and MDCSTAT239 daily price rows as proof that an IndexAlert order filled.
 
 Even `exact_status_economics_ready=true` is only one Final-Judge input and does not itself set Judge readiness, promotion, holdout or live authority.
 
-Implementation tests passed in Action `36834108231`. Contract drift initially failed in `36834285722` only because human-readable wording omitted a canonical forbidden-source identifier; the document was corrected without changing policy. Action `36834718544` then succeeded.
+Implementation tests passed Action `36834108231`. Contract drift initially failed in `36834285722` only because human-readable wording omitted a canonical forbidden-source identifier; the document was corrected without changing policy. Action `36834718544` then succeeded.
 
 **Project-level exact halt/cleanup/delisting economics remains OPEN** because no real complete affected-position economics dataset has been supplied.
 
@@ -144,12 +135,7 @@ Evidence tiers remain:
 2. `PROSPECTIVE_PAPER_EXECUTION_LOG` — paper/simulation plumbing evidence, not real fill quality.
 3. `PROSPECTIVE_LIVE_EXECUTION_LOG` — real-account executions; the only tier eligible to contribute raw empirical live fill/slippage/partial-fill/latency/markout/capacity evidence.
 
-`research_v1_execution_evidence.py` now explicitly separates:
-- `live_structural_execution_evidence_present` — at least structurally valid real-account execution evidence exists;
-from
-- empirical execution sufficiency — whether the live evidence is sufficiently broad/large/representative for the promotion path.
-
-One or several LIVE rows can **never automatically** close the empirical blocker. Until a separately frozen protocol is evaluated:
+`research_v1_execution_evidence.py` separates `live_structural_execution_evidence_present` from empirical execution sufficiency. One or several LIVE rows can never automatically close the empirical blocker. Until a separately frozen protocol is evaluated:
 - `live_empirical_execution_evidence_ready=false`;
 - `empirical_execution_sufficiency_assessed=false`;
 - `empirical_execution_blocker_closed=false`;
@@ -169,27 +155,16 @@ Execution preregistration Action `36835013828` succeeded. Contract-drift semanti
 
 ## External evidence still missing
 
-Internal code cannot fabricate:
-1. approved exact KRX historical route/product and secure route credentials;
-2. genuine structured KRX authorization evidence and a successful network-free readiness result;
-3. one separately consented authenticated tiny KRX probe;
-4. complete official historical status/investor-flow data, stable IDs and attested expected scope;
-5. real record-level PIT publication/availability lineage;
-6. exact intended-use rights for the final source route;
-7. real complete affected-position halt/cleanup/delisting fill/recovery economics;
-8. genuine staged LIVE execution observations across the future frozen sufficiency protocol;
-9. an independent later execution-sufficiency assessment against that preregistered protocol.
+Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations, or a later independent execution-sufficiency assessment against a properly preregistered protocol.
 
 ## Operational evidence state
 
-Research execution-evidence plumbing and server tests have passed previously. Railway production `indexalert-runtime` runs server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` had `/health` 200. This is operational evidence only and does not authorize trading.
-
-Real-account ordering remains disabled.
+Railway production `indexalert-runtime` previously ran server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` had `/health` 200. This is operational evidence only and does not authorize trading. Real-account ordering remains disabled.
 
 ## Remaining blockers
 
 1. **KRX authorization/data:** approved route/product, credentials/structured approval evidence, authenticated source proof and full official history.
-2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the new exact audit; the internal auditor alone does not close the blocker.
+2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.
 5. **Research governance:** no rejected-candidate revival; maintain Ledger/multiple-testing discipline.
