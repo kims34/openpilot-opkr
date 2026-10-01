@@ -29,11 +29,11 @@ Overall source contract: **OPEN — NOT ALL A-F PASS**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `PARTIAL` | Official KRX Data Marketplace/OpenAPI/product routes are explicitly separated and authenticated source probes exist, but the exact authorized historical product/access contract for the full halt/cleanup/delisting/common-stock reconstruction is not yet closed. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Official screen contracts MDCSTAT213/237/238/239 are identified; the current adapters have strict source/schema checks. Some low-level BLD mappings remain provisional and exact public OpenAPI equivalence for all required histories has not been established. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | The source routes are explicitly separated, but audited GitHub Actions logs for status probe Action `36668563968` show `KRX_ID`, `KRX_PW` and `KRX_OPENAPI_AUTH_KEY` were all absent. The authenticated Data Marketplace route was therefore not exercised, and the exact authorized historical product/access contract is not closed. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Official screen contracts MDCSTAT213/237/238/239 are identified; the current adapters have strict source/schema checks. Some low-level BLD mappings remain provisional and exact approved historical service/schema equivalence for all required histories has not been established. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | Full requested-period common-stock identity/status history and complete relevant-security coverage have not been reconstructed and independently audited. The current coverage audit deliberately keeps `judge_security_status_ready=false`. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | `available_at` is mandatory in adapters, but complete historical `event_time`/publication/availability/ingestion lineage for all status families across the Judge period is not yet established. |
-| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Pinned metadata-only probes, strict official-source labels and fail-closed adapter tests exist and have passed CI. End-to-end historical acquisition/schema/coverage reproducibility is not yet closed, so reachability cannot be promoted to PASS. |
+| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Pinned metadata-only diagnostics, strict official-source labels, fail-closed adapter tests and probe contract/result fingerprints exist. End-to-end authenticated historical acquisition/schema/coverage reproducibility is not yet closed. |
 | Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | Project rules distinguish internal research from future external/commercial use and forbid assuming free OpenAPI rights cover a product. Exact rights for the final chosen historical route and any future distribution scope remain to be verified. |
 
 Current verdict: `judge_security_status_ready=false`. No source gate result in this table is permission to burn the sealed holdout.
@@ -46,28 +46,28 @@ Overall source contract: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `PARTIAL` | The authenticated Data Marketplace web-session probe is explicitly distinguished from OpenAPI `AUTH_KEY`, but the official reproducible historical access contract for the required per-security investor-flow history is not yet frozen. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | The individual-investor daily screen/source family is known and probeable, but exact approved public OpenAPI mapping/equivalent historical contract is not established and must not be inferred. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Audited GitHub Actions logs for investor-flow probe Action `36668579581` show `KRX_ID`, `KRX_PW` and `KRX_OPENAPI_AUTH_KEY` were all absent. No authenticated KRX request was exercised in that run, and the official reproducible historical access contract remains unfrozen. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | The MDCSTAT02303 individual-investor daily source family is identified, but exact approved historical service/schema equivalence is not established and must not be inferred. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | Full historical coverage and stable security mapping have not been audited for the research period. A tiny probe window cannot close this gate. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `PARTIAL` | The official publication rule is frozen: final day-D investor trading results are eligible only for the next decision after publication (the audited page states after 20:00). Complete record-level `event_time`/`published_at`/`available_at`/`ingested_at` lineage is not yet implemented for historical research data. |
-| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | The probe is metadata-only, fail-closed and does not persist numeric market data; credentials are not exposed. Bulk historical reproducibility/coverage integrity remains unverified. |
+| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | The diagnostic is metadata-only, fail-closed, fingerprints its contract/result and does not persist numeric market data; credentials are not exposed. Bulk authenticated historical reproducibility/coverage integrity remains unverified. |
 | Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | Internal research and future external/commercial use are separated by contract, but rights for the ultimately selected investor-flow route/use scope remain to be explicitly verified. |
 
-Current verdict: investor-flow feature-performance experiments remain blocked. Authentication/source-probe success is infrastructure evidence only.
+Current verdict: investor-flow feature-performance experiments remain blocked. A workflow run that exits successfully while reporting `AUTH_NOT_CONFIGURED` is diagnostic execution evidence only, not authenticated source evidence.
 
-## 5. Existing reproducible evidence
+## 5. Audited workflow evidence
 
-The following successful Actions are relevant infrastructure evidence but do not change any `PARTIAL`/`BLOCKED` gate to PASS by themselves:
+The following Actions completed successfully as workflows, but the source-probe logs must be interpreted by their internal result rather than by the green workflow check alone:
 
-- Official KRX status integrity: Action `36646910657` — success.
-- KRX status source probe: Action `36668563968` — success.
-- KRX investor-flow source probe: Action `36668579581` — success.
+- Official KRX status integrity: Action `36646910657` — success; adapter/test infrastructure evidence.
+- KRX status source probe: Action `36668563968` — workflow success, but report/log state `AUTH_NOT_CONFIGURED`; all three configured KRX secret environment values were empty, so no authenticated source request was exercised.
+- KRX investor-flow source probe: Action `36668579581` — workflow success, but report/log state `AUTH_NOT_CONFIGURED`; all three configured KRX secret environment values were empty, so no authenticated source request was exercised.
 
-A successful source probe establishes that a probe ran successfully under its own contract; it does not establish full historical coverage, PIT lineage, licensing scope or Final-Judge eligibility.
+The source probe code now emits a machine-readable `source_gate_audit`, `authenticated_request_attempted`, `probe_contract_fingerprint_sha256` and `probe_result_fingerprint_sha256`. Missing session credentials force Gate A to `BLOCKED`; merely supplying credentials can raise it only to `PARTIAL`, never directly to `PASS`.
 
 ## 6. Evidence required to close the gates
 
-- **Gate A:** document the exact official historical route/product, authorization/approval state and source-family scope actually used.
+- **Gate A:** configure/obtain an approved exact official historical route/product and demonstrate the relevant authorized source access without exposing credentials; a green diagnostic Action with `AUTH_NOT_CONFIGURED` does not count.
 - **Gate B:** freeze service/screen/feed identifiers, schema/field mapping, version/transport assumptions and equivalence boundaries.
 - **Gate C:** produce a reproducible coverage audit across the full requested period and relevant security universe, including stable security identity mapping.
 - **Gate D:** preserve auditable PIT lineage and decision-time eligibility for every historical observation; no retrospective availability assumptions.
