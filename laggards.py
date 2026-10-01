@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
+import corporate_action_registry
 import market_basis
 
 UA = {"User-Agent": "Mozilla/5.0 IndexAlert/1.0"}
@@ -179,6 +180,13 @@ def _market_quote(monitor, symbol: str, *, require_equity: bool = False):
         # page-parser contamination must never allow an ETF/fund/index/currency
         # ticker to masquerade as an S&P500/NASDAQ100/SCHD stock constituent.
         raise RuntimeError(f"non-equity constituent: {instrument_type or 'UNKNOWN'}")
+    if require_equity:
+        event = corporate_action_registry.active_noncomparable_event(symbol, current_ts)
+        if event is not None:
+            # Do not turn a documented spin-off/distribution discontinuity into
+            # a fake one-day mover. Until an independently verified adjusted
+            # basis is available, omit this row rather than inventing a return.
+            raise RuntimeError(f"non-comparable corporate action: {event.get('kind')}")
     state = _market_state(meta, current_ts)
     regular_points = _regular_session_points(points)
     previous_close, previous_close_date = market_basis.regular_close_basis(
