@@ -421,3 +421,7 @@ Accordingly `genuine_live_provenance_verified=false`, `empirical_execution_block
 ## 17. Continuous Research Governance — 2026-10-02
 
 Canonical contract: `INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md`. After a Core is frozen, continuous research runs in an isolated Research Lab. Trials must be preregistered and fingerprinted before outcomes; post-result protocol changes invalidate the trial; sealed holdout is forbidden for discovery/tuning; an accepted result is only `ACCEPTED_CHALLENGER` and has no production or live-order authority. Core replacement remains a separate versioned promotion requiring all applicable frozen external, execution, holdout, Shadow S1 and Fresh Confirmation S2 gates.
+
+### Continuous-research successor promotion boundary — 2026-10-02
+
+A preregistered research success does not directly overwrite Core. `research_v1_successor_core.py` may automatically stage a distinct versioned `SHADOW_CANDIDATE` only after the accepted challenger also passes the required independent OOS, cost-stress, tail-risk, recent-stability, PIT/no-leakage and frozen-protocol gates. Automatic Core/code update becomes eligible only after the separately governed sealed holdout, Shadow S1, Fresh Confirmation S2, external-source/status blockers and empirical execution blocker are all closed. Automatic real-account order activation remains forbidden even then; live-order authority is a separate gate.
