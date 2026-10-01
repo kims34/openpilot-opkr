@@ -5,7 +5,8 @@ adds only two operational routes to an existing FastAPI app:
 
 * POST /register records the privacy-safe Android client build after the existing
   registration path succeeds.
-* GET /push-health binds physical-E2E readiness to that exact registered build.
+* GET /push-health binds physical-E2E readiness to the exact registered device,
+  its exact build and that same device/build's confirmed handset receipt.
 
 The overlay is idempotent so multiple runtime layers can install it without
 creating duplicate routes. Legacy clients remain compatible but fail closed for
@@ -21,9 +22,11 @@ from pydantic import BaseModel
 import monitor
 import production
 import push_health
+import push_self_test
 
 REGISTRATION_BUILD_CONTRACT = "register-client-build-v1"
 SELF_TEST_TRIGGER_CONTRACT = "android-register-direct-v1"
+PHYSICAL_E2E_BINDING_CONTRACT = "registered-device-build-receipt-v1"
 
 
 class RegisterBodyV32(BaseModel):
@@ -78,19 +81,30 @@ def _record_device_build(token: str, build: str | None) -> None:
         )
 
 
-def _latest_registered_build() -> tuple[str | None, str | None]:
+def _latest_registered_device_build() -> tuple[str | None, str | None, str | None]:
+    """Return token/build/time for the most recently observed registered device.
+
+    The raw token is server-private and is used only to bind the registration
+    record to the exact self-test device. It is never returned by /push-health.
+    """
     _init_device_build_db()
     with monitor.db() as con:
         row = con.execute(
-            """SELECT b.client_build,b.updated_at
+            """SELECT b.token,b.client_build,b.updated_at
                FROM device_builds b
                JOIN devices d ON d.token=b.token
                ORDER BY b.updated_at DESC, b.rowid DESC
                LIMIT 1"""
         ).fetchone()
     if not row:
-        return None, None
-    return str(row[0]), str(row[1])
+        return None, None, None
+    return str(row[0]), str(row[1]), str(row[2])
+
+
+def _latest_registered_build() -> tuple[str | None, str | None]:
+    """Compatibility helper returning only privacy-safe build/time metadata."""
+    _token, build, observed_at = _latest_registered_device_build()
+    return build, observed_at
 
 
 def register_v32(body: RegisterBodyV32):
@@ -110,25 +124,44 @@ def register_v32(body: RegisterBodyV32):
         client_build_observed=bool(build),
         registration_build_contract=REGISTRATION_BUILD_CONTRACT,
         self_test_trigger_contract=SELF_TEST_TRIGGER_CONTRACT if build else None,
+        physical_e2e_binding_contract=PHYSICAL_E2E_BINDING_CONTRACT if build else None,
     )
     return result
 
 
 def push_health_v32():
     payload = dict(push_health.snapshot())
-    build, observed_at = _latest_registered_build()
+    registered_token, build, observed_at = _latest_registered_device_build()
+    self_test = push_self_test.latest_self_test_binding()
+    same_device = bool(
+        registered_token
+        and self_test.get("token")
+        and registered_token == self_test.get("token")
+    )
+    same_build = bool(build and self_test.get("build") == build)
+
+    # Override the aggregate helper's latest-self-test fields from the exact
+    # private binding snapshot used for the device/build comparison, avoiding a
+    # split-read race between public health and the attestation decision.
     payload.update(
+        latest_self_test_build=self_test.get("build"),
+        latest_self_test_sent=bool(self_test.get("sent")),
+        latest_self_test_receipt_confirmed=bool(self_test.get("receipt_confirmed")),
+        latest_self_test_created_at=self_test.get("created_at"),
         latest_registered_client_build=build,
         latest_registered_client_build_at=observed_at,
         registration_build_observed=bool(build),
+        registration_device_matches_self_test=bool(same_device),
+        registration_build_matches_self_test=bool(same_build),
         registration_build_contract=REGISTRATION_BUILD_CONTRACT,
         self_test_trigger_contract=SELF_TEST_TRIGGER_CONTRACT,
+        physical_e2e_binding_contract=PHYSICAL_E2E_BINDING_CONTRACT,
     )
     payload["current_build_physical_e2e_confirmed"] = bool(
-        build
-        and payload.get("latest_self_test_build") == build
-        and payload.get("latest_self_test_sent")
-        and payload.get("latest_self_test_receipt_confirmed")
+        same_device
+        and same_build
+        and self_test.get("sent")
+        and self_test.get("receipt_confirmed")
     )
     return payload
 
