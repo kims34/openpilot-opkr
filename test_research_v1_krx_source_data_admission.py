@@ -14,6 +14,7 @@ from research_v1_krx_source_gates import audit_source_gates
 
 
 SCOPE = "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION"
+AUTH_EVIDENCE_FP = "c" * 64
 
 
 def _gates(all_pass=True, scope=SCOPE):
@@ -28,13 +29,14 @@ def _gates(all_pass=True, scope=SCOPE):
     )
 
 
-def _batch(scope=SCOPE):
+def _batch(scope=SCOPE, auth_evidence_fp=AUTH_EVIDENCE_FP):
     receipt = build_acquisition_receipt(
         source_family="KRX_INVESTOR_FLOW",
         intended_use_scope=scope,
         access_route="DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
         dataset_identifier="MDCSTAT02303",
         authorization_evidence_reference="approval-ref-001",
+        authorization_evidence_fingerprint_sha256=auth_evidence_fp,
         client_revision="client-rev-1",
         retrieved_at="2026-10-01T12:00:00+09:00",
         request_metadata={
@@ -76,6 +78,8 @@ def test_all_source_structure_can_only_reach_registry_review_not_performance():
     )
     assert out["source_contract_closed"] is True
     assert out["acquisition_batch_integrity_valid"] is True
+    assert out["authorization_evidence_provenance_bound"] is True
+    assert out["authorization_evidence_fingerprint_sha256"] == AUTH_EVIDENCE_FP
     assert out["pit_lineage_structurally_valid"] is True
     assert out["historical_coverage_structurally_complete"] is True
     assert out["source_data_structurally_admissible"] is True
@@ -136,6 +140,19 @@ def test_tampered_batch_manifest_is_rejected():
     tampered = copy.deepcopy(batch)
     tampered["total_response_rows"] = 999
     with pytest.raises(KRXSourceDataAdmissionError, match="batch fingerprint mismatch"):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=_gates(True),
+            acquisition_batch_manifest=tampered,
+            lineage_audit=_lineage(True, True),
+            coverage_audit=_coverage(True),
+        )
+
+
+def test_missing_structured_authorization_fingerprint_is_rejected():
+    batch = _batch()
+    tampered = copy.deepcopy(batch)
+    tampered.pop("authorization_evidence_fingerprint_sha256")
+    with pytest.raises(KRXSourceDataAdmissionError, match="missing required fields"):
         assess_investor_flow_source_data_admission(
             source_gate_audit=_gates(True),
             acquisition_batch_manifest=tampered,
