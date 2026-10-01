@@ -64,6 +64,29 @@ def _clean_client_build(value: str | None) -> str | None:
     return build
 
 
+def _complete_display_only_levels(
+    settings: dict[str, list[int]] | None,
+) -> dict[str, list[int]] | None:
+    """Fill only server-side display-only rules that have no alert thresholds.
+
+    Android sends user-configurable alert rules. The runtime can also contain
+    display-only cards (for example KOSPI/USD-KRW) whose `levels` are empty.
+    `monitor.register()` intentionally requires an exact RULES key set, so a
+    newly added display-only server rule must not make an otherwise valid
+    installed client fail registration with HTTP 400.
+
+    Alert-bearing rules are never synthesized here. Missing or unknown alert
+    rules therefore remain fail-closed in the existing registration validator.
+    """
+    if settings is None:
+        return None
+    normalized = {str(key): list(value) for key, value in dict(settings).items()}
+    for index_id, rule in monitor.RULES.items():
+        if not list(rule.get("levels") or []):
+            normalized.setdefault(str(index_id), [])
+    return normalized
+
+
 def _init_device_build_db() -> None:
     monitor.init_db()
     with monitor.db() as con:
@@ -158,7 +181,7 @@ def register_v32(body: RegisterBodyV32):
     base_body = monitor.RegisterBody(
         token=body.token,
         platform=body.platform,
-        enabled_levels=body.enabled_levels,
+        enabled_levels=_complete_display_only_levels(body.enabled_levels),
         protocol=body.protocol,
     )
     result = dict(production.register(base_body))
