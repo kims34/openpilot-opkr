@@ -307,6 +307,10 @@ def status_v31():
             ):
                 if key in extra:
                     row[key] = extra.get(key)
+            # Older layers may briefly have a Yahoo/provider fallback previous
+            # close before the ECOS 15:30 basis is verified. Preserve the live
+            # quote if useful, but never expose that fallback as day change.
+            row.update(fx_basis.public_basis_fields(extra))
     return payload
 
 
@@ -328,9 +332,14 @@ def history_v31(index_id: str, snapshot_id: str = ""):
         payload["price_timezone"] = PRICE_TIMEZONES[index_id]
         payload["snapshot_id"] = after
         extra = dict(production.EXTRA_STATE.get(index_id) or {})
-        payload["previous_close"] = extra.get("previous_close")
-        payload["previous_close_date"] = extra.get("previous_close_date")
         if index_id == "usdkrw":
-            payload["basis_provider"] = extra.get("basis_provider")
+            public_basis = fx_basis.public_basis_fields(extra)
+            payload["previous_close"] = public_basis["previous_close"]
+            payload["previous_close_date"] = public_basis["previous_close_date"]
+            payload["basis_verified"] = public_basis["basis_verified"]
+            payload["basis_provider"] = public_basis["basis_provider"]
             payload["quote_provider"] = extra.get("quote_provider")
+        else:
+            payload["previous_close"] = extra.get("previous_close")
+            payload["previous_close_date"] = extra.get("previous_close_date")
     return payload
