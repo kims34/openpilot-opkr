@@ -7,6 +7,7 @@ on:
       - 'production_v30.py'
       - 'production_v31.py'
       - 'execution_evidence_ledger.py'
+      - 'automation_control.py'
       - 'push_receipts.py'
       - 'push_self_test.py'
       - 'push_health.py'
@@ -33,5 +34,5 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -r requirements.txt
-      - run: python -m py_compile production_v30.py production_v31.py execution_evidence_ledger.py push_receipts.py push_self_test.py push_health.py
+      - run: python -m py_compile production_v30.py production_v31.py execution_evidence_ledger.py automation_control.py push_receipts.py push_self_test.py push_health.py
       - run: python -m unittest discover -p 'test_*.py' -v
