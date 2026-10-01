@@ -121,21 +121,29 @@ jobs:
           ny_today=datetime.now(ZoneInfo('America/New_York')).date().isoformat()
           for universe, section in (movers.get('sections') or {}).items():
               direction=section.get('direction')
+              excluded_non_equity=section.get('excluded_non_equity_symbols')
+              excluded_corporate_action=section.get('excluded_corporate_action_symbols')
+              assert isinstance(excluded_non_equity, list), (universe, section)
+              assert isinstance(excluded_corporate_action, list), (universe, section)
+              assert all(isinstance(symbol, str) and symbol for symbol in excluded_non_equity), (universe, section)
+              assert all(isinstance(symbol, str) and symbol for symbol in excluded_corporate_action), (universe, section)
               all_rows=[]
               for key in ('items','decliners','gainers'):
                   all_rows.extend(section.get(key) or [])
               symbols={str(item.get('symbol') or '') for item in all_rows}
               # The SCHD holdings parser once admitted USD (a leveraged ETF)
               # as if it were a stock constituent. The production feed must
-              # remain equity-only after the fail-closed instrument gate.
+              # remain equity-only and explain the deliberate exclusion.
               if universe == 'schd':
                   assert 'USD' not in symbols, section
+                  assert 'USD' in excluded_non_equity, section
               # This assertion is date-scoped to the registered event. On the
               # documented 2026-10-01 CTVA/Vylor separation date raw CTVA
               # previous-close math is non-comparable; later dates are not
               # suppressed by this static event record.
               if universe == 'sp500' and ny_today == '2026-10-01':
                   assert 'CTVA' not in symbols, section
+                  assert 'CTVA' in excluded_corporate_action, section
               for item in section.get('items') or []:
                   pct=float(item.get('day_change_percent'))
                   if direction == 'down':
