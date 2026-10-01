@@ -3,7 +3,9 @@ on:
   push:
     branches: [ index-alert-server ]
     paths:
+      - 'production_v31.py'
       - 'production_v32.py'
+      - 'push_build_registration.py'
       - 'test_production_v32.py'
       - 'Dockerfile'
       - '.github/workflows/index-alert-v32-contract-smoke.yml'
@@ -25,7 +27,7 @@ jobs:
       - name: Full regression and v32 syntax
         run: |
           pip install -r requirements.txt
-          python -m py_compile production_v32.py test_production_v32.py
+          python -m py_compile production_v31.py production_v32.py push_build_registration.py test_production_v32.py
           python -m unittest discover -p 'test_*.py' -v
       - name: Wait for exact production revision and verify build-bound push contract
         run: |
@@ -64,12 +66,23 @@ jobs:
               }, ensure_ascii=False))
               raise SystemExit(1)
 
+          # Once the exact GitHub revision is live, missing build-contract
+          # markers are not a rollout delay. They prove that the wrong runtime
+          # entrypoint/route set is serving production and must fail immediately.
+          if (
+              push.get('registration_build_contract') != expected_registration_contract
+              or push.get('self_test_trigger_contract') != expected_self_test_contract
+          ):
+              print('EXACT_REVISION_BUILD_CONTRACT_VIOLATION', json.dumps({
+                  'runtime_revision': status.get('runtime_revision'),
+                  'push_health': push,
+              }, ensure_ascii=False))
+              raise SystemExit(2)
+
           assert push.get('ok') is True, push
           assert push.get('firebase') is True, push
           assert push.get('tokens_exposed') is False, push
           assert push.get('client_receipts_supported') is True, push
-          assert push.get('registration_build_contract') == expected_registration_contract, push
-          assert push.get('self_test_trigger_contract') == expected_self_test_contract, push
           assert isinstance(push.get('registration_build_observed'), bool), push
           assert isinstance(push.get('current_build_physical_e2e_confirmed'), bool), push
 
@@ -113,6 +126,10 @@ jobs:
               set -e
               if [ "$validation_rc" -eq 0 ]; then
                 exit 0
+              fi
+              if [ "$validation_rc" -eq 2 ]; then
+                echo 'v32 production integrity violation: exact revision is serving without the build-bound push contract' >&2
+                exit 2
               fi
             fi
             echo "v32 production validation not ready yet: attempt $i/30"
