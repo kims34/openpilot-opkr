@@ -268,3 +268,7 @@ Positive mean, PF or CAGR alone cannot promote a candidate. Promotion requires c
 ## Kiwoom demo/read-only connectivity — observed, non-promotional
 
 Canonical demo evidence records `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FILLS_OK` against the Kiwoom mock/demo host in a user-operated read-only smoke test. This is plumbing/readiness evidence only. Genuine LIVE broker-native provenance, empirical execution sufficiency, real status-event economics, KRX external evidence, sealed holdout and live ordering remain blocked/unauthorized as previously frozen.
+
+## Continuous Research Lab — ENABLED, isolated from Core
+
+Continuous research governance is now implemented by `research_v1_continuous_research.py` under `INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md`. Automated research may queue ideas and evaluate preregistered challengers, but cannot mutate Core, open the sealed holdout, authorize live ordering, or auto-promote a candidate. Existing frozen blockers and criteria are unchanged.
