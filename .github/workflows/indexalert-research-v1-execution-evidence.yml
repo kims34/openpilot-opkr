@@ -16,12 +16,15 @@ on:
       - 'INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md'
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md'
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json'
+      - 'INDEXALERT_KIWOOM_REST_READINESS_CONTRACT.md'
+      - 'INDEXALERT_BROKER_EXECUTION_CONTRACT.md'
       - 'INDEXALERT_MASTER_SPEC.md'
       - 'INDEXALERT_RESEARCH_STATUS.md'
       - 'INDEXALERT_RESEARCH_LEDGER.md'
       - 'INDEXALERT_CONTINUITY_SNAPSHOT.md'
       - 'test_research_v1_execution_evidence_contract.py'
       - 'test_indexalert_execution_sufficiency_docs.py'
+      - 'test_indexalert_kiwoom_rest_readiness_docs.py'
       - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
   workflow_dispatch:
 
@@ -45,4 +48,4 @@ jobs:
         # Covers numerical metric state separately from project empirical/provenance state.
         run: |
           python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py research_v1_execution_sufficiency_assessment.py research_v1_execution_sufficiency_cli.py
-          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_sufficiency_cli.py test_research_v1_execution_evidence_contract.py test_indexalert_execution_sufficiency_docs.py
+          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_sufficiency_cli.py test_research_v1_execution_evidence_contract.py test_indexalert_execution_sufficiency_docs.py test_indexalert_kiwoom_rest_readiness_docs.py
