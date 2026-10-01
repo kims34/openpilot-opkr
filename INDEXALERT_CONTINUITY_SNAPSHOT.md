@@ -109,7 +109,7 @@ Protocol validity alone keeps sufficiency unassessed and blocker/promotion/holdo
 
 Execution preregistration Action `36835013828` succeeded; strengthened contract-drift Action `36835231533` also succeeded.
 
-## 6. Android / push Physical E2E — server/prod aligned, handset self-test still OPEN
+## 6. Android / push Physical E2E — exact server/prod aligned, handset self-test still OPEN
 
 ### Android current audited build
 
@@ -126,7 +126,7 @@ Current Android `Push.kt` schedules privacy-safe `/push-ack` for the server-issu
 ### Server current audited code
 
 Current server branch: `index-alert-server`.  
-Operational server HEAD: `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3` (`Verify mover exclusion provenance in production smoke`).
+Operational server HEAD: `a416d64c3bc444fc6126a85db94bdaa1d2b346c2` (`Bind production smoke to exact deployed revision`).
 
 The Physical-E2E contract introduced at `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` remains intact. The server self-test reuses the same `token + client_build` event after successful send, so polling never generates a fresh event merely because receipt is pending. `/push-ack` accepts only SHA256(token) for a registered device plus an already-sent matching event, and duplicate ACKs are idempotent.
 
@@ -139,18 +139,19 @@ Physical-E2E health is build-specific:
 
 Tests prove an older-build ACK cannot confirm a newer build. `verify_push_physical_e2e.py` is a read-only verifier: it cannot send FCM, register a device, or write a receipt and fails closed unless the exact expected build has a real confirmed ACK.
 
-Server Tests Action `36851598148` succeeded at the current provenance change set. Production Smoke Action `36851667612`, job `110334516116`, also succeeded after the exact current server commit reached Railway production.
+Server Tests Action `36853774290` succeeded. Production Smoke Action `36853857418`, job `110341579475`, also succeeded after the exact current server revision reached Railway production.
 
-### Railway production — deployment drift CLOSED
+### Railway production — exact-revision deployment drift CLOSED
 
-Railway `indexalert-runtime` is deployed from the exact server commit `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3` in deployment `87e224d7-b0f5-447e-8239-7b7ea910e872` (SUCCESS).
+Railway `indexalert-runtime` is deployed from exact server commit `a416d64c3bc444fc6126a85db94bdaa1d2b346c2` in deployment `0f4b5ff7-85ad-47e7-97c7-4b2c384e5a34` (SUCCESS).
 
-Production Smoke Action `36851667612`, job `110334516116`, succeeded after the deployment. Therefore the current build-specific `/push-health` contract and the current mover-provenance contract are confirmed live in production, and the prior server deployment-drift blocker remains CLOSED.
+The runtime now exposes the non-secret deployment-trigger SHA as `/status.runtime_revision` and `/history.runtime_revision`. Production Smoke `36853857418` refused to accept the older deployment while `runtime_revision` was null and only passed after `runtime_revision == a416d64c3bc444fc6126a85db94bdaa1d2b346c2`. Therefore a green response from stale production can no longer satisfy a newer smoke run.
 
 ### Current Physical E2E evidence — still OPEN
 
-The successful production smoke observed:
+The successful exact-revision production smoke observed:
 - `registered_devices = 1`
+- `last_device_registration_at = "2026-10-01T11:15:17.081314+00:00"`
 - `sent_deliveries = 1`
 - `received_deliveries = 0`
 - `unconfirmed_sent_deliveries = 1`
@@ -173,19 +174,27 @@ No physical receipt is fabricated or inferred from Firebase provider send succes
 
 ## 7. U.S. mover operational integrity — DONE and auditable
 
-Stock-constituent quote admission is now fail-closed to Yahoo instrument type `EQUITY`. ETF/fund/index/currency contamination cannot enter the company mover ranking. Corporate-action price discontinuities are not filtered by an arbitrary return threshold; omission requires a source-backed event/date in `corporate_action_registry.py` for which raw previous-close comparison is non-comparable.
+Stock-constituent quote admission is fail-closed to Yahoo instrument type `EQUITY`. ETF/fund/index/currency contamination cannot enter the company mover ranking. Corporate-action price discontinuities are not filtered by an arbitrary return threshold; omission requires a source-backed event/date in `corporate_action_registry.py` for which raw previous-close comparison is non-comparable.
 
 The live `/laggards` contract exposes:
 - `excluded_non_equity_symbols`
 - `excluded_corporate_action_symbols`
 for each universe.
 
-Production Smoke Action `36851667612` verified:
+Final exact-revision Production Smoke Action `36853857418` verified:
 - S&P500 `502/503`, with `excluded_corporate_action_symbols=["CTVA"]` on 2026-10-01;
 - NASDAQ100 `100/100`, no deliberate exclusions;
 - SCHD `98/99`, with `excluded_non_equity_symbols=["USD"]`.
 
 This explains coverage loss directly in the API and prevents the earlier `USD` ETF contamination and CTVA spin-off discontinuity from being presented as ordinary stock movers. Direction/sign checks remained valid. This operational integrity work does not alter frozen research results or KRX gate status.
+
+## 7A. USD/KRW startup basis integrity — DONE and exact-revision audited
+
+The public day-change basis is versioned as `ecos-1530-fail-closed-v1`. A live current quote may remain available during startup, but until Bank of Korea ECOS prior 15:30 basis verification is complete, public `previous_close`, `previous_close_date`, `day_change`, `day_change_percent` and `basis_provider` must all be null and `basis_verified=false`.
+
+`fx_basis.public_basis_fields()` accepts a public basis only when the prior close is finite/positive, date and change fields are complete, `basis_verified=true`, and `basis_provider` explicitly contains `ECOS`. Unit tests reject older-layer Yahoo/provider fallback shapes, including a false `basis_verified=true` shape with a non-ECOS provider. `/status` and `/history/usdkrw` use this fail-closed sanitizer.
+
+The timing-sensitive production smoke did not happen to capture a full response during the short pre-ECOS transition; unit tests enforce the transition shape. The final exact-revision smoke verified the live ready state with `basis_contract="ecos-1530-fail-closed-v1"`, `basis_verified=true`, `previous_close=1352.8`, `previous_close_date="2026-09-30"`, and an ECOS basis provider. Internal startup logs can still show an older-layer Yahoo fallback calculation before the outer v3.1 sanitizer completes, but that calculation is not accepted as the public official day-change basis.
 
 ## 8. Broker / live-order boundary
 
@@ -204,10 +213,11 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.
 7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. DONE — server deployment drift; Railway production is aligned to server commit `cc3272b4...` and current production smoke succeeds.
+9. DONE — server deployment drift and stale-runtime ambiguity; Railway production is aligned to exact server commit `a416d64c...`, runtime SHA is public/non-secret, and exact-revision smoke succeeds.
 10. DONE — mover production-integrity provenance; non-equity and registered corporate-action exclusions are fail-closed and visible in `/laggards`.
-11. PHYSICAL E2E — production currently has `latest_self_test_build=null`; the real current v4.6-46 handset must create and ACK the build-specific self-test.
-12. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
+11. DONE — USD/KRW public startup basis is fail-closed until ECOS prior-15:30 verification and carries contract marker `ecos-1530-fail-closed-v1`.
+12. PHYSICAL E2E — production currently has `latest_self_test_build=null`; the real current v4.6-46 handset must create and ACK the build-specific self-test.
+13. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
 
 ## 10. Continuation rules
 
@@ -225,6 +235,8 @@ On every continuation:
 - never infer a current-build self-test from aggregate sent/received counters when `latest_self_test_build` is null or mismatched;
 - never admit a non-equity symbol into a stock-constituent mover universe;
 - never treat a registered corporate-action discontinuity as an ordinary one-day return; use source-backed, date-scoped fail-closed handling rather than arbitrary percentage clipping;
+- never expose a provider-fallback USD/KRW previous close/day change as official while ECOS basis verification is incomplete;
+- never accept a production smoke as proof of a newer revision unless `runtime_revision` matches the exact expected GitHub SHA;
 - never revive rejected candidates through threshold/cost/horizon mining;
 - never convert Shadow/Paper observations into live empirical evidence;
 - if chat conflicts with reproducible GitHub evidence, GitHub wins;
