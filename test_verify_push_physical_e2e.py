@@ -2,6 +2,8 @@ import unittest
 
 from verify_push_physical_e2e import (
     PhysicalE2EVerificationError,
+    REGISTRATION_BUILD_CONTRACT,
+    SELF_TEST_TRIGGER_CONTRACT,
     verify_push_health,
 )
 
@@ -13,28 +15,67 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
             "firebase": True,
             "tokens_exposed": False,
             "client_receipts_supported": True,
-            "latest_self_test_build": "4.6-46",
+            "registration_build_observed": True,
+            "latest_registered_client_build": "4.7-47",
+            "latest_registered_client_build_at": "2026-10-01T12:00:00+00:00",
+            "registration_build_contract": REGISTRATION_BUILD_CONTRACT,
+            "self_test_trigger_contract": SELF_TEST_TRIGGER_CONTRACT,
+            "latest_self_test_build": "4.7-47",
             "latest_self_test_sent": True,
             "latest_self_test_receipt_confirmed": True,
             "current_build_physical_e2e_confirmed": True,
             "received_deliveries": 2,
-            "last_client_receipt_at": 1760000000.0,
+            "last_client_receipt_at": 1790856000.0,
         }
         base.update(overrides)
         return base
 
-    def test_exact_current_build_receipt_passes(self):
-        out = verify_push_health(self._payload(), expected_build="4.6-46")
+    def test_exact_current_registered_build_receipt_passes(self):
+        out = verify_push_health(self._payload(), expected_build="4.7-47")
         self.assertTrue(out["physical_e2e_confirmed"])
         self.assertTrue(all(out["checks"].values()))
 
-    def test_old_build_receipt_never_passes_current_build(self):
+    def test_old_self_test_build_receipt_never_passes_current_build(self):
         out = verify_push_health(
-            self._payload(latest_self_test_build="4.5-45"),
-            expected_build="4.6-46",
+            self._payload(latest_self_test_build="4.6-46"),
+            expected_build="4.7-47",
         )
         self.assertFalse(out["physical_e2e_confirmed"])
         self.assertFalse(out["checks"]["latest_self_test_build_matches"])
+        self.assertFalse(out["checks"]["registered_and_self_test_build_match"])
+
+    def test_old_registered_build_never_attests_new_self_test(self):
+        out = verify_push_health(
+            self._payload(latest_registered_client_build="4.6-46"),
+            expected_build="4.7-47",
+        )
+        self.assertFalse(out["physical_e2e_confirmed"])
+        self.assertFalse(out["checks"]["latest_registered_client_build_matches"])
+        self.assertFalse(out["checks"]["registered_and_self_test_build_match"])
+
+    def test_unobserved_registration_fails_closed(self):
+        out = verify_push_health(
+            self._payload(registration_build_observed=False),
+            expected_build="4.7-47",
+        )
+        self.assertFalse(out["physical_e2e_confirmed"])
+        self.assertFalse(out["checks"]["registration_build_observed"])
+
+    def test_registration_contract_drift_fails_closed(self):
+        out = verify_push_health(
+            self._payload(registration_build_contract="legacy-contract"),
+            expected_build="4.7-47",
+        )
+        self.assertFalse(out["physical_e2e_confirmed"])
+        self.assertFalse(out["checks"]["registration_build_contract_matches"])
+
+    def test_self_test_trigger_contract_drift_fails_closed(self):
+        out = verify_push_health(
+            self._payload(self_test_trigger_contract="legacy-trigger"),
+            expected_build="4.7-47",
+        )
+        self.assertFalse(out["physical_e2e_confirmed"])
+        self.assertFalse(out["checks"]["self_test_trigger_contract_matches"])
 
     def test_provider_send_without_receipt_fails(self):
         out = verify_push_health(
@@ -42,9 +83,9 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
                 latest_self_test_receipt_confirmed=False,
                 current_build_physical_e2e_confirmed=False,
                 received_deliveries=1,
-                last_client_receipt_at=1760000000.0,
+                last_client_receipt_at=1790856000.0,
             ),
-            expected_build="4.6-46",
+            expected_build="4.7-47",
         )
         self.assertFalse(out["physical_e2e_confirmed"])
         self.assertTrue(out["checks"]["latest_self_test_sent"])
@@ -57,7 +98,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
                 current_build_physical_e2e_confirmed=False,
                 received_deliveries=9,
             ),
-            expected_build="4.6-46",
+            expected_build="4.7-47",
         )
         self.assertFalse(out["physical_e2e_confirmed"])
         self.assertTrue(out["checks"]["received_delivery_count_positive"])
@@ -65,7 +106,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
     def test_receipt_timestamp_is_required(self):
         out = verify_push_health(
             self._payload(last_client_receipt_at=None),
-            expected_build="4.6-46",
+            expected_build="4.7-47",
         )
         self.assertFalse(out["physical_e2e_confirmed"])
         self.assertFalse(out["checks"]["real_receipt_timestamp_present"])
@@ -79,7 +120,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         ]:
             out = verify_push_health(
                 self._payload(**{field: value}),
-                expected_build="4.6-46",
+                expected_build="4.7-47",
             )
             self.assertFalse(out["physical_e2e_confirmed"])
 
@@ -87,7 +128,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         with self.assertRaises(PhysicalE2EVerificationError):
             verify_push_health(self._payload(), expected_build="")
         with self.assertRaises(PhysicalE2EVerificationError):
-            verify_push_health(self._payload(), expected_build="4.6/46")
+            verify_push_health(self._payload(), expected_build="4.7/47")
 
 
 if __name__ == "__main__":
