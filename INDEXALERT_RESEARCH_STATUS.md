@@ -8,7 +8,7 @@ Promotion authority: **none yet**.
 
 ## Current bottom line
 
-The current price/volume/context stack is **not ready for live short-term investment recommendations**. The process has strict PIT discipline, CA-safe returns, frozen Top3/no-backfill, realistic costs, abstention, anchored purged walk-forward, corrected CPCV and reproducible CI, but the evidence still does not establish a robust, recent, execution-ready edge.
+The current price/volume/context stack is **not ready for live short-term investment recommendations**. PIT discipline, CA-safe returns, frozen Top3/no-backfill, realistic costs, abstention, anchored purged walk-forward, corrected CPCV and reproducible CI are implemented, but robust recent execution-ready edge is not established.
 
 Do **not** relax q25, TopK, costs, recent-evidence requirements, horizon, fill/capacity assumptions or holdout rules merely to create trades.
 
@@ -60,9 +60,7 @@ Action `36637351334`: **CPCV_DOES_NOT_ESTABLISH_ROBUST_EDGE**.
 - H5 median PF 0.381; positive NetEV 43.3%; positive date-cluster LCB 11.7%.
 - H10 median PF 0.745; positive NetEV 50.0%; positive date-cluster LCB 33.3%.
 
-Older 15-combination CPCV and conflicting old-chat recollections are superseded.
-
-Other dispositions remain frozen: Rolling-160 rejected; CA-safe path family rejected; H10 current candidate rejected/do-not-retune; H20 archive only. Stop price-only threshold/feature mining.
+Older 15-combination CPCV and conflicting old-chat recollections are superseded. Rolling-160 and CA-safe path challengers remain rejected; H10 remains do-not-retune; H20 archive only. Stop price-only threshold/feature mining.
 
 ## KRX source gates A-F — frozen and machine-audited
 
@@ -83,116 +81,121 @@ Current states remain:
 Machine-readable public evidence remains version `2026-10-01.v1`, fingerprint:
 `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`.
 
-## KRX readiness, authorization evidence and runtime-consent reality
+## KRX authorization and source-data pipeline
 
-The authorization boundary is now three separate layers:
-1. **credentials** — route-specific secret presence;
-2. **validated authorization evidence** — a non-secret structured record matching the exact KRX family/route/use scope/reference;
-3. **runtime consent** — the exact per-run request sentinel.
+The authorization boundary remains three separate layers:
+1. route-specific credentials;
+2. matching validated non-secret structured authorization evidence;
+3. exact per-run consent for one tiny authenticated request.
 
-`research_v1_krx_authorization_evidence.py` is the structured evidence validator. An opaque `KRX_AUTH_EVIDENCE_REF` by itself is no longer sufficient. The matching non-secret `KRX_AUTH_EVIDENCE_JSON` record must validate issuer (`KRX`), source family, access route, intended-use scope, approval state, evidence-document SHA-256, captured timestamp and any declared validity window. Unknown fields and secret-like values fail closed. Even a valid record is only sufficient for tiny-probe preflight metadata and caps Gate-A evidence at `PARTIAL`; it grants no bulk-history, performance-test, holdout, promotion or live authority.
-
-`research_v1_krx_auth_readiness.py` is the **network-free configuration readiness** layer. It checks route-specific credential presence plus the evidence reference and matching structured evidence record, forcibly disables request consent even if supplied, emits no secret values or raw evidence JSON, and always keeps `request_attempt_authorized=false`, `authenticated_request_attempted=false`, `network_request_attempted=false`.
-
-The manual `.github/workflows/indexalert-research-v1-krx-auth-readiness.yml` workflow has no push trigger, installs no KRX client and invokes no KRX source probe. It can check either `KRX_INVESTOR_FLOW` or `KRX_SECURITY_STATUS`. A ready result is configuration evidence only; it is not Gate-A access evidence.
-
-`research_v1_krx_auth_preflight.py` then freezes **credentials are not authorization, an opaque reference is not validated evidence, and authorization metadata is not runtime consent**. For one Data Marketplace tiny authenticated request, all of these are required:
-- `KRX_ID` secret;
-- `KRX_PW` secret;
-- non-secret `KRX_AUTH_EVIDENCE_REF`;
-- matching validated structured `KRX_AUTH_EVIDENCE_JSON` record;
-- exact per-run sentinel `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST`.
-
-Generic values such as `true`, `1` or `yes` are rejected. OpenAPI `KRX_OPENAPI_AUTH_KEY` is a separate route and additionally requires exact approved service mapping and matching structured approval evidence; it cannot substitute for Data Marketplace credentials.
-
-Workflow defense-in-depth is frozen:
-- push runs are dry-run only;
-- push dry-run steps receive empty KRX credential/reference/evidence-JSON/consent environment values;
-- authenticated steps are skipped on push;
-- authenticated tiny probes are eligible only on explicit `workflow_dispatch` with `allow_authenticated_request=true`;
-- only that manual step receives Data Marketplace credentials, non-secret approval reference/JSON and exact consent sentinel;
-- the Data Marketplace probe workflow does not inject `KRX_OPENAPI_AUTH_KEY` into the authenticated step;
-- `test_research_v1_krx_probe_workflow_safety.py` regression-tests both probe workflows and the readiness workflow.
-
-Latest workflow/integrity evidence:
-- **Status `36813950791`** — success; push-safe dry-run success; authenticated step skipped.
-- **Investor `36813973236`** — success; push-safe dry-run success; authenticated step skipped.
-- **Integrity `36814088731`** — explicit consent contract/full KRX suite: success.
-- **Integrity `36814594395`** — network-free readiness + workflow-safety tests/full KRX suite: success.
-- **Integrity `36816437900`** — structured authorization-evidence workflow-safety integration/full KRX suite: success.
-- **Integrity `36816687199`** — structured authorization-evidence contract/audit synchronization/full KRX suite: success.
-
-No authenticated KRX request has yet been demonstrated; Gate A remains BLOCKED.
-
-## KRX internal source-evidence pipeline — implemented
-
-Canonical files include:
-- `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`
-- `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`
-- `research_v1_krx_source_gates.py`
-- `research_v1_krx_public_evidence.py`
+Canonical components include:
 - `research_v1_krx_authorization_evidence.py`
-- `research_v1_krx_auth_preflight.py`
 - `research_v1_krx_auth_readiness.py`
+- `research_v1_krx_auth_preflight.py`
 - `research_v1_krx_status_source_probe.py`
 - `research_v1_krx_investor_flow_probe.py`
+- `research_v1_krx_acquisition_receipt.py`
+- `research_v1_krx_acquisition_batch.py`
 - `research_v1_krx_investor_flow_lineage.py`
 - `research_v1_krx_investor_flow_coverage.py`
 - `research_v1_krx_status_coverage.py`
 - `research_v1_krx_status_event_integrity.py`
-- `research_v1_krx_acquisition_receipt.py`
-- `research_v1_krx_acquisition_batch.py`
 - `research_v1_krx_source_data_admission.py`
-- corresponding fail-closed tests in CI.
 
-Frozen future flow:
+Frozen future source flow:
 `structured authorization-evidence validation -> network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
-Key properties:
-- investor lineage requires timezone-aware `event_time <= published_at <= available_at <= ingested_at`, final day-D publication >=20:00 KST and decision-time eligibility only after availability;
-- investor/status coverage compares only independently attested expected keys and never invents calendar/universe/implicit zero rows;
-- status-event integrity rejects impossible cleanup/delisting/delisted-price chronology and never invents fill/recovery returns;
-- acquisition receipts bind request/schema/content/route/dataset/client/approval/public-contract fingerprints without storing credential values;
-- batch provenance rejects tampered/duplicate receipts and silent route/dataset/use-scope/approval/client/schema drift;
-- source-data admission requires closed A-F + valid batch + current public evidence + valid PIT + exact coverage + matching family/use scope.
+Push workflows remain dry-run only. No authenticated KRX request has yet been demonstrated; Gate A remains BLOCKED. Real route credentials, genuine approval evidence, full history, stable IDs, record-level PIT evidence and exact use rights remain external blockers.
 
-Even if source-data admission becomes structurally true, it sets only `eligible_for_experiment_registry_review=true`; it deliberately keeps performance testing, sealed holdout, promotion and live-trading authority false. A separate Ledger/preregistration decision is mandatory.
+Latest source-governance reference: KRX integrity Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission.
 
-## External source evidence still missing
+## Exact KRX status economics — internal audit implemented, real evidence missing
 
-Internal code cannot fabricate:
-1. approved exact KRX historical route/product;
-2. route-specific credentials plus a real non-secret authorization-evidence reference;
-3. a matching genuine structured authorization-evidence record, including an attested approval state/document SHA-256/timestamps for the exact family/route/use scope;
-4. a successful network-free readiness result after those are configured;
-5. one explicitly consented tiny authenticated probe proving the approved route without exposing credentials;
-6. complete historical status/investor-flow data;
-7. independently attested expected scope and stable issue mapping;
-8. real record-level PIT publication/availability timestamps;
-9. exact intended-use rights for the selected route;
-10. exact halt/cleanup/delisting execution/recovery economics.
+Final Judge requires exact halt/delisting economics. Structural status-event consistency or daily price history is not sufficient.
 
-Until real data passes the pipeline, no investor-flow performance experiment is authorized and Final Judge status remains incomplete.
+Canonical contract: `INDEXALERT_KRX_STATUS_ECONOMICS_CONTRACT.md`.  
+Executable audit: `research_v1_krx_status_economics.py`.
 
-## Execution evidence state
+The audit now requires:
+- independently attested complete affected-position scope;
+- exact position-ID coverage;
+- `affected_qty = verified_exit_fill_qty + verified_recovery_qty` for every affected position;
+- no unresolved/over-resolved quantity;
+- actual accepted broker execution evidence for filled quantity;
+- accepted official/broker cash-recovery evidence for recovery quantity, including verified zero recovery when applicable;
+- explicit fees/taxes;
+- timezone-aware economic availability;
+- matching source-contract fingerprint.
 
-Evidence tiers remain frozen:
+It explicitly rejects backtest/synthetic/modelled fills, market-open assumptions, Shadow/Paper fill substitution, daily OHLC and MDCSTAT239 daily price rows as proof that an IndexAlert order filled.
+
+Even `exact_status_economics_ready=true` is only one Final-Judge input and does not itself set Judge readiness, promotion, holdout or live authority.
+
+Implementation tests passed in Action `36834108231`. Contract drift initially failed in `36834285722` only because human-readable wording omitted a canonical forbidden-source identifier; the document was corrected without changing policy. Action `36834718544` then succeeded.
+
+**Project-level exact halt/cleanup/delisting economics remains OPEN** because no real complete affected-position economics dataset has been supplied.
+
+## Execution evidence — structural LIVE evidence is not empirical sufficiency
+
+Canonical contract: `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md`.
+
+Evidence tiers remain:
 1. `PROSPECTIVE_SHADOW_DECISION_LOG` — decisions only, no broker fills.
 2. `PROSPECTIVE_PAPER_EXECUTION_LOG` — paper/simulation plumbing evidence, not real fill quality.
-3. `PROSPECTIVE_LIVE_EXECUTION_LOG` — real-account executions; only tier eligible for empirical live fill/slippage/partial-fill/latency/markout/capacity evidence.
+3. `PROSPECTIVE_LIVE_EXECUTION_LOG` — real-account executions; the only tier eligible to contribute raw empirical live fill/slippage/partial-fill/latency/markout/capacity evidence.
 
-Research execution-evidence Action `36668905306` passed. Server tests `36669071810` passed. Railway production runs server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` succeeded with `/health` 200. This is operational evidence only and does not authorize trading.
+`research_v1_execution_evidence.py` now explicitly separates:
+- `live_structural_execution_evidence_present` — at least structurally valid real-account execution evidence exists;
+from
+- empirical execution sufficiency — whether the live evidence is sufficiently broad/large/representative for the promotion path.
+
+One or several LIVE rows can **never automatically** close the empirical blocker. Until a separately frozen protocol is evaluated:
+- `live_empirical_execution_evidence_ready=false`;
+- `empirical_execution_sufficiency_assessed=false`;
+- `empirical_execution_blocker_closed=false`;
+- `promotion_ready=false`.
+
+Execution integrity Action `36834616144` succeeded after freezing this separation.
+
+## Execution-sufficiency preregistration — validator implemented, project thresholds not yet frozen
+
+`research_v1_execution_sufficiency_protocol.py` prevents post-hoc execution-threshold selection. It validates a future protocol's explicit criteria, document fingerprint and required dimensions, and requires `frozen_at` to be **strictly earlier** than the first LIVE recommendation that protocol will judge.
+
+It requires future criteria to explicitly cover live observation count, distinct dates, filled/no-fill/partial-fill evidence, 5m/30m/close markouts, slippage, latency, capacity and tail evidence. Unit-test threshold numbers are test fixtures only and are **not IndexAlert promotion thresholds**.
+
+A structurally valid protocol still keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. The actual project sufficiency criteria must be separately decided and frozen before the LIVE observations they will evaluate.
+
+Execution preregistration Action `36835013828` succeeded. Contract-drift semantics are additionally guarded in CI.
+
+## External evidence still missing
+
+Internal code cannot fabricate:
+1. approved exact KRX historical route/product and secure route credentials;
+2. genuine structured KRX authorization evidence and a successful network-free readiness result;
+3. one separately consented authenticated tiny KRX probe;
+4. complete official historical status/investor-flow data, stable IDs and attested expected scope;
+5. real record-level PIT publication/availability lineage;
+6. exact intended-use rights for the final source route;
+7. real complete affected-position halt/cleanup/delisting fill/recovery economics;
+8. genuine staged LIVE execution observations across the future frozen sufficiency protocol;
+9. an independent later execution-sufficiency assessment against that preregistered protocol.
+
+## Operational evidence state
+
+Research execution-evidence plumbing and server tests have passed previously. Railway production `indexalert-runtime` runs server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` had `/health` 200. This is operational evidence only and does not authorize trading.
+
+Real-account ordering remains disabled.
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** approved route/product, secure route credentials, opaque approval reference and matching genuine structured authorization-evidence record remain external requirements; after configuration, run network-free readiness first, then a separately consented manual tiny probe.
-2. **Security/status economics:** full stable identity/status history and exact halt/cleanup/delisting economic joins.
-3. **Investor flow:** full real official history passing provenance, PIT, coverage, A-F and source-data admission, then separate preregistration before any performance test.
-4. **Execution:** empirical fill ratio/time/price, partial fills, markouts, latency/expiry and real capacity.
+1. **KRX authorization/data:** approved route/product, credentials/structured approval evidence, authenticated source proof and full official history.
+2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the new exact audit; the internal auditor alone does not close the blocker.
+3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
+4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.
 5. **Research governance:** no rejected-candidate revival; maintain Ledger/multiple-testing discipline.
 6. **One-shot sealed holdout:** untouched until source/execution/code/protocol freeze; then Shadow S1 -> Fresh Confirmation S2.
 7. **Physical notification E2E:** one current-build Android receipt still required.
-8. **Live ordering:** disabled until frozen promotion/safety gates and explicit user activation are satisfied.
+8. **Live ordering:** disabled until all frozen promotion/safety gates and explicit user activation requirements are met.
 
 ## Promotion rule
 
