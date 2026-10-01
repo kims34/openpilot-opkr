@@ -101,7 +101,8 @@ object PushBridge {
             c.doOutput = true
             c.setRequestProperty("Content-Type", "application/json")
             val body = JSONObject().put("token", token).put("platform", "android")
-                .put("protocol", 2).put("enabled_levels", enabled).toString()
+                .put("protocol", 2).put("enabled_levels", enabled)
+                .put("client_build", clientBuild()).toString()
             c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val reply = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
             reply.optBoolean("ok") && reply.optBoolean("registered") &&
@@ -111,15 +112,23 @@ object PushBridge {
             // Store only a one-way hash for delivery acknowledgements. The raw
             // FCM token remains confined to Firebase registration/self-test calls.
             prefs.edit().putString("push_token_hash", sha256(token)).apply()
-            scheduleSelfTest(ctx)
+
+            // Bootstrap the self-test on this same confirmed registration path.
+            // WorkManager remains the retry/poll mechanism, but a broken enqueue
+            // can no longer hide whether this installed build reached the API.
+            when (requestSelfTest(ctx, token)) {
+                SelfTestResult.SUCCESS -> prefs.edit()
+                    .putBoolean("push_self_test_done_${clientBuild()}", true).apply()
+                SelfTestResult.RETRY, SelfTestResult.DROP -> scheduleSelfTest(ctx)
+            }
         }
         ready
     }.getOrDefault(false)
 
-    private fun requestSelfTest(ctx: Context): SelfTestResult {
+    private fun requestSelfTest(ctx: Context, knownToken: String? = null): SelfTestResult {
         if (!configured() || !notificationsEnabled(ctx)) return SelfTestResult.DROP
         return try {
-            val token = Tasks.await(FirebaseMessaging.getInstance().token, 15, TimeUnit.SECONDS)
+            val token = knownToken ?: Tasks.await(FirebaseMessaging.getInstance().token, 15, TimeUnit.SECONDS)
             val c = URL(BuildConfig.INDEXALERT_BACKEND_URL.trimEnd('/') + "/push-self-test")
                 .openConnection() as HttpURLConnection
             try {
