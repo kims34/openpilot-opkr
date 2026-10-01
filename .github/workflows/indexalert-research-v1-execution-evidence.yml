@@ -10,10 +10,17 @@ on:
       - 'test_research_v1_execution_sufficiency_protocol.py'
       - 'research_v1_execution_sufficiency_assessment.py'
       - 'test_research_v1_execution_sufficiency_assessment.py'
+      - 'research_v1_execution_sufficiency_cli.py'
+      - 'test_research_v1_execution_sufficiency_cli.py'
       - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md'
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json'
+      - 'INDEXALERT_MASTER_SPEC.md'
+      - 'INDEXALERT_RESEARCH_STATUS.md'
+      - 'INDEXALERT_RESEARCH_LEDGER.md'
+      - 'INDEXALERT_CONTINUITY_SNAPSHOT.md'
       - 'test_research_v1_execution_evidence_contract.py'
+      - 'test_indexalert_execution_sufficiency_docs.py'
       - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
   workflow_dispatch:
 
@@ -33,7 +40,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
-      - name: Compile and test fail-closed empirical execution evidence schema
+      - name: Compile and test fail-closed empirical execution evidence stack
         run: |
-          python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py research_v1_execution_sufficiency_assessment.py
-          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_evidence_contract.py
+          python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py research_v1_execution_sufficiency_assessment.py research_v1_execution_sufficiency_cli.py
+          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_sufficiency_cli.py test_research_v1_execution_evidence_contract.py test_indexalert_execution_sufficiency_docs.py
