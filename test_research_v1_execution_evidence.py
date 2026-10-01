@@ -80,18 +80,33 @@ class TestExecutionEvidence(unittest.TestCase):
         self.assertEqual(x["execution_tier"].tolist(), ["LIVE", "PAPER", "PAPER"])
         self.assertAlmostEqual(float(x.loc[1, "fill_ratio"]), 0.25)
 
-    def test_audit_separates_paper_and_live_and_never_promotes(self):
+    def test_audit_separates_live_structure_from_empirical_sufficiency(self):
         a = audit_execution_evidence(self._rows())
         self.assertEqual(a["observations"], 3)
         self.assertEqual(a["paper_observations"], 2)
         self.assertEqual(a["live_observations"], 1)
+        self.assertEqual(a["live_filled_observations"], 1)
+        self.assertEqual(a["live_no_fill_observations"], 0)
+        self.assertEqual(a["live_partial_fill_observations"], 0)
+        self.assertEqual(a["live_full_fill_observations"], 1)
         self.assertEqual(a["no_fill_observations"], 1)
         self.assertEqual(a["partial_fill_observations"], 1)
         self.assertTrue(a["contains_paper_execution_evidence"])
         self.assertTrue(a["contains_live_execution_evidence"])
         self.assertFalse(a["live_execution_source_only"])
         self.assertTrue(a["structural_execution_evidence_ready"])
-        self.assertTrue(a["live_empirical_execution_evidence_ready"])
+        self.assertTrue(a["live_structural_execution_evidence_present"])
+        self.assertFalse(a["live_empirical_execution_evidence_ready"])
+        self.assertFalse(a["empirical_execution_sufficiency_assessed"])
+        self.assertFalse(a["empirical_execution_blocker_closed"])
+        self.assertFalse(a["promotion_ready"])
+
+    def test_one_or_more_live_rows_never_auto_close_empirical_blocker(self):
+        rows = self._rows().iloc[[0]].copy()
+        a = audit_execution_evidence(rows)
+        self.assertTrue(a["live_structural_execution_evidence_present"])
+        self.assertFalse(a["live_empirical_execution_evidence_ready"])
+        self.assertFalse(a["empirical_execution_blocker_closed"])
         self.assertFalse(a["promotion_ready"])
 
     def test_paper_only_is_not_live_empirical_evidence(self):
@@ -100,8 +115,20 @@ class TestExecutionEvidence(unittest.TestCase):
         a = audit_execution_evidence(rows)
         self.assertTrue(a["structural_execution_evidence_ready"])
         self.assertFalse(a["contains_live_execution_evidence"])
+        self.assertFalse(a["live_structural_execution_evidence_present"])
         self.assertFalse(a["live_empirical_execution_evidence_ready"])
+        self.assertFalse(a["empirical_execution_blocker_closed"])
         self.assertFalse(a["promotion_ready"])
+
+    def test_live_zero_fill_is_preserved_as_live_empirical_observation_without_closure(self):
+        rows = self._rows().iloc[[2]].copy()
+        rows["source"] = LIVE_EXECUTION_SOURCE
+        a = audit_execution_evidence(rows)
+        self.assertEqual(a["live_observations"], 1)
+        self.assertEqual(a["live_no_fill_observations"], 1)
+        self.assertFalse(a["live_structural_execution_evidence_present"])
+        self.assertFalse(a["live_empirical_execution_evidence_ready"])
+        self.assertFalse(a["empirical_execution_blocker_closed"])
 
     def test_shadow_decision_source_rejected_from_fill_schema(self):
         rows = self._rows()
