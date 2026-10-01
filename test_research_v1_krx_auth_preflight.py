@@ -107,17 +107,24 @@ def test_secret_like_authorization_reference_is_rejected(reference):
 
 
 def test_individual_credential_presence_is_reported_without_values():
+    private_id = "PRIVATE_KRX_USER_7XQ9"
+    private_openapi_key = "PRIVATE_KRX_OPENAPI_9YP4"
     out = evaluate_auth_preflight(
         source_family="KRX_INVESTOR_FLOW",
         access_route=DATA_MARKETPLACE_ROUTE,
-        environment={"KRX_ID": "id", "KRX_PW": None, "KRX_OPENAPI_AUTH_KEY": "key"},
+        environment={
+            "KRX_ID": private_id,
+            "KRX_PW": None,
+            "KRX_OPENAPI_AUTH_KEY": private_openapi_key,
+        },
         authorization_evidence_reference="approval-ref-004",
     )
     assert out["krx_id_present"] is True
     assert out["krx_pw_present"] is False
     assert out["openapi_auth_key_present"] is True
-    assert "id" not in str(out)
-    assert "key" not in str(out)
+    rendered = str(out)
+    assert private_id not in rendered
+    assert private_openapi_key not in rendered
 
 
 def test_unknown_family_or_route_fails_closed():
