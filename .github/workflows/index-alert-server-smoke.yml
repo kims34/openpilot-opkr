@@ -17,6 +17,8 @@ on:
       - 'test_push_self_test.py'
       - 'test_push_health.py'
       - 'market_basis.py'
+      - 'corporate_action_registry.py'
+      - 'test_corporate_action_registry.py'
       - 'fx_basis.py'
       - 'laggards.py'
       - 'test_market_basis.py'
@@ -46,8 +48,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Syntax and regression checks
         run: |
-          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v30.py production_v31.py execution_evidence_ledger.py push_receipts.py push_self_test.py push_health.py market_basis.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
-          python -m unittest -v test_push_receipts.py test_push_self_test.py test_push_health.py test_market_basis.py test_fx_basis.py test_laggards_direction.py
+          python -m py_compile monitor.py production.py production_fixed.py production_v17.py production_v30.py production_v31.py execution_evidence_ledger.py push_receipts.py push_self_test.py push_health.py market_basis.py corporate_action_registry.py fx_basis.py laggards.py next_day_probability.py next_day_probability_v31.py one_month_probability.py one_month_distribution.py probability_shadow.py probability_milestone.py
+          python -m unittest -v test_push_receipts.py test_push_self_test.py test_push_health.py test_market_basis.py test_corporate_action_registry.py test_fx_basis.py test_laggards_direction.py
       - name: Wait for production deployment and verify API
         run: |
           set -u -o pipefail
@@ -116,6 +118,20 @@ jobs:
 
           for universe, section in (movers.get('sections') or {}).items():
               direction=section.get('direction')
+              all_rows=[]
+              for key in ('items','decliners','gainers'):
+                  all_rows.extend(section.get(key) or [])
+              symbols={str(item.get('symbol') or '') for item in all_rows}
+              # The SCHD holdings parser once admitted USD (a leveraged ETF)
+              # as if it were a stock constituent. The production feed must
+              # remain equity-only after the fail-closed instrument gate.
+              if universe == 'schd':
+                  assert 'USD' not in symbols, section
+              # On the documented 2026-10-01 CTVA/Vylor separation date raw
+              # CTVA previous-close math is non-comparable and must be absent
+              # from mover ranking rather than shown as a fake ~-76% decline.
+              if universe == 'sp500':
+                  assert 'CTVA' not in symbols, section
               for item in section.get('items') or []:
                   pct=float(item.get('day_change_percent'))
                   if direction == 'down':
