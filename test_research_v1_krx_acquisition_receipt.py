@@ -8,12 +8,14 @@ from research_v1_krx_acquisition_receipt import (
 from research_v1_krx_public_evidence import public_evidence_fingerprint_sha256
 
 
+AUTH_EVIDENCE_FP = "c" * 64
 BASE = dict(
     source_family="KRX_INVESTOR_FLOW",
     intended_use_scope="INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION",
     access_route="DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
     dataset_identifier="MDCSTAT02303",
     authorization_evidence_reference="approval-ref-2026-10-01-001",
+    authorization_evidence_fingerprint_sha256=AUTH_EVIDENCE_FP,
     client_revision="e6ebac9b71482db127348d8a08ebc6743aa3b50e",
     retrieved_at="2026-10-01T12:00:00+09:00",
     request_metadata={
@@ -38,6 +40,8 @@ def _frame(value=100):
 def test_receipt_is_deterministic_and_never_authorizes_promotion():
     a = build_acquisition_receipt(**BASE, response_frame=_frame())
     b = build_acquisition_receipt(**BASE, response_frame=_frame())
+    assert a["receipt_version"] == "2026-10-01.v2"
+    assert a["authorization_evidence_fingerprint_sha256"] == AUTH_EVIDENCE_FP
     assert a["receipt_fingerprint_sha256"] == b["receipt_fingerprint_sha256"]
     assert a["response_payload_sha256"] == b["response_payload_sha256"]
     assert a["response_rows"] == 2
@@ -45,6 +49,22 @@ def test_receipt_is_deterministic_and_never_authorizes_promotion():
     assert a["alpha_or_final_judge_promotion_authorized"] is False
     assert a["sealed_holdout_authorized"] is False
     assert a["live_trading_authorized"] is False
+
+
+def test_authorization_evidence_fingerprint_is_required_and_content_sensitive():
+    args = dict(BASE)
+    args["authorization_evidence_fingerprint_sha256"] = "d" * 64
+    a = build_acquisition_receipt(**BASE, response_frame=_frame())
+    b = build_acquisition_receipt(**args, response_frame=_frame())
+    assert a["authorization_evidence_fingerprint_sha256"] != b[
+        "authorization_evidence_fingerprint_sha256"
+    ]
+    assert a["receipt_fingerprint_sha256"] != b["receipt_fingerprint_sha256"]
+
+    bad = dict(BASE)
+    bad["authorization_evidence_fingerprint_sha256"] = "not-a-sha"
+    with pytest.raises(KRXAcquisitionReceiptError, match="authorization_evidence_fingerprint_sha256"):
+        build_acquisition_receipt(**bad, response_frame=_frame())
 
 
 def test_payload_change_changes_payload_and_receipt_fingerprint():
