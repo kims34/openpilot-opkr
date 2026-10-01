@@ -5,14 +5,14 @@ Branch of record: `index-alert-research-v1`
 
 ## 0. Authority and continuation rule
 
-This is a compact handoff, not a substitute for the canonical authorities. Authority order:
-1. `INDEXALERT_MASTER_SPEC.md` — frozen statistical/validation contract.
-2. `INDEXALERT_RESEARCH_LEDGER.md` — experiments, outcomes, dispositions and negative evidence.
-3. Current GitHub code + reproducible Actions/logs — implementation/execution evidence.
-4. `INDEXALERT_RESEARCH_STATUS.md` — current research summary.
-5. Source/execution contracts and audits.
-6. This snapshot — continuation registry only.
-7. Older chats/notes — historical context only.
+Authority order:
+1. `INDEXALERT_MASTER_SPEC.md`
+2. `INDEXALERT_RESEARCH_LEDGER.md`
+3. Current GitHub code + reproducible Actions/logs
+4. `INDEXALERT_RESEARCH_STATUS.md`
+5. Current source/execution contracts and audits
+6. This snapshot
+7. Older chats/notes
 
 If anything conflicts, current reproducible GitHub evidence wins. Re-fetch branch HEAD and relevant Actions before every continuation.
 
@@ -26,20 +26,15 @@ If anything conflicts, current reproducible GitHub evidence wins. Re-fetch branc
 - Original decision-time Top3 frozen; no rank-4+ backfill.
 - 0..3 trades and `NO_TRADE` valid.
 - Never relax q25, TopK, costs, recency, execution assumptions or horizon merely to manufacture trades.
-- Sealed holdout remains one-shot and untouched. After a valid holdout require trading-policy Shadow S1 then frozen Fresh Confirmation S2.
+- Sealed holdout remains one-shot and untouched. After a valid holdout require Shadow S1 then frozen Fresh Confirmation S2.
 
-Current H5 developmental reference remains non-promotable: 278 entries / 137 trade days, mean NetReturn ~+1.150%, PF ~1.546, date-cluster lower bound below zero, 2x-cost mean ~+0.787% / PF ~1.344, MDD ~-24.39%, no admissions in 2022-2026/latest 504 OOS, remove-best-5 economics negative.
+H5 remains developmental/non-promotable: 278 entries / 137 trade days, mean NetReturn ~+1.150%, PF ~1.546, cluster lower bound below zero, 2x-cost mean ~+0.787% / PF ~1.344, MDD ~-24.39%, no admissions in 2022-2026/latest 504 OOS, remove-best-5 economics negative.
 
-Authoritative negative evidence remains unchanged:
-- corrected 60-case CPCV Action `36637351334`: H5 median PF 0.381 / positive NetEV 43.3% / positive cluster LCB 11.7%; H10 0.745 / 50.0% / 33.3%; robust edge not established;
-- Uncertainty Audit `36637333875`: `KEEP_ABSTENTION`;
-- Policy Calibration `36643183157`: structural alignment only, no performance change;
-- Rolling-160 and CA-safe path challengers rejected;
-- H10 do-not-retune; H20 archive only.
+Negative evidence remains frozen: corrected CPCV Action `36637351334`, Uncertainty Audit `36637333875` = `KEEP_ABSTENTION`, Policy Calibration `36643183157` = structural alignment only; Rolling-160/CA-safe challengers rejected; H10 do-not-retune; H20 archive.
 
-## 2. KRX source governance — internally hardened, externally blocked
+## 2. KRX source governance — internal pipeline DONE, external evidence BLOCKED
 
-Frozen A-F gates:
+A-F gates remain:
 - A `AUTHORIZED_OFFICIAL_ROUTE`
 - B `EXACT_DATASET_SCHEMA_MAPPING`
 - C `HISTORICAL_COVERAGE_SECURITY_MAPPING`
@@ -47,68 +42,54 @@ Frozen A-F gates:
 - E `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED`
 - F `INTENDED_USE_RIGHTS`
 
-Current states remain:
+Current states:
 - Security/status: A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
 - Investor flow: A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; feature-performance testing blocked.
 
-Even all six PASS closes only the declared source contract; it never by itself authorizes Alpha/Final-Judge promotion, sealed holdout or live trading.
+Even all six PASS closes only the declared source contract; it does not authorize promotion, sealed holdout or live trading.
 
-Public-evidence manifest remains version `2026-10-01.v1`, fingerprint `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`.
+Public-evidence fingerprint remains `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b` (`2026-10-01.v1`).
 
-Authorization boundary is frozen as:
+Authorization boundary:
 `route credentials -> validated structured non-secret authorization evidence -> exact per-run tiny-request consent`.
 
-An opaque approval reference alone is not validated evidence. Push probe workflows are dry-run only. Network-free readiness forcibly disables request consent. No authenticated KRX request has yet been demonstrated; Gate A remains BLOCKED.
+Canonical structured-evidence variable is `KRX_AUTH_EVIDENCE_JSON`; canonical explicit-consent variable is `KRX_EXPLICIT_PROBE_CONSENT`. The approval reference alone is not validated evidence. Network-free readiness always clears consent and performs no KRX request. Push probe workflows are dry-run only. **Gate A remains BLOCKED** because no authenticated KRX request has yet been demonstrated.
 
-Latest broad KRX integrity reference before the status-economics work: Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission.
+Internal safe source sequence:
+`structured authorization evidence -> network-free readiness -> explicit manual consent -> auth preflight -> tiny authenticated acquisition -> receipt -> batch -> PIT lineage -> exact scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
-## 3. KRX source-data pipeline — DONE internally
+Source-data admission only permits experiment-registry review; performance testing, holdout, promotion and live authority stay false.
 
-Safe future sequence:
-`structured authorization evidence -> network-free readiness -> explicit manual consent -> auth preflight -> tiny authenticated acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
+Latest broad KRX source-governance reference: Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission.
 
-Canonical implementations include:
-- `research_v1_krx_authorization_evidence.py`
-- `research_v1_krx_auth_readiness.py`
-- `research_v1_krx_auth_preflight.py`
-- status/investor probes and workflow-safety tests
-- `research_v1_krx_acquisition_receipt.py`
-- `research_v1_krx_acquisition_batch.py`
-- `research_v1_krx_investor_flow_lineage.py`
-- investor/status exact-coverage auditors
-- `research_v1_krx_status_event_integrity.py`
-- `research_v1_krx_source_data_admission.py`
+External KRX blockers remain: approved exact route/product, credentials and genuine approval evidence, authenticated route proof, full official history/stable IDs, independently attested expected scope, record-level PIT lineage and exact use rights.
 
-Source-data admission only permits experiment-registry review; performance testing, holdout, promotion and live authority remain false.
+## 3. Exact KRX status economics — internal auditor DONE, real evidence BLOCKED
 
-External source blockers remain: approved exact route/product, secure credentials and genuine approval evidence, authenticated access proof, complete full history/stable IDs, attested expected scope, record-level PIT lineage and exact intended-use rights.
+Contract: `INDEXALERT_KRX_STATUS_ECONOMICS_CONTRACT.md`.  
+Audit: `research_v1_krx_status_economics.py`.
 
-## 4. Exact KRX halt/cleanup/delisting economics — auditor DONE, evidence BLOCKED
-
-Canonical contract: `INDEXALERT_KRX_STATUS_ECONOMICS_CONTRACT.md`.  
-Executable audit: `research_v1_krx_status_economics.py`.
-
-Final Judge exact economics now requires an independently attested complete affected-position scope and exact quantity conservation:
+Required for every independently attested affected position:
 `affected_qty = verified_exit_fill_qty + verified_recovery_qty`.
 
-Exact filled quantity must be backed by accepted actual execution evidence; exact recovery quantity must be backed by accepted official/issuer/broker cash-distribution evidence. Missing/over-resolved quantity, unsupported source, naive/missing availability timestamp, source-contract mismatch or implicit zero recovery fails closed.
+Exact filled quantity needs accepted actual execution evidence; exact recovery quantity needs accepted official/issuer/broker cash-distribution evidence. Missing/over-resolved quantity, unsupported evidence, naive/missing economic availability or contract mismatch fails closed.
 
-Daily OHLC, MDCSTAT239 daily prices, backtest/synthetic/modelled fills, market-open assumptions, Shadow or Paper fills cannot prove exact realized economics.
+Backtest/synthetic/modelled fills, market-open assumptions, Shadow/Paper fills, daily OHLC and MDCSTAT239 daily prices cannot prove an IndexAlert fill.
 
-Internal tests passed Action `36834108231`. Contract drift run `36834285722` exposed a documentation identifier mismatch only; canonical identifiers were added without relaxing policy. Action `36834718544` then succeeded.
+Action `36834108231` passed implementation tests. Documentation drift run `36834285722` failed only on a canonical identifier omission; no policy changed. After naming canonical forbidden identifiers, Action `36834718544` succeeded.
 
-**Project-level exact status economics remains OPEN** because no real complete affected-position economics dataset has been supplied. The auditor itself is not evidence that historical economics are complete.
+The project-level exact halt/cleanup/delisting economics blocker remains OPEN because no real complete affected-position economics dataset exists yet.
 
-## 5. Execution evidence — LIVE structure separated from empirical sufficiency
+## 4. Execution evidence — LIVE structure != empirical sufficiency
 
-Canonical contract: `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md`.
+Contract: `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md`.
 
-Evidence tiers:
-- `PROSPECTIVE_SHADOW_DECISION_LOG`: decision intent only, no fills.
-- `PROSPECTIVE_PAPER_EXECUTION_LOG`: paper/simulation plumbing evidence, not real fill quality.
-- `PROSPECTIVE_LIVE_EXECUTION_LOG`: real-account observations; the only tier eligible to contribute raw live empirical execution evidence.
+Tiers:
+- `PROSPECTIVE_SHADOW_DECISION_LOG`: decisions/intents only.
+- `PROSPECTIVE_PAPER_EXECUTION_LOG`: paper/simulation plumbing, not real fill quality.
+- `PROSPECTIVE_LIVE_EXECUTION_LOG`: real-account observations; only tier eligible to contribute raw live execution evidence.
 
-`research_v1_execution_evidence.py` now separates `live_structural_execution_evidence_present` from empirical sufficiency. One or several structurally valid LIVE rows do not close the empirical blocker.
+`research_v1_execution_evidence.py` now separates `live_structural_execution_evidence_present` from empirical sufficiency. One/few LIVE rows never close the blocker.
 
 Until a separately frozen protocol is evaluated:
 - `live_empirical_execution_evidence_ready=false`
@@ -116,61 +97,59 @@ Until a separately frozen protocol is evaluated:
 - `empirical_execution_blocker_closed=false`
 - `promotion_ready=false`
 
-Execution evidence Action `36834616144` succeeded with this boundary.
+Execution integrity Action `36834616144` succeeded with this boundary.
 
-## 6. Execution-sufficiency preregistration — validator DONE, project criteria NOT YET FROZEN
+## 5. Execution-sufficiency preregistration — validator DONE, project criteria NOT FROZEN
 
-`research_v1_execution_sufficiency_protocol.py` is the preregistration structural validator.
+`research_v1_execution_sufficiency_protocol.py` validates future criteria without choosing them. It requires explicit observation/date/fill/no-fill/partial-fill criteria, 5m/30m/close markouts, slippage, latency, capacity and tail evidence, a governing-document SHA256, and a timezone-aware freeze time.
 
-It does not choose IndexAlert thresholds. It requires any future protocol to explicitly state its counts/evidence dimensions, fingerprint the governing document and freeze `frozen_at` strictly before the first LIVE recommendation that protocol will judge. A same-time or later freeze is rejected as post-hoc.
+If the protocol will judge existing LIVE observations, `frozen_at` must be strictly earlier than the first LIVE recommendation; same-time or later is rejected as post-hoc. Unit-test threshold values are fixtures only, not IndexAlert policy.
 
-Required dimensions include live observation count, distinct dates, filled/no-fill/partial-fill observations, 5m/30m/close markouts, slippage, latency, capacity and tail evidence. Numeric values used in unit tests are illustrative fixtures only, not promotion thresholds.
+Protocol validity alone keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. A later independent evaluator must judge genuine staged LIVE evidence against a properly frozen protocol.
 
-Protocol validity itself keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. A later independent evaluator must assess genuine staged LIVE evidence against a properly preregistered protocol.
+Execution preregistration Action `36835013828` succeeded; contract-drift semantics are CI-guarded.
 
-Execution preregistration Action `36835013828` succeeded. Contract-drift semantics are guarded in CI.
+## 6. Broker/server/Android boundary
 
-## 7. Broker/server/Android boundary
-
-Required execution progression remains:
+Execution progression remains:
 `Research / Backtest -> Shadow -> Kiwoom Paper API -> Tiny Live -> Limited Live -> Production`.
 
-Real-account ordering remains disabled. Broker connectivity or structurally valid LIVE rows cannot skip stages.
+Real-account ordering remains disabled. Structurally valid LIVE rows or broker connectivity cannot skip stages.
 
-Railway production service `indexalert-runtime` previously ran server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` succeeded with `/health` 200. Operational evidence only.
+Railway `indexalert-runtime` previously ran server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` had `/health` 200. Operational evidence only.
 
-Last audited Android build branch head: `55d72dc576131d1f8c2f6f01b9f4951a2e088911` (`Fix WorkManager receipt result type`). APK Action `36665289417` succeeded. Physical E2E remains open: a current-build handset receipt must yield `received_deliveries >= 1` and non-null `last_client_receipt_at`.
+Last audited Android build branch head: `55d72dc576131d1f8c2f6f01b9f4951a2e088911`. APK Action `36665289417` succeeded. Physical E2E remains open: current-build handset receipt must produce `received_deliveries >= 1` and non-null `last_client_receipt_at`.
 
-## 8. Explicit unfinished-work registry
+## 7. Explicit unfinished-work registry
 
-1. **DONE — research protocol:** corrected H5/H10 CPCV, Uncertainty Audit, Policy Calibration and negative dispositions.
-2. **DONE — internal KRX source governance:** A-F contracts, structured auth evidence, readiness/preflight, probes, provenance, PIT, coverage, status-event integrity, source-data admission.
-3. **EXTERNAL KRX AUTH/DATA BLOCKER:** approved route/product, secure credentials/genuine approval evidence, authenticated access, full official history/stable IDs/PIT/use rights.
-4. **DONE — internal exact status-economics audit; EXTERNAL EVIDENCE BLOCKER remains:** real complete affected-position fill/recovery economics must pass `research_v1_krx_status_economics.py`.
-5. **DONE — execution schema hardening:** LIVE structural presence is no longer mislabeled as empirical sufficiency.
-6. **DONE — preregistration validator; FUTURE PROTOCOL BLOCKER remains:** actual IndexAlert execution-sufficiency criteria must be separately chosen and frozen before the LIVE evidence they judge; no post-hoc threshold selection.
-7. **EMPIRICAL EXECUTION BLOCKER:** genuine staged LIVE observations and later independent sufficiency assessment remain required.
-8. **SEALED HOLDOUT:** untouched; consume once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. **PHYSICAL E2E:** current-build Android receipt still required.
-10. **LIVE ORDERING:** disabled until all frozen promotion/safety gates and explicit activation requirements pass.
+1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
+2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure.
+3. EXTERNAL KRX AUTH/DATA BLOCKER — approved route, real credentials/approval, authenticated proof, full history/stable IDs/PIT/use rights.
+4. DONE — internal exact status-economics auditor; EXTERNAL EVIDENCE BLOCKER remains for real fill/recovery data.
+5. DONE — execution schema hardening: LIVE structural presence is no longer mislabeled as empirical sufficiency.
+6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.
+7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
+8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
+9. PHYSICAL E2E — current-build Android receipt still required.
+10. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
 
-## 9. Continuation rules
+## 8. Continuation rules
 
 On every continuation:
 - re-fetch branch HEAD and relevant Actions first;
-- read Master Spec, Ledger, Research Status, current contracts/audits and this snapshot;
+- read Master Spec, Ledger, Research Status, contracts/audits and this snapshot;
 - skip completed/rejected work;
-- never treat green diagnostic/probe workflows as authenticated KRX evidence without internal state;
+- never treat green source workflows as authenticated KRX evidence without internal state;
 - never treat credentials/reference alone as authorization;
-- never infer missing KRX rows as zeros or invent historical scope;
-- never treat status-event structure or daily prices as exact realized status economics;
+- never infer missing KRX rows as zeros or invent scope;
+- never treat daily prices/status chronology as exact realized status economics;
 - never treat one/few LIVE rows as empirical execution sufficiency;
-- never freeze execution-sufficiency thresholds after seeing the LIVE outcomes they will judge;
-- never revive rejected model candidates through threshold/cost/horizon mining;
+- never freeze execution thresholds after seeing the LIVE outcomes they will judge;
+- never revive rejected candidates through threshold/cost/horizon mining;
 - never convert Shadow/Paper observations into live empirical evidence;
-- if old chat conflicts with reproducible GitHub evidence, GitHub wins;
-- commit material continuity changes to canonical GitHub docs.
+- if chat conflicts with reproducible GitHub evidence, GitHub wins;
+- commit material state changes to canonical GitHub docs.
 
-## 10. Old-chat deletion gate
+## 9. Old-chat deletion gate
 
 Older IndexAlert chat/work rooms are not project-state dependencies. Material continuity lives in GitHub code, Actions evidence and canonical documents.
