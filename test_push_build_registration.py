@@ -63,6 +63,29 @@ class PushBuildRegistrationOverlayTests(unittest.TestCase):
             "android-register-direct-v1",
         )
 
+    def test_v31_runtime_installs_the_same_build_bound_routes(self):
+        build_overlay = self.build_overlay
+        runtime = importlib.import_module("production_v31")
+        register_routes = [
+            route for route in runtime.app.router.routes
+            if getattr(route, "path", None) == "/register"
+        ]
+        health_routes = [
+            route for route in runtime.app.router.routes
+            if getattr(route, "path", None) == "/push-health"
+        ]
+        self.assertEqual(len(register_routes), 1)
+        self.assertEqual(len(health_routes), 1)
+        self.assertIs(register_routes[0].endpoint, build_overlay.register_v32)
+        self.assertIs(health_routes[0].endpoint, build_overlay.push_health_v32)
+
+        schema = runtime.app.openapi()
+        register_post = schema["paths"]["/register"]["post"]
+        body_schema = register_post["requestBody"]["content"]["application/json"]["schema"]
+        schema_name = body_schema["$ref"].rsplit("/", 1)[-1]
+        properties = schema["components"]["schemas"][schema_name]["properties"]
+        self.assertIn("client_build", properties)
+
 
 if __name__ == "__main__":
     unittest.main()
