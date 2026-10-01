@@ -1,3 +1,4 @@
+import json
 import math
 import re
 import threading
@@ -237,6 +238,32 @@ def _rank_directional(rows, direction: str, limit: int = 3):
     return valid[:limit]
 
 
+def _classify_constituent_exclusion(exc) -> str | None:
+    """Return only deliberate, auditable fail-closed exclusion categories."""
+    message = str(exc or "")
+    if message.startswith("non-equity constituent:"):
+        return "non_equity"
+    if message.startswith("non-comparable corporate action:"):
+        return "corporate_action"
+    return None
+
+
+def _meta_symbol_list(raw) -> list[str]:
+    """Decode a persisted symbol list without leaking malformed metadata."""
+    try:
+        values = json.loads(raw or "[]")
+    except Exception:
+        return []
+    if not isinstance(values, list):
+        return []
+    symbols = set()
+    for value in values:
+        symbol = _clean_symbol(str(value))
+        if re.fullmatch(r"[A-Z.\-]{1,8}", symbol):
+            symbols.add(symbol)
+    return sorted(symbols)
+
+
 def _set_meta(monitor, key: str, value: str):
     with monitor.db() as con:
         con.execute(
@@ -266,14 +293,18 @@ def refresh(monitor):
             return row
 
         result_map = {}
+        exclusions = {"non_equity": set(), "corporate_action": set()}
         with ThreadPoolExecutor(max_workers=8) as pool:
             futures = {pool.submit(work, symbol): symbol for symbol in all_symbols}
             for future in as_completed(futures):
+                symbol = futures[future]
                 try:
                     row = future.result()
                     result_map[row["symbol"]] = row
-                except Exception:
-                    pass
+                except Exception as exc:
+                    category = _classify_constituent_exclusion(exc)
+                    if category is not None:
+                        exclusions[category].add(symbol)
 
         etf_moves = {}
         for universe, etf_symbol in etf_symbols.items():
@@ -290,6 +321,8 @@ def refresh(monitor):
                 rows = [result_map[s] for s in members if s in result_map]
                 coverage = len(rows)
                 total = len(members)
+                excluded_non_equity = sorted(members & exclusions["non_equity"])
+                excluded_corporate_action = sorted(members & exclusions["corporate_action"])
                 status = "ready" if total > 0 and coverage >= max(10, int(total * 0.80)) else "building"
                 direction_pct = etf_moves.get(universe, 0.0)
                 direction = "down" if direction_pct < 0 else "up"
@@ -327,6 +360,14 @@ def refresh(monitor):
                     "INSERT INTO app_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                     (f"laggard_{universe}_etf_change_pct", str(direction_pct)),
                 )
+                con.execute(
+                    "INSERT INTO app_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (f"laggard_{universe}_excluded_non_equity", json.dumps(excluded_non_equity, separators=(",", ":"))),
+                )
+                con.execute(
+                    "INSERT INTO app_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (f"laggard_{universe}_excluded_corporate_action", json.dumps(excluded_corporate_action, separators=(",", ":"))),
+                )
                 summaries[universe] = {
                     "coverage": f"{coverage}/{total}",
                     "status": status,
@@ -334,6 +375,8 @@ def refresh(monitor):
                     "etf_change_pct": direction_pct,
                     "decliners": len(decliners),
                     "gainers": len(gainers),
+                    "excluded_non_equity": excluded_non_equity,
+                    "excluded_corporate_action": excluded_corporate_action,
                     "sign_check": all(r["day_change_pct"] < 0 for r in decliners)
                     and all(r["day_change_pct"] > 0 for r in gainers),
                 }
@@ -389,6 +432,8 @@ def get(monitor):
                 "coverage": meta.get(f"laggard_{universe}_coverage", "0/0"),
                 "direction": direction,
                 "etf_change_percent": float(meta.get(f"laggard_{universe}_etf_change_pct", "0") or 0),
+                "excluded_non_equity_symbols": _meta_symbol_list(meta.get(f"laggard_{universe}_excluded_non_equity")),
+                "excluded_corporate_action_symbols": _meta_symbol_list(meta.get(f"laggard_{universe}_excluded_corporate_action")),
                 "items": selected[:3],
                 "decliners": decliners[:3],
                 "gainers": gainers[:3],
