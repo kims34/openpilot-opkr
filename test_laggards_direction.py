@@ -1,11 +1,31 @@
 import unittest
 from datetime import datetime, timezone
 
-from laggards import _rank_directional, _regular_session_points
+from laggards import _market_quote, _rank_directional, _regular_session_points
 
 
 def utc_ts(iso: str) -> int:
     return int(datetime.fromisoformat(iso).replace(tzinfo=timezone.utc).timestamp())
+
+
+class _FakeMonitor:
+    def __init__(self, instrument_type: str):
+        self.instrument_type = instrument_type
+
+    def yahoo_result(self, symbol, range_, interval, prepost):
+        return {
+            "timestamp": [utc_ts("2026-09-25T14:00:00")],
+            "indicators": {"quote": [{"close": [100.0]}]},
+            "meta": {
+                "instrumentType": self.instrument_type,
+                "marketState": "REGULAR",
+                "longName": symbol,
+            },
+        }
+
+    @staticmethod
+    def series(result):
+        return list(zip(result["timestamp"], result["indicators"]["quote"][0]["close"]))
 
 
 class DirectionalMoverTests(unittest.TestCase):
@@ -43,6 +63,20 @@ class DirectionalMoverTests(unittest.TestCase):
         ]
         filtered = _regular_session_points(points)
         self.assertEqual([v for _, v in filtered], [101.0, 102.0])
+
+    def test_constituent_quote_rejects_etf_instrument_type(self):
+        # A holdings-page parser can accidentally return an ETF ticker such as
+        # USD (ProShares Ultra Semiconductors). It must never enter a company
+        # constituent cache merely because the symbol is syntactically valid.
+        with self.assertRaisesRegex(RuntimeError, "non-equity constituent"):
+            _market_quote(_FakeMonitor("ETF"), "USD", require_equity=True)
+
+    def test_etf_direction_quote_is_not_subject_to_constituent_equity_gate(self):
+        # SPY/QQQ/SCHD themselves are intentionally used only to choose the
+        # universe direction. They are not company constituents, so the gate is
+        # not applied to those calls.
+        with self.assertRaisesRegex(RuntimeError, "invalid quote basis"):
+            _market_quote(_FakeMonitor("ETF"), "SCHD", require_equity=False)
 
 
 if __name__ == "__main__":
