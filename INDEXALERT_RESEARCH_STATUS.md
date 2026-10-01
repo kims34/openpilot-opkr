@@ -1,6 +1,6 @@
 # IndexAlert Research Status
 
-Updated: 2026-10-01 KST  
+Updated: 2026-10-02 KST  
 Branch: `index-alert-research-v1`  
 Master authority: `INDEXALERT_MASTER_SPEC.md`  
 Experiment authority: `INDEXALERT_RESEARCH_LEDGER.md`  
@@ -149,19 +149,21 @@ Canonical preregistration/evaluator stack is now:
 - `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` — human-readable frozen protocol;
 - `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json` — SHA-256-bound machine-readable schema v2 criteria;
 - `research_v1_execution_sufficiency_protocol.py` — fail-closed preregistration validator with legacy schema-v1 compatibility;
-- `research_v1_execution_sufficiency_assessment.py` — independent genuine-LIVE evaluator.
+- `research_v1_execution_sufficiency_assessment.py` — frozen numerical execution-gate evaluator;
+- `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md` — separate fail-closed genuine-LIVE provenance admission contract.
 
 The project protocol was frozen before any genuine LIVE observation. Core criteria include at least 600 LIVE observations across at least 200 distinct decision dates, at least 400 filled observations, decision-time PIT ADV participation capped at the existing research assumption `0.0005` (0.05%), 120 near-capacity observations at >=80% of that ceiling, date-cluster fill/slippage gates, Wilson no-fill/partial-fill bounds, 5m/30m/close markouts with ES95/ES99 reporting, latency/expiry controls, fee/tax comparison, and zero unknown/reconciliation/risk/capacity-integrity breaches. Thresholds are bound to the protocol document fingerprint and may not be weakened using outcomes from the evidence window they judge.
 
-The evaluator accepts only `PROSPECTIVE_LIVE_EXECUTION_LOG`, requires the frozen decision/execution policy IDs and PIT provenance timestamps, and keeps `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` even if the execution-only gates later pass.
+The metric evaluator requires LIVE-labelled rows, the frozen decision/execution policy IDs and PIT provenance timestamps, but it cannot authenticate real-account origin from a caller-supplied CSV. A source label or CSV SHA-256 is identity/structure evidence only. Numerical success is exposed separately as `execution_metric_gates_passed`; project-level readiness additionally requires independent broker-native provenance admission for the exact evidence bundle. The evaluator keeps `genuine_live_provenance_verified=false`, `live_empirical_execution_evidence_ready=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` by itself.
 
-No genuine staged LIVE execution observations exist yet, so current project state remains:
+No genuine staged LIVE execution observations or broker-native provenance admission exist yet, so current project state remains:
+- `genuine_live_provenance_verified=false`;
 - `live_empirical_execution_evidence_ready=false`;
 - `empirical_execution_sufficiency_assessed=false`;
 - `empirical_execution_blocker_closed=false`;
 - `promotion_ready=false`.
 
-Historical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures exercise pass/fail code paths only and are not project evidence.
+Historical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures may exercise numerical pass/fail paths only and are not project evidence; a synthetic fixture may never close the project execution blocker.
 
 ## Android / push Physical E2E state — CONFIRMED
 
@@ -253,7 +255,7 @@ Internal code cannot fabricate approved KRX source access/history/PIT/use rights
 1. **KRX authorization/data:** approved route/product, credentials/structured approval evidence, authenticated source proof and full official history.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
-4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.
+4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
 5. **Research governance:** no rejected-candidate revival; maintain Ledger/multiple-testing discipline.
 6. **One-shot sealed holdout:** untouched until source/execution/code/protocol freeze; then Shadow S1 -> Fresh Confirmation S2.
 7. **Physical notification E2E:** **DONE for audited Android v4.7-47 and production revision `d8523810…`**; do not reinterpret this plumbing success as Alpha/execution/promotion evidence.

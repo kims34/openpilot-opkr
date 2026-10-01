@@ -1,6 +1,6 @@
 # IndexAlert Continuity Snapshot — Canonical Cross-Chat Handoff
 
-Updated: 2026-10-01 KST  
+Updated: 2026-10-02 KST  
 Branch of record: `index-alert-research-v1`
 
 ## 0. Authority and continuation rule
@@ -109,9 +109,9 @@ Canonical files:
 
 Project v1 was frozen before any genuine LIVE observation. Minimum sample is 600 LIVE observations across at least 200 distinct decision dates with at least 400 fills. Capacity scope is capped at decision-time PIT ADV participation `0.0005`; at least 120 observations must be near capacity (>=80% of the ceiling). Fill, no-fill/partial-fill, slippage, fee/tax, latency/expiry, 5m/30m/close markout, ES95/ES99, reconciliation, unknown-outcome, capacity and risk-integrity gates are all preregistered and non-compensating.
 
-The evaluator accepts only genuine `PROSPECTIVE_LIVE_EXECUTION_LOG` rows with the frozen decision/execution policy IDs and PIT provenance. Unit-test fixtures are never project evidence.
+The metric evaluator accepts only LIVE-labelled rows with the frozen decision/execution policy IDs and PIT timestamps, but a source label or CSV hash does not authenticate real-account origin. `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md` requires separate independent broker-native provenance admission for the exact evidence bundle. Unit-test fixtures are never project evidence.
 
-Current state remains `live_empirical_execution_evidence_ready=false`, `empirical_execution_sufficiency_assessed=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false`, `live_trading_authorized=false` because no genuine staged LIVE evidence window exists yet.
+Current state remains `genuine_live_provenance_verified=false`, `live_empirical_execution_evidence_ready=false`, `empirical_execution_sufficiency_assessed=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false`, `live_trading_authorized=false` because no genuine staged LIVE evidence window or broker-native provenance admission exists yet.
 
 Frozen project protocol/evaluator Action `36881327868` succeeded. The protocol cannot be weakened from outcomes it judges; any revision requires a new protocol ID/fingerprint and only later observations.
 
@@ -227,8 +227,8 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 3. EXTERNAL KRX AUTH/DATA BLOCKER — approved route, real credentials/approval, authenticated proof, full history/stable IDs/PIT/use rights.
 4. DONE — internal exact status-economics auditor; EXTERNAL EVIDENCE BLOCKER remains for real fill/recovery data.
 5. DONE — execution schema hardening: LIVE structural presence is no longer mislabeled as empirical sufficiency.
-6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, independent evaluator and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence has not been collected/assessed.
-7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
+6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, metric evaluator, provenance fail-closed hardening and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence and broker-native provenance admission do not exist.
+7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations + independent broker-native provenance admission + frozen numerical sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
 9. DONE — server deployment drift, stale-runtime ambiguity, same-device/build binding, blocker-state contract, legacy-registration resurfacing risk and v4.7 display-only registration incompatibility; Railway production is aligned to exact server commit `d8523810...`, Server Tests `36874615526` succeed, and rerun v32 production smoke `36874615527` succeeds.
 10. DONE — mover production-integrity provenance; non-equity and registered corporate-action exclusions are fail-closed and visible in `/laggards`.
@@ -247,6 +247,7 @@ On every continuation:
 - never infer missing KRX rows as zeros or invent scope;
 - never treat daily prices/status chronology as exact realized status economics;
 - never treat one/few LIVE rows as empirical execution sufficiency;
+- never treat a `PROSPECTIVE_LIVE_EXECUTION_LOG` label, CSV file name/hash or self-authored manifest as proof of genuine broker provenance;
 - never freeze execution thresholds after seeing the LIVE outcomes they will judge;
 - never treat Firebase provider send success, an old-build receipt, or a same-build receipt from a different device as current-build Physical E2E;
 - never let a later legacy/unknown-build registration resurrect an older build-aware device as the latest Physical E2E candidate;

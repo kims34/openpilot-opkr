@@ -57,3 +57,20 @@ def test_docs_preserve_holdout_and_live_order_guardrails():
     assert "one-shot" in master.lower()
     assert "untouched" in snapshot.lower()
     assert "LIVE ORDERING — disabled" in snapshot
+
+def test_live_execution_provenance_is_required_before_project_blocker_closure():
+    master = _read("INDEXALERT_MASTER_SPEC.md")
+    status = _read("INDEXALERT_RESEARCH_STATUS.md")
+    snapshot = _read("INDEXALERT_CONTINUITY_SNAPSHOT.md")
+    contract = _read("INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md")
+    provenance = _read("INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md")
+
+    assert "execution_metric_gates_passed" in master
+    assert "INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md" in master
+    assert "genuine_live_provenance_verified=false" in status
+    assert "broker-native provenance admission" in snapshot
+    assert "self-authored or unit-test rows" in contract
+    assert "A file hash proves byte identity only" in provenance
+    assert "empirical_execution_blocker_closed=false" in provenance
+    assert "Real-account ordering remains disabled" in provenance
+

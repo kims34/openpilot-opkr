@@ -2,7 +2,7 @@
 
 Purpose: prevent research-memory bias and repeated policy mining. This ledger records material experiments, their fixed question, outcome and disposition. It is not a performance marketing document.
 
-Updated: 2026-10-01 KST
+Updated: 2026-10-02 KST
 
 ## Governance
 
@@ -163,7 +163,7 @@ The project criteria are frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md
 
 Minimum scope is 600 LIVE observations across at least 200 distinct decision dates and at least 400 fills; empirical capacity is bounded to the existing `0.0005` decision-time ADV participation assumption with at least 120 near-capacity observations. Prespecified non-compensating gates cover fill quality, Wilson no-fill/partial-fill bounds, slippage versus the pre-order budget, fee/tax excess, TTL/expiry latency, complete 5m/30m/close markouts with ES95/ES99, near-capacity behavior, and zero unknown/reconciliation/capacity/risk-integrity breaches.
 
-Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. A later pass cannot by itself authorize the sealed holdout, model promotion or live trading.
+Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. The numerical evaluator now reports metric success separately as `execution_metric_gates_passed`; a source label or hash-bound CSV cannot set project readiness or close the blocker without independent broker-native provenance admission under `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md`. Even a later fully admitted execution-evidence pass cannot by itself authorize the sealed holdout, model promotion or live trading.
 
 ## Next independent information family
 
@@ -183,6 +183,6 @@ A source/auth probe alone is not feature-promotion evidence. If reproducible off
 1. Obtain and validate real official historical KRX common-stock/security-status raw data with PIT availability lineage.
 2. Model exact halt, cleanup-trading and delisting economics/status rather than proxy inference.
 3. Establish official reproducible KRX investor-flow historical access/lineage before any performance test.
-4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.
+4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol, retain broker-native order/execution provenance for row-level independent admission, then run the frozen metric assessment: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.
 5. Do **not** burn the sealed holdout while external KRX/status-economics and empirical execution blockers remain open; the execution protocol itself is now frozen.
 6. After a valid holdout, require prospective Shadow S1 then frozen Fresh Confirmation S2.
