@@ -1,6 +1,7 @@
 import hashlib
 import importlib
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -90,7 +91,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(row, ("4.7-47",))
 
-    def test_legacy_registration_clears_old_build_observation(self):
+    def test_legacy_registration_preserves_latest_unknown_build_fail_closed(self):
         p = self.p
         token = "l" * 40
         p._record_device_build(token, "4.7-47")
@@ -109,7 +110,26 @@ class ProductionV32RegistrationTests(unittest.TestCase):
             row = con.execute(
                 "SELECT client_build FROM device_builds WHERE token=?", (token,)
             ).fetchone()
-        self.assertIsNone(row)
+        self.assertEqual(row, ("",))
+
+    def test_newer_legacy_device_cannot_resurface_older_build_aware_device(self):
+        p = self.p
+        older_token = "o" * 40
+        newer_legacy_token = "z" * 40
+        self._register_device(older_token)
+        self._register_device(newer_legacy_token)
+        p._record_device_build(older_token, "4.7-47")
+        # Ensure the second observation is strictly newer even on fast CI hosts.
+        time.sleep(0.001)
+        p._record_device_build(newer_legacy_token, None)
+
+        self._insert_self_test(older_token, "4.7-47", "evt-older-device", 1.0)
+        self._ack(older_token, "evt-older-device")
+        health = p.push_health_v32()
+        self.assertIsNone(health["latest_registered_client_build"])
+        self.assertFalse(health["registration_build_observed"])
+        self.assertEqual(health["physical_e2e_blocker"], "NO_REGISTERED_BUILD")
+        self.assertFalse(health["current_build_physical_e2e_confirmed"])
 
     def test_blocker_codes_are_fail_closed_and_ordered(self):
         p = self.p
@@ -176,6 +196,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
             self._register_device(token)
 
         p._record_device_build(older_token, "4.7-47")
+        time.sleep(0.001)
         p._record_device_build(latest_token, "4.7-47")
 
         self._insert_self_test(older_token, "4.7-47", "evt-device-a", 10.0)
