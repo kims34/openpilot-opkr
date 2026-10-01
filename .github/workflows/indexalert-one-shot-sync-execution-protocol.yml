@@ -1,0 +1,92 @@
+name: IndexAlert One-shot Execution Protocol Doc Sync
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - '.github/workflows/indexalert-one-shot-sync-execution-protocol.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize canonical status and execution contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          status = Path('INDEXALERT_RESEARCH_STATUS.md')
+          s = status.read_text(encoding='utf-8')
+          old = '''## Execution-sufficiency preregistration — validator implemented, project thresholds not yet frozen
+
+`research_v1_execution_sufficiency_protocol.py` prevents post-hoc execution-threshold selection. It validates a future protocol's explicit criteria, document fingerprint and required dimensions, and requires `frozen_at` to be **strictly earlier** than the first LIVE recommendation that protocol will judge.
+
+It requires future criteria to explicitly cover live observation count, distinct dates, filled/no-fill/partial-fill evidence, 5m/30m/close markouts, slippage, latency, capacity and tail evidence. Unit-test threshold numbers are test fixtures only and are **not IndexAlert promotion thresholds**.
+
+A structurally valid protocol still keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. The actual project sufficiency criteria must be separately decided and frozen before the LIVE observations they will evaluate.
+
+Execution preregistration Action `36835013828` succeeded. Strengthened contract-drift Action `36835231533` also succeeded.
+'''
+          new = '''## Execution-sufficiency preregistration — project v1 frozen, genuine LIVE not yet observed
+
+Canonical preregistration/evaluator stack is now:
+- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` — human-readable frozen protocol;
+- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json` — SHA-256-bound machine-readable schema v2 criteria;
+- `research_v1_execution_sufficiency_protocol.py` — fail-closed preregistration validator with legacy schema-v1 compatibility;
+- `research_v1_execution_sufficiency_assessment.py` — independent genuine-LIVE evaluator.
+
+The project protocol was frozen before any genuine LIVE observation. Core criteria include at least 600 LIVE observations across at least 200 distinct decision dates, at least 400 filled observations, decision-time PIT ADV participation capped at the existing research assumption `0.0005` (0.05%), 120 near-capacity observations at >=80% of that ceiling, date-cluster fill/slippage gates, Wilson no-fill/partial-fill bounds, 5m/30m/close markouts with ES95/ES99 reporting, latency/expiry controls, fee/tax comparison, and zero unknown/reconciliation/risk/capacity-integrity breaches. Thresholds are bound to the protocol document fingerprint and may not be weakened using outcomes from the evidence window they judge.
+
+The evaluator accepts only `PROSPECTIVE_LIVE_EXECUTION_LOG`, requires the frozen decision/execution policy IDs and PIT provenance timestamps, and keeps `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` even if the execution-only gates later pass.
+
+No genuine staged LIVE execution observations exist yet, so current project state remains:
+- `live_empirical_execution_evidence_ready=false`;
+- `empirical_execution_sufficiency_assessed=false`;
+- `empirical_execution_blocker_closed=false`;
+- `promotion_ready=false`.
+
+Historical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures exercise pass/fail code paths only and are not project evidence.
+'''
+          if old not in s:
+              raise SystemExit('canonical status execution-sufficiency block not found; fail closed')
+          status.write_text(s.replace(old, new), encoding='utf-8')
+
+          contract = Path('INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md')
+          c = contract.read_text(encoding='utf-8')
+          c = c.replace(
+              'The numeric values used in unit-test fixtures are illustrative test data only and are not IndexAlert promotion thresholds.',
+              'Unit-test fixture values remain non-evidence. The canonical IndexAlert project thresholds are now frozen separately in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and its SHA-256-bound `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`; they were fixed before any genuine LIVE observation.'
+          )
+          c = c.replace(
+              'A later evaluator may assess genuine LIVE evidence against a properly frozen protocol, but that assessment must remain separate from the protocol-registration step.',
+              '`research_v1_execution_sufficiency_assessment.py` is the separate evaluator for genuine LIVE evidence against the frozen project protocol. Protocol registration and evidence assessment remain independent steps.'
+          )
+          c = c.replace(
+              '- Empirical execution sufficiency = a separate future assessment that is currently **not assessed / not closed**.',
+              '- Empirical execution sufficiency = a separate genuine-LIVE assessment that is currently **not assessed / not closed because no genuine LIVE evidence window exists yet**.'
+          )
+          old_tail = '''The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
+
+The empirical execution blocker remains open. A genuinely frozen future sufficiency protocol plus staged LIVE evidence and its later independent assessment are still required.'''
+          new_tail = '''The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. The project protocol is now frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` / `.json`, and the independent evaluator is implemented and Actions-tested. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
+
+The empirical execution blocker remains open because genuine staged LIVE evidence has not been collected or assessed. The frozen protocol must be evaluated on that future genuine-LIVE window; passing it still does not independently authorize sealed holdout, promotion or live trading.'''
+          if old_tail not in c:
+              raise SystemExit('canonical execution contract tail not found; fail closed')
+          contract.write_text(c.replace(old_tail, new_tail), encoding='utf-8')
+          PY
+      - name: Commit synchronized documents
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add INDEXALERT_RESEARCH_STATUS.md INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md
+          git diff --cached --check
+          git commit -m 'Sync status with frozen execution sufficiency protocol'
+          git push origin HEAD:index-alert-research-v1
