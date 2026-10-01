@@ -42,6 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
       - name: Compile and test fail-closed empirical execution evidence stack
+        # Covers numerical metric state separately from project empirical/provenance state.
         run: |
           python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py research_v1_execution_sufficiency_assessment.py research_v1_execution_sufficiency_cli.py
           python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_sufficiency_cli.py test_research_v1_execution_evidence_contract.py test_indexalert_execution_sufficiency_docs.py
