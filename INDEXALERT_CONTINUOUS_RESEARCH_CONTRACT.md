@@ -37,3 +37,7 @@ Permitted research triggers include drift, calibration deterioration, execution-
 ## Current boundary
 
 This contract does not alter any existing H5/H10 disposition, KRX blocker, execution-sufficiency threshold, sealed-holdout status or live-order authorization. Current Core and all frozen contracts remain authoritative until a separately validated successor is explicitly promoted.
+
+## Automated research orchestrator
+
+`research_v1_research_orchestrator.py` may translate explicit, evidence-referenced diagnostic flags into deterministic `IDEA` queue items for calibration drift, execution-cost drift, feature freshness drift, regime drift and data-quality drift. Unknown/free-form flags and signals without an evidence reference are not queued. No signal means no research churn. Any sealed-holdout input fails closed. The orchestrator has no authority to execute a challenger, alter Core, change frozen thresholds, promote, open holdout, or authorize live orders.
