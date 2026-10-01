@@ -409,3 +409,11 @@ The evaluator is bound to frozen decision/execution policy IDs, exact protocol-d
 Even after both numerical sufficiency and genuine provenance are established, `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` remain required until every independent Master Spec gate passes. No sealed holdout may be opened merely because execution evidence passes, and no real-account order mode may be activated from this evidence alone.
 
 Current project state: the protocol/metric evaluator are frozen and Actions-tested, but no genuine staged LIVE evidence window and no independent broker-native provenance admission exist yet. Therefore empirical execution sufficiency remains unassessed/open and the execution blocker remains open. KRX A-F evidence, exact status-event economics, sealed holdout, Shadow S1 and Fresh Confirmation S2 remain independent blockers.
+
+## 16. Kiwoom demo/read-only connectivity evidence — 2026-10-02
+
+Canonical evidence: `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md`.
+
+A user-operated smoke test against the Kiwoom **mock/demo host only** completed `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FILLS_OK`. This closes only the demo/read-only connectivity plumbing check. It does not establish real-account broker provenance, real-market execution quality, status-event economics, execution sufficiency, KRX source approval, promotion readiness, sealed-holdout authorization, or live-order authorization.
+
+Accordingly `genuine_live_provenance_verified=false`, `empirical_execution_blocker_closed=false`, `sealed_holdout_authorized=false`, and `live_trading_authorized=false` remain unchanged. No order-create/amend/cancel or real-account endpoint is authorized by this evidence.
