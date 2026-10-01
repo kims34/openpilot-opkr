@@ -1,9 +1,16 @@
-"""Independent evaluator for the frozen IndexAlert LIVE execution-sufficiency protocol.
+"""Metric evaluator for the frozen IndexAlert LIVE execution-sufficiency protocol.
 
-This evaluator consumes genuine broker execution observations only. Synthetic or
-unit-test fixtures may test the code path but can never become project evidence.
-A passing result closes only the empirical execution blocker; it never authorizes
-sealed holdout use, model promotion, broker stage advancement or live trading.
+This module validates the frozen numerical execution criteria. A caller-supplied
+CSV and its `source=PROSPECTIVE_LIVE_EXECUTION_LOG` label do not prove genuine
+real-account provenance. Synthetic/unit-test fixtures may exercise the metric
+path but can never become project evidence.
+
+Accordingly a metric pass is reported separately as
+`execution_metric_gates_passed`. Project-level LIVE evidence readiness and the
+empirical execution blocker remain fail-closed until an independent broker-native
+provenance admission is implemented and passes for the exact evidence bundle.
+Passing never authorizes sealed holdout use, model promotion, broker stage
+advancement or live trading.
 """
 from __future__ import annotations
 
@@ -97,7 +104,12 @@ def _wilson(successes: int, n: int, z: float = 1.959963984540054) -> tuple[float
 
 
 def _lower_tail_es(series: pd.Series, alpha: float) -> float | None:
-    x = pd.to_numeric(series, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna().to_numpy(dtype=float)
+    x = (
+        pd.to_numeric(series, errors="coerce")
+        .replace([np.inf, -np.inf], np.nan)
+        .dropna()
+        .to_numpy(dtype=float)
+    )
     if len(x) == 0:
         return None
     x = np.sort(x)
@@ -132,7 +144,8 @@ def prepare_live_execution_sufficiency_evidence(
     x = validate_execution_observations(table)
     if not x["source"].eq(LIVE_EXECUTION_SOURCE).all():
         raise ExecutionSufficiencyAssessmentError(
-            "execution sufficiency assessment accepts genuine LIVE source rows only"
+            "execution sufficiency assessment accepts LIVE-labelled source rows only; "
+            "genuine broker provenance is a separate admission requirement"
         )
 
     x["observation_id"] = table["observation_id"].astype(str).str.strip().to_numpy()
@@ -187,9 +200,15 @@ def prepare_live_execution_sufficiency_evidence(
     if (x[["modeled_fees_tax_bps", "actual_fees_tax_bps"]] < 0).any().any():
         raise ExecutionSufficiencyAssessmentError("fee/tax bps cannot be negative")
 
-    x["unknown_order_outcome"] = _bool_series(table["unknown_order_outcome"], "unknown_order_outcome").to_numpy()
-    x["reconciliation_resolved"] = _bool_series(table["reconciliation_resolved"], "reconciliation_resolved").to_numpy()
-    x["risk_limit_breach"] = _bool_series(table["risk_limit_breach"], "risk_limit_breach").to_numpy()
+    x["unknown_order_outcome"] = _bool_series(
+        table["unknown_order_outcome"], "unknown_order_outcome"
+    ).to_numpy()
+    x["reconciliation_resolved"] = _bool_series(
+        table["reconciliation_resolved"], "reconciliation_resolved"
+    ).to_numpy()
+    x["risk_limit_breach"] = _bool_series(
+        table["risk_limit_breach"], "risk_limit_breach"
+    ).to_numpy()
 
     no_fill = x["filled_qty"].eq(0)
     if (x.loc[no_fill, "actual_fees_tax_bps"] != 0).any():
@@ -199,7 +218,8 @@ def prepare_live_execution_sufficiency_evidence(
     x["participation_rate"] = x["requested_notional_krw"] / x["reference_adv20_krw"]
     x["capacity_breach"] = x["participation_rate"] > float(protocol["maximum_participation_rate"])
     x["near_capacity"] = x["participation_rate"] >= (
-        float(protocol["maximum_participation_rate"]) * float(protocol["near_capacity_floor_fraction"])
+        float(protocol["maximum_participation_rate"])
+        * float(protocol["near_capacity_floor_fraction"])
     )
     x["expired_submission"] = x["order_submitted_at"] > x["recommendation_expires_at"]
     filled = x["filled_qty"] > 0
@@ -208,8 +228,13 @@ def prepare_live_execution_sufficiency_evidence(
         x.loc[filled, "first_fill_at"] > x.loc[filled, "order_expiry_at"]
     )
 
-    ttl_ms = (x["recommendation_expires_at"] - x["recommendation_at"]).dt.total_seconds() * 1000.0
-    expiry_ms = (x["order_expiry_at"] - x["order_submitted_at"]).dt.total_seconds() * 1000.0
+    ttl_ms = (
+        (x["recommendation_expires_at"] - x["recommendation_at"]).dt.total_seconds()
+        * 1000.0
+    )
+    expiry_ms = (
+        (x["order_expiry_at"] - x["order_submitted_at"]).dt.total_seconds() * 1000.0
+    )
     x["submit_latency_ttl_fraction"] = x["submit_latency_ms"] / ttl_ms
     x["first_fill_latency_expiry_fraction"] = np.where(
         filled, x["time_to_first_fill_ms"] / expiry_ms, np.nan
@@ -280,15 +305,23 @@ def assess_execution_sufficiency(
     filled_x = x.loc[filled].copy()
     slip_point, slip_lcb, slip_ucb = _cluster_ci(filled_x, "excess_slippage_bps")
     fee_point, fee_lcb, fee_ucb = _cluster_ci(filled_x, "fee_tax_excess_bps")
-    mark5_point, mark5_lcb, mark5_ucb = _cluster_ci(filled_x, "markout_5m_plus_budget_bps")
-    near_fill_point, near_fill_lcb, near_fill_ucb = _cluster_ci(x.loc[near], "fill_ratio")
+    mark5_point, mark5_lcb, mark5_ucb = _cluster_ci(
+        filled_x, "markout_5m_plus_budget_bps"
+    )
+    near_fill_point, near_fill_lcb, near_fill_ucb = _cluster_ci(
+        x.loc[near], "fill_ratio"
+    )
     near_filled = near & filled
-    near_slip_point, near_slip_lcb, near_slip_ucb = _cluster_ci(x.loc[near_filled], "excess_slippage_bps")
+    near_slip_point, near_slip_lcb, near_slip_ucb = _cluster_ci(
+        x.loc[near_filled], "excess_slippage_bps"
+    )
 
     slip_ratio_p95 = _quantile(filled_x["positive_slippage_budget_ratio"], 0.95)
     slip_ratio_p99 = _quantile(filled_x["positive_slippage_budget_ratio"], 0.99)
     submit_frac_p95 = _quantile(x["submit_latency_ttl_fraction"], 0.95)
-    fill_expiry_frac_p95 = _quantile(filled_x["first_fill_latency_expiry_fraction"], 0.95)
+    fill_expiry_frac_p95 = _quantile(
+        filled_x["first_fill_latency_expiry_fraction"], 0.95
+    )
 
     gates = {
         "minimum_live_observations": live_n >= int(p["minimum_live_observations"]),
@@ -300,24 +333,40 @@ def assess_execution_sufficiency(
         "mean_fill_ratio_lcb95": fill_lcb >= float(p["minimum_mean_fill_ratio_lcb95"]),
         "no_fill_rate_ucb95": no_fill_ucb <= float(p["maximum_no_fill_rate_ucb95"]),
         "partial_fill_rate_ucb95": partial_ucb <= float(p["maximum_partial_fill_rate_ucb95"]),
-        "mean_excess_slippage_ucb95": slip_ucb <= float(p["maximum_mean_excess_slippage_bps_ucb95"]),
-        "slippage_budget_ratio_p95": slip_ratio_p95 is not None and slip_ratio_p95 <= float(p["maximum_slippage_budget_ratio_p95"]),
-        "slippage_budget_ratio_p99": slip_ratio_p99 is not None and slip_ratio_p99 <= float(p["maximum_slippage_budget_ratio_p99"]),
+        "mean_excess_slippage_ucb95": slip_ucb <= float(
+            p["maximum_mean_excess_slippage_bps_ucb95"]
+        ),
+        "slippage_budget_ratio_p95": slip_ratio_p95 is not None
+        and slip_ratio_p95 <= float(p["maximum_slippage_budget_ratio_p95"]),
+        "slippage_budget_ratio_p99": slip_ratio_p99 is not None
+        and slip_ratio_p99 <= float(p["maximum_slippage_budget_ratio_p99"]),
         "fee_tax_excess_ucb95": fee_ucb <= float(p["maximum_fee_tax_excess_bps_ucb95"]),
-        "submit_latency_ttl_fraction_p95": submit_frac_p95 is not None and submit_frac_p95 <= float(p["maximum_submit_latency_ttl_fraction_p95"]),
-        "first_fill_latency_expiry_fraction_p95": fill_expiry_frac_p95 is not None and fill_expiry_frac_p95 <= float(p["maximum_first_fill_latency_expiry_fraction_p95"]),
-        "markout_5m_plus_budget_lcb95": mark5_lcb >= float(p["minimum_5m_markout_plus_budget_lcb95_bps"]),
-        "near_capacity_mean_fill_ratio_lcb95": near_fill_lcb >= float(p["minimum_near_capacity_mean_fill_ratio_lcb95"]),
-        "near_capacity_mean_excess_slippage_ucb95": near_slip_ucb <= float(p["maximum_near_capacity_mean_excess_slippage_bps_ucb95"]),
+        "submit_latency_ttl_fraction_p95": submit_frac_p95 is not None
+        and submit_frac_p95 <= float(p["maximum_submit_latency_ttl_fraction_p95"]),
+        "first_fill_latency_expiry_fraction_p95": fill_expiry_frac_p95 is not None
+        and fill_expiry_frac_p95
+        <= float(p["maximum_first_fill_latency_expiry_fraction_p95"]),
+        "markout_5m_plus_budget_lcb95": mark5_lcb
+        >= float(p["minimum_5m_markout_plus_budget_lcb95_bps"]),
+        "near_capacity_mean_fill_ratio_lcb95": near_fill_lcb
+        >= float(p["minimum_near_capacity_mean_fill_ratio_lcb95"]),
+        "near_capacity_mean_excess_slippage_ucb95": near_slip_ucb
+        <= float(p["maximum_near_capacity_mean_excess_slippage_bps_ucb95"]),
         "zero_expired_submissions": int(x["expired_submission"].sum()) == 0,
         "zero_late_fills_after_order_expiry": int(x["late_fill_after_order_expiry"].sum()) == 0,
         "zero_capacity_breaches": int(x["capacity_breach"].sum()) == 0,
         "zero_unknown_outcomes": int(x["unknown_order_outcome"].sum()) == 0,
         "zero_reconciliation_failures": int((~x["reconciliation_resolved"]).sum()) == 0,
         "zero_risk_limit_breaches": int(x["risk_limit_breach"].sum()) == 0,
-        "complete_markouts": bool(filled_x[["markout_5m_bps", "markout_30m_bps", "markout_close_bps"]].notna().all().all()),
+        "complete_markouts": bool(
+            filled_x[["markout_5m_bps", "markout_30m_bps", "markout_close_bps"]]
+            .notna()
+            .all()
+            .all()
+        ),
     }
-    passed = bool(all(gates.values()))
+    metric_passed = bool(all(gates.values()))
+    failed_metric_gates = [name for name, ok in gates.items() if not ok]
 
     def markout_summary(label: str) -> dict[str, Any]:
         col = f"markout_{label}_bps"
@@ -330,12 +379,21 @@ def assess_execution_sufficiency(
             "adverse_es99_bps": _lower_tail_es(filled_x[col], 0.99),
         }
 
+    # A source label and hash-bound CSV prove structure/identity, not genuine
+    # real-account origin. Broker-native provenance is intentionally a separate
+    # admission layer and is not implemented by this metric evaluator.
+    genuine_live_provenance_verified = False
+    project_failed_gates = list(failed_metric_gates)
+    project_failed_gates.append("independent_live_provenance_admission")
+
     return {
         "protocol_id": p["protocol_id"],
         "protocol_fingerprint_sha256": validated["protocol_fingerprint_sha256"],
         "protocol_document_sha256_verified": validated["protocol_document_sha256_verified"],
         "first_live_recommendation_at": validated["first_live_recommendation_at"],
-        "preregistered_before_first_live_observation": validated["preregistered_before_first_live_observation"],
+        "preregistered_before_first_live_observation": validated[
+            "preregistered_before_first_live_observation"
+        ],
         "counts": {
             "live_observations": live_n,
             "distinct_decision_dates": dates_n,
@@ -398,15 +456,22 @@ def assess_execution_sufficiency(
             "risk_limit_breaches": int(x["risk_limit_breach"].sum()),
         },
         "gates": gates,
-        "failed_gates": [name for name, ok in gates.items() if not ok],
+        "failed_gates": failed_metric_gates,
+        "execution_metric_gates_passed": metric_passed,
+        "genuine_live_provenance_verified": genuine_live_provenance_verified,
+        "provenance_admission_required": True,
+        "project_failed_gates": project_failed_gates,
         "empirical_execution_sufficiency_assessed": True,
-        "live_empirical_execution_evidence_ready": passed,
-        "empirical_execution_blocker_closed": passed,
+        "live_empirical_execution_evidence_ready": False,
+        "empirical_execution_blocker_closed": False,
         "promotion_ready": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
         "guardrail": (
-            "Passing this evaluator closes only the empirical execution blocker. "
-            "KRX/status/PIT/statistical/holdout/prospective confirmation and explicit live-mode gates remain independent."
+            "This evaluator assesses frozen numerical execution gates only. "
+            "A LIVE source label or CSV hash does not prove genuine real-account provenance. "
+            "Independent broker-native provenance admission for the exact evidence bundle is required "
+            "before project-level execution evidence can close the empirical blocker. KRX/status/PIT/"
+            "statistical/holdout/prospective-confirmation and explicit live-mode gates remain independent."
         ),
     }
