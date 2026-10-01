@@ -1,12 +1,19 @@
+import importlib
 import unittest
 
 from fastapi import FastAPI
 
-import push_build_registration as build_overlay
-
 
 class PushBuildRegistrationOverlayTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # unittest discovery imports every test module before test_monitor runs.
+        # The overlay imports the production stack, which mutates shared monitor
+        # globals, so delay that import until this suite actually executes.
+        cls.build_overlay = importlib.import_module("push_build_registration")
+
     def test_attach_is_idempotent_and_exposes_client_build_schema(self):
+        build_overlay = self.build_overlay
         app = FastAPI()
 
         # Seed legacy operational routes to prove the overlay replaces rather
@@ -46,6 +53,7 @@ class PushBuildRegistrationOverlayTests(unittest.TestCase):
         self.assertIn("client_build", properties)
 
     def test_contract_markers_are_frozen(self):
+        build_overlay = self.build_overlay
         self.assertEqual(
             build_overlay.REGISTRATION_BUILD_CONTRACT,
             "register-client-build-v1",
