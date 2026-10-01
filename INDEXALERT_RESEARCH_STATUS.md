@@ -272,3 +272,7 @@ Canonical demo evidence records `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FIL
 ## Continuous Research Lab — ENABLED, isolated from Core
 
 Continuous research governance is now implemented by `research_v1_continuous_research.py` under `INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md`. Automated research may queue ideas and evaluate preregistered challengers, but cannot mutate Core, open the sealed holdout, authorize live ordering, or auto-promote a candidate. Existing frozen blockers and criteria are unchanged.
+
+## Internal completeness audit — authority boundary hardened
+
+`INDEXALERT_INTERNAL_COMPLETENESS_AUDIT.md` records the internal audit. Successor research can become promotion-eligible but cannot self-authorize a Core code mutation; caller booleans cannot grant that authority. Real-order and sealed-holdout authorization remain false. Remaining material blockers are external/evidence-bound.
