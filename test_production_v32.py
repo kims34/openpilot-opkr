@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import HTTPException
 
 import monitor
 import production_v32 as p
@@ -50,9 +50,8 @@ class ProductionV32RegistrationTests(unittest.TestCase):
             )
         )
 
-    def test_register_records_build_and_schedules_server_bootstrap(self):
+    def test_register_records_build_and_advertises_direct_client_self_test(self):
         token = "r" * 40
-        tasks = BackgroundTasks()
         with patch.object(
             p.production,
             "register",
@@ -64,16 +63,14 @@ class ProductionV32RegistrationTests(unittest.TestCase):
                     platform="android",
                     protocol=2,
                     client_build="4.7-47",
-                ),
-                tasks,
+                )
             )
 
         self.assertTrue(out["registered"])
         self.assertEqual(out["client_build"], "4.7-47")
         self.assertTrue(out["client_build_observed"])
-        self.assertTrue(out["self_test_bootstrap_scheduled"])
         self.assertEqual(out["registration_build_contract"], p.REGISTRATION_BUILD_CONTRACT)
-        self.assertEqual(len(tasks.tasks), 1)
+        self.assertEqual(out["self_test_trigger_contract"], p.SELF_TEST_TRIGGER_CONTRACT)
         with monitor.db() as con:
             row = con.execute(
                 "SELECT client_build FROM device_builds WHERE token=?", (token,)
@@ -83,19 +80,16 @@ class ProductionV32RegistrationTests(unittest.TestCase):
     def test_legacy_registration_clears_old_build_observation(self):
         token = "l" * 40
         p._record_device_build(token, "4.7-47")
-        tasks = BackgroundTasks()
         with patch.object(
             p.production,
             "register",
             return_value={"ok": True, "registered": True, "firebase": True, "protocol": 2},
         ):
             out = p.register_v32(
-                p.RegisterBodyV32(token=token, platform="android", protocol=2),
-                tasks,
+                p.RegisterBodyV32(token=token, platform="android", protocol=2)
             )
         self.assertFalse(out["client_build_observed"])
-        self.assertFalse(out["self_test_bootstrap_scheduled"])
-        self.assertEqual(len(tasks.tasks), 0)
+        self.assertIsNone(out["self_test_trigger_contract"])
         with monitor.db() as con:
             row = con.execute(
                 "SELECT client_build FROM device_builds WHERE token=?", (token,)
@@ -126,6 +120,9 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertEqual(
             confirmed["registration_build_contract"], p.REGISTRATION_BUILD_CONTRACT
         )
+        self.assertEqual(
+            confirmed["self_test_trigger_contract"], p.SELF_TEST_TRIGGER_CONTRACT
+        )
 
     def test_invalid_build_is_rejected_before_registration(self):
         with self.assertRaises(HTTPException):
@@ -134,8 +131,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
                     token="x" * 40,
                     protocol=2,
                     client_build="bad build!",
-                ),
-                BackgroundTasks(),
+                )
             )
 
 
