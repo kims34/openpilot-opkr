@@ -126,9 +126,9 @@ Current Android `Push.kt` schedules privacy-safe `/push-ack` for the server-issu
 ### Server current audited code
 
 Current server branch: `index-alert-server`.  
-Audited server HEAD: `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` (`Run Physical E2E verifier in server CI`).
+Operational server HEAD: `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3` (`Verify mover exclusion provenance in production smoke`).
 
-The server self-test reuses the same `token + client_build` event after successful send, so polling never generates a fresh event merely because receipt is pending. `/push-ack` accepts only SHA256(token) for a registered device plus an already-sent matching event, and duplicate ACKs are idempotent.
+The Physical-E2E contract introduced at `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` remains intact. The server self-test reuses the same `token + client_build` event after successful send, so polling never generates a fresh event merely because receipt is pending. `/push-ack` accepts only SHA256(token) for a registered device plus an already-sent matching event, and duplicate ACKs are idempotent.
 
 Physical-E2E health is build-specific:
 - `latest_self_test_build`
@@ -139,13 +139,13 @@ Physical-E2E health is build-specific:
 
 Tests prove an older-build ACK cannot confirm a newer build. `verify_push_physical_e2e.py` is a read-only verifier: it cannot send FCM, register a device, or write a receipt and fails closed unless the exact expected build has a real confirmed ACK.
 
-Server CI Action `36837589631` at `b592e048...` succeeded.
+Server Tests Action `36851598148` succeeded at the current provenance change set. Production Smoke Action `36851667612`, job `110334516116`, also succeeded after the exact current server commit reached Railway production.
 
 ### Railway production — deployment drift CLOSED
 
-Railway `indexalert-runtime` is now deployed from the exact current server commit `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` in deployment `3b1df2eb-df74-42fd-b7cb-5e50edb23c59` (SUCCESS).
+Railway `indexalert-runtime` is deployed from the exact server commit `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3` in deployment `87e224d7-b0f5-447e-8239-7b7ea910e872` (SUCCESS).
 
-The hardened production smoke that had failed while production was stale was rerun after this deployment. Action `36836821948`, rerun job `110321079146`, succeeded. Therefore the new build-specific `/push-health` contract is confirmed live in production and the prior server deployment-drift blocker is CLOSED.
+Production Smoke Action `36851667612`, job `110334516116`, succeeded after the deployment. Therefore the current build-specific `/push-health` contract and the current mover-provenance contract are confirmed live in production, and the prior server deployment-drift blocker remains CLOSED.
 
 ### Current Physical E2E evidence — still OPEN
 
@@ -171,14 +171,30 @@ Exact Physical E2E closure still requires a real handset running build `4.6-46` 
 
 No physical receipt is fabricated or inferred from Firebase provider send success.
 
-## 7. Broker / live-order boundary
+## 7. U.S. mover operational integrity — DONE and auditable
+
+Stock-constituent quote admission is now fail-closed to Yahoo instrument type `EQUITY`. ETF/fund/index/currency contamination cannot enter the company mover ranking. Corporate-action price discontinuities are not filtered by an arbitrary return threshold; omission requires a source-backed event/date in `corporate_action_registry.py` for which raw previous-close comparison is non-comparable.
+
+The live `/laggards` contract exposes:
+- `excluded_non_equity_symbols`
+- `excluded_corporate_action_symbols`
+for each universe.
+
+Production Smoke Action `36851667612` verified:
+- S&P500 `502/503`, with `excluded_corporate_action_symbols=["CTVA"]` on 2026-10-01;
+- NASDAQ100 `100/100`, no deliberate exclusions;
+- SCHD `98/99`, with `excluded_non_equity_symbols=["USD"]`.
+
+This explains coverage loss directly in the API and prevents the earlier `USD` ETF contamination and CTVA spin-off discontinuity from being presented as ordinary stock movers. Direction/sign checks remained valid. This operational integrity work does not alter frozen research results or KRX gate status.
+
+## 8. Broker / live-order boundary
 
 Execution progression remains:
 `Research / Backtest -> Shadow -> Kiwoom Paper API -> Tiny Live -> Limited Live -> Production`.
 
 Real-account ordering remains disabled. Structurally valid LIVE rows, broker connectivity, Android push receipt, or server deployment success cannot skip any research/promotion stage.
 
-## 8. Explicit unfinished-work registry
+## 9. Explicit unfinished-work registry
 
 1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
 2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure.
@@ -188,11 +204,12 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.
 7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. DONE — server deployment drift; Railway production is aligned to server commit `b592e048...` and hardened production smoke succeeds.
-10. PHYSICAL E2E — production currently has `latest_self_test_build=null`; the real current v4.6-46 handset must create and ACK the build-specific self-test.
-11. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
+9. DONE — server deployment drift; Railway production is aligned to server commit `cc3272b4...` and current production smoke succeeds.
+10. DONE — mover production-integrity provenance; non-equity and registered corporate-action exclusions are fail-closed and visible in `/laggards`.
+11. PHYSICAL E2E — production currently has `latest_self_test_build=null`; the real current v4.6-46 handset must create and ACK the build-specific self-test.
+12. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
 
-## 9. Continuation rules
+## 10. Continuation rules
 
 On every continuation:
 - re-fetch branch HEADs and relevant Actions first;
@@ -206,11 +223,13 @@ On every continuation:
 - never freeze execution thresholds after seeing the LIVE outcomes they will judge;
 - never treat Firebase provider send success or an old-build receipt as current-build Physical E2E;
 - never infer a current-build self-test from aggregate sent/received counters when `latest_self_test_build` is null or mismatched;
+- never admit a non-equity symbol into a stock-constituent mover universe;
+- never treat a registered corporate-action discontinuity as an ordinary one-day return; use source-backed, date-scoped fail-closed handling rather than arbitrary percentage clipping;
 - never revive rejected candidates through threshold/cost/horizon mining;
 - never convert Shadow/Paper observations into live empirical evidence;
 - if chat conflicts with reproducible GitHub evidence, GitHub wins;
 - commit material state changes to canonical GitHub docs.
 
-## 10. Old-chat deletion gate
+## 11. Old-chat deletion gate
 
 Older IndexAlert chat/work rooms are not project-state dependencies. Material continuity lives in GitHub code, Actions evidence and canonical documents.
