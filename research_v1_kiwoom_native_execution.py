@@ -20,6 +20,7 @@ from typing import Any, Mapping
 
 SOURCE_CONTRACT = "kiwoom-rest-realtime-00-offline-normalizer-v1"
 _ACCOUNT_FINGERPRINT = re.compile(r"^sha256:[0-9a-f]{64}$")
+_RAW_ACCOUNT_FIELD = "9201"
 
 
 class KiwoomNativeExecutionError(ValueError):
@@ -66,10 +67,19 @@ def _positive_numeric(value: str) -> bool:
         return False
 
 
-def canonical_event_sha256(event: Mapping[str, Any]) -> str:
-    """Hash canonicalized event bytes; this proves byte identity, not provenance."""
+def privacy_safe_event_sha256(event: Mapping[str, Any]) -> str:
+    """Hash a canonical event view after removing the raw account number.
+
+    This value is only a privacy-safe local identity aid. It is deliberately *not* a
+    hash of the immutable raw broker artifact and proves neither raw-artifact identity
+    nor genuine broker provenance. A protected provenance bundle must retain/hash the
+    raw source separately when later allowed by the provenance contract.
+    """
+
+    safe_event = dict(event)
+    safe_event.pop(_RAW_ACCOUNT_FIELD, None)
     encoded = json.dumps(
-        dict(event),
+        safe_event,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -86,8 +96,8 @@ def normalize_realtime_order_fill_event(
     """Normalize one official Kiwoom domestic order/fill realtime type-00 event.
 
     The raw account number (field 9201) is required for local binding checks but is
-    deliberately omitted from the returned row. ``account_fingerprint`` must be
-    produced outside this module in a protected context.
+    deliberately omitted from the returned row and from the public-safe event hash.
+    ``account_fingerprint`` must be produced outside this module in a protected context.
 
     A positive fill quantity requires the broker-native execution/fill number (909).
     Non-fill order lifecycle messages may legitimately have no execution number.
@@ -100,8 +110,8 @@ def normalize_realtime_order_fill_event(
             "account_fingerprint must be sha256:<64 lowercase hex>"
         )
 
-    # Require a raw account binding locally, but never return or hash it separately.
-    _required_text(event, "9201", "account number")
+    # Require a raw account binding locally, but never return or publicly hash it.
+    _required_text(event, _RAW_ACCOUNT_FIELD, "account number")
     broker_order_id = _required_text(event, "9203", "order number")
     symbol = _required_text(event, "9001", "symbol")
     lifecycle_time = _required_text(event, "908", "order/fill time")
@@ -132,7 +142,7 @@ def normalize_realtime_order_fill_event(
         "source_contract": SOURCE_CONTRACT,
         "broker": "KIWOOM",
         "source_api": "domestic_realtime_order_fill_00",
-        "raw_event_sha256": canonical_event_sha256(event),
+        "privacy_safe_event_sha256": privacy_safe_event_sha256(event),
         "account_fingerprint": account_fingerprint,
         "broker_order_id": broker_order_id,
         "broker_execution_id": broker_execution_id,
