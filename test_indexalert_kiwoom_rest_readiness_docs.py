@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 READINESS = (ROOT / "INDEXALERT_KIWOOM_REST_READINESS_CONTRACT.md").read_text(encoding="utf-8")
+CONNECTIVITY = (ROOT / "INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md").read_text(encoding="utf-8")
 BROKER = (ROOT / "INDEXALERT_BROKER_EXECUTION_CONTRACT.md").read_text(encoding="utf-8")
 PROVENANCE = (ROOT / "INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md").read_text(encoding="utf-8")
 
@@ -44,6 +45,26 @@ def test_demo_and_historical_real_data_cannot_bypass_prospective_live_admission(
     assert "demo/paper observations cannot satisfy the frozen execution-sufficiency sample or metric gates" in READINESS
     assert "They do **not** automatically count toward the frozen prospective execution-sufficiency window" in READINESS
     assert "Only observations generated under the frozen decision/execution policies and admitted by the provenance contract may enter that window" in READINESS
+
+
+def test_demo_connectivity_evidence_is_plumbing_only_and_cannot_promote_project_state():
+    required = (
+        "DEMO / READ-ONLY CONNECTIVITY ONLY",
+        "`TOKEN_OK`",
+        "`ACCOUNT_OK`",
+        "`BALANCE_OK`",
+        "`FILLS_OK`",
+        "genuine_live_provenance_verified=false",
+        "live_empirical_execution_evidence_ready=false",
+        "empirical_execution_sufficiency_assessed=false",
+        "empirical_execution_blocker_closed=false",
+        "promotion_ready=false",
+        "sealed_holdout_authorized=false",
+        "live_trading_authorized=false",
+        "No order-create, amend, cancel, real-account, Tiny Live, Limited Live or LIVE endpoint was invoked",
+    )
+    for marker in required:
+        assert marker in CONNECTIVITY
 
 
 def test_existing_broker_and_provenance_contracts_remain_authoritative():
