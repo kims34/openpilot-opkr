@@ -14,7 +14,7 @@ def test_contract_separates_live_structure_from_empirical_sufficiency():
     assert "must **not** merely from that fact set" in text
 
 
-def test_contract_requires_future_preregistered_sufficiency_protocol():
+def test_contract_requires_preregistered_sufficiency_protocol():
     text = CONTRACT.read_text(encoding="utf-8")
     assert "separate preregistered execution-sufficiency protocol" in text
     assert "research_v1_execution_sufficiency_protocol.py" in text
@@ -30,7 +30,8 @@ def test_contract_time_seals_protocol_before_first_live_observation():
     assert "strictly earlier" in text
     assert "first LIVE recommendation" in text
     assert "rejected as post-hoc" in text
-    assert "unit-test fixtures are illustrative test data only" in text
+    assert "Unit-test fixture values remain non-evidence" in text
+    assert "fixed before any genuine LIVE observation" in text
 
 
 def test_valid_protocol_never_claims_execution_sufficiency_by_itself():
@@ -40,7 +41,8 @@ def test_valid_protocol_never_claims_execution_sufficiency_by_itself():
     assert "empirical_execution_blocker_closed=false" in text
     assert "sealed_holdout_authorized=false" in text
     assert "live_trading_authorized=false" in text
-    assert "later evaluator may assess genuine LIVE evidence" in text
+    assert "research_v1_execution_sufficiency_assessment.py" in text
+    assert "separate evaluator for genuine LIVE evidence" in text
 
 
 def test_contract_keeps_shadow_paper_live_semantics_distinct():
