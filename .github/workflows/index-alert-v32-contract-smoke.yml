@@ -6,6 +6,7 @@ on:
       - 'production_v31.py'
       - 'production_v32.py'
       - 'push_build_registration.py'
+      - 'push_self_test.py'
       - 'test_push_build_registration.py'
       - 'test_production_v32.py'
       - 'verify_push_physical_e2e.py'
@@ -31,7 +32,7 @@ jobs:
       - name: Full regression and v32 syntax
         run: |
           pip install -r requirements.txt
-          python -m py_compile production_v31.py production_v32.py push_build_registration.py test_push_build_registration.py test_production_v32.py verify_push_physical_e2e.py test_verify_push_physical_e2e.py
+          python -m py_compile production_v31.py production_v32.py push_build_registration.py push_self_test.py test_push_build_registration.py test_production_v32.py verify_push_physical_e2e.py test_verify_push_physical_e2e.py
           python -m unittest discover -p 'test_*.py' -v
       - name: Wait for exact production revision and verify build-bound push contract
         run: |
@@ -53,6 +54,7 @@ jobs:
           expected_revision = str(os.environ.get('GITHUB_SHA') or '').strip()
           expected_registration_contract = 'register-client-build-v1'
           expected_self_test_contract = 'android-register-direct-v1'
+          expected_binding_contract = 'registered-device-build-receipt-v1'
 
           health = json.load(open('/tmp/health.json'))
           push = json.load(open('/tmp/push-health.json'))
@@ -70,12 +72,13 @@ jobs:
               }, ensure_ascii=False))
               raise SystemExit(1)
 
-          # Once the exact GitHub revision is live, missing build-contract
+          # Once the exact GitHub revision is live, missing build/device contract
           # markers are not a rollout delay. They prove that the wrong runtime
           # entrypoint/route set is serving production and must fail immediately.
           if (
               push.get('registration_build_contract') != expected_registration_contract
               or push.get('self_test_trigger_contract') != expected_self_test_contract
+              or push.get('physical_e2e_binding_contract') != expected_binding_contract
           ):
               print('EXACT_REVISION_BUILD_CONTRACT_VIOLATION', json.dumps({
                   'runtime_revision': status.get('runtime_revision'),
@@ -88,6 +91,8 @@ jobs:
           assert push.get('tokens_exposed') is False, push
           assert push.get('client_receipts_supported') is True, push
           assert isinstance(push.get('registration_build_observed'), bool), push
+          assert isinstance(push.get('registration_device_matches_self_test'), bool), push
+          assert isinstance(push.get('registration_build_matches_self_test'), bool), push
           assert isinstance(push.get('current_build_physical_e2e_confirmed'), bool), push
 
           registered_build = push.get('latest_registered_client_build')
@@ -98,6 +103,8 @@ jobs:
               assert isinstance(self_test_build, str) and self_test_build, push
           if push['current_build_physical_e2e_confirmed']:
               assert registered_build == self_test_build and registered_build, push
+              assert push.get('registration_device_matches_self_test') is True, push
+              assert push.get('registration_build_matches_self_test') is True, push
               assert push.get('latest_self_test_sent') is True, push
               assert push.get('latest_self_test_receipt_confirmed') is True, push
 
@@ -121,8 +128,11 @@ jobs:
               'runtime_revision': status.get('runtime_revision'),
               'registration_build_contract': push.get('registration_build_contract'),
               'self_test_trigger_contract': push.get('self_test_trigger_contract'),
+              'physical_e2e_binding_contract': push.get('physical_e2e_binding_contract'),
               'latest_registered_client_build': registered_build,
               'latest_self_test_build': self_test_build,
+              'registration_device_matches_self_test': push.get('registration_device_matches_self_test'),
+              'registration_build_matches_self_test': push.get('registration_build_matches_self_test'),
               'current_build_physical_e2e_confirmed': push.get('current_build_physical_e2e_confirmed'),
           }, ensure_ascii=False, indent=2))
           PY
@@ -132,7 +142,7 @@ jobs:
                 exit 0
               fi
               if [ "$validation_rc" -eq 2 ]; then
-                echo 'v32 production integrity violation: exact revision is serving without the build-bound push contract' >&2
+                echo 'v32 production integrity violation: exact revision is serving without the device/build-bound push contract' >&2
                 exit 2
               fi
             fi
