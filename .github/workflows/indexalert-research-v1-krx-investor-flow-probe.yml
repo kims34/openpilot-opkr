@@ -5,6 +5,7 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_krx_investor_flow_probe.py'
+      - 'research_v1_krx_auth_preflight.py'
       - 'research_v1_krx_source_gates.py'
       - 'research_v1_krx_public_evidence.py'
       - '.github/workflows/indexalert-research-v1-krx-investor-flow-probe.yml'
@@ -20,6 +21,7 @@ jobs:
       KRX_ID: ${{ secrets.KRX_ID }}
       KRX_PW: ${{ secrets.KRX_PW }}
       KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}
+      KRX_AUTH_EVIDENCE_REF: ${{ vars.KRX_AUTH_EVIDENCE_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,7 +35,7 @@ jobs:
           pip install 'git+https://github.com/beaten-by-the-market/krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e'
       - name: Run metadata-only investor-flow diagnostic with A-F audit
         run: |
-          python -m py_compile research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_investor_flow_probe.py
+          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_investor_flow_probe.py
           python research_v1_krx_investor_flow_probe.py
           cat research_results/krx_investor_flow_probe/summary.json
       - name: Upload metadata-only probe result
