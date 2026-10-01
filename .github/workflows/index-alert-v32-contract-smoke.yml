@@ -9,6 +9,7 @@ on:
       - 'test_push_build_registration.py'
       - 'test_production_v32.py'
       - 'verify_push_physical_e2e.py'
+      - 'test_verify_push_physical_e2e.py'
       - '.github/workflows/index-alert-physical-e2e-verify.yml'
       - 'Dockerfile'
       - '.github/workflows/index-alert-v32-contract-smoke.yml'
@@ -30,7 +31,7 @@ jobs:
       - name: Full regression and v32 syntax
         run: |
           pip install -r requirements.txt
-          python -m py_compile production_v31.py production_v32.py push_build_registration.py test_push_build_registration.py test_production_v32.py verify_push_physical_e2e.py
+          python -m py_compile production_v31.py production_v32.py push_build_registration.py test_push_build_registration.py test_production_v32.py verify_push_physical_e2e.py test_verify_push_physical_e2e.py
           python -m unittest discover -p 'test_*.py' -v
       - name: Wait for exact production revision and verify build-bound push contract
         run: |
