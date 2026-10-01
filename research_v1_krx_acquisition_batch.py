@@ -3,8 +3,8 @@
 A batch combines multiple metadata-only acquisition receipts for one exact KRX
 dataset contract. It verifies each receipt fingerprint and forbids silent mixing
 of source family, intended-use scope, access route, dataset identifier,
-authorization evidence reference, client revision, response schema or public
-contract evidence.
+authorization evidence reference, validated structured authorization-evidence
+record fingerprint, client revision, response schema or public-contract evidence.
 
 This is Gate-E integrity infrastructure only. Batch validity is not source-gate
 closure, coverage/PIT evidence, performance authority, holdout authority or
@@ -13,6 +13,7 @@ live-trading authority.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import re
 from typing import Any, Iterable, Mapping
 
 from research_v1_krx_acquisition_receipt import _sha256
@@ -26,6 +27,7 @@ class KRXAcquisitionBatchError(ValueError):
     """Raised when receipt provenance is incomplete, mixed or tampered."""
 
 
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RECEIPT_BODY_FIELDS = (
     "receipt_version",
     "source_family",
@@ -33,6 +35,7 @@ RECEIPT_BODY_FIELDS = (
     "access_route",
     "dataset_identifier",
     "authorization_evidence_reference",
+    "authorization_evidence_fingerprint_sha256",
     "client_revision",
     "retrieved_at",
     "request_metadata_sha256",
@@ -56,6 +59,7 @@ class KRXAcquisitionBatchManifest:
     access_route: str
     dataset_identifier: str
     authorization_evidence_reference: str
+    authorization_evidence_fingerprint_sha256: str
     client_revision: str
     response_schema_sha256: str
     public_contract_evidence_version: str
@@ -83,11 +87,18 @@ def verify_receipt_fingerprint(receipt: Mapping[str, Any]) -> str:
     if not isinstance(receipt, Mapping):
         raise KRXAcquisitionBatchError("receipt must be a mapping")
     claimed = str(receipt.get("receipt_fingerprint_sha256") or "").strip().lower()
-    if len(claimed) != 64 or any(ch not in "0123456789abcdef" for ch in claimed):
+    if not SHA256_RE.fullmatch(claimed):
         raise KRXAcquisitionBatchError("receipt fingerprint is missing or malformed")
     expected = _sha256(_body(receipt))
     if claimed != expected:
         raise KRXAcquisitionBatchError("receipt fingerprint mismatch; receipt may be tampered")
+    auth_fp = str(receipt["authorization_evidence_fingerprint_sha256"]).strip().lower()
+    if not SHA256_RE.fullmatch(auth_fp):
+        raise KRXAcquisitionBatchError(
+            "authorization evidence fingerprint is missing or malformed"
+        )
+    if str(receipt["receipt_version"]) != "2026-10-01.v2":
+        raise KRXAcquisitionBatchError("unsupported acquisition receipt version")
     if bool(receipt["alpha_or_final_judge_promotion_authorized"]):
         raise KRXAcquisitionBatchError("receipt illegally claims promotion authority")
     if bool(receipt["sealed_holdout_authorized"]):
@@ -121,11 +132,16 @@ def build_acquisition_batch_manifest(
     access_route = str(_single_value(items, "access_route"))
     dataset_identifier = str(_single_value(items, "dataset_identifier"))
     auth_ref = str(_single_value(items, "authorization_evidence_reference"))
+    auth_evidence_fp = str(
+        _single_value(items, "authorization_evidence_fingerprint_sha256")
+    ).lower()
     client_revision = str(_single_value(items, "client_revision"))
     schema_sha = str(_single_value(items, "response_schema_sha256"))
     public_version = str(_single_value(items, "public_contract_evidence_version"))
     public_fp = str(_single_value(items, "public_contract_evidence_fingerprint_sha256"))
 
+    if not SHA256_RE.fullmatch(auth_evidence_fp):
+        raise KRXAcquisitionBatchError("batch authorization evidence fingerprint is malformed")
     if public_version != PUBLIC_EVIDENCE_VERSION:
         raise KRXAcquisitionBatchError("batch uses stale public-contract evidence version")
     if public_fp != public_evidence_fingerprint_sha256():
@@ -133,12 +149,13 @@ def build_acquisition_batch_manifest(
 
     sorted_fps = tuple(sorted(fingerprints))
     batch_body = {
-        "batch_version": "2026-10-01.v1",
+        "batch_version": "2026-10-01.v2",
         "source_family": source_family,
         "intended_use_scope": intended_use_scope,
         "access_route": access_route,
         "dataset_identifier": dataset_identifier,
         "authorization_evidence_reference": auth_ref,
+        "authorization_evidence_fingerprint_sha256": auth_evidence_fp,
         "client_revision": client_revision,
         "response_schema_sha256": schema_sha,
         "public_contract_evidence_version": public_version,
@@ -146,7 +163,6 @@ def build_acquisition_batch_manifest(
         "receipt_count": len(items),
         "total_response_rows": int(sum(int(receipt["response_rows"]) for receipt in items)),
         "receipt_fingerprints_sha256": sorted_fps,
-        # Batch provenance alone does not establish exact historical coverage or PIT.
         "coverage_validated": False,
         "pit_lineage_validated": False,
         "alpha_or_final_judge_promotion_authorized": False,
@@ -160,7 +176,7 @@ def build_acquisition_batch_manifest(
     out = asdict(manifest)
     out["receipt_fingerprints_sha256"] = list(manifest.receipt_fingerprints_sha256)
     out["guardrail"] = (
-        "A valid batch proves only internally consistent acquisition provenance for one dataset contract. "
+        "A valid batch proves only internally consistent acquisition provenance for one dataset contract and one validated structured authorization-evidence record fingerprint. "
         "Coverage, PIT lineage, A-F closure, feature testing, sealed holdout, promotion and live trading remain separate."
     )
     return out
