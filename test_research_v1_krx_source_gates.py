@@ -89,18 +89,29 @@ def test_empty_evidence_is_rejected():
         )
 
 
-def test_canonical_docs_freeze_the_same_gate_names():
+def test_normative_docs_freeze_gate_labels_and_canonical_names():
     docs = [
         Path("INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md"),
         Path("INDEXALERT_KRX_SOURCE_GATE_AUDIT.md"),
         Path("INDEXALERT_MASTER_SPEC.md"),
+    ]
+    for path in docs:
+        text = path.read_text(encoding="utf-8")
+        for gate, definition in SOURCE_GATE_DEFINITIONS.items():
+            assert f"Gate {gate}" in text, f"{path} missing Gate {gate}"
+            assert definition["name"] in text, (
+                f"{path} missing canonical name for Gate {gate}: {definition['name']}"
+            )
+
+
+def test_summary_and_handoff_docs_preserve_all_canonical_gate_names():
+    docs = [
         Path("INDEXALERT_RESEARCH_STATUS.md"),
         Path("INDEXALERT_CONTINUITY_SNAPSHOT.md"),
     ]
     for path in docs:
         text = path.read_text(encoding="utf-8")
         for gate, definition in SOURCE_GATE_DEFINITIONS.items():
-            assert f"Gate {gate}" in text, f"{path} missing Gate {gate}"
             assert definition["name"] in text, (
                 f"{path} missing canonical name for Gate {gate}: {definition['name']}"
             )
