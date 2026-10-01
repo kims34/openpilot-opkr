@@ -13,6 +13,7 @@ on:
       - 'research_v1_execution_sufficiency_cli.py'
       - 'test_research_v1_execution_sufficiency_cli.py'
       - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'
+      - 'INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md'
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md'
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json'
       - 'INDEXALERT_MASTER_SPEC.md'
