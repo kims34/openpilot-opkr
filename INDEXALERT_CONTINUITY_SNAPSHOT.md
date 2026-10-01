@@ -109,34 +109,40 @@ Protocol validity alone keeps sufficiency unassessed and blocker/promotion/holdo
 
 Execution preregistration Action `36835013828` succeeded; strengthened contract-drift Action `36835231533` also succeeded.
 
-## 6. Android / push Physical E2E — server/prod fail-closed contract DONE, handset v4.7 evidence still OPEN
+## 6. Android / push Physical E2E — DONE for audited v4.7-47
 
-### Android current audited build
+Canonical audit: `INDEXALERT_PHYSICAL_E2E_AUDIT.md`.
 
-Current build branch: `index-alert-build`.  
-Current branch HEAD: `5154ef7943353791f615622394523ecd52ef8b0f` (`Label Android v4.7 build artifacts`).  
-Current Android build identifies itself to the server as **`client_build = "4.7-47"`**.
+### Android audited build
 
-Latest APK Action `36856589300`: SUCCESS.
+Build branch: `index-alert-build`.  
+Audited branch HEAD: `5154ef7943353791f615622394523ecd52ef8b0f` (`Label Android v4.7 build artifacts`).  
+Android identifies itself to the server as **`client_build = "4.7-47"`**.
+
+APK Action `36856589300`: SUCCESS.
 - debug artifact `IndexAlert-v4.7-debug`, artifact ID `11158994269`, digest `sha256:0aec298a0d0276f8a5e40dc22429b595e8bb11636f22ceeea75cb018a4a7e411`;
 - unsigned release artifact `IndexAlert-v4.7-unsigned-release`, artifact ID `11159209190`, digest `sha256:77f7ba0acb991ae48827dcac8658b917fe60edc0ec677ae4548d8e797c8f4780`.
 
-The v4.7 client sends the privacy-safe build identifier during registration and uses the established self-test/receipt path; provider send success alone is never treated as handset receipt. The server-issued event is acknowledged through privacy-safe `/push-ack` only after the handset actually receives it.
+The v4.7 client sends its privacy-safe build identifier during registration and uses the established self-test/receipt path; provider send success alone is never treated as handset receipt. The server-issued event is acknowledged through privacy-safe `/push-ack` only after the handset actually receives it.
 
-### Server current audited code
+### Real registration incompatibility found and fixed
 
-Current server branch: `index-alert-server`.  
-Operational server HEAD: `b43b478bc624925b0fd58d5986f8fd293ae2d65f` (`Test fail-closed legacy registration ordering`).
+The first physical v4.7 installation could read `/status`, `/laggards` and history successfully, but repeated `POST /register` requests returned HTTP 400.
 
-The build-registration overlay is shared by v31 and v32 entrypoints, so start-command drift cannot silently remove the build-bound registration/health contract. Production v32 re-exports the frozen contract markers for compatibility and auditability.
+Root cause: the established base registration validator requires an exact `enabled_levels` key set matching server `monitor.RULES`. Production contains display-only rules with empty alert levels, including `usdkrw`, while the Android registration payload carries the configurable alert rules plus the legacy KOSPI display key. This otherwise valid payload therefore failed exact-key validation.
 
-Frozen contracts:
+Fix in `push_build_registration.py`: add only missing server rules whose alert `levels` are empty before calling the established validator. Alert-bearing rules are never synthesized; missing/unknown alert rules continue to fail closed. `test_push_build_registration.py` freezes this compatibility boundary.
+
+Validated server revision: `d8523810b1c2c092a9ffc8f6245586e3bb719645` (`Test v4.7 registration with display-only server rules`). Server Tests Action `36874615526` succeeded.
+
+### Frozen server contracts
+
 - `registration_build_contract = "register-client-build-v1"`
 - `self_test_trigger_contract = "android-register-direct-v1"`
 - `physical_e2e_binding_contract = "registered-device-build-receipt-v1"`
 - `physical_e2e_blocker_contract = "physical-e2e-blocker-v1"`
 
-Physical-E2E is bound to the exact latest registered **device and build**, not merely a matching build string. Server-internal token/event identifiers are used only for binding and are never exposed in the public health payload. A latest registration that omits `client_build` is preserved as a latest unknown-build observation and fails closed as `NO_REGISTERED_BUILD`; it cannot cause an older build-aware device to resurface as if it were the latest registration.
+Physical E2E is bound to the exact latest registered **device and build**, not merely a matching build string. Server-internal token/event identifiers are used only for binding and are never exposed in the public health payload. A latest registration that omits `client_build` is preserved as a latest unknown-build observation and fails closed as `NO_REGISTERED_BUILD`; it cannot cause an older build-aware device to resurface as if it were the latest registration.
 
 Public health evidence includes:
 - `latest_registered_client_build`
@@ -153,45 +159,29 @@ The blocker code is exactly one of:
 
 A same-build receipt from a different device fails closed. An older-build receipt fails closed. A newer legacy/unknown-build registration also fails closed and cannot resurrect older evidence. `verify_push_physical_e2e.py` is read-only and requires the exact registered build, same-device binding, same-build binding, all frozen contract markers, `physical_e2e_blocker == "CONFIRMED"`, sent self-test and real client receipt before returning confirmed.
 
-Server Tests Action `36868822598` succeeded at exact HEAD `b43b478b...`; the full suite passed **159 tests**. v32 Build Contract Smoke Action `36868822607` initially timed out only because the Railway rollout completed after its 30-attempt wait window; the rerun job `110397147003` then succeeded against the exact production revision and all build/device/blocker contracts.
+### Railway production and real handset evidence — CONFIRMED
 
-### Railway production — exact source SHA and runtime SHA aligned
+Railway `indexalert-runtime` deployment `4cde730b-2aca-49c2-9950-f895897fe642` completed SUCCESS from exact server commit `d8523810b1c2c092a9ffc8f6245586e3bb719645`. Production uses `production_v32:app`.
 
-Railway `indexalert-runtime` deployment `10d09f6a-daec-45cb-b5fa-25b7e192d405` is SUCCESS from exact server commit `b43b478bc624925b0fd58d5986f8fd293ae2d65f`.
+After the fixed revision became live, the real Android handset generated the actual production path:
+- `POST /register` — HTTP 200;
+- `POST /push-self-test` — HTTP 200;
+- real handset `POST /push-ack` — HTTP 200.
 
-Railway service start command remains explicitly `production_v32:app`. The successful rerun smoke observed `runtime_revision = "b43b478bc624925b0fd58d5986f8fd293ae2d65f"`, so GitHub source, Railway deployment and runtime revision are aligned.
-
-Therefore the server deployment, API schema and all four Physical-E2E contract markers are production-audited. This does **not** by itself prove a physical handset receipt.
-
-### Current Physical E2E evidence — still OPEN
-
-The final successful exact-revision production smoke observed:
-- `runtime_revision = "b43b478bc624925b0fd58d5986f8fd293ae2d65f"`
+A fresh rerun of v32 Build Contract Smoke Action `36874615527` then succeeded on the exact production revision and observed:
+- `runtime_revision = "d8523810b1c2c092a9ffc8f6245586e3bb719645"`
 - `registration_build_contract = "register-client-build-v1"`
 - `self_test_trigger_contract = "android-register-direct-v1"`
 - `physical_e2e_binding_contract = "registered-device-build-receipt-v1"`
 - `physical_e2e_blocker_contract = "physical-e2e-blocker-v1"`
-- `physical_e2e_blocker = "NO_REGISTERED_BUILD"`
-- `latest_registered_client_build = null`
-- `latest_self_test_build = null`
-- `registration_device_matches_self_test = false`
-- `registration_build_matches_self_test = false`
-- `current_build_physical_e2e_confirmed = false`
+- `physical_e2e_blocker = "CONFIRMED"`
+- `latest_registered_client_build = "4.7-47"`
+- `latest_self_test_build = "4.7-47"`
+- `registration_device_matches_self_test = true`
+- `registration_build_matches_self_test = true`
+- `current_build_physical_e2e_confirmed = true`
 
-This is a clean server-side fail-closed state: production has **not yet observed a current build-aware v4.7 handset registration/self-test**, so there is no device/build-specific physical evidence to confirm. Null/false values and aggregate delivery counters must not be reinterpreted as current-build evidence.
-
-Exact Physical E2E closure requires a real handset running build `4.7-47` to produce all of the following on the same registered device:
-- `latest_registered_client_build == "4.7-47"`
-- `latest_self_test_build == "4.7-47"`
-- `registration_device_matches_self_test == true`
-- `registration_build_matches_self_test == true`
-- `latest_self_test_sent == true`
-- `latest_self_test_receipt_confirmed == true`
-- `physical_e2e_blocker == "CONFIRMED"`
-- `current_build_physical_e2e_confirmed == true`
-- a non-null real client receipt timestamp / receipt ledger entry.
-
-No physical receipt is fabricated or inferred from Firebase provider send success, a prior build, a same-build event received by another device, or a later legacy registration with no build identity.
+Therefore **Physical E2E is CLOSED/DONE for audited Android v4.7-47 and production revision `d8523810…`**. This proves notification plumbing only and cannot be used as Alpha, execution-sufficiency, KRX, holdout, promotion or live-order evidence.
 
 ## 7. U.S. mover operational integrity — DONE and auditable
 
@@ -234,10 +224,10 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.
 7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. DONE — server deployment drift, stale-runtime ambiguity, same-device/build binding, blocker-state contract and legacy-registration resurfacing risk; Railway production/runtime are aligned to exact server commit `b43b478b...`, 159 server tests pass, and exact-revision v32 production smoke succeeds.
+9. DONE — server deployment drift, stale-runtime ambiguity, same-device/build binding, blocker-state contract, legacy-registration resurfacing risk and v4.7 display-only registration incompatibility; Railway production is aligned to exact server commit `d8523810...`, Server Tests `36874615526` succeed, and rerun v32 production smoke `36874615527` succeeds.
 10. DONE — mover production-integrity provenance; non-equity and registered corporate-action exclusions are fail-closed and visible in `/laggards`.
 11. DONE — USD/KRW public startup basis is fail-closed until ECOS prior-15:30 verification and carries contract marker `ecos-1530-fail-closed-v1`.
-12. PHYSICAL E2E EXTERNAL HANDSET BLOCKER — server-side exact device/build/blocker contracts are DONE; production currently reports `physical_e2e_blocker=NO_REGISTERED_BUILD`, `latest_registered_client_build=null` and `latest_self_test_build=null`. A real v4.7-47 handset must register, receive the build-specific self-test and ACK it on that same device.
+12. DONE — PHYSICAL E2E for audited Android v4.7-47: real production `/register` -> `/push-self-test` -> handset `/push-ack` succeeded on the exact registered device/build and production now reports `physical_e2e_blocker=CONFIRMED`.
 13. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
 
 ## 10. Continuation rules
