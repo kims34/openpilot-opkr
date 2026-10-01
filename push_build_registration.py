@@ -27,6 +27,16 @@ import push_self_test
 REGISTRATION_BUILD_CONTRACT = "register-client-build-v1"
 SELF_TEST_TRIGGER_CONTRACT = "android-register-direct-v1"
 PHYSICAL_E2E_BINDING_CONTRACT = "registered-device-build-receipt-v1"
+PHYSICAL_E2E_BLOCKER_CONTRACT = "physical-e2e-blocker-v1"
+PHYSICAL_E2E_BLOCKERS = frozenset({
+    "NO_REGISTERED_BUILD",
+    "NO_SELF_TEST",
+    "DEVICE_MISMATCH",
+    "BUILD_MISMATCH",
+    "SELF_TEST_NOT_SENT",
+    "RECEIPT_PENDING",
+    "CONFIRMED",
+})
 
 
 class RegisterBodyV32(BaseModel):
@@ -107,6 +117,31 @@ def _latest_registered_build() -> tuple[str | None, str | None]:
     return build, observed_at
 
 
+def _physical_e2e_blocker(
+    *,
+    registered_build: str | None,
+    self_test_build: str | None,
+    same_device: bool,
+    same_build: bool,
+    sent: bool,
+    receipt_confirmed: bool,
+) -> str:
+    """Return one fail-closed, privacy-safe blocker code for the latest evidence."""
+    if not registered_build:
+        return "NO_REGISTERED_BUILD"
+    if not self_test_build:
+        return "NO_SELF_TEST"
+    if not same_device:
+        return "DEVICE_MISMATCH"
+    if not same_build:
+        return "BUILD_MISMATCH"
+    if not sent:
+        return "SELF_TEST_NOT_SENT"
+    if not receipt_confirmed:
+        return "RECEIPT_PENDING"
+    return "CONFIRMED"
+
+
 def register_v32(body: RegisterBodyV32):
     build = _clean_client_build(body.client_build)
     base_body = monitor.RegisterBody(
@@ -125,6 +160,7 @@ def register_v32(body: RegisterBodyV32):
         registration_build_contract=REGISTRATION_BUILD_CONTRACT,
         self_test_trigger_contract=SELF_TEST_TRIGGER_CONTRACT if build else None,
         physical_e2e_binding_contract=PHYSICAL_E2E_BINDING_CONTRACT if build else None,
+        physical_e2e_blocker_contract=PHYSICAL_E2E_BLOCKER_CONTRACT if build else None,
     )
     return result
 
@@ -139,14 +175,24 @@ def push_health_v32():
         and registered_token == self_test.get("token")
     )
     same_build = bool(build and self_test.get("build") == build)
+    sent = bool(self_test.get("sent"))
+    receipt_confirmed = bool(self_test.get("receipt_confirmed"))
+    blocker = _physical_e2e_blocker(
+        registered_build=build,
+        self_test_build=self_test.get("build"),
+        same_device=same_device,
+        same_build=same_build,
+        sent=sent,
+        receipt_confirmed=receipt_confirmed,
+    )
 
     # Override the aggregate helper's latest-self-test fields from the exact
     # private binding snapshot used for the device/build comparison, avoiding a
     # split-read race between public health and the attestation decision.
     payload.update(
         latest_self_test_build=self_test.get("build"),
-        latest_self_test_sent=bool(self_test.get("sent")),
-        latest_self_test_receipt_confirmed=bool(self_test.get("receipt_confirmed")),
+        latest_self_test_sent=sent,
+        latest_self_test_receipt_confirmed=receipt_confirmed,
         latest_self_test_created_at=self_test.get("created_at"),
         latest_registered_client_build=build,
         latest_registered_client_build_at=observed_at,
@@ -156,13 +202,10 @@ def push_health_v32():
         registration_build_contract=REGISTRATION_BUILD_CONTRACT,
         self_test_trigger_contract=SELF_TEST_TRIGGER_CONTRACT,
         physical_e2e_binding_contract=PHYSICAL_E2E_BINDING_CONTRACT,
+        physical_e2e_blocker_contract=PHYSICAL_E2E_BLOCKER_CONTRACT,
+        physical_e2e_blocker=blocker,
     )
-    payload["current_build_physical_e2e_confirmed"] = bool(
-        same_device
-        and same_build
-        and self_test.get("sent")
-        and self_test.get("receipt_confirmed")
-    )
+    payload["current_build_physical_e2e_confirmed"] = blocker == "CONFIRMED"
     return payload
 
 
