@@ -5,8 +5,9 @@ never persists KRX numeric market rows. It records only reachability, row
 counts, column names, source identifiers and errors needed to decide whether a
 future historical PIT ingestion job can be built reproducibly.
 
-Credentials are not authorization. KRX_ID/KRX_PW plus a non-secret
-KRX_AUTH_EVIDENCE_REF are required before this probe makes an authenticated
+Credentials are not authorization, and authorization metadata is not runtime
+consent. KRX_ID/KRX_PW, a non-secret KRX_AUTH_EVIDENCE_REF and the exact
+explicit-consent sentinel are required before this probe makes an authenticated
 Data Marketplace request. KRX OpenAPI AUTH_KEY is a separate route and is never
 substituted for the web-session route.
 """
@@ -20,6 +21,7 @@ from typing import Any, Callable
 
 from research_v1_krx_auth_preflight import (
     DATA_MARKETPLACE_ROUTE,
+    EXPLICIT_PROBE_CONSENT_ENV,
     evaluate_auth_preflight,
 )
 from research_v1_krx_public_evidence import (
@@ -79,9 +81,9 @@ def source_gate_audit(*, request_authorized: bool) -> dict:
     }
     evidence = {
         "A": (
-            "Route-specific Data Marketplace credentials and a non-secret authorization evidence reference are present, so the tiny authenticated probe may be exercised; the full historical product/access contract remains open."
+            "Route-specific Data Marketplace credentials, non-secret authorization evidence and exact explicit per-run consent are present, so the tiny authenticated probe may be exercised; the full historical product/access contract remains open."
             if request_authorized
-            else "The active runtime has not satisfied both route-specific credentials and authorization-evidence requirements, so no authenticated Data Marketplace request is attempted."
+            else "The active runtime has not satisfied credentials, authorization-evidence and explicit-consent requirements together, so no authenticated Data Marketplace request is attempted."
         ),
         "B": "MDCSTAT213/237/238/239 screen families are identified, but some low-level mappings remain provisional and exact approved service/schema equivalence for the complete historical family is not closed.",
         "C": "The tiny source probe does not reconstruct or independently audit full requested-period common-stock/status coverage.",
@@ -116,6 +118,7 @@ def _finalise_report(report: dict[str, Any], *, request_authorized: bool) -> dic
         "public_contract_evidence_version": PUBLIC_EVIDENCE_VERSION,
         "public_contract_evidence_fingerprint_sha256": public_evidence_fingerprint,
         "authorization_preflight_required": True,
+        "explicit_per_run_probe_consent_required": True,
     }
     report["probe_contract_fingerprint_sha256"] = _canonical_sha256(contract_material)
     result_material = {
@@ -140,6 +143,7 @@ def main() -> None:
         "KRX_ID": os.getenv("KRX_ID"),
         "KRX_PW": os.getenv("KRX_PW"),
         "KRX_OPENAPI_AUTH_KEY": os.getenv("KRX_OPENAPI_AUTH_KEY"),
+        EXPLICIT_PROBE_CONSENT_ENV: os.getenv(EXPLICIT_PROBE_CONSENT_ENV),
     }
     session_credentials_present = bool(environment["KRX_ID"]) and bool(environment["KRX_PW"])
     openapi_key_present = bool(environment["KRX_OPENAPI_AUTH_KEY"])
@@ -159,6 +163,7 @@ def main() -> None:
         "data_marketplace_session_credentials_present": session_credentials_present,
         "official_openapi_auth_key_present": openapi_key_present,
         "authorization_evidence_reference_present": preflight["authorization_evidence_reference_present"],
+        "explicit_probe_consent_present": preflight["explicit_probe_consent_present"],
         "authorization_preflight": preflight,
         "active_probe_access_route": DATA_MARKETPLACE_ROUTE,
         "openapi_route_status": (
@@ -167,9 +172,10 @@ def main() -> None:
             else "AUTH_KEY_NOT_CONFIGURED_AND_REQUIRED_STATUS_API_MAPPING_NOT_ESTABLISHED"
         ),
         "source_route_policy": {
-            "data_marketplace_session": "KRX_ID/KRX_PW plus a non-secret authorization evidence reference are required for the tiny authenticated Data Marketplace source-feasibility check",
+            "data_marketplace_session": "KRX_ID/KRX_PW, a non-secret authorization evidence reference and exact explicit per-run consent are required for the tiny authenticated Data Marketplace source-feasibility check",
             "official_openapi": "AUTH_KEY is a separate KRX OpenAPI credential and may be used only after the exact required API service is identified and approved",
             "no_auth_substitution": True,
+            "push_is_dry_run_only": True,
         },
         "pinned_krx_data_api_commit": PINNED_KRX_DATA_API,
         "official_screen_contracts": {
@@ -182,7 +188,7 @@ def main() -> None:
             "trading_halt": "dbms/MDC/STAT/issue/MDCSTAT21301",
             "cleanup_trading": "dbms/MDC/STAT/issue/MDCSTAT23701",
         },
-        "status": "PENDING" if request_authorized else "AUTHORIZATION_PREFLIGHT_BLOCKED",
+        "status": "PENDING" if request_authorized else "AUTHORIZATION_OR_CONSENT_PREFLIGHT_BLOCKED",
         "judge_security_status_ready": False,
         "why_not_judge_ready": [
             "exact official access/product contract for historical halt/cleanup/delisting data is not yet established",
