@@ -6,7 +6,7 @@ on:
       expected_build:
         description: 'Exact Android client_build expected to have a real handset receipt'
         required: true
-        default: '4.6-46'
+        default: '4.7-47'
         type: string
       base_url:
         description: 'Production IndexAlert backend base URL'
