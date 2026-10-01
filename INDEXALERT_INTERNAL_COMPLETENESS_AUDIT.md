@@ -11,11 +11,20 @@ Reviewed boundaries: continuous research/preregistration, research orchestrator,
 
 ## Findings
 
-### IC-001 — successor code-update authority too close to caller-supplied confirmation — FIXED
+### IC-001 — successor promotion authority too close to caller-supplied confirmation — FIXED FAIL-CLOSED
 
-Previous `assess_shadow_promotion` returned `automatic_code_update_allowed=true` when caller-supplied confirmation booleans passed. Although no deployment actuator was connected, that representation could be misread or later wired as authority without independent evidence admission.
+Earlier `assess_shadow_promotion` could return caller-controlled promotion/code-update eligibility from confirmation booleans. A first hardening correctly forced `automatic_code_update_allowed=false`, but still left `promotion_eligible=true` and `automatic_code_update_eligible=true` when a caller supplied all gate booleans as true. Although no deployment actuator was connected, those fields could still be misread or later consumed as independently established promotion authority.
 
-Fix: the function now distinguishes `automatic_code_update_eligible` from authority. Even when every represented promotion gate passes, it returns `automatic_code_update_allowed=false` and `promotion_authority_verified=false`. Caller-provided booleans cannot self-grant mutation authority. A future updater must independently verify canonical evidence/promotion artifacts before any Core mutation.
+Final fail-closed fix:
+- caller-supplied confirmation booleans may establish only `promotion_conditions_structurally_satisfied`;
+- `promotion_eligible=false` remains mandatory until an independent canonical gate-admission adapter exists;
+- `automatic_code_update_eligible=false` and `automatic_code_update_allowed=false` remain mandatory;
+- `independent_gate_admission_verified=false`, `promotion_authority_verified=false`, and `promotion_authority_granted=false` remain mandatory;
+- `INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED` is always retained as a blocker;
+- spoofed caller flags claiming authority are ignored;
+- live-order and sealed-holdout authority remain false.
+
+A future promotion adapter must verify immutable, provenance-bound outputs from the authoritative source, execution, holdout, Shadow S1 and Fresh Confirmation S2 auditors. Caller booleans, labels, filenames, hashes, self-authored manifests and status strings are not evidence admission.
 
 ### Order-path audit
 
@@ -23,7 +32,7 @@ No Kiwoom network/auth/order-submission implementation is present in the reviewe
 
 ### Research/holdout audit
 
-Continuous-research and orchestrator paths keep sealed holdout forbidden for discovery/tuning and emit research IDEA/challenger states without production-write authority. Successor staging remains non-production and real-order authorization false.
+Continuous-research and orchestrator paths keep sealed holdout forbidden for discovery/tuning and emit research IDEA/challenger states without production-write authority. Successor staging remains non-production. Even a structurally complete caller confirmation cannot independently establish promotion eligibility or Core-mutation authority.
 
 ## Remaining items are external/evidence-bound
 
@@ -35,4 +44,6 @@ This audit does not close KRX A-F external evidence, exact affected-position sta
 - `empirical_execution_blocker_closed=false`
 - `sealed_holdout_authorized=false`
 - `live_trading_authorized=false`
-- successor promotion eligibility is not mutation authority
+- caller-supplied successor confirmation is structural diagnostic input only
+- `promotion_eligible=false` until independent gate admission is implemented and verified
+- automatic Core mutation remains unauthorized
