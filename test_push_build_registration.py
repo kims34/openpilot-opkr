@@ -62,6 +62,10 @@ class PushBuildRegistrationOverlayTests(unittest.TestCase):
             build_overlay.SELF_TEST_TRIGGER_CONTRACT,
             "android-register-direct-v1",
         )
+        self.assertEqual(
+            build_overlay.PHYSICAL_E2E_BINDING_CONTRACT,
+            "registered-device-build-receipt-v1",
+        )
 
     def test_v31_runtime_installs_the_same_build_bound_routes(self):
         build_overlay = self.build_overlay
