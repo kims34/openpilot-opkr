@@ -33,6 +33,7 @@ COPY market_basis.py .
 COPY corporate_action_registry.py .
 COPY fx_basis.py .
 COPY production_v31.py .
+COPY production_v32.py .
 COPY briefing.py .
 COPY history_routes.py .
 COPY laggards.py .
@@ -68,4 +69,4 @@ COPY probability_pipeline.py .
 COPY sitecustomize.py .
 ENV PYTHONPATH=/app
 ENV PORT=8080
-CMD ["sh", "-c", "python -m uvicorn production_v31:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "python -m uvicorn production_v32:app --host 0.0.0.0 --port ${PORT:-8080}"]
