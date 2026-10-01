@@ -1,0 +1,44 @@
+name: IndexAlert Physical E2E Receipt Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_build:
+        description: 'Exact Android client_build expected to have a real handset receipt'
+        required: true
+        default: '4.6-46'
+        type: string
+      base_url:
+        description: 'Production IndexAlert backend base URL'
+        required: true
+        default: 'https://indexalert-runtime-production.up.railway.app'
+        type: string
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install verifier dependency
+        run: pip install requests==2.32.3
+      - name: Verify existing real-handset receipt evidence
+        run: |
+          python -m py_compile verify_push_physical_e2e.py
+          python verify_push_physical_e2e.py \
+            --base-url '${{ inputs.base_url }}' \
+            --expected-build '${{ inputs.expected_build }}' \
+            --output physical_e2e_verification.json
+      - name: Upload read-only verification result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-physical-e2e-${{ inputs.expected_build }}
+          path: physical_e2e_verification.json
+          if-no-files-found: warn
+          retention-days: 30
