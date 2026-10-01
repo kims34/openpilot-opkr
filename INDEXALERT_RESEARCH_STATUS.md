@@ -161,32 +161,51 @@ Latest APK Action `36815959241` succeeded:
 - debug `IndexAlert-v4.6-debug`, artifact ID `11141577031`, SHA256 `d32c468bb3f719dcdafe99f3614358723cceeb566239bbedbbb3927c6f740dbf`;
 - unsigned release `IndexAlert-v4.6-unsigned-release`, artifact ID `11141532240`, SHA256 `b95c8f28417c1b3f901ad2c0768970ae2942f2167ed49e9373f3666a4edf19a6`.
 
-The Android receipt path schedules privacy-safe `/push-ack` for the exact server event and only marks the build self-test complete after `receipt_confirmed=true`.
+The Android receipt path schedules privacy-safe `/push-ack` for the exact server event and only marks the build self-test complete after `receipt_confirmed=true`. Provider send success is never treated as handset receipt.
 
-Server-side self-test already reuses one event per token/build and never re-sends a successful provider send merely because the handset receipt is pending. `/push-ack` is bound to a registered token hash plus an already-sent exact event and is idempotent.
+Server branch `index-alert-server` now has audited HEAD `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` (`Run Physical E2E verifier in server CI`). The server self-test reuses one event per token/build and never re-sends a successful provider send merely because handset receipt is pending. `/push-ack` is bound to a registered token hash plus an already-sent exact event and is idempotent.
 
-The server Physical-E2E audit has now been strengthened so `/push-health` binds confirmation to the latest created Android build self-test instead of aggregate receipt history. The new fields are `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, and `current_build_physical_e2e_confirmed`. Tests explicitly prove an older-build ACK cannot confirm the newer build. Server unit-test Action `36836572820` succeeded at commit `36b7250b31afcf2ca775cb59987c0c6c305cfc17`.
+`/push-health` binds confirmation to the latest created Android build self-test instead of aggregate receipt history. Its build-specific fields are `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, `latest_self_test_created_at`, and `current_build_physical_e2e_confirmed`. Tests explicitly prove an older-build ACK cannot confirm the newer build. Read-only verifier `verify_push_physical_e2e.py` requires the exact expected build and cannot send FCM, register a device, or write a receipt.
 
-The production smoke at server commit `12f6676287db487199a8b0644a7d568c11de77a1` was strengthened to require these new fields from Railway production, so a stale deployment can no longer pass solely on old aggregate receipt metrics.
+Latest server CI Action `36837589631` at `b592e048...` succeeded. It compile/tests the Physical-E2E verifier and the server push/receipt contract.
 
-Exact Physical E2E closure for the current audited app now requires a real handset path showing at the test point:
+Exact Physical E2E closure for the current audited app requires a real handset path showing at the test point:
 - `latest_self_test_build == "4.6-46"`;
 - `latest_self_test_sent == true`;
 - `latest_self_test_receipt_confirmed == true`;
 - `current_build_physical_e2e_confirmed == true`;
-- a real client receipt timestamp/ledger row.
+- a non-null real client receipt timestamp/ledger row.
 
 Aggregate `received_deliveries >= 1` alone is insufficient because it may belong to an older build. Firebase provider send success is not handset receipt evidence.
 
+### Current production observation — Physical E2E still OPEN
+
+Railway production now runs deployment `3b1df2eb-df74-42fd-b7cb-5e50edb23c59`, built from server commit `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07`. The deployment completed successfully. The strengthened production-smoke rerun, Action `36836821948` job `110321079146`, also succeeded, proving the new build-specific `/push-health` contract is actually live in production.
+
+At that smoke observation, production reported:
+- `registered_devices = 1`;
+- `sent_deliveries = 1`;
+- `received_deliveries = 0`;
+- `unconfirmed_sent_deliveries = 1`;
+- `last_client_receipt_at = null`;
+- `latest_self_test_build = null`;
+- `latest_self_test_sent = false`;
+- `latest_self_test_receipt_confirmed = false`;
+- `current_build_physical_e2e_confirmed = false`.
+
+Therefore deployment drift is CLOSED, but Physical E2E remains OPEN. More specifically, production has **no current latest Android self-test row at all** yet; this is stronger than merely having a sent `4.6-46` self-test with a missing ACK. The existing aggregate sent delivery cannot be reclassified as a current-build self-test.
+
+No physical receipt is fabricated or inferred from provider send success.
+
 ## Operational deployment evidence state
 
-Railway service `indexalert-runtime` is sourced from branch `index-alert-server`, but the latest confirmed production deployment is `5b5fc540-2925-4c83-aa83-0688eef31159`, commit `65855916afd52d081453bc511b6b82df3ec948b1`. That deployment predates the new build-specific Physical-E2E health contract.
+Railway `indexalert-runtime` is now aligned to server commit `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` through deployment `3b1df2eb-df74-42fd-b7cb-5e50edb23c59` (SUCCESS). Production-smoke rerun job `110321079146` in Action `36836821948` succeeded after the deployment and verified the new health schema in the live service.
 
-Therefore current GitHub server code and Railway production are deployment-drifted until production is updated. This is operational evidence only and does not authorize trading. Real-account ordering remains disabled.
+This closes the prior server deployment-drift blocker only. It does not close the Physical E2E blocker, execution evidence blocker, KRX blockers, sealed holdout, promotion, or live-order authority. Real-account ordering remains disabled.
 
 ## External evidence still missing
 
-Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations, a later independent execution-sufficiency assessment, Railway production adoption of the newest server contract, or a real current-build handset receipt.
+Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations, a later independent execution-sufficiency assessment, or a real current-build handset receipt.
 
 ## Remaining blockers
 
@@ -196,9 +215,8 @@ Internal code cannot fabricate approved KRX source access/history/PIT/use rights
 4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.
 5. **Research governance:** no rejected-candidate revival; maintain Ledger/multiple-testing discipline.
 6. **One-shot sealed holdout:** untouched until source/execution/code/protocol freeze; then Shadow S1 -> Fresh Confirmation S2.
-7. **Server deployment drift:** production still runs `65855916...`; new build-specific E2E health exists on newer server code but is not yet confirmed deployed.
-8. **Physical notification E2E:** real v4.6-46 handset receipt satisfying the build-specific criteria above is still required.
-9. **Live ordering:** disabled until all frozen promotion/safety gates and explicit user activation requirements are met.
+7. **Physical notification E2E:** deployment drift is closed, but production currently has `latest_self_test_build=null`; a real v4.6-46 handset must create the exact self-test and ACK path satisfying the build-specific criteria above.
+8. **Live ordering:** disabled until all frozen promotion/safety gates and explicit user activation requirements are met.
 
 ## Promotion rule
 
