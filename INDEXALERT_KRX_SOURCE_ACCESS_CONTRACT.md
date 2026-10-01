@@ -1,6 +1,6 @@
 # IndexAlert KRX Source Access Contract
 
-Updated: 2026-09-30 KST
+Updated: 2026-10-01 KST
 Branch: `index-alert-research-v1`
 Status: **SOURCE / LICENSING CONTRACT — NO ALPHA CLAIM**
 
@@ -8,9 +8,49 @@ Status: **SOURCE / LICENSING CONTRACT — NO ALPHA CLAIM**
 
 This document prevents IndexAlert from confusing distinct KRX data-access products, authentication methods and licensing terms. It is source-governance infrastructure only. Nothing in this document is performance evidence and it does not authorize holdout use or live trading.
 
-## 2. Distinct KRX access routes
+## 2. Frozen KRX source gates A-F
 
-### A. KRX OpenAPI
+The following six gates are the canonical source-governance contract for every KRX data family used by IndexAlert. They consolidate requirements that were already distributed across the Master Spec, source probes and official-status adapters. They do **not** weaken or replace any statistical, PIT, execution, NetEV, holdout or prospective-promotion rule.
+
+### Gate A — `AUTHORIZED_OFFICIAL_ROUTE`
+
+The exact official KRX access route/product must be identified and the dataset must be accessed under the appropriate authorization. KRX OpenAPI `AUTH_KEY`, Data Marketplace authenticated web-session credentials and purchased/distributed data products are distinct routes and must never be substituted for one another.
+
+### Gate B — `EXACT_DATASET_SCHEMA_MAPPING`
+
+The exact API service, screen/feed contract and required fields/schema must be verified for the intended data family. A similarly named public API, a screen whose fields/history have not been verified, or a provisional low-level transport does not close this gate.
+
+### Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING`
+
+Historical coverage must span the requested research/Final-Judge period and all relevant securities, with stable security mapping and common-stock identity where required. A non-empty probe result or a current-only snapshot is not evidence of complete historical coverage.
+
+### Gate D — `PIT_AVAILABILITY_LINEAGE`
+
+Point-in-time lineage must be explicit: `event_time`, `published_at` when applicable, `available_at` and `ingested_at` must be preserved, and no value may be used before it was officially available. Final day-D investor flow is eligible only for the next decision after its official publication time.
+
+### Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED`
+
+Retrieval and source metadata must be reproducible and auditable. Source/schema ambiguity must fail closed. Undocumented proxies, synthetic substitutions or source-route impersonation are forbidden. Source reachability by itself does not close this gate.
+
+### Gate F — `INTENDED_USE_RIGHTS`
+
+Data-use/licensing rights must be explicitly verified for the intended use scope. Internal research/personal validation and future external/commercial product use are separate scopes and must not be conflated.
+
+### Closure semantics
+
+Each gate has exactly one audit status: `PASS`, `PARTIAL` or `BLOCKED`.
+
+- Only `PASS` closes a gate.
+- `PARTIAL` is explicitly **not** a pass and cannot be promoted by inference.
+- Any `PARTIAL` or `BLOCKED` result keeps the source contract open for that declared source family/use scope.
+- All six gates passing means only that the KRX **source contract for the declared scope** is closed. It does **not** by itself authorize Alpha/Final-Judge promotion, sealed-holdout consumption, Shadow/Paper/Live promotion or live trading.
+- Existing PIT/time-consistency, anchored Walk-Forward, Purged/CPCV, realistic execution-cost/fill, distributional NetEV, tail-risk, recency, holdout and prospective confirmation gates remain independent and mandatory.
+
+Executable semantics are frozen in `research_v1_krx_source_gates.py`; the current evidence assessment is recorded in `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`.
+
+## 3. Distinct KRX access routes
+
+### Route 1 — KRX OpenAPI
 
 Official KRX OpenAPI uses a separate authentication-key workflow:
 1. register/login to KRX Data Marketplace;
@@ -25,7 +65,7 @@ An OpenAPI authentication key is therefore **not equivalent** to Data Marketplac
 
 IndexAlert must not assume that an OpenAPI key grants access to a dataset until the exact official OpenAPI service has been identified, its fields/history verified and its individual usage approval obtained.
 
-### B. KRX Data Marketplace authenticated web session
+### Route 2 — KRX Data Marketplace authenticated web session
 
 The current feasibility probes use `KRX_ID` / `KRX_PW` only for an authenticated Data Marketplace web-session route through a pinned exploratory client.
 
@@ -33,7 +73,7 @@ This route is used to determine whether official KRX screen/source families can 
 
 `KRX_ID` / `KRX_PW` must never be described as KRX OpenAPI `AUTH_KEY` authentication.
 
-### C. KRX data purchase / distribution products
+### Route 3 — KRX data purchase / distribution products
 
 KRX separately describes purchased/distributed data products. Its distribution catalog includes, among other reference-data products:
 - per-security/per-investor EOD information;
@@ -42,7 +82,7 @@ KRX separately describes purchased/distributed data products. Its distribution c
 
 These products are a separate access/licensing route from the public OpenAPI catalog. The existence of a data-feed product does not mean it is available through public OpenAPI or through an authenticated screen without a suitable agreement.
 
-## 3. Required IndexAlert data families
+## 4. Required IndexAlert data families
 
 ### Security/status Final Judge data
 
@@ -68,7 +108,7 @@ Before any investor-flow performance experiment, establish:
 
 A source/authentication probe alone is not feature-promotion evidence.
 
-## 4. Public OpenAPI mapping rule
+## 5. Public OpenAPI mapping rule
 
 As of the 2026-09-30 audit, IndexAlert has verified the general OpenAPI authentication/application process and public examples of `AUTH_KEY` usage, but has **not established an exact public OpenAPI service mapping** for all required Final Judge status datasets or the required per-security investor-flow history.
 
@@ -78,9 +118,9 @@ Therefore:
 - do not scrape or substitute undocumented proxies to bypass missing official access;
 - if an exact official OpenAPI service is later found, add it as a separate adapter with explicit service ID, schema, approval state, coverage and PIT contract.
 
-## 5. Licensing / product boundary
+## 6. Licensing / product boundary
 
-Current KRX OpenAPI terms state that OpenAPI use is limited to non-commercial purposes, that users must not charge third parties for results obtained using the API, and that information received from KRX must not be provided to third parties.
+Current project-audited KRX OpenAPI terms state that OpenAPI use is limited to non-commercial purposes, that users must not charge third parties for results obtained using the API, and that information received from KRX must not be provided to third parties.
 
 Consequences for IndexAlert:
 - internal research/personal validation and future external/commercial product distribution are separate compliance questions;
@@ -90,19 +130,20 @@ Consequences for IndexAlert:
 
 This contract does not provide legal advice; it freezes the engineering rule that data rights must be verified rather than assumed.
 
-## 6. Fail-closed source policy
+## 7. Fail-closed source policy
 
-If source authorization, coverage, mapping, publication time or licensing scope is unknown:
-- `judge_security_status_ready = false`;
-- investor-flow feature testing remains blocked;
+If any Gate A-F requirement for the declared source family/use scope is not `PASS`, or if source authorization, coverage, mapping, publication time or licensing scope is otherwise unknown:
+- `judge_security_status_ready = false` where security/status evidence is affected;
+- investor-flow feature testing remains blocked where investor-flow evidence is affected;
 - no sealed holdout is consumed to compensate for missing source quality;
 - no live trading is authorized from unverified source availability.
 
-## 7. Current action state
+## 8. Current action state
 
 The current source strategy is:
 1. keep the Data Marketplace session probes explicitly labeled as such;
 2. keep KRX OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
 3. investigate the authorized KRX data-purchase/distribution route for required status/investor reference data if public OpenAPI does not supply the exact historical contract;
-4. do not run investor-flow performance research until the source contract is closed;
-5. preserve all PIT and licensing evidence in reproducible metadata before any candidate evaluation.
+4. do not run investor-flow performance research until the applicable A-F source contract is closed;
+5. preserve all PIT and licensing evidence in reproducible metadata before any candidate evaluation;
+6. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes.
