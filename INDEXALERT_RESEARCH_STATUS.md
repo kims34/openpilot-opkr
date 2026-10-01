@@ -138,9 +138,7 @@ Current research uses:
 
 The >30.5% decision-day CA-safe return rule is a **market-state fail-closed proxy**, not alpha. It remains preliminary until historical official security/status data covers the Judge period.
 
-## KRX source gates A-F — frozen 2026-10-01
-
-The interrupted source-governance task is now complete in code and canonical documentation.
+## KRX source gates A-F — frozen and machine-audited 2026-10-01
 
 Canonical gates:
 - Gate A — `AUTHORIZED_OFFICIAL_ROUTE`
@@ -156,17 +154,38 @@ Canonical files:
 - `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`
 - `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`
 - `research_v1_krx_source_gates.py`
+- `research_v1_krx_status_source_probe.py`
+- `research_v1_krx_investor_flow_probe.py`
 - `test_research_v1_krx_source_gates.py`
+- `test_research_v1_krx_source_probes.py`
 
 Master Spec section 16 freezes the same boundary. CI is configured to fail if the Master Spec, source contract or audit document drifts from the canonical A-F names or removes the non-promotion boundary.
 
-Latest validating Action: `36807509480` on commit `9c1acf1a42f23b2b6eec6bfe19c38fa6e3296eb7` — **SUCCESS**.
+### Audited runtime evidence
 
-Current audit remains fail-closed rather than declaring premature readiness:
-- KRX security/status source contract: **OPEN**; Gates C/D remain `BLOCKED`, other source/licensing gates remain `PARTIAL` pending exact closure evidence.
-- KRX investor-flow source contract: **OPEN**; Gate C remains `BLOCKED`, other gates remain `PARTIAL` pending exact historical access/mapping/PIT/licensing evidence.
+The earlier source-probe Actions were green at the workflow level, but their logs showed `AUTH_NOT_CONFIGURED`: `KRX_ID`, `KRX_PW` and `KRX_OPENAPI_AUTH_KEY` were all absent. Therefore they did not make authenticated KRX requests. The audit has been corrected accordingly; a green diagnostic workflow must never be interpreted as authenticated-source evidence.
 
-Therefore no investor-flow performance experiment is authorized yet, and `judge_security_status_ready` remains false.
+The probes now emit a machine-readable `source_gate_audit`, `authenticated_request_attempted`, `probe_contract_fingerprint_sha256` and `probe_result_fingerprint_sha256`.
+
+Latest status-source probe: Action `36808057709` — **SUCCESS as a diagnostic**, with:
+- `authenticated_request_attempted=false`
+- Gate A `BLOCKED`, B `PARTIAL`, C `BLOCKED`, D `BLOCKED`, E `PARTIAL`, F `PARTIAL`
+- `source_contract_closed_for_declared_scope=false`
+- `judge_security_status_ready=false`
+- contract fingerprint `1a78f35d3f207d97a168efa594962358de63f7686e993d2af5539d2b0d3d582a`
+- result fingerprint `21764684b02ec8c572d63171ed44bfa3393e39c02e2b1c4990a2b616efd0e2b5`
+
+Latest investor-flow probe: Action `36808077021` — **SUCCESS as a diagnostic**, with:
+- `authenticated_request_attempted=false`
+- Gate A `BLOCKED`, B `PARTIAL`, C `BLOCKED`, D `PARTIAL`, E `PARTIAL`, F `PARTIAL`
+- `source_contract_closed_for_declared_scope=false`
+- `feature_performance_testing_authorized=false`
+- contract fingerprint `b00669f4c82102a2feaca436ba83f309bf6cfd5f33ab2fccd9bce024a2cbf8d8`
+- result fingerprint `31015fb1e623f5eaf204753a0b5e61b4438405cf9f8ec8818f2eced4e9f4283a`
+
+The new probe-contract/unit-test integration passed in Official KRX Status Integrity Actions `36808122270` and `36808133821`.
+
+Therefore no investor-flow performance experiment is authorized yet, `judge_security_status_ready` remains false, and the sealed holdout remains untouched.
 
 ## Next independent information family
 
@@ -184,9 +203,9 @@ Final day-D investor trading results are only eligible for a later decision afte
 
 ## Final Judge blockers still open
 
-1. Close KRX source Gates A-F for the exact security/status source used by Final Judge; specifically obtain and audit full historical common-stock/security-status coverage and PIT lineage.
+1. Close KRX source Gates A-F for the exact security/status source used by Final Judge. Gate A is currently blocked because no KRX source credentials/authorized route are configured in the audited CI environment; Gates C/D also remain blocked by historical coverage/PIT lineage.
 2. Exact trading-halt, cleanup-trading and delisting economics/status joins.
-3. Close KRX source Gates A-F for an official reproducible investor-flow historical route before any performance test.
+3. Close KRX source Gates A-F for an official reproducible investor-flow historical route before any performance test. Gate A and C are currently blocked.
 4. Empirical fill ratio, fill time, fill price and partial-fill behavior.
 5. Post-fill markout, recommendation latency/expiry and execution-delay stress.
 6. Empirical capacity rather than only a square-root impact cost proxy.
