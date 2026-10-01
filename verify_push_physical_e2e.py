@@ -4,8 +4,8 @@ This verifier never sends FCM, registers a device or writes a receipt. It only
 checks the privacy-safe production /push-health payload for evidence that the
 specified Android build was the latest observed registration and that the exact
 same registered device/build's most recent self-test was sent and acknowledged
-by a real client receipt under the frozen registration/self-test/binding
-contracts.
+by a real client receipt under the frozen registration/self-test/device-binding
+and blocker contracts.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ import requests
 REGISTRATION_BUILD_CONTRACT = "register-client-build-v1"
 SELF_TEST_TRIGGER_CONTRACT = "android-register-direct-v1"
 PHYSICAL_E2E_BINDING_CONTRACT = "registered-device-build-receipt-v1"
+PHYSICAL_E2E_BLOCKER_CONTRACT = "physical-e2e-blocker-v1"
 
 
 class PhysicalE2EVerificationError(ValueError):
@@ -50,6 +51,8 @@ def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> di
         "registration_build_contract_matches": payload.get("registration_build_contract") == REGISTRATION_BUILD_CONTRACT,
         "self_test_trigger_contract_matches": payload.get("self_test_trigger_contract") == SELF_TEST_TRIGGER_CONTRACT,
         "physical_e2e_binding_contract_matches": payload.get("physical_e2e_binding_contract") == PHYSICAL_E2E_BINDING_CONTRACT,
+        "physical_e2e_blocker_contract_matches": payload.get("physical_e2e_blocker_contract") == PHYSICAL_E2E_BLOCKER_CONTRACT,
+        "physical_e2e_blocker_confirmed": payload.get("physical_e2e_blocker") == "CONFIRMED",
         "registration_device_matches_self_test": payload.get("registration_device_matches_self_test") is True,
         "registration_build_matches_self_test": payload.get("registration_build_matches_self_test") is True,
         "latest_self_test_build_matches": payload.get("latest_self_test_build") == build,
@@ -75,6 +78,8 @@ def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> di
             "registration_build_contract": payload.get("registration_build_contract"),
             "self_test_trigger_contract": payload.get("self_test_trigger_contract"),
             "physical_e2e_binding_contract": payload.get("physical_e2e_binding_contract"),
+            "physical_e2e_blocker_contract": payload.get("physical_e2e_blocker_contract"),
+            "physical_e2e_blocker": payload.get("physical_e2e_blocker"),
             "registration_device_matches_self_test": payload.get("registration_device_matches_self_test"),
             "registration_build_matches_self_test": payload.get("registration_build_matches_self_test"),
             "latest_self_test_build": payload.get("latest_self_test_build"),
@@ -85,8 +90,8 @@ def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> di
             "last_client_receipt_at": payload.get("last_client_receipt_at"),
         },
         "guardrail": (
-            "This is read-only verification. Provider send success, an older-build receipt, a same-build receipt from another device, or an unbound self-test cannot pass. "
-            "The expected build must be the latest observed registered client build on the exact same device as the latest self-test, and that exact event must have a real client receipt under the frozen contracts."
+            "This is read-only verification. Provider send success, an older-build receipt, a same-build receipt from another device, an unbound self-test, or a non-CONFIRMED blocker state cannot pass. "
+            "The expected build must be the latest observed registered client build on the exact same device as the latest self-test, and that exact event must have a real client receipt under all frozen contracts."
         ),
     }
 
