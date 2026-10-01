@@ -58,9 +58,21 @@ Each gate has exactly one audit status: `PASS`, `PARTIAL` or `BLOCKED`.
 
 Executable gate semantics are frozen in `research_v1_krx_source_gates.py`; the current evidence assessment is `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`.
 
-## 3. Authorization and runtime-consent preflight contract
+## 3. Authorization, readiness and runtime-consent contract
 
-`research_v1_krx_auth_preflight.py` is the canonical pre-request guard.
+`research_v1_krx_auth_preflight.py` is the canonical pre-request guard. `research_v1_krx_auth_readiness.py` is the canonical **network-free configuration readiness** check that must be used before the first manually consented probe whenever credentials/approval evidence are newly configured or changed.
+
+### Network-free readiness
+
+The readiness check may inspect only whether route-specific credential variables and a non-secret authorization-evidence reference are present. It must:
+- forcibly clear/ignore `KRX_EXPLICIT_PROBE_CONSENT`, even if supplied by the caller;
+- set `request_attempt_authorized=false`;
+- set `authenticated_request_attempted=false` and `network_request_attempted=false`;
+- never import/install/use the KRX network client or invoke either source-probe script;
+- never emit credential values;
+- grant no source, performance, holdout, promotion or trading authority.
+
+The manual workflow `.github/workflows/indexalert-research-v1-krx-auth-readiness.yml` has no push trigger and is configuration-only. A ready result means only that the next **separately dispatched** tiny authenticated probe has its credential/reference prerequisites present.
 
 ### Data Marketplace web-session route
 
@@ -98,7 +110,7 @@ The two current Data Marketplace probe workflows are frozen as follows:
 - only that authenticated manual step receives `KRX_ID`/`KRX_PW`, an authorization-evidence reference and the exact consent sentinel;
 - `KRX_OPENAPI_AUTH_KEY` is not injected into these Data Marketplace probe steps.
 
-This workflow boundary is defense in depth. The Python preflight independently enforces the same consent sentinel, so a future workflow mistake or local invocation must still fail closed without the sentinel.
+This workflow boundary is defense in depth. The Python preflight independently enforces the same consent sentinel, so a future workflow mistake or local invocation must still fail closed without the sentinel. `test_research_v1_krx_probe_workflow_safety.py` additionally regression-tests both probe workflows and the network-free readiness workflow so these boundaries cannot silently drift.
 
 ### Preflight authority boundary
 
@@ -232,18 +244,20 @@ If any Gate A-F requirement for the declared source family/use scope is not `PAS
 - no sealed holdout is consumed to compensate for missing source quality;
 - no live trading is authorized from unverified source availability.
 
-Receipts, batches, validators or green diagnostic workflows must never be used as substitutes for the missing external evidence.
+Readiness reports, receipts, batches, validators or green diagnostic workflows must never be used as substitutes for the missing external evidence.
 
 ## 10. Current action state
 
 The current source strategy is:
 1. keep Data Marketplace probes explicitly labeled as that route;
-2. require route-specific credentials, non-secret approval evidence **and exact per-run consent** before a tiny authenticated request;
-3. keep push-triggered probe runs dry-run only and never inject KRX secrets on push;
-4. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
-5. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
-6. create immutable acquisition receipts and consistent batch manifests for any future real history;
-7. require PIT/coverage/source-data admission before research-registry review;
-8. do not run investor-flow performance research merely because a probe, receipt, batch or admission validator exists;
-9. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
-10. never store KRX IDs/passwords/authentication keys in source, artifacts or logs; use repository/deployment secret management.
+2. configure route-specific credentials and non-secret approval evidence only through secure secret/variable management;
+3. run the **network-free auth readiness** workflow first after credentials/approval evidence are configured or changed;
+4. require exact per-run consent before a tiny authenticated request;
+5. keep push-triggered probe runs dry-run only and never inject KRX secrets on push;
+6. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
+7. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
+8. create immutable acquisition receipts and consistent batch manifests for any future real history;
+9. require PIT/coverage/source-data admission before research-registry review;
+10. do not run investor-flow performance research merely because readiness, probe, receipt, batch or admission infrastructure exists;
+11. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
+12. never store KRX IDs/passwords/authentication keys in source, artifacts or logs.
