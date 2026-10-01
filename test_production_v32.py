@@ -80,6 +80,9 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertTrue(out["client_build_observed"])
         self.assertEqual(out["registration_build_contract"], p.REGISTRATION_BUILD_CONTRACT)
         self.assertEqual(out["self_test_trigger_contract"], p.SELF_TEST_TRIGGER_CONTRACT)
+        self.assertEqual(
+            out["physical_e2e_binding_contract"], p.PHYSICAL_E2E_BINDING_CONTRACT
+        )
         with monitor.db() as con:
             row = con.execute(
                 "SELECT client_build FROM device_builds WHERE token=?", (token,)
@@ -100,13 +103,14 @@ class ProductionV32RegistrationTests(unittest.TestCase):
             )
         self.assertFalse(out["client_build_observed"])
         self.assertIsNone(out["self_test_trigger_contract"])
+        self.assertIsNone(out["physical_e2e_binding_contract"])
         with monitor.db() as con:
             row = con.execute(
                 "SELECT client_build FROM device_builds WHERE token=?", (token,)
             ).fetchone()
         self.assertIsNone(row)
 
-    def test_health_requires_receipt_for_exact_registered_build(self):
+    def test_health_requires_receipt_for_exact_registered_device_and_build(self):
         p = self.p
         token = "h" * 40
         self._register_device(token)
@@ -117,23 +121,58 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         old = p.push_health_v32()
         self.assertEqual(old["latest_registered_client_build"], "4.7-47")
         self.assertEqual(old["latest_self_test_build"], "4.6-46")
+        self.assertTrue(old["registration_device_matches_self_test"])
+        self.assertFalse(old["registration_build_matches_self_test"])
         self.assertFalse(old["current_build_physical_e2e_confirmed"])
 
         self._insert_self_test(token, "4.7-47", "evt-current", 2.0)
         sent = p.push_health_v32()
         self.assertEqual(sent["latest_self_test_build"], "4.7-47")
+        self.assertTrue(sent["registration_device_matches_self_test"])
+        self.assertTrue(sent["registration_build_matches_self_test"])
         self.assertFalse(sent["current_build_physical_e2e_confirmed"])
 
         self._ack(token, "evt-current")
         confirmed = p.push_health_v32()
         self.assertTrue(confirmed["current_build_physical_e2e_confirmed"])
         self.assertTrue(confirmed["registration_build_observed"])
+        self.assertTrue(confirmed["registration_device_matches_self_test"])
+        self.assertTrue(confirmed["registration_build_matches_self_test"])
         self.assertEqual(
             confirmed["registration_build_contract"], p.REGISTRATION_BUILD_CONTRACT
         )
         self.assertEqual(
             confirmed["self_test_trigger_contract"], p.SELF_TEST_TRIGGER_CONTRACT
         )
+        self.assertEqual(
+            confirmed["physical_e2e_binding_contract"], p.PHYSICAL_E2E_BINDING_CONTRACT
+        )
+
+    def test_same_build_receipt_from_different_device_never_confirms_latest_registration(self):
+        p = self.p
+        older_token = "a" * 40
+        latest_token = "b" * 40
+        for token in (older_token, latest_token):
+            self._register_device(token)
+
+        p._record_device_build(older_token, "4.7-47")
+        p._record_device_build(latest_token, "4.7-47")
+
+        self._insert_self_test(older_token, "4.7-47", "evt-device-a", 10.0)
+        self._ack(older_token, "evt-device-a")
+        wrong_device = p.push_health_v32()
+        self.assertEqual(wrong_device["latest_registered_client_build"], "4.7-47")
+        self.assertEqual(wrong_device["latest_self_test_build"], "4.7-47")
+        self.assertFalse(wrong_device["registration_device_matches_self_test"])
+        self.assertTrue(wrong_device["registration_build_matches_self_test"])
+        self.assertFalse(wrong_device["current_build_physical_e2e_confirmed"])
+
+        self._insert_self_test(latest_token, "4.7-47", "evt-device-b", 11.0)
+        self._ack(latest_token, "evt-device-b")
+        right_device = p.push_health_v32()
+        self.assertTrue(right_device["registration_device_matches_self_test"])
+        self.assertTrue(right_device["registration_build_matches_self_test"])
+        self.assertTrue(right_device["current_build_physical_e2e_confirmed"])
 
     def test_invalid_build_is_rejected_before_registration(self):
         p = self.p
