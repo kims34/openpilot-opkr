@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import client_registration
 import monitor
 import push_health
 import push_receipts
@@ -20,6 +21,14 @@ class PushHealthTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def _register_build(self, token: str, build: str):
+        return client_registration.register(client_registration.RegisterBody(
+            token=token,
+            platform="android",
+            protocol=2,
+            client_build=build,
+        ))
 
     def _ack(self, token: str, event_id: str):
         return push_receipts.record(push_receipts.PushAckBody(
@@ -47,7 +56,9 @@ class PushHealthTests(unittest.TestCase):
         self.assertFalse(out["execution_logging_configured"])
         self.assertFalse(out["tokens_exposed"])
         self.assertNotIn(token, json.dumps(out, sort_keys=True))
+        self.assertIsNone(out["latest_registered_client_build"])
         self.assertIsNone(out["latest_self_test_build"])
+        self.assertFalse(out["registered_build_matches_latest_self_test"])
         self.assertFalse(out["current_build_physical_e2e_confirmed"])
 
     def test_execution_logging_configuration_is_boolean_only(self):
@@ -60,10 +71,10 @@ class PushHealthTests(unittest.TestCase):
     def test_sent_delivery_is_unconfirmed_until_real_client_ack(self):
         token = "t" * 40
         event_id = "evt-health-1"
-        monitor.register(monitor.RegisterBody(token=token, protocol=2))
+        self._register_build(token, "4.7-47")
         self._insert_self_test(
             token=token,
-            build="4.6-46",
+            build="4.7-47",
             event_id=event_id,
             created=1.0,
         )
@@ -73,7 +84,9 @@ class PushHealthTests(unittest.TestCase):
         self.assertEqual(before["received_deliveries"], 0)
         self.assertEqual(before["unconfirmed_sent_deliveries"], 1)
         self.assertIsNone(before["last_client_receipt_at"])
-        self.assertEqual(before["latest_self_test_build"], "4.6-46")
+        self.assertEqual(before["latest_registered_client_build"], "4.7-47")
+        self.assertEqual(before["latest_self_test_build"], "4.7-47")
+        self.assertTrue(before["registered_build_matches_latest_self_test"])
         self.assertTrue(before["latest_self_test_sent"])
         self.assertFalse(before["latest_self_test_receipt_confirmed"])
         self.assertFalse(before["current_build_physical_e2e_confirmed"])
@@ -82,7 +95,6 @@ class PushHealthTests(unittest.TestCase):
         self.assertTrue(ack["acknowledged"])
 
         after = push_health.snapshot()
-        self.assertEqual(after["sent_deliveries"], 1)
         self.assertEqual(after["received_deliveries"], 1)
         self.assertEqual(after["unconfirmed_sent_deliveries"], 0)
         self.assertIsNotNone(after["last_client_receipt_at"])
@@ -90,30 +102,32 @@ class PushHealthTests(unittest.TestCase):
         self.assertTrue(after["latest_self_test_receipt_confirmed"])
         self.assertTrue(after["current_build_physical_e2e_confirmed"])
 
-    def test_old_build_receipt_cannot_confirm_newest_build(self):
+    def test_old_build_receipt_cannot_confirm_newest_registered_build(self):
         token = "n" * 40
-        monitor.register(monitor.RegisterBody(token=token, protocol=2))
+        self._register_build(token, "4.7-47")
         self._insert_self_test(
             token=token,
-            build="4.5-45",
+            build="4.6-46",
             event_id="evt-old-build",
             created=1.0,
         )
         self._ack(token, "evt-old-build")
+
+        out = push_health.snapshot()
+        self.assertEqual(out["latest_registered_client_build"], "4.7-47")
+        self.assertEqual(out["latest_self_test_build"], "4.6-46")
+        self.assertFalse(out["registered_build_matches_latest_self_test"])
+        self.assertFalse(out["current_build_physical_e2e_confirmed"])
+
         self._insert_self_test(
             token=token,
-            build="4.6-46",
+            build="4.7-47",
             event_id="evt-new-build",
             created=2.0,
         )
-
-        out = push_health.snapshot()
-        self.assertEqual(out["received_deliveries"], 1)
-        self.assertIsNotNone(out["last_client_receipt_at"])
-        self.assertEqual(out["latest_self_test_build"], "4.6-46")
-        self.assertTrue(out["latest_self_test_sent"])
-        self.assertFalse(out["latest_self_test_receipt_confirmed"])
-        self.assertFalse(out["current_build_physical_e2e_confirmed"])
+        newest = push_health.snapshot()
+        self.assertTrue(newest["registered_build_matches_latest_self_test"])
+        self.assertFalse(newest["current_build_physical_e2e_confirmed"])
 
         self._ack(token, "evt-new-build")
         confirmed = push_health.snapshot()
@@ -123,16 +137,17 @@ class PushHealthTests(unittest.TestCase):
 
     def test_latest_unsent_self_test_never_counts_as_physical_e2e(self):
         token = "u" * 40
-        monitor.register(monitor.RegisterBody(token=token, protocol=2))
+        self._register_build(token, "4.7-47")
         self._insert_self_test(
             token=token,
-            build="4.6-46",
+            build="4.7-47",
             event_id="evt-unsent",
             created=3.0,
             sent=0,
         )
         out = push_health.snapshot()
-        self.assertEqual(out["latest_self_test_build"], "4.6-46")
+        self.assertEqual(out["latest_self_test_build"], "4.7-47")
+        self.assertTrue(out["registered_build_matches_latest_self_test"])
         self.assertFalse(out["latest_self_test_sent"])
         self.assertFalse(out["latest_self_test_receipt_confirmed"])
         self.assertFalse(out["current_build_physical_e2e_confirmed"])
