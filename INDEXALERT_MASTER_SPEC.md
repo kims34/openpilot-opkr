@@ -425,3 +425,7 @@ Canonical contract: `INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md`. After a Core i
 ### Continuous-research successor promotion boundary — 2026-10-02
 
 A preregistered research success does not directly overwrite Core. `research_v1_successor_core.py` may automatically stage a distinct versioned `SHADOW_CANDIDATE` only after the accepted challenger also passes the required independent OOS, cost-stress, tail-risk, recent-stability, PIT/no-leakage and frozen-protocol gates. Automatic Core/code update becomes eligible only after the separately governed sealed holdout, Shadow S1, Fresh Confirmation S2, external-source/status blockers and empirical execution blocker are all closed. Automatic real-account order activation remains forbidden even then; live-order authority is a separate gate.
+
+### Internal completeness audit — 2026-10-02
+
+Canonical audit: `INDEXALERT_INTERNAL_COMPLETENESS_AUDIT.md`. Internal review found and fixed a successor-promotion authority ambiguity: passing represented confirmation gates now yields only `automatic_code_update_eligible=true`; it can never self-grant `automatic_code_update_allowed` or `promotion_authority_verified`. No reviewed research, broker-normalization, automation-control or successor path authorizes real-account ordering or sealed-holdout access. External/evidence blockers remain unchanged.
