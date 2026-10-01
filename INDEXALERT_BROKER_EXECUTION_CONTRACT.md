@@ -1,6 +1,6 @@
 # IndexAlert Broker Execution Contract — Future Live Trading Boundary
 
-Updated: 2026-09-30 KST
+Updated: 2026-10-02 KST
 Branch: `index-alert-research-v1`
 Status: **ARCHITECTURE CONTRACT ONLY — LIVE ORDERING DISABLED**
 
@@ -189,6 +189,8 @@ Use environment/secret-manager injection appropriate to the deployment platform,
 
 Kiwoom integration must be implemented as a dedicated `BrokerAdapter` only when the research/promotion state reaches the appropriate stage.
 
+Current safe preparation is governed by `INDEXALERT_KIWOOM_REST_READINESS_CONTRACT.md`. The 2026-10-02 review of the official `Kiwoom-Securities/Kiwoom-REST-API` schema permits only read-only/demo connectivity preparation, secret-safe configuration design, offline evidence mapping and fail-closed tests. It does **not** authorize real-account ordering or admit demo/paper observations as genuine LIVE evidence.
+
 At the actual implementation start, re-read the **then-current official Kiwoom Securities REST API documentation** and validate at least:
 - production vs paper/simulation environment support;
 - authentication/token lifecycle;
@@ -224,7 +226,7 @@ Requires all Final Judge/statistical gates, live execution evidence, operational
 
 Current work remains on the research/data/execution-evidence blockers defined by `INDEXALERT_MASTER_SPEC.md`, `INDEXALERT_RESEARCH_LEDGER.md` and `INDEXALERT_CONTINUITY_SNAPSHOT.md`.
 
-Only maintain broker-neutral interfaces/data compatibility until the promotion state makes Kiwoom integration appropriate.
+Only maintain broker-neutral interfaces/data compatibility and the explicitly read-only/demo readiness work permitted by `INDEXALERT_KIWOOM_REST_READINESS_CONTRACT.md` until the promotion state makes broader Kiwoom integration appropriate.
 
 ## 14. Default user-control surface
 
