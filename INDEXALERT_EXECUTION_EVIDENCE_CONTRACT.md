@@ -81,7 +81,37 @@ Until a separate preregistered execution-sufficiency protocol is frozen and eval
 
 No numeric sample threshold may be invented after observing the live outcomes merely to obtain a pass. Any future sufficiency protocol must be separately frozen before it is used as a promotion input and must cover the relevant dimensions in the Master Spec, including live fill/no-fill/partial-fill behavior, fill time/price, slippage, markouts, latency/expiry, capacity and adverse/tail conditions.
 
-## 6. Immutability and identity
+## 6. Preregistered execution-sufficiency protocol
+
+`research_v1_execution_sufficiency_protocol.py` is the canonical structural validator for any future execution-sufficiency preregistration.
+
+It does **not** choose project thresholds. Instead it requires a proposed protocol to state its thresholds and evidence dimensions explicitly, fingerprint its governing document, and freeze them before the first LIVE recommendation the protocol will judge.
+
+A valid protocol record must include at least:
+- unique protocol ID and schema version;
+- timezone-aware `frozen_at`;
+- protocol-document SHA-256;
+- minimum LIVE observation count;
+- minimum distinct decision dates;
+- minimum filled/no-fill/partial-fill observation counts;
+- required markout horizons including 5m, 30m and close;
+- mandatory slippage, latency, capacity and tail evidence requirements;
+- rationale.
+
+If LIVE evidence already exists, `frozen_at` must be **strictly earlier** than the first LIVE recommendation being evaluated. A protocol frozen at or after that first LIVE observation is rejected as post-hoc.
+
+The numeric values used in unit-test fixtures are illustrative test data only and are not IndexAlert promotion thresholds.
+
+Even a structurally valid preregistered protocol sets only protocol validity. It deliberately keeps:
+- `empirical_execution_sufficiency_assessed=false`;
+- `empirical_execution_blocker_closed=false`;
+- `promotion_ready=false`;
+- `sealed_holdout_authorized=false`;
+- `live_trading_authorized=false`.
+
+A later evaluator may assess genuine LIVE evidence against a properly frozen protocol, but that assessment must remain separate from the protocol-registration step.
+
+## 7. Immutability and identity
 
 Broker execution observations are immutable once written. A retry with the same stable observation identity may be idempotent only if the normalized payload is identical.
 
@@ -89,12 +119,13 @@ New execution observation identity must include the source tier so that PAPER an
 
 Historical rows written under the former source label `PROSPECTIVE_SHADOW_EXECUTION_LOG` must not be rewritten or deleted to manufacture cleaner evidence. They remain quarantined as `legacy_shadow_fill` and are excluded from live empirical-evidence claims.
 
-## 7. Promotion interpretation
+## 8. Promotion interpretation
 
 - Shadow evidence = prospective decision behavior only.
 - Paper evidence = operational/broker-pipeline behavior only.
 - Structurally valid Live evidence = eligible raw empirical observations, not sufficiency by itself.
-- Empirical execution sufficiency = a separate future preregistered assessment that is currently **not assessed / not closed**.
+- Valid execution-sufficiency protocol = preregistered criteria only, not evidence that criteria pass.
+- Empirical execution sufficiency = a separate future assessment that is currently **not assessed / not closed**.
 
 No evidence tier changes the frozen statistical contract. In particular:
 - q25 / TopK / costs / horizon are not relaxed because execution evidence is sparse;
@@ -102,8 +133,8 @@ No evidence tier changes the frozen statistical contract. In particular:
 - technical broker connectivity does not authorize real-account trading;
 - `promotion_ready` remains false unless the full Master Spec promotion path independently passes.
 
-## 8. Current implementation state
+## 9. Current implementation state
 
-The research integrity schema separates PAPER from LIVE and now separates LIVE structural presence from empirical sufficiency. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
+The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
 
-The empirical execution blocker remains open. A future preregistered sufficiency protocol and genuine staged live evidence are still required.
+The empirical execution blocker remains open. A genuinely frozen future sufficiency protocol plus staged LIVE evidence and its later independent assessment are still required.
