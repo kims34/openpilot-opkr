@@ -3,8 +3,20 @@ name: IndexAlert Research v1 KRX Auth Readiness
 on:
   workflow_dispatch:
     inputs:
+      source_family:
+        description: 'KRX source family to check without making a network request'
+        required: true
+        default: 'KRX_INVESTOR_FLOW'
+        type: choice
+        options:
+          - 'KRX_INVESTOR_FLOW'
+          - 'KRX_SECURITY_STATUS'
       authorization_evidence_reference:
-        description: 'Opaque non-secret approval/authorization reference; leave blank only if repository variable KRX_AUTH_EVIDENCE_REF is configured'
+        description: 'Opaque non-secret approval reference; leave blank only if repository variable KRX_AUTH_EVIDENCE_REF is configured'
+        required: false
+        type: string
+      authorization_evidence_json:
+        description: 'Structured non-secret authorization evidence JSON; leave blank only if repository variable KRX_AUTH_EVIDENCE_JSON is configured'
         required: false
         type: string
 
@@ -25,9 +37,11 @@ jobs:
           KRX_PW: ${{ secrets.KRX_PW }}
           KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}
           KRX_AUTH_EVIDENCE_REF: ${{ inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF }}
+          KRX_AUTH_EVIDENCE_JSON: ${{ inputs.authorization_evidence_json || vars.KRX_AUTH_EVIDENCE_JSON }}
+          KRX_READINESS_SOURCE_FAMILY: ${{ inputs.source_family }}
           KRX_EXPLICIT_PROBE_CONSENT: ''
         run: |
-          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_public_evidence.py research_v1_krx_auth_readiness.py
+          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_authorization_evidence.py research_v1_krx_public_evidence.py research_v1_krx_auth_readiness.py
           python research_v1_krx_auth_readiness.py
           cat research_results/krx_auth_readiness/summary.json
       - name: Upload readiness result
