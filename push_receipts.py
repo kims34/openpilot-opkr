@@ -1,7 +1,7 @@
 """Privacy-safe client receipt acknowledgements for IndexAlert push delivery.
 
 The Android client never sends its raw FCM token back through this endpoint.
-Instead it submits SHA-256(token) plus the server-issued event_id.  The server
+Instead it submits SHA-256(token) plus the server-issued event_id. The server
 accepts a receipt only when that hash belongs to a currently registered device
 and the same event_id was already marked sent for that device.
 """
@@ -52,6 +52,25 @@ def _resolve_registered_token(token_hash: str) -> str | None:
         if hmac.compare_digest(_token_hash(token), token_hash.lower()):
             return token
     return None
+
+
+def received_for(token: str, event_id: str) -> bool:
+    """Return whether this exact registered-token/event pair has a real client ACK.
+
+    This is an internal server check for transport self-tests. It never exposes
+    the token and never infers receipt from FCM send success.
+    """
+    clean_token = str(token or "").strip()
+    clean_event = str(event_id or "").strip()
+    if not clean_token or not clean_event:
+        return False
+    init_db()
+    token_hash = _token_hash(clean_token)
+    with monitor.db() as con:
+        return con.execute(
+            "SELECT 1 FROM push_receipts WHERE token_hash=? AND event_id=? LIMIT 1",
+            (token_hash, clean_event),
+        ).fetchone() is not None
 
 
 def record(body: PushAckBody) -> dict:
