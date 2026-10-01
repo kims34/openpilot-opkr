@@ -109,7 +109,7 @@ Frozen future source flow:
 
 Push workflows remain dry-run only. No authenticated KRX request has yet been demonstrated; **Gate A remains BLOCKED**. Real route credentials, genuine approval evidence, full history, stable IDs, record-level PIT evidence and exact use rights remain external blockers.
 
-Latest source-governance reference: KRX integrity Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission.
+Latest source-governance reference: KRX integrity Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission. Documentation/handoff drift repairs later passed Action `36835918274`.
 
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
@@ -151,15 +151,42 @@ It requires future criteria to explicitly cover live observation count, distinct
 
 A structurally valid protocol still keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. The actual project sufficiency criteria must be separately decided and frozen before the LIVE observations they will evaluate.
 
-Execution preregistration Action `36835013828` succeeded. Contract-drift semantics are additionally guarded in CI.
+Execution preregistration Action `36835013828` succeeded. Strengthened contract-drift Action `36835231533` also succeeded.
+
+## Android / push Physical E2E state
+
+Current Android build branch is `index-alert-build`, HEAD `396501f9df3bdf4fd7cea4a2c97116a02f8961d5`. The audited build is `versionName=4.6`, `versionCode=46`, therefore self-test `client_build=4.6-46`.
+
+Latest APK Action `36815959241` succeeded:
+- debug `IndexAlert-v4.6-debug`, artifact ID `11141577031`, SHA256 `d32c468bb3f719dcdafe99f3614358723cceeb566239bbedbbb3927c6f740dbf`;
+- unsigned release `IndexAlert-v4.6-unsigned-release`, artifact ID `11141532240`, SHA256 `b95c8f28417c1b3f901ad2c0768970ae2942f2167ed49e9373f3666a4edf19a6`.
+
+The Android receipt path schedules privacy-safe `/push-ack` for the exact server event and only marks the build self-test complete after `receipt_confirmed=true`.
+
+Server-side self-test already reuses one event per token/build and never re-sends a successful provider send merely because the handset receipt is pending. `/push-ack` is bound to a registered token hash plus an already-sent exact event and is idempotent.
+
+The server Physical-E2E audit has now been strengthened so `/push-health` binds confirmation to the latest created Android build self-test instead of aggregate receipt history. The new fields are `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, and `current_build_physical_e2e_confirmed`. Tests explicitly prove an older-build ACK cannot confirm the newer build. Server unit-test Action `36836572820` succeeded at commit `36b7250b31afcf2ca775cb59987c0c6c305cfc17`.
+
+The production smoke at server commit `12f6676287db487199a8b0644a7d568c11de77a1` was strengthened to require these new fields from Railway production, so a stale deployment can no longer pass solely on old aggregate receipt metrics.
+
+Exact Physical E2E closure for the current audited app now requires a real handset path showing at the test point:
+- `latest_self_test_build == "4.6-46"`;
+- `latest_self_test_sent == true`;
+- `latest_self_test_receipt_confirmed == true`;
+- `current_build_physical_e2e_confirmed == true`;
+- a real client receipt timestamp/ledger row.
+
+Aggregate `received_deliveries >= 1` alone is insufficient because it may belong to an older build. Firebase provider send success is not handset receipt evidence.
+
+## Operational deployment evidence state
+
+Railway service `indexalert-runtime` is sourced from branch `index-alert-server`, but the latest confirmed production deployment is `5b5fc540-2925-4c83-aa83-0688eef31159`, commit `65855916afd52d081453bc511b6b82df3ec948b1`. That deployment predates the new build-specific Physical-E2E health contract.
+
+Therefore current GitHub server code and Railway production are deployment-drifted until production is updated. This is operational evidence only and does not authorize trading. Real-account ordering remains disabled.
 
 ## External evidence still missing
 
-Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations, or a later independent execution-sufficiency assessment against a properly preregistered protocol.
-
-## Operational evidence state
-
-Railway production `indexalert-runtime` previously ran server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` had `/health` 200. This is operational evidence only and does not authorize trading. Real-account ordering remains disabled.
+Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations, a later independent execution-sufficiency assessment, Railway production adoption of the newest server contract, or a real current-build handset receipt.
 
 ## Remaining blockers
 
@@ -169,8 +196,9 @@ Railway production `indexalert-runtime` previously ran server commit `65855916af
 4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.
 5. **Research governance:** no rejected-candidate revival; maintain Ledger/multiple-testing discipline.
 6. **One-shot sealed holdout:** untouched until source/execution/code/protocol freeze; then Shadow S1 -> Fresh Confirmation S2.
-7. **Physical notification E2E:** one current-build Android receipt still required.
-8. **Live ordering:** disabled until all frozen promotion/safety gates and explicit user activation requirements are met.
+7. **Server deployment drift:** production still runs `65855916...`; new build-specific E2E health exists on newer server code but is not yet confirmed deployed.
+8. **Physical notification E2E:** real v4.6-46 handset receipt satisfying the build-specific criteria above is still required.
+9. **Live ordering:** disabled until all frozen promotion/safety gates and explicit user activation requirements are met.
 
 ## Promotion rule
 
