@@ -1,8 +1,9 @@
 """Fail-closed authorization preflight for KRX source probes/acquisition.
 
-Credential presence is not authorization. This module separates route-specific
-credentials from a non-secret approval/evidence reference and prevents one KRX
-authentication route from silently substituting for another.
+Credential presence is not authorization, and authorization metadata is not
+runtime consent. This module separates route-specific credentials from a
+non-secret approval/evidence reference and requires an exact explicit-consent
+sentinel before any tiny authenticated probe may be attempted.
 
 The preflight never prints or persists credential values. A positive preflight
 may authorize only the explicitly declared tiny source request. It cannot make
@@ -21,6 +22,8 @@ OPENAPI_ROUTE = "KRX_OPENAPI_APPROVED_SERVICE"
 PURCHASED_PRODUCT_ROUTE = "KRX_PURCHASED_OR_DISTRIBUTED_PRODUCT"
 ALLOWED_ROUTES = {DATA_MARKETPLACE_ROUTE, OPENAPI_ROUTE, PURCHASED_PRODUCT_ROUTE}
 ALLOWED_FAMILIES = {"KRX_SECURITY_STATUS", "KRX_INVESTOR_FLOW"}
+EXPLICIT_PROBE_CONSENT_ENV = "KRX_EXPLICIT_PROBE_CONSENT"
+EXPLICIT_PROBE_CONSENT_SENTINEL = "ALLOW_TINY_AUTHENTICATED_REQUEST"
 
 
 class KRXAuthPreflightError(ValueError):
@@ -37,6 +40,7 @@ class KRXAuthPreflight:
     route_credentials_complete: bool
     authorization_evidence_reference_present: bool
     exact_service_mapping_confirmed: bool
+    explicit_probe_consent_present: bool
     request_attempt_authorized: bool
     gate_a_status_hint: str
     missing_requirements: tuple[str, ...]
@@ -83,9 +87,11 @@ def evaluate_auth_preflight(
 
     `exact_service_mapping_confirmed` is required for the OpenAPI route because
     an AUTH_KEY by itself does not identify or approve the dataset service.
-    The current Data Marketplace source probes already declare their exact
-    screen/source family separately, so the preflight does not use this boolean
-    to claim Gate B; it merely avoids OpenAPI credential substitution.
+
+    The exact non-secret sentinel
+    `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST` is required for
+    every online tiny probe. Merely setting credentials and an approval reference
+    must therefore remain dry-run safe on push, local execution and CI.
     """
     family = _text(source_family, "source_family")
     if family not in ALLOWED_FAMILIES:
@@ -97,6 +103,10 @@ def evaluate_auth_preflight(
     krx_id = bool(str(environment.get("KRX_ID") or "").strip())
     krx_pw = bool(str(environment.get("KRX_PW") or "").strip())
     openapi_key = bool(str(environment.get("KRX_OPENAPI_AUTH_KEY") or "").strip())
+    explicit_consent = (
+        str(environment.get(EXPLICIT_PROBE_CONSENT_ENV) or "").strip()
+        == EXPLICIT_PROBE_CONSENT_SENTINEL
+    )
     _, auth_ref_present = _opaque_auth_reference(authorization_evidence_reference)
 
     missing: list[str] = []
@@ -121,10 +131,13 @@ def evaluate_auth_preflight(
 
     if not auth_ref_present:
         missing.append("KRX_AUTH_EVIDENCE_REF")
+    if route != PURCHASED_PRODUCT_ROUTE and not explicit_consent:
+        missing.append("EXPLICIT_TINY_REQUEST_CONSENT")
 
     request_authorized = bool(
         route_credentials_complete
         and auth_ref_present
+        and explicit_consent
         and (route != OPENAPI_ROUTE or exact_service_mapping_confirmed)
         and route != PURCHASED_PRODUCT_ROUTE
     )
@@ -138,9 +151,10 @@ def evaluate_auth_preflight(
         route_credentials_complete=bool(route_credentials_complete),
         authorization_evidence_reference_present=auth_ref_present,
         exact_service_mapping_confirmed=bool(exact_service_mapping_confirmed),
+        explicit_probe_consent_present=explicit_consent,
         request_attempt_authorized=request_authorized,
-        # Tiny authenticated reachability plus an opaque approval reference is
-        # still at most partial Gate-A evidence, never PASS by construction.
+        # Tiny authenticated reachability plus approval evidence and explicit
+        # per-run consent is still at most partial Gate-A evidence, never PASS.
         gate_a_status_hint="PARTIAL" if request_authorized else "BLOCKED",
         missing_requirements=tuple(missing),
         alpha_or_final_judge_promotion_authorized=False,
@@ -151,7 +165,8 @@ def evaluate_auth_preflight(
     out = asdict(result)
     out["missing_requirements"] = list(result.missing_requirements)
     out["guardrail"] = (
-        "Credential presence is not authorization. This preflight can permit only the declared tiny source request. "
-        "Gate A remains at most PARTIAL and all performance/holdout/promotion/live authorities remain false."
+        "Credential presence is not authorization, and authorization metadata is not runtime consent. "
+        "The exact explicit-consent sentinel is required before one declared tiny source request. "
+        "Gate A remains at most PARTIAL and all bulk/performance/holdout/promotion/live authorities remain false."
     )
     return out
