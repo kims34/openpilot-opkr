@@ -30,6 +30,7 @@ COPY push_receipts.py .
 COPY push_self_test.py .
 COPY push_health.py .
 COPY market_basis.py .
+COPY corporate_action_registry.py .
 COPY fx_basis.py .
 COPY production_v31.py .
 COPY briefing.py .
