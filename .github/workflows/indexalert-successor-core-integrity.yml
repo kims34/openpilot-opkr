@@ -1,7 +1,7 @@
 name: IndexAlert Successor Core Integrity
 on:
   push:
-    branches: [index-alert-research-v1]
+    branches: [index-alert-research-v1, index-alert-research-v1-successor-authority-hardening]
     paths:
       - 'research_v1_successor_core.py'
       - 'test_research_v1_successor_core.py'
