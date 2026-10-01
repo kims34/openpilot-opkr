@@ -49,8 +49,8 @@ jobs:
 
           replace_once(
               "INDEXALERT_RESEARCH_LEDGER.md",
-              """Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. A later pass cannot by itself authorize the sealed holdout, model promotion or live trading.""",
-              """Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. The numerical evaluator now reports metric success separately as `execution_metric_gates_passed`; a source label or hash-bound CSV cannot set project readiness or close the blocker without independent broker-native provenance admission under `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md`. Even a later fully admitted execution-evidence pass cannot by itself authorize the sealed holdout, model promotion or live trading.""",
+              "Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. A later pass cannot by itself authorize the sealed holdout, model promotion or live trading.",
+              "Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. The numerical evaluator now reports metric success separately as `execution_metric_gates_passed`; a source label or hash-bound CSV cannot set project readiness or close the blocker without independent broker-native provenance admission under `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md`. Even a later fully admitted execution-evidence pass cannot by itself authorize the sealed holdout, model promotion or live trading.",
           )
 
           replace_once(
@@ -77,31 +77,23 @@ jobs:
               "- never treat one/few LIVE rows as empirical execution sufficiency;\n- never treat a `PROSPECTIVE_LIVE_EXECUTION_LOG` label, CSV file name/hash or self-authored manifest as proof of genuine broker provenance;",
           )
 
-          replace_once(
-              ".github/workflows/indexalert-research-v1-execution-evidence.yml",
-              "      - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'\n",
-              "      - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'\n      - 'INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md'\n",
-          )
-
           test_path = Path("test_indexalert_execution_sufficiency_docs.py")
           test_text = test_path.read_text(encoding="utf-8")
           addition = '''\n\ndef test_live_execution_provenance_is_required_before_project_blocker_closure():\n    master = _read("INDEXALERT_MASTER_SPEC.md")\n    status = _read("INDEXALERT_RESEARCH_STATUS.md")\n    snapshot = _read("INDEXALERT_CONTINUITY_SNAPSHOT.md")\n    contract = _read("INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md")\n    provenance = _read("INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md")\n\n    assert "execution_metric_gates_passed" in master\n    assert "INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md" in master\n    assert "genuine_live_provenance_verified=false" in status\n    assert "broker-native provenance admission" in snapshot\n    assert "self-authored or unit-test rows" in contract\n    assert "A file hash proves byte identity only" in provenance\n    assert "empirical_execution_blocker_closed=false" in provenance\n    assert "Real-account ordering remains disabled" in provenance\n'''
           if "test_live_execution_provenance_is_required_before_project_blocker_closure" not in test_text:
               test_path.write_text(test_text.rstrip() + addition + "\n", encoding="utf-8")
 
-          # Record the material authority-doc update date without touching the frozen protocol document.
           for name in ["INDEXALERT_MASTER_SPEC.md", "INDEXALERT_RESEARCH_STATUS.md", "INDEXALERT_RESEARCH_LEDGER.md", "INDEXALERT_CONTINUITY_SNAPSHOT.md"]:
               p = Path(name)
               text = p.read_text(encoding="utf-8")
               text = text.replace("Updated: 2026-10-01 KST", "Updated: 2026-10-02 KST", 1)
               p.write_text(text, encoding="utf-8")
           PY
-      - name: Remove one-shot workflow and commit synchronized state
+      - name: Commit synchronized authority documents
         shell: bash
         run: |
-          rm .github/workflows/indexalert-one-shot-sync-execution-provenance.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add INDEXALERT_MASTER_SPEC.md INDEXALERT_RESEARCH_STATUS.md INDEXALERT_RESEARCH_LEDGER.md INDEXALERT_CONTINUITY_SNAPSHOT.md test_indexalert_execution_sufficiency_docs.py .github/workflows/indexalert-research-v1-execution-evidence.yml .github/workflows/indexalert-one-shot-sync-execution-provenance.yml
+          git add INDEXALERT_MASTER_SPEC.md INDEXALERT_RESEARCH_STATUS.md INDEXALERT_RESEARCH_LEDGER.md INDEXALERT_CONTINUITY_SNAPSHOT.md test_indexalert_execution_sufficiency_docs.py
           git commit -m "Sync authority docs to fail-closed execution provenance"
           git push origin HEAD:index-alert-research-v1-exec-provenance-hardening
