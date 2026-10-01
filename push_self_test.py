@@ -5,8 +5,12 @@ market-threshold rules and trading/research decisions. A registered Android
 client may request at most one successfully-sent self-test delivery for its own
 FCM token and a specific client build identifier. An unsent row is retried using
 its original event_id so transient provider failures do not create duplicates.
-The resulting event is recorded in the normal delivery ledger so the existing
-privacy-safe /push-ack path can prove receipt.
+
+FCM provider send success is deliberately separate from handset receipt. Every
+response reports ``receipt_confirmed`` based only on the privacy-safe /push-ack
+ledger. A successfully sent event is never re-sent merely because its receipt is
+still pending; the Android worker may poll this same endpoint until the original
+event is actually acknowledged.
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ from pydantic import BaseModel
 from firebase_admin import messaging
 
 import monitor
+import push_receipts
 
 INDEX_ID = "push_self_test"
 THRESHOLD = 0
@@ -45,6 +50,17 @@ def _registered(token: str) -> bool:
         return con.execute("SELECT 1 FROM devices WHERE token=?", (token,)).fetchone() is not None
 
 
+def _sent_response(*, token: str, event_id: str, build: str, queued: bool) -> dict:
+    return {
+        "ok": True,
+        "queued": bool(queued),
+        "already_sent": not bool(queued),
+        "client_build": build,
+        "event_id": event_id,
+        "receipt_confirmed": push_receipts.received_for(token, event_id),
+    }
+
+
 def request_self_test(body: PushSelfTestBody) -> dict:
     token = body.token.strip()
     build = _clean_build(body.client_build)
@@ -69,12 +85,12 @@ def request_self_test(body: PushSelfTestBody) -> dict:
             (token, INDEX_ID, cycle, THRESHOLD),
         ).fetchone()
         if existing and bool(existing[1]):
-            return {
-                "ok": True,
-                "queued": False,
-                "already_sent": True,
-                "client_build": build,
-            }
+            return _sent_response(
+                token=token,
+                event_id=str(existing[0]),
+                build=build,
+                queued=False,
+            )
 
         if existing:
             # Reuse the exact unsent event so retries remain idempotent.
@@ -125,7 +141,7 @@ def request_self_test(body: PushSelfTestBody) -> dict:
             "UPDATE deliveries SET sent=1 WHERE token=? AND event_id=?",
             (token, event_id),
         )
-    return {"ok": True, "queued": True, "already_sent": False, "client_build": build}
+    return _sent_response(token=token, event_id=event_id, build=build, queued=True)
 
 
 def attach(app) -> None:
