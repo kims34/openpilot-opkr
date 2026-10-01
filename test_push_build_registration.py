@@ -66,6 +66,22 @@ class PushBuildRegistrationOverlayTests(unittest.TestCase):
             build_overlay.PHYSICAL_E2E_BINDING_CONTRACT,
             "registered-device-build-receipt-v1",
         )
+        self.assertEqual(
+            build_overlay.PHYSICAL_E2E_BLOCKER_CONTRACT,
+            "physical-e2e-blocker-v1",
+        )
+        self.assertEqual(
+            set(build_overlay.PHYSICAL_E2E_BLOCKERS),
+            {
+                "NO_REGISTERED_BUILD",
+                "NO_SELF_TEST",
+                "DEVICE_MISMATCH",
+                "BUILD_MISMATCH",
+                "SELF_TEST_NOT_SENT",
+                "RECEIPT_PENDING",
+                "CONFIRMED",
+            },
+        )
 
     def test_v31_runtime_installs_the_same_build_bound_routes(self):
         build_overlay = self.build_overlay
