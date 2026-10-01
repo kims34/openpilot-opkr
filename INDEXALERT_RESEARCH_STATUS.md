@@ -83,25 +83,34 @@ Current states remain:
 Machine-readable public evidence remains version `2026-10-01.v1`, fingerprint:
 `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`.
 
-## KRX readiness, authorization and runtime-consent reality
+## KRX readiness, authorization evidence and runtime-consent reality
 
-`research_v1_krx_auth_readiness.py` is the **network-free configuration readiness** layer. It checks only whether the Data Marketplace credential/reference prerequisites are present, forcibly disables request consent even if supplied, emits no secret values, and always keeps `request_attempt_authorized=false`, `authenticated_request_attempted=false`, `network_request_attempted=false`.
+The authorization boundary is now three separate layers:
+1. **credentials** — route-specific secret presence;
+2. **validated authorization evidence** — a non-secret structured record matching the exact KRX family/route/use scope/reference;
+3. **runtime consent** — the exact per-run request sentinel.
 
-The manual `.github/workflows/indexalert-research-v1-krx-auth-readiness.yml` workflow has no push trigger, installs no KRX client and invokes no KRX source probe. A ready result is configuration evidence only; it is not Gate-A access evidence.
+`research_v1_krx_authorization_evidence.py` is the structured evidence validator. An opaque `KRX_AUTH_EVIDENCE_REF` by itself is no longer sufficient. The matching non-secret `KRX_AUTH_EVIDENCE_JSON` record must validate issuer (`KRX`), source family, access route, intended-use scope, approval state, evidence-document SHA-256, captured timestamp and any declared validity window. Unknown fields and secret-like values fail closed. Even a valid record is only sufficient for tiny-probe preflight metadata and caps Gate-A evidence at `PARTIAL`; it grants no bulk-history, performance-test, holdout, promotion or live authority.
 
-`research_v1_krx_auth_preflight.py` then freezes **credentials are not authorization, and authorization metadata is not runtime consent**. For one Data Marketplace tiny authenticated request, all of these are required:
+`research_v1_krx_auth_readiness.py` is the **network-free configuration readiness** layer. It checks route-specific credential presence plus the evidence reference and matching structured evidence record, forcibly disables request consent even if supplied, emits no secret values or raw evidence JSON, and always keeps `request_attempt_authorized=false`, `authenticated_request_attempted=false`, `network_request_attempted=false`.
+
+The manual `.github/workflows/indexalert-research-v1-krx-auth-readiness.yml` workflow has no push trigger, installs no KRX client and invokes no KRX source probe. It can check either `KRX_INVESTOR_FLOW` or `KRX_SECURITY_STATUS`. A ready result is configuration evidence only; it is not Gate-A access evidence.
+
+`research_v1_krx_auth_preflight.py` then freezes **credentials are not authorization, an opaque reference is not validated evidence, and authorization metadata is not runtime consent**. For one Data Marketplace tiny authenticated request, all of these are required:
 - `KRX_ID` secret;
 - `KRX_PW` secret;
-- non-secret `KRX_AUTH_EVIDENCE_REF` identifying the approval basis;
+- non-secret `KRX_AUTH_EVIDENCE_REF`;
+- matching validated structured `KRX_AUTH_EVIDENCE_JSON` record;
 - exact per-run sentinel `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST`.
 
-Generic values such as `true`, `1` or `yes` are rejected. OpenAPI `KRX_OPENAPI_AUTH_KEY` is a separate route and additionally requires exact approved service mapping; it cannot substitute for Data Marketplace credentials.
+Generic values such as `true`, `1` or `yes` are rejected. OpenAPI `KRX_OPENAPI_AUTH_KEY` is a separate route and additionally requires exact approved service mapping and matching structured approval evidence; it cannot substitute for Data Marketplace credentials.
 
 Workflow defense-in-depth is frozen:
 - push runs are dry-run only;
-- push dry-run steps receive empty KRX credential/reference/consent environment values;
+- push dry-run steps receive empty KRX credential/reference/evidence-JSON/consent environment values;
 - authenticated steps are skipped on push;
 - authenticated tiny probes are eligible only on explicit `workflow_dispatch` with `allow_authenticated_request=true`;
+- only that manual step receives Data Marketplace credentials, non-secret approval reference/JSON and exact consent sentinel;
 - the Data Marketplace probe workflow does not inject `KRX_OPENAPI_AUTH_KEY` into the authenticated step;
 - `test_research_v1_krx_probe_workflow_safety.py` regression-tests both probe workflows and the readiness workflow.
 
@@ -110,6 +119,8 @@ Latest workflow/integrity evidence:
 - **Investor `36813973236`** — success; push-safe dry-run success; authenticated step skipped.
 - **Integrity `36814088731`** — explicit consent contract/full KRX suite: success.
 - **Integrity `36814594395`** — network-free readiness + workflow-safety tests/full KRX suite: success.
+- **Integrity `36816437900`** — structured authorization-evidence workflow-safety integration/full KRX suite: success.
+- **Integrity `36816687199`** — structured authorization-evidence contract/audit synchronization/full KRX suite: success.
 
 No authenticated KRX request has yet been demonstrated; Gate A remains BLOCKED.
 
@@ -120,6 +131,7 @@ Canonical files include:
 - `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`
 - `research_v1_krx_source_gates.py`
 - `research_v1_krx_public_evidence.py`
+- `research_v1_krx_authorization_evidence.py`
 - `research_v1_krx_auth_preflight.py`
 - `research_v1_krx_auth_readiness.py`
 - `research_v1_krx_status_source_probe.py`
@@ -134,7 +146,7 @@ Canonical files include:
 - corresponding fail-closed tests in CI.
 
 Frozen future flow:
-`network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
+`structured authorization-evidence validation -> network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
 Key properties:
 - investor lineage requires timezone-aware `event_time <= published_at <= available_at <= ingested_at`, final day-D publication >=20:00 KST and decision-time eligibility only after availability;
@@ -150,14 +162,15 @@ Even if source-data admission becomes structurally true, it sets only `eligible_
 
 Internal code cannot fabricate:
 1. approved exact KRX historical route/product;
-2. route-specific credentials plus real non-secret authorization-evidence reference;
-3. a successful network-free readiness result after those are configured;
-4. one explicitly consented tiny authenticated probe proving the approved route without exposing credentials;
-5. complete historical status/investor-flow data;
-6. independently attested expected scope and stable issue mapping;
-7. real record-level PIT publication/availability timestamps;
-8. exact intended-use rights for the selected route;
-9. exact halt/cleanup/delisting execution/recovery economics.
+2. route-specific credentials plus a real non-secret authorization-evidence reference;
+3. a matching genuine structured authorization-evidence record, including an attested approval state/document SHA-256/timestamps for the exact family/route/use scope;
+4. a successful network-free readiness result after those are configured;
+5. one explicitly consented tiny authenticated probe proving the approved route without exposing credentials;
+6. complete historical status/investor-flow data;
+7. independently attested expected scope and stable issue mapping;
+8. real record-level PIT publication/availability timestamps;
+9. exact intended-use rights for the selected route;
+10. exact halt/cleanup/delisting execution/recovery economics.
 
 Until real data passes the pipeline, no investor-flow performance experiment is authorized and Final Judge status remains incomplete.
 
@@ -172,7 +185,7 @@ Research execution-evidence Action `36668905306` passed. Server tests `366690718
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** approved route/product and secure credentials/reference remain external requirements; after configuration, run network-free readiness first, then a separately consented manual tiny probe.
+1. **KRX authorization/data:** approved route/product, secure route credentials, opaque approval reference and matching genuine structured authorization-evidence record remain external requirements; after configuration, run network-free readiness first, then a separately consented manual tiny probe.
 2. **Security/status economics:** full stable identity/status history and exact halt/cleanup/delisting economic joins.
 3. **Investor flow:** full real official history passing provenance, PIT, coverage, A-F and source-data admission, then separate preregistration before any performance test.
 4. **Execution:** empirical fill ratio/time/price, partial fills, markouts, latency/expiry and real capacity.
