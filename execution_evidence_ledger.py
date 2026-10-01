@@ -5,13 +5,18 @@ Execution tiers are deliberately separated:
 - SHADOW decisions submit no broker order and are rejected by this fill ledger.
 - PAPER observations are actual responses from an approved paper/simulation
   broker environment; they validate plumbing, not live-market fill quality.
-- LIVE observations are actual real-account broker executions and are the only
-  rows that may later contribute to empirical live fill/slippage evidence.
+- LIVE-labelled observations are caller-declared real-account execution rows.
+  The label alone is structural input and does not authenticate genuine broker
+  provenance or empirical execution sufficiency.
 
 The endpoint is fail-closed unless INDEXALERT_EXECUTION_LOG_TOKEN is configured.
 Existing observations are immutable. Historical rows written under the former
 `PROSPECTIVE_SHADOW_EXECUTION_LOG` label are preserved but quarantined in
 summary output as legacy-invalid-for-live-evidence; they are never rewritten.
+
+Genuine LIVE provenance remains a separate research-contract admission step.
+This server ledger cannot set genuine_live_provenance_verified, promotion,
+sealed-holdout or live-trading authority true from a caller-supplied source.
 """
 from __future__ import annotations
 
@@ -207,14 +212,29 @@ def _normalise(body: ExecutionObservation) -> dict:
         "source": source,
         "ingested_at": ingested.isoformat(),
     }
-    # V2 key includes source so Paper and Live evidence for the same decision can
-    # coexist without collision. Existing legacy keys remain immutable in DB.
+    # V2 key includes source so Paper and Live-labelled rows for the same
+    # decision can coexist. The source remains a caller label, not provenance.
     item["observation_key"] = hashlib.sha256(
         f"v2|{item['source']}|{item['decision_date']}|{item['symbol']}|{item['recommendation_at']}".encode()
     ).hexdigest()
     payload_json = json.dumps(item, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     item["payload_hash"] = hashlib.sha256(payload_json.encode()).hexdigest()
     return item
+
+
+def _record_result(*, created: bool, item: dict) -> dict:
+    return {
+        "ok": True,
+        "created": bool(created),
+        "observation_key": item["observation_key"],
+        "source": item["source"],
+        "source_label_only": True,
+        "genuine_live_provenance_verified": False,
+        "project_live_evidence_admitted": False,
+        "promotion_ready": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
 
 
 def record(body: ExecutionObservation) -> dict:
@@ -228,12 +248,7 @@ def record(body: ExecutionObservation) -> dict:
         if old:
             if old[0] != item["payload_hash"]:
                 raise HTTPException(409, "immutable execution observation already exists with different payload")
-            return {
-                "ok": True,
-                "created": False,
-                "observation_key": item["observation_key"],
-                "source": item["source"],
-            }
+            return _record_result(created=False, item=item)
         con.execute("""
             INSERT INTO execution_evidence(
                 observation_key,decision_date,symbol,side,recommendation_at,order_submitted_at,
@@ -247,12 +262,7 @@ def record(body: ExecutionObservation) -> dict:
             item["markout_5m_price"], item["markout_30m_price"], item["markout_close_price"], item["source"],
             item["ingested_at"], item["payload_hash"], datetime.now(timezone.utc).isoformat(),
         ))
-    return {
-        "ok": True,
-        "created": True,
-        "observation_key": item["observation_key"],
-        "source": item["source"],
-    }
+    return _record_result(created=True, item=item)
 
 
 def summary() -> dict:
@@ -272,7 +282,7 @@ def summary() -> dict:
 
     source_counts = {str(source): int(count) for source, count in source_rows}
     paper = source_counts.get(PAPER_EXECUTION_SOURCE, 0)
-    live = source_counts.get(LIVE_EXECUTION_SOURCE, 0)
+    live_labelled = source_counts.get(LIVE_EXECUTION_SOURCE, 0)
     legacy = source_counts.get(LEGACY_SHADOW_FILL_SOURCE, 0)
     shadow_decision_misfiled = source_counts.get(SHADOW_DECISION_SOURCE, 0)
     recognized = {PAPER_EXECUTION_SOURCE, LIVE_EXECUTION_SOURCE, LEGACY_SHADOW_FILL_SOURCE, SHADOW_DECISION_SOURCE}
@@ -285,16 +295,30 @@ def summary() -> dict:
         "full_fill": int(row[3] or 0),
         "mean_fill_ratio": None if row[4] is None else float(row[4]),
         "paper_observations": int(paper),
-        "live_observations": int(live),
+        # Backward-compatible count name: this is a caller-labelled tier count,
+        # not an independently authenticated real-account provenance count.
+        "live_observations": int(live_labelled),
+        "live_labelled_observations": int(live_labelled),
         "legacy_shadow_fill_observations": int(legacy),
         "misfiled_shadow_decision_observations": int(shadow_decision_misfiled),
         "unrecognized_source_observations": int(unrecognized),
-        "contains_live_execution_evidence": bool(live > 0),
+        "live_structural_execution_rows_present": bool(live_labelled > 0),
+        # Deprecated misleading legacy field. It must never become true from a
+        # caller-supplied LIVE label; genuine provenance is admitted elsewhere.
+        "contains_live_execution_evidence": False,
+        "contains_live_execution_evidence_semantics": "DEPRECATED_FAIL_CLOSED_USE_LIVE_LABELLED_OBSERVATIONS",
+        "genuine_live_provenance_verified": False,
+        "live_empirical_execution_evidence_ready": False,
+        "empirical_execution_sufficiency_assessed": False,
+        "empirical_execution_blocker_closed": False,
+        "project_live_evidence_admitted": False,
         "promotion_ready": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
         "note": (
-            "PAPER validates broker plumbing only. LIVE is the only tier eligible to contribute to empirical "
-            "market-fill evidence. Legacy Shadow-labelled fill rows are preserved but excluded from that claim; "
-            "model promotion gates remain separate."
+            "PAPER validates broker plumbing only. PROSPECTIVE_LIVE_EXECUTION_LOG is a caller source label only in "
+            "this operational ledger and does not authenticate genuine real-account provenance. Independent "
+            "broker-native provenance admission plus the frozen numerical sufficiency assessment remain mandatory."
         ),
     }
 
