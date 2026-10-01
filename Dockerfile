@@ -29,6 +29,7 @@ COPY execution_evidence_ledger.py .
 COPY push_receipts.py .
 COPY push_self_test.py .
 COPY push_health.py .
+COPY push_build_registration.py .
 COPY market_basis.py .
 COPY corporate_action_registry.py .
 COPY fx_basis.py .
