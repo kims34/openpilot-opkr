@@ -1,8 +1,8 @@
 """Privacy-safe Android client-build registration metadata.
 
 The production /register endpoint historically stored only the FCM token,
-platform, settings and protocol.  That made it impossible to distinguish an old
-APK from a WorkManager/self-test failure by server logs alone.  This module
+platform, settings and protocol. That made it impossible to distinguish an old
+APK from a WorkManager/self-test failure by server logs alone. This module
 extends the request with an optional client_build marker while keeping the raw
 FCM token private and preserving backward compatibility for older clients.
 """
@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 
 import monitor
-import production
 
 
 class RegisterBody(monitor.RegisterBody):
@@ -46,16 +45,28 @@ def _init_db() -> None:
 
 def register(body: RegisterBody) -> dict:
     build = _clean_build(body.client_build)
+    token = body.token.strip()
+    if not (20 <= len(token) <= 4096):
+        raise HTTPException(400, "invalid token")
+    if body.platform != "android":
+        raise HTTPException(400, "unsupported platform")
+    if body.protocol not in (1, 2):
+        raise HTTPException(400, "unsupported protocol")
+
+    settings = body.enabled_levels
+    if settings is not None:
+        settings = dict(settings)
+        settings.setdefault("kospi100", [])
+
     base = monitor.RegisterBody(
         token=body.token,
         platform=body.platform,
-        enabled_levels=body.enabled_levels,
+        enabled_levels=settings,
         protocol=body.protocol,
     )
-    result = production.register(base)
+    result = monitor.register(base)
     if build and bool(result.get("ok")) and bool(result.get("registered")):
         _init_db()
-        token = body.token.strip()
         now = datetime.now(timezone.utc).isoformat()
         with monitor.db() as con:
             con.execute(
