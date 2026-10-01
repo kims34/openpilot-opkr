@@ -5,6 +5,7 @@ on:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_krx_investor_flow_probe.py'
+      - 'research_v1_krx_source_gates.py'
       - '.github/workflows/indexalert-research-v1-krx-investor-flow-probe.yml'
   workflow_dispatch:
 
@@ -29,9 +30,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 requests==2.32.3 python-dotenv
           pip install 'git+https://github.com/beaten-by-the-market/krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e'
-      - name: Run tiny authenticated source probe
+      - name: Run metadata-only investor-flow diagnostic with A-F audit
         run: |
-          python -m py_compile research_v1_krx_investor_flow_probe.py
+          python -m py_compile research_v1_krx_source_gates.py research_v1_krx_investor_flow_probe.py
           python research_v1_krx_investor_flow_probe.py
           cat research_results/krx_investor_flow_probe/summary.json
       - name: Upload metadata-only probe result
@@ -41,4 +42,4 @@ jobs:
           name: indexalert-research-v1-krx-investor-flow-probe
           path: research_results/krx_investor_flow_probe/summary.json
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 14
