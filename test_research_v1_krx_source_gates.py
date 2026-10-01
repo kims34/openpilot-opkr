@@ -89,11 +89,13 @@ def test_empty_evidence_is_rejected():
         )
 
 
-def test_contract_master_and_audit_docs_freeze_the_same_gate_names():
+def test_canonical_docs_freeze_the_same_gate_names():
     docs = [
         Path("INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md"),
         Path("INDEXALERT_KRX_SOURCE_GATE_AUDIT.md"),
         Path("INDEXALERT_MASTER_SPEC.md"),
+        Path("INDEXALERT_RESEARCH_STATUS.md"),
+        Path("INDEXALERT_CONTINUITY_SNAPSHOT.md"),
     ]
     for path in docs:
         text = path.read_text(encoding="utf-8")
@@ -104,13 +106,19 @@ def test_contract_master_and_audit_docs_freeze_the_same_gate_names():
             )
 
 
-def test_master_and_contract_preserve_non_promotion_boundary():
+def test_canonical_docs_preserve_non_promotion_boundary():
     master = Path("INDEXALERT_MASTER_SPEC.md").read_text(encoding="utf-8")
     contract = Path("INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md").read_text(encoding="utf-8")
     audit = Path("INDEXALERT_KRX_SOURCE_GATE_AUDIT.md").read_text(encoding="utf-8")
+    status = Path("INDEXALERT_RESEARCH_STATUS.md").read_text(encoding="utf-8")
+    handoff = Path("INDEXALERT_CONTINUITY_SNAPSHOT.md").read_text(encoding="utf-8")
 
     assert "Even six PASS results" in master
     assert "All six gates passing means only" in contract
     assert "one-shot sealed holdout" in audit
+    assert "one-shot sealed holdout" in status
+    assert "sealed holdout" in handoff
     assert "Purged/CPCV" in master
     assert "distributional NetEV" in master
+    assert "live trading" in audit
+    assert "live trading" in handoff
