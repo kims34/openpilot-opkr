@@ -162,7 +162,8 @@ def _normalise_observed_identity(identity_snapshots: pd.DataFrame) -> tuple[pd.D
         if stable_present:
             row["isu_cd"] = _issue(raw["isu_cd"])
         rows.append(row)
-    return pd.DataFrame(rows), bool(stable_present)
+    columns = ["snapshot_date", "symbol"] + (["isu_cd"] if stable_present else [])
+    return pd.DataFrame(rows, columns=columns), bool(stable_present)
 
 
 def audit_status_identity_coverage(
