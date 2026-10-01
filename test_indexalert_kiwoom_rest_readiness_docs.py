@@ -41,6 +41,37 @@ def test_kiwoom_official_schema_snapshot_contains_provenance_identifiers():
         assert marker in READINESS
 
 
+def test_rest_order_snapshots_cannot_fabricate_execution_identity_or_live_provenance():
+    required = (
+        "`research_v1_kiwoom_native_execution.py`",
+        "`record_granularity=order_aggregate_snapshot`",
+        "`broker_execution_id_available_in_source=false`",
+        "must never synthesize an execution ID",
+        "`ord_no`, a CSV row number, a project row ID, a hash, a timestamp",
+        "genuine_live_provenance_verified=false",
+        "project_live_evidence_admitted=false",
+    )
+    for marker in required:
+        assert marker in READINESS
+
+
+def test_rest_snapshot_reconciliation_is_structural_and_fail_closed():
+    required = (
+        "same-order `kt00007` / `ka10076` structural reconciliation",
+        "conflicting account fingerprint",
+        "broker order ID",
+        "symbol",
+        "original-order ID",
+        "order/fill quantity",
+        "remaining quantity",
+        "order price",
+        "fill price",
+        "plumbing evidence only",
+    )
+    for marker in required:
+        assert marker in READINESS
+
+
 def test_demo_and_historical_real_data_cannot_bypass_prospective_live_admission():
     assert "demo/paper observations cannot satisfy the frozen execution-sufficiency sample or metric gates" in READINESS
     assert "They do **not** automatically count toward the frozen prospective execution-sufficiency window" in READINESS
