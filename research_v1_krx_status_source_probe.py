@@ -20,14 +20,30 @@ semantics must still be audited before `judge_security_status_ready=True`.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
 from typing import Any, Callable
 
+from research_v1_krx_source_gates import audit_source_gates
+
 
 PINNED_KRX_DATA_API = "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 OUT = Path("research_results/krx_status_source_probe")
+SOURCE_FAMILY = "KRX_SECURITY_STATUS"
+INTENDED_USE_SCOPE = "INTERNAL_RESEARCH_AND_FINAL_JUDGE_INPUT_PREPARATION"
+
+
+def _canonical_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _frame_meta(df) -> dict[str, Any]:
@@ -49,6 +65,86 @@ def _try(name: str, fn: Callable[[], Any]) -> dict[str, Any]:
             "error_type": type(exc).__name__,
             "error_message": str(exc)[:700],
         }
+
+
+def source_gate_audit(*, session_configured: bool) -> dict:
+    """Map this tiny probe to the frozen A-F source contract conservatively.
+
+    A successful tiny authenticated request can improve evidence, but this probe
+    is structurally incapable of closing historical coverage, PIT lineage or
+    licensing. It therefore never returns all PASS.
+    """
+    statuses = {
+        "A": "PARTIAL" if session_configured else "BLOCKED",
+        "B": "PARTIAL",
+        "C": "BLOCKED",
+        "D": "BLOCKED",
+        "E": "PARTIAL",
+        "F": "PARTIAL",
+    }
+    evidence = {
+        "A": (
+            "Data Marketplace session credentials are present and the probe may exercise the authenticated route, "
+            "but the exact authorized historical product/access contract for the full status reconstruction is not closed."
+            if session_configured
+            else "KRX_ID/KRX_PW are absent in the active runtime, so the authenticated Data Marketplace route is not exercised."
+        ),
+        "B": (
+            "MDCSTAT213/237/238/239 screen families are identified, but some low-level mappings remain provisional "
+            "and exact approved service/schema equivalence for the complete historical family is not closed."
+        ),
+        "C": (
+            "The tiny source probe does not reconstruct or independently audit full requested-period common-stock/status coverage."
+        ),
+        "D": (
+            "Record-level historical event_time/published_at/available_at/ingested_at lineage across all required status families is not established."
+        ),
+        "E": (
+            "The client revision, route metadata, schema metadata and fail-closed diagnostics are reproducible, "
+            "but end-to-end historical acquisition and coverage reproducibility remain open."
+        ),
+        "F": (
+            "Internal research and external/commercial use are separated by contract, but rights for the final selected historical route remain unverified."
+        ),
+    }
+    return audit_source_gates(
+        source_family=SOURCE_FAMILY,
+        intended_use_scope=INTENDED_USE_SCOPE,
+        statuses=statuses,
+        evidence=evidence,
+    )
+
+
+def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dict[str, Any]:
+    report["authenticated_request_attempted"] = bool(session_configured)
+    report["source_gate_audit"] = source_gate_audit(session_configured=session_configured)
+    contract_material = {
+        "source_family": SOURCE_FAMILY,
+        "intended_use_scope": INTENDED_USE_SCOPE,
+        "active_probe_access_route": report["active_probe_access_route"],
+        "pinned_krx_data_api_commit": report["pinned_krx_data_api_commit"],
+        "official_screen_contracts": report["official_screen_contracts"],
+        "candidate_low_level_blds_not_yet_promoted_to_contract": report[
+            "candidate_low_level_blds_not_yet_promoted_to_contract"
+        ],
+        "source_route_policy": report["source_route_policy"],
+    }
+    report["probe_contract_fingerprint_sha256"] = _canonical_sha256(contract_material)
+    result_material = {
+        key: value
+        for key, value in report.items()
+        if key not in {"probe_result_fingerprint_sha256"}
+    }
+    report["probe_result_fingerprint_sha256"] = _canonical_sha256(result_material)
+    return report
+
+
+def _write_report(report: dict[str, Any], *, session_configured: bool) -> None:
+    final = _finalise_report(report, session_configured=session_configured)
+    (OUT / "summary.json").write_text(
+        json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print("KRX_STATUS_SOURCE_PROBE=" + json.dumps(final, ensure_ascii=False), flush=True)
 
 
 def main() -> None:
@@ -99,10 +195,7 @@ def main() -> None:
     }
 
     if not session_configured:
-        (OUT / "summary.json").write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        print("KRX_STATUS_SOURCE_PROBE=" + json.dumps(report, ensure_ascii=False), flush=True)
+        _write_report(report, session_configured=False)
         return
 
     from krx_data_api import fetch, get_krx_auth, transport
@@ -175,11 +268,7 @@ def main() -> None:
     )
     report["candidate_blds_live_validated"] = bool(candidate_ok)
     report["judge_security_status_ready"] = False
-
-    (OUT / "summary.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    print("KRX_STATUS_SOURCE_PROBE=" + json.dumps(report, ensure_ascii=False), flush=True)
+    _write_report(report, session_configured=True)
 
 
 if __name__ == "__main__":
