@@ -149,7 +149,7 @@ def _normalise_observed_identity(identity_snapshots: pd.DataFrame) -> tuple[pd.D
         _aware(value, "available_at")
 
     common = identity_snapshots[
-        identity_snapshots["common_stock_identity_official"].map(lambda x: x is True)
+        identity_snapshots["common_stock_identity_official"].eq(True)
     ].copy()
     stable_present = "isu_cd" in common.columns and common["isu_cd"].notna().all()
 
