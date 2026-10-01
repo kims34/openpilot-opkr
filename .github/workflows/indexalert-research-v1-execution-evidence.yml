@@ -23,6 +23,7 @@ on:
       - 'INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json'
       - 'INDEXALERT_KIWOOM_REST_READINESS_CONTRACT.md'
       - 'INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md'
+      - 'INDEXALERT_PHYSICAL_E2E_AUDIT.md'
       - 'INDEXALERT_BROKER_EXECUTION_CONTRACT.md'
       - 'INDEXALERT_MASTER_SPEC.md'
       - 'INDEXALERT_RESEARCH_STATUS.md'
@@ -31,6 +32,7 @@ on:
       - 'test_research_v1_execution_evidence_contract.py'
       - 'test_indexalert_execution_sufficiency_docs.py'
       - 'test_indexalert_kiwoom_rest_readiness_docs.py'
+      - 'test_indexalert_physical_e2e_docs.py'
       - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
   workflow_dispatch:
 
@@ -54,6 +56,7 @@ jobs:
         # Covers numerical metric state separately from project empirical/provenance state.
         # Kiwoom readiness/connectivity is read-only/demo plumbing and cannot authorize real ordering.
         # Promotion consumers must remain isolated from Kiwoom demo/reconciliation state.
+        # Physical E2E remains a separate plumbing contract and cannot grant research/trading authority.
         run: |
           python -m py_compile research_v1_execution_evidence.py research_v1_execution_sufficiency_protocol.py research_v1_execution_sufficiency_assessment.py research_v1_execution_sufficiency_cli.py research_v1_kiwoom_native_execution.py research_v1_promotion_audit.py research_v1_promotion_report.py
-          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_sufficiency_cli.py test_research_v1_execution_evidence_contract.py test_indexalert_execution_sufficiency_docs.py test_indexalert_kiwoom_rest_readiness_docs.py test_research_v1_kiwoom_native_execution.py test_research_v1_kiwoom_authority_isolation.py
+          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_sufficiency_protocol.py test_research_v1_execution_sufficiency_assessment.py test_research_v1_execution_sufficiency_cli.py test_research_v1_execution_evidence_contract.py test_indexalert_execution_sufficiency_docs.py test_indexalert_kiwoom_rest_readiness_docs.py test_indexalert_physical_e2e_docs.py test_research_v1_kiwoom_native_execution.py test_research_v1_kiwoom_authority_isolation.py
