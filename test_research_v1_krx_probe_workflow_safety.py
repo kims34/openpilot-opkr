@@ -15,6 +15,9 @@ WORKFLOWS = [
         "Run explicitly consented authenticated investor-flow probe",
     ),
 ]
+READINESS_WORKFLOW = Path(
+    ".github/workflows/indexalert-research-v1-krx-auth-readiness.yml"
+)
 
 
 @pytest.mark.parametrize("path,dry_name,auth_name", WORKFLOWS)
@@ -63,3 +66,30 @@ def test_probe_workflows_do_not_define_job_level_krx_secret_environment():
         assert "secrets.KRX_ID" not in prefix
         assert "secrets.KRX_PW" not in prefix
         assert "secrets.KRX_OPENAPI_AUTH_KEY" not in prefix
+
+
+def test_auth_readiness_workflow_is_manual_only_and_cannot_enable_request_consent():
+    text = READINESS_WORKFLOW.read_text(encoding="utf-8")
+    trigger_block = text.split("jobs:", 1)[0]
+    run_block = text.split(
+        "- name: Run network-free KRX configuration readiness check", 1
+    )[1].split("- name: Upload readiness result", 1)[0]
+
+    assert "workflow_dispatch:" in trigger_block
+    assert "push:" not in trigger_block
+    assert "authorization_evidence_reference:" in trigger_block
+
+    assert "KRX_ID: ${{ secrets.KRX_ID }}" in run_block
+    assert "KRX_PW: ${{ secrets.KRX_PW }}" in run_block
+    assert "KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}" in run_block
+    assert "inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF" in run_block
+    assert "KRX_EXPLICIT_PROBE_CONSENT: ''" in run_block
+    assert "ALLOW_TINY_AUTHENTICATED_REQUEST" not in run_block
+    assert "research_v1_krx_auth_readiness.py" in run_block
+
+
+def test_auth_readiness_workflow_has_no_network_client_install_or_probe_script():
+    text = READINESS_WORKFLOW.read_text(encoding="utf-8")
+    assert "krx-data-api" not in text
+    assert "research_v1_krx_status_source_probe.py" not in text
+    assert "research_v1_krx_investor_flow_probe.py" not in text
