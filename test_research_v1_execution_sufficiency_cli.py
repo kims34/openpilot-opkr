@@ -9,8 +9,8 @@ from test_research_v1_execution_sufficiency_assessment import _evidence
 ROOT = Path(__file__).parent
 
 
-def test_cli_writes_hash_bound_result_without_authorizing_promotion(tmp_path):
-    csv_path = tmp_path / "live.csv"
+def test_cli_writes_hash_bound_metric_result_without_closing_project_blocker(tmp_path):
+    csv_path = tmp_path / "live-labelled.csv"
     out_path = tmp_path / "assessment.json"
     _evidence().to_csv(csv_path, index=False)
 
@@ -24,21 +24,27 @@ def test_cli_writes_hash_bound_result_without_authorizing_promotion(tmp_path):
     assert result == saved
     assert saved["evidence_rows_read"] == 600
     assert saved["evidence_file_sha256"] == hashlib.sha256(csv_path.read_bytes()).hexdigest()
-    assert saved["empirical_execution_blocker_closed"] is True
+    assert saved["execution_metric_gates_passed"] is True
+    assert saved["genuine_live_provenance_verified"] is False
+    assert saved["project_failed_gates"] == ["independent_live_provenance_admission"]
+    assert saved["live_empirical_execution_evidence_ready"] is False
+    assert saved["empirical_execution_blocker_closed"] is False
     assert saved["promotion_ready"] is False
     assert saved["sealed_holdout_authorized"] is False
     assert saved["live_trading_authorized"] is False
 
 
-def test_cli_preserves_failed_sample_gate(tmp_path):
+def test_cli_preserves_failed_sample_gate_and_provenance_blocker(tmp_path):
     csv_path = tmp_path / "insufficient.csv"
     _evidence(300).to_csv(csv_path, index=False)
 
     result = assess_execution_sufficiency_file(csv_path, protocol_dir=ROOT)
 
+    assert result["execution_metric_gates_passed"] is False
     assert result["empirical_execution_blocker_closed"] is False
     assert "minimum_live_observations" in result["failed_gates"]
     assert "minimum_distinct_decision_dates" in result["failed_gates"]
+    assert "independent_live_provenance_admission" in result["project_failed_gates"]
     assert result["promotion_ready"] is False
     assert result["sealed_holdout_authorized"] is False
     assert result["live_trading_authorized"] is False
