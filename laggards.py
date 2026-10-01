@@ -164,7 +164,7 @@ def _market_state(meta, current_ts: int) -> str:
     return "POST"
 
 
-def _market_quote(monitor, symbol: str):
+def _market_quote(monitor, symbol: str, *, require_equity: bool = False):
     result = monitor.yahoo_result(_yahoo_symbol(symbol), "5d", "5m", True)
     points = monitor.series(result)
     if not points:
@@ -173,6 +173,12 @@ def _market_quote(monitor, symbol: str):
     current_ts = int(current_ts)
     current = float(current)
     meta = result.get("meta", {})
+    instrument_type = str(meta.get("instrumentType") or meta.get("quoteType") or "").strip().upper()
+    if require_equity and instrument_type != "EQUITY":
+        # Constituent universes represent company equities. Holdings-source or
+        # page-parser contamination must never allow an ETF/fund/index/currency
+        # ticker to masquerade as an S&P500/NASDAQ100/SCHD stock constituent.
+        raise RuntimeError(f"non-equity constituent: {instrument_type or 'UNKNOWN'}")
     state = _market_state(meta, current_ts)
     regular_points = _regular_session_points(points)
     previous_close, previous_close_date = market_basis.regular_close_basis(
@@ -201,6 +207,7 @@ def _market_quote(monitor, symbol: str):
         "day_change": day_change,
         "day_change_pct": day_change_pct,
         "market_state": state,
+        "instrument_type": instrument_type,
     }
 
 
@@ -245,7 +252,7 @@ def refresh(monitor):
         all_symbols = sorted(sp500 | ndx | schd)
 
         def work(symbol):
-            row = _market_quote(monitor, symbol)
+            row = _market_quote(monitor, symbol, require_equity=True)
             if symbol in sp_names:
                 row["name"] = sp_names[symbol]
             return row
