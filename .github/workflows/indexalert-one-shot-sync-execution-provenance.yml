@@ -1,0 +1,107 @@
+name: IndexAlert one-shot execution provenance authority sync
+
+on:
+  push:
+    branches: [index-alert-research-v1-exec-provenance-hardening]
+    paths:
+      - '.github/workflows/indexalert-one-shot-sync-execution-provenance.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: index-alert-research-v1-exec-provenance-hardening
+      - name: Sync canonical execution provenance wording
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"expected canonical text not found in {path}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "INDEXALERT_MASTER_SPEC.md",
+              """The evaluator is bound to frozen decision/execution policy IDs, exact protocol-document fingerprint and PIT provenance timestamps. Thresholds may not be weakened using outcomes from the evidence window they judge. A future revision requires a new protocol ID/fingerprint and an evidence window beginning strictly after that revision is frozen.\n\nPassing the execution-only protocol may close `empirical_execution_blocker_closed` for that protocol, but it must still leave `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` until every independent Master Spec gate passes. No sealed holdout may be opened merely because execution sufficiency passes, and no real-account order mode may be activated from this evidence alone.\n\nCurrent project state: the protocol/evaluator are frozen and Actions-tested, but no genuine staged LIVE evidence window exists yet. Therefore empirical execution sufficiency remains unassessed/open. KRX A-F evidence, exact status-event economics, sealed holdout, Shadow S1 and Fresh Confirmation S2 remain independent blockers.""",
+              """The evaluator is bound to frozen decision/execution policy IDs, exact protocol-document fingerprint and PIT provenance timestamps. Thresholds may not be weakened using outcomes from the evidence window they judge. A future revision requires a new protocol ID/fingerprint and an evidence window beginning strictly after that revision is frozen.\n\n`research_v1_execution_sufficiency_assessment.py` is now explicitly the **numerical metric evaluator**. A caller-supplied CSV, the literal `PROSPECTIVE_LIVE_EXECUTION_LOG` source label, or a CSV SHA-256 does not prove genuine real-account provenance. The separate fail-closed provenance contract is `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md`. A numerical pass is reported as `execution_metric_gates_passed=true`; project-level `live_empirical_execution_evidence_ready` and `empirical_execution_blocker_closed` must remain false until the exact evidence bundle also passes independent broker-native provenance admission. This provenance hardening does not change or weaken any frozen v1 numerical threshold.\n\nEven after both numerical sufficiency and genuine provenance are established, `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` remain required until every independent Master Spec gate passes. No sealed holdout may be opened merely because execution evidence passes, and no real-account order mode may be activated from this evidence alone.\n\nCurrent project state: the protocol/metric evaluator are frozen and Actions-tested, but no genuine staged LIVE evidence window and no independent broker-native provenance admission exist yet. Therefore empirical execution sufficiency remains unassessed/open and the execution blocker remains open. KRX A-F evidence, exact status-event economics, sealed holdout, Shadow S1 and Fresh Confirmation S2 remain independent blockers.""",
+          )
+
+          replace_once(
+              "INDEXALERT_RESEARCH_STATUS.md",
+              """- `research_v1_execution_sufficiency_assessment.py` — independent genuine-LIVE evaluator.\n\nThe project protocol was frozen before any genuine LIVE observation. Core criteria include at least 600 LIVE observations across at least 200 distinct decision dates, at least 400 filled observations, decision-time PIT ADV participation capped at the existing research assumption `0.0005` (0.05%), 120 near-capacity observations at >=80% of that ceiling, date-cluster fill/slippage gates, Wilson no-fill/partial-fill bounds, 5m/30m/close markouts with ES95/ES99 reporting, latency/expiry controls, fee/tax comparison, and zero unknown/reconciliation/risk/capacity-integrity breaches. Thresholds are bound to the protocol document fingerprint and may not be weakened using outcomes from the evidence window they judge.\n\nThe evaluator accepts only `PROSPECTIVE_LIVE_EXECUTION_LOG`, requires the frozen decision/execution policy IDs and PIT provenance timestamps, and keeps `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` even if the execution-only gates later pass.\n\nNo genuine staged LIVE execution observations exist yet, so current project state remains:\n- `live_empirical_execution_evidence_ready=false`;\n- `empirical_execution_sufficiency_assessed=false`;\n- `empirical_execution_blocker_closed=false`;\n- `promotion_ready=false`.\n\nHistorical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures exercise pass/fail code paths only and are not project evidence.""",
+              """- `research_v1_execution_sufficiency_assessment.py` — frozen numerical execution-gate evaluator;\n- `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md` — separate fail-closed genuine-LIVE provenance admission contract.\n\nThe project protocol was frozen before any genuine LIVE observation. Core criteria include at least 600 LIVE observations across at least 200 distinct decision dates, at least 400 filled observations, decision-time PIT ADV participation capped at the existing research assumption `0.0005` (0.05%), 120 near-capacity observations at >=80% of that ceiling, date-cluster fill/slippage gates, Wilson no-fill/partial-fill bounds, 5m/30m/close markouts with ES95/ES99 reporting, latency/expiry controls, fee/tax comparison, and zero unknown/reconciliation/risk/capacity-integrity breaches. Thresholds are bound to the protocol document fingerprint and may not be weakened using outcomes from the evidence window they judge.\n\nThe metric evaluator requires LIVE-labelled rows, the frozen decision/execution policy IDs and PIT provenance timestamps, but it cannot authenticate real-account origin from a caller-supplied CSV. A source label or CSV SHA-256 is identity/structure evidence only. Numerical success is exposed separately as `execution_metric_gates_passed`; project-level readiness additionally requires independent broker-native provenance admission for the exact evidence bundle. The evaluator keeps `genuine_live_provenance_verified=false`, `live_empirical_execution_evidence_ready=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` by itself.\n\nNo genuine staged LIVE execution observations or broker-native provenance admission exist yet, so current project state remains:\n- `genuine_live_provenance_verified=false`;\n- `live_empirical_execution_evidence_ready=false`;\n- `empirical_execution_sufficiency_assessed=false`;\n- `empirical_execution_blocker_closed=false`;\n- `promotion_ready=false`.\n\nHistorical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures may exercise numerical pass/fail paths only and are not project evidence; a synthetic fixture may never close the project execution blocker.""",
+          )
+
+          replace_once(
+              "INDEXALERT_RESEARCH_STATUS.md",
+              "4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.",
+              "4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.",
+          )
+
+          replace_once(
+              "INDEXALERT_RESEARCH_LEDGER.md",
+              """Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. A later pass cannot by itself authorize the sealed holdout, model promotion or live trading.""",
+              """Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. The numerical evaluator now reports metric success separately as `execution_metric_gates_passed`; a source label or hash-bound CSV cannot set project readiness or close the blocker without independent broker-native provenance admission under `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md`. Even a later fully admitted execution-evidence pass cannot by itself authorize the sealed holdout, model promotion or live trading.""",
+          )
+
+          replace_once(
+              "INDEXALERT_RESEARCH_LEDGER.md",
+              "4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.",
+              "4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol, retain broker-native order/execution provenance for row-level independent admission, then run the frozen metric assessment: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.",
+          )
+
+          replace_once(
+              "INDEXALERT_CONTINUITY_SNAPSHOT.md",
+              """The evaluator accepts only genuine `PROSPECTIVE_LIVE_EXECUTION_LOG` rows with the frozen decision/execution policy IDs and PIT provenance. Unit-test fixtures are never project evidence.\n\nCurrent state remains `live_empirical_execution_evidence_ready=false`, `empirical_execution_sufficiency_assessed=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false`, `live_trading_authorized=false` because no genuine staged LIVE evidence window exists yet.""",
+              """The metric evaluator accepts only LIVE-labelled rows with the frozen decision/execution policy IDs and PIT timestamps, but a source label or CSV hash does not authenticate real-account origin. `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md` requires separate independent broker-native provenance admission for the exact evidence bundle. Unit-test fixtures are never project evidence.\n\nCurrent state remains `genuine_live_provenance_verified=false`, `live_empirical_execution_evidence_ready=false`, `empirical_execution_sufficiency_assessed=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false`, `live_trading_authorized=false` because no genuine staged LIVE evidence window or broker-native provenance admission exists yet.""",
+          )
+
+          replace_once(
+              "INDEXALERT_CONTINUITY_SNAPSHOT.md",
+              "6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, independent evaluator and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence has not been collected/assessed.\n7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.",
+              "6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, metric evaluator, provenance fail-closed hardening and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence and broker-native provenance admission do not exist.\n7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations + independent broker-native provenance admission + frozen numerical sufficiency assessment.",
+          )
+
+          replace_once(
+              "INDEXALERT_CONTINUITY_SNAPSHOT.md",
+              "- never treat one/few LIVE rows as empirical execution sufficiency;",
+              "- never treat one/few LIVE rows as empirical execution sufficiency;\n- never treat a `PROSPECTIVE_LIVE_EXECUTION_LOG` label, CSV file name/hash or self-authored manifest as proof of genuine broker provenance;",
+          )
+
+          replace_once(
+              ".github/workflows/indexalert-research-v1-execution-evidence.yml",
+              "      - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'\n",
+              "      - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'\n      - 'INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md'\n",
+          )
+
+          test_path = Path("test_indexalert_execution_sufficiency_docs.py")
+          test_text = test_path.read_text(encoding="utf-8")
+          addition = '''\n\ndef test_live_execution_provenance_is_required_before_project_blocker_closure():\n    master = _read("INDEXALERT_MASTER_SPEC.md")\n    status = _read("INDEXALERT_RESEARCH_STATUS.md")\n    snapshot = _read("INDEXALERT_CONTINUITY_SNAPSHOT.md")\n    contract = _read("INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md")\n    provenance = _read("INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md")\n\n    assert "execution_metric_gates_passed" in master\n    assert "INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md" in master\n    assert "genuine_live_provenance_verified=false" in status\n    assert "broker-native provenance admission" in snapshot\n    assert "self-authored or unit-test rows" in contract\n    assert "A file hash proves byte identity only" in provenance\n    assert "empirical_execution_blocker_closed=false" in provenance\n    assert "Real-account ordering remains disabled" in provenance\n'''
+          if "test_live_execution_provenance_is_required_before_project_blocker_closure" not in test_text:
+              test_path.write_text(test_text.rstrip() + addition + "\n", encoding="utf-8")
+
+          # Record the material authority-doc update date without touching the frozen protocol document.
+          for name in ["INDEXALERT_MASTER_SPEC.md", "INDEXALERT_RESEARCH_STATUS.md", "INDEXALERT_RESEARCH_LEDGER.md", "INDEXALERT_CONTINUITY_SNAPSHOT.md"]:
+              p = Path(name)
+              text = p.read_text(encoding="utf-8")
+              text = text.replace("Updated: 2026-10-01 KST", "Updated: 2026-10-02 KST", 1)
+              p.write_text(text, encoding="utf-8")
+          PY
+      - name: Remove one-shot workflow and commit synchronized state
+        shell: bash
+        run: |
+          rm .github/workflows/indexalert-one-shot-sync-execution-provenance.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add INDEXALERT_MASTER_SPEC.md INDEXALERT_RESEARCH_STATUS.md INDEXALERT_RESEARCH_LEDGER.md INDEXALERT_CONTINUITY_SNAPSHOT.md test_indexalert_execution_sufficiency_docs.py .github/workflows/indexalert-research-v1-execution-evidence.yml .github/workflows/indexalert-one-shot-sync-execution-provenance.yml
+          git commit -m "Sync authority docs to fail-closed execution provenance"
+          git push origin HEAD:index-alert-research-v1-exec-provenance-hardening
