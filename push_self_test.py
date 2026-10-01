@@ -61,6 +61,45 @@ def _sent_response(*, token: str, event_id: str, build: str, queued: bool) -> di
     }
 
 
+def latest_self_test_status() -> dict:
+    """Return privacy-safe status for the most recently created build self-test.
+
+    Aggregate push receipt counts cannot prove that the *current* Android build
+    received its own self-test: an older build may already have a receipt. This
+    helper therefore binds health to the latest self-test delivery row and checks
+    that exact token/event pair through the receipt ledger. Raw token/event IDs
+    are intentionally omitted from the returned status.
+    """
+    monitor.init_db()
+    with monitor.db() as con:
+        row = con.execute(
+            """SELECT token,cycle,event_id,sent,created
+               FROM deliveries
+               WHERE index_id=? AND threshold=?
+               ORDER BY created DESC, rowid DESC LIMIT 1""",
+            (INDEX_ID, THRESHOLD),
+        ).fetchone()
+    if not row:
+        return {
+            "latest_self_test_build": None,
+            "latest_self_test_sent": False,
+            "latest_self_test_receipt_confirmed": False,
+            "latest_self_test_created_at": None,
+        }
+
+    token, cycle, event_id, sent, created = row
+    cycle_text = str(cycle or "")
+    build = cycle_text[len("android-"):] if cycle_text.startswith("android-") else None
+    sent_bool = bool(sent)
+    confirmed = bool(sent_bool and push_receipts.received_for(str(token), str(event_id)))
+    return {
+        "latest_self_test_build": build,
+        "latest_self_test_sent": sent_bool,
+        "latest_self_test_receipt_confirmed": confirmed,
+        "latest_self_test_created_at": None if created is None else float(created),
+    }
+
+
 def request_self_test(body: PushSelfTestBody) -> dict:
     token = body.token.strip()
     build = _clean_build(body.client_build)
