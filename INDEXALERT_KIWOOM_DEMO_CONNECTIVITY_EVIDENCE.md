@@ -1,7 +1,7 @@
 # IndexAlert Kiwoom Demo Connectivity Evidence
 
 Updated: 2026-10-02 KST
-Branch: `index-alert-research-v1-kiwoom-demo-connectivity`
+Branch: `index-alert-research-v1`
 Evidence class: **DEMO / READ-ONLY CONNECTIVITY ONLY**
 
 ## Observed result
