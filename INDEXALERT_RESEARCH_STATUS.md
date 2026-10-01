@@ -1,6 +1,6 @@
 # IndexAlert Research Status
 
-Updated: 2026-09-30 KST  
+Updated: 2026-10-01 KST  
 Branch: `index-alert-research-v1`  
 Master authority: `INDEXALERT_MASTER_SPEC.md`  
 Experiment authority: `INDEXALERT_RESEARCH_LEDGER.md`  
@@ -138,6 +138,36 @@ Current research uses:
 
 The >30.5% decision-day CA-safe return rule is a **market-state fail-closed proxy**, not alpha. It remains preliminary until historical official security/status data covers the Judge period.
 
+## KRX source gates A-F — frozen 2026-10-01
+
+The interrupted source-governance task is now complete in code and canonical documentation.
+
+Canonical gates:
+- Gate A — `AUTHORIZED_OFFICIAL_ROUTE`
+- Gate B — `EXACT_DATASET_SCHEMA_MAPPING`
+- Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING`
+- Gate D — `PIT_AVAILABILITY_LINEAGE`
+- Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED`
+- Gate F — `INTENDED_USE_RIGHTS`
+
+Only `PASS` closes a gate; `PARTIAL` is not a pass. All six passing closes only the source contract for the declared scope and cannot by itself authorize Alpha/Final-Judge promotion, sealed-holdout consumption or live trading.
+
+Canonical files:
+- `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`
+- `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`
+- `research_v1_krx_source_gates.py`
+- `test_research_v1_krx_source_gates.py`
+
+Master Spec section 16 freezes the same boundary. CI is configured to fail if the Master Spec, source contract or audit document drifts from the canonical A-F names or removes the non-promotion boundary.
+
+Latest validating Action: `36807509480` on commit `9c1acf1a42f23b2b6eec6bfe19c38fa6e3296eb7` — **SUCCESS**.
+
+Current audit remains fail-closed rather than declaring premature readiness:
+- KRX security/status source contract: **OPEN**; Gates C/D remain `BLOCKED`, other source/licensing gates remain `PARTIAL` pending exact closure evidence.
+- KRX investor-flow source contract: **OPEN**; Gate C remains `BLOCKED`, other gates remain `PARTIAL` pending exact historical access/mapping/PIT/licensing evidence.
+
+Therefore no investor-flow performance experiment is authorized yet, and `judge_security_status_ready` remains false.
+
 ## Next independent information family
 
 Do **not** continue price-only threshold/feature mining.
@@ -154,9 +184,9 @@ Final day-D investor trading results are only eligible for a later decision afte
 
 ## Final Judge blockers still open
 
-1. Official historical common-stock/security-status master with PIT availability lineage.
+1. Close KRX source Gates A-F for the exact security/status source used by Final Judge; specifically obtain and audit full historical common-stock/security-status coverage and PIT lineage.
 2. Exact trading-halt, cleanup-trading and delisting economics/status joins.
-3. Reproducible official KRX investor-flow historical access/lineage before performance testing.
+3. Close KRX source Gates A-F for an official reproducible investor-flow historical route before any performance test.
 4. Empirical fill ratio, fill time, fill price and partial-fill behavior.
 5. Post-fill markout, recommendation latency/expiry and execution-delay stress.
 6. Empirical capacity rather than only a square-root impact cost proxy.
