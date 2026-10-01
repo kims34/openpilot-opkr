@@ -46,14 +46,17 @@ Currently accepted exact fill evidence classes are:
 - `PROSPECTIVE_LIVE_EXECUTION_LOG` — actual real-account broker execution evidence;
 - `BROKER_HISTORICAL_EXECUTION_RECORD` — an actual broker historical execution record for the position.
 
-The following are explicitly insufficient for exact fill economics:
-- backtest-generated fills;
-- synthetic/modelled fills;
-- next-open or market-open assumptions;
-- Shadow decisions;
-- Paper execution observations;
-- daily OHLC;
-- MDCSTAT239 daily price rows by themselves.
+The following canonical source identifiers are explicitly insufficient for exact fill economics:
+- `BACKTEST_GENERATED_FILL`;
+- `SYNTHETIC_FILL`;
+- `MODELLED_FILL`;
+- `MARKET_OPEN_ASSUMPTION`;
+- `PROSPECTIVE_SHADOW_DECISION_LOG`;
+- `PROSPECTIVE_PAPER_EXECUTION_LOG`;
+- `DAILY_OHLC`;
+- `MDCSTAT239_DAILY_PRICE_ONLY`.
+
+These correspond to backtest-generated fills, synthetic/modelled fills, next-open/market-open assumptions, Shadow decisions, Paper execution observations, daily OHLC and MDCSTAT239 daily price rows by themselves.
 
 Paper evidence may validate plumbing; it does not prove real-market fill quality. A quoted/traded market price is not proof that an IndexAlert order filled at that price.
 
