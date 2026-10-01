@@ -12,6 +12,7 @@ on:
       - 'test_research_v1_krx_source_gates.py'
       - 'INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md'
       - 'INDEXALERT_KRX_SOURCE_GATE_AUDIT.md'
+      - 'INDEXALERT_MASTER_SPEC.md'
       - '.github/workflows/indexalert-research-v1-krx-official-status.yml'
   workflow_dispatch:
 
