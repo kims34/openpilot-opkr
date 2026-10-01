@@ -26,6 +26,10 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from research_v1_krx_public_evidence import (
+    PUBLIC_EVIDENCE_VERSION,
+    public_evidence_fingerprint_sha256,
+)
 from research_v1_krx_source_gates import audit_source_gates
 
 
@@ -116,8 +120,11 @@ def source_gate_audit(*, session_configured: bool) -> dict:
 
 
 def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dict[str, Any]:
+    public_evidence_fingerprint = public_evidence_fingerprint_sha256()
     report["authenticated_request_attempted"] = bool(session_configured)
     report["source_gate_audit"] = source_gate_audit(session_configured=session_configured)
+    report["public_contract_evidence_version"] = PUBLIC_EVIDENCE_VERSION
+    report["public_contract_evidence_fingerprint_sha256"] = public_evidence_fingerprint
     contract_material = {
         "source_family": SOURCE_FAMILY,
         "intended_use_scope": INTENDED_USE_SCOPE,
@@ -128,6 +135,8 @@ def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dic
             "candidate_low_level_blds_not_yet_promoted_to_contract"
         ],
         "source_route_policy": report["source_route_policy"],
+        "public_contract_evidence_version": PUBLIC_EVIDENCE_VERSION,
+        "public_contract_evidence_fingerprint_sha256": public_evidence_fingerprint,
     }
     report["probe_contract_fingerprint_sha256"] = _canonical_sha256(contract_material)
     result_material = {
