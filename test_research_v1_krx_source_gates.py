@@ -133,3 +133,33 @@ def test_canonical_docs_preserve_non_promotion_boundary():
     assert "distributional NetEV" in master
     assert "live trading" in audit
     assert "live trading" in handoff
+
+
+def test_canonical_source_docs_freeze_structured_authorization_evidence_boundary():
+    contract = Path("INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md").read_text(encoding="utf-8")
+    audit = Path("INDEXALERT_KRX_SOURCE_GATE_AUDIT.md").read_text(encoding="utf-8")
+    status = Path("INDEXALERT_RESEARCH_STATUS.md").read_text(encoding="utf-8")
+    handoff = Path("INDEXALERT_CONTINUITY_SNAPSHOT.md").read_text(encoding="utf-8")
+
+    for name, text in {
+        "contract": contract,
+        "audit": audit,
+        "status": status,
+        "handoff": handoff,
+    }.items():
+        assert "research_v1_krx_authorization_evidence.py" in text, (
+            f"{name} missing structured authorization evidence validator"
+        )
+        assert "KRX_AUTH_EVIDENCE_JSON" in text, (
+            f"{name} missing structured authorization evidence configuration contract"
+        )
+        assert "KRX_EXPLICIT_PROBE_CONSENT" in text, (
+            f"{name} missing explicit per-run consent boundary"
+        )
+        assert "network-free" in text.lower(), (
+            f"{name} missing network-free readiness boundary"
+        )
+
+    assert "opaque approval reference is not validated evidence" in contract
+    assert "Gate A remains BLOCKED" in status
+    assert "Gate A remains BLOCKED" in handoff
