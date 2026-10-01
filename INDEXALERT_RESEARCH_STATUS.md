@@ -104,11 +104,15 @@ Canonical source/readiness files now include:
 - `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`
 - `research_v1_krx_source_gates.py`
 - `research_v1_krx_public_evidence.py`
+- `research_v1_krx_auth_preflight.py`
 - `research_v1_krx_status_source_probe.py`
 - `research_v1_krx_investor_flow_probe.py`
 - `research_v1_krx_investor_flow_lineage.py`
 - `research_v1_krx_investor_flow_coverage.py`
 - `research_v1_krx_status_coverage.py`
+- `research_v1_krx_status_event_integrity.py`
+- `research_v1_krx_acquisition_receipt.py`
+- `research_v1_krx_acquisition_batch.py`
 - corresponding fail-closed tests in CI.
 
 ### Public contract evidence
@@ -127,35 +131,44 @@ Current public audit confirms:
 
 These facts improve Gate B/F evidence but do not close A/C/D/E.
 
-### Authenticated-source reality
+### Authorization preflight and current source reality
 
-Direct Actions-log audit established that `KRX_ID`, `KRX_PW` and `KRX_OPENAPI_AUTH_KEY` are not configured in the current source-probe runtime. Therefore green source-probe workflows are diagnostics only and have not made authenticated KRX requests.
+`research_v1_krx_auth_preflight.py` now freezes the rule **credentials are not authorization**:
+- Data Marketplace tiny probes require `KRX_ID` + `KRX_PW` + a non-secret `KRX_AUTH_EVIDENCE_REF`.
+- `KRX_OPENAPI_AUTH_KEY` is a separate route and cannot substitute for Data Marketplace session credentials.
+- OpenAPI requests additionally require an exact approved service mapping.
+- purchased/distributed-product access cannot be inferred from either online credential type.
+- a passing tiny-request preflight can raise Gate A only to `PARTIAL`, never `PASS`, and never authorizes bulk history, feature testing, holdout, promotion or live trading.
 
-Latest public-evidence-bound probes:
+Latest audited probes:
 
-**Status Action `36809182681`**
-- success as diagnostic
-- `authenticated_request_attempted=false`
+**Status Action `36811927281`**
+- workflow success as diagnostic
+- `status=AUTHORIZATION_PREFLIGHT_BLOCKED`
+- `KRX_ID`, `KRX_PW`, `KRX_OPENAPI_AUTH_KEY`, `KRX_AUTH_EVIDENCE_REF` all absent
+- `request_attempt_authorized=false`, `authenticated_request_attempted=false`
 - A `BLOCKED`, B `PARTIAL`, C `BLOCKED`, D `BLOCKED`, E/F `PARTIAL`
 - source contract open; `judge_security_status_ready=false`
-- public evidence version `2026-10-01.v1`, fingerprint `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`
-- probe contract fp `b91b5ee6b2b64e11910dddcd6f0400c884d2add3cd12530771eb5fb824160eec`
-- result fp `65056341c19d0d70c7a8ae5e5bde3310cc54cfcc1eb2e4ed33645eb5152106e0`
-- artifact `11139071717`
+- probe contract fp `766ccb09304434f947cea290a29e7f3f6322dbc06d53997d4eef4a44fe0c3e9d`
+- result fp `1ab3b8e1b0cb73e8eba5ae0765faa9e64eb2a037c5ef8f5219c7eeac77d3a59d`
+- artifact `11140235232`
 
-**Investor-flow Action `36809196068`**
-- success as diagnostic
-- `authenticated_request_attempted=false`
+**Investor-flow Action `36811913060`**
+- workflow success as diagnostic
+- `status=AUTHORIZATION_PREFLIGHT_BLOCKED`
+- same four values absent
+- `request_attempt_authorized=false`, `authenticated_request_attempted=false`
 - A `BLOCKED`, B `PARTIAL`, C `BLOCKED`, D/E/F `PARTIAL`
 - source contract open; `feature_performance_testing_authorized=false`
-- public evidence version/fingerprint same as above
-- probe contract fp `28c9d28aab34d8ec8e55258dbc95d389c2096eaf687c635a8e6c1b8f76179291`
-- result fp `a227f4dcb34653cf89a9a6f462c01eabb45613c8c57212efa2e621039c53e097`
-- artifact `11138816495`
+- probe contract fp `75b10d1d6dd46f43821840532fc97b59129e402f169847a8c8bb6edaaf14102d`
+- result fp `9508451f23a64ba62220b9ae09c4eb45629203843fa2a8c6ba4a2f7e04cd34e3`
+- artifact `11140075783`
 
-## KRX Gate C/D internal validation readiness — 2026-10-01
+The authorization-preflight/redaction integrity suite passed in Action `36812137960`. Credential values are never emitted by the preflight result; only presence booleans and missing requirement names are recorded.
 
-The missing external data cannot be fabricated, but the internal validators required to audit it are now implemented and CI-tested.
+## KRX Gate C/D/E internal readiness — 2026-10-01
+
+The missing external data cannot be fabricated, but the internal validators/provenance machinery required to audit it are implemented.
 
 ### Investor-flow PIT lineage — Gate D infrastructure
 
@@ -177,11 +190,21 @@ Structurally valid lineage still returns `feature_performance_testing_authorized
 
 `research_v1_krx_status_coverage.py` requires an independently attested expected `(snapshot_date, symbol, isu_cd)` scope. Current normalized identity evidence without an official stable full issue identifier cannot close Gate C. Even exact identity coverage cannot set `judge_security_status_ready=true` by itself.
 
-Initial Action `36810205800` exposed an empty-common-stock DataFrame schema bug (1 failed / 65 passed). The policy/protocol was unchanged; the implementation was corrected to preserve an empty key schema. Action `36810309522` then passed the same protocol.
+Initial Action `36810205800` exposed an empty-common-stock DataFrame schema bug. The policy/protocol was unchanged; the implementation was corrected to preserve an empty key schema. Action `36810309522` then passed the same protocol.
+
+### Status-event structural integrity
+
+`research_v1_krx_status_event_integrity.py` checks structural consistency across cleanup trading, actual delisting and delisted-price evidence. It permits planned-vs-actual date changes as evidence, but rejects impossible chronology, post-delisting regular-session rows and orphan delisted-price history. It deliberately does **not** invent fill prices, recovery values or delisting returns. Action `36811118588` passed.
+
+### Acquisition provenance — Gate E infrastructure
+
+`research_v1_krx_acquisition_receipt.py` builds secret-free immutable metadata receipts for future real acquisitions. Each receipt binds the declared route/dataset/use scope, non-secret approval reference, client revision, timezone-aware retrieval time, request-metadata hash, response-schema hash, response-content hash and current public-contract fingerprint without persisting numeric values. Receipt integrity passed in Action `36811648510`.
+
+`research_v1_krx_acquisition_batch.py` additionally requires every receipt in one dataset batch to be untampered and consistent in route, dataset, use scope, approval reference, client revision, response schema and public-contract evidence. Duplicate receipts and silent contract/schema mixing fail closed. A valid batch still has `coverage_validated=false`, `pit_lineage_validated=false` and no performance/holdout/live authority.
 
 ### Current meaning
 
-Internal audit machinery is ready; **actual evidence is not**. No real full historical KRX status/investor-flow dataset has yet passed these validators. Gate statuses therefore remain unchanged and no investor-flow performance backtest is authorized.
+Internal audit/provenance machinery is ready; **actual evidence is not**. No real full historical KRX status/investor-flow dataset has yet passed these validators. Gate statuses therefore remain unchanged and no investor-flow performance backtest is authorized.
 
 ## Execution evidence state
 
@@ -198,16 +221,16 @@ First candidate remains **official KRX investor-flow data**, but no performance 
 - approved exact route/product;
 - historical coverage + stable security mapping;
 - real `event_time`, `published_at`, `available_at`, `ingested_at` lineage;
-- reproducible fail-closed acquisition;
+- reproducible fail-closed acquisition with valid receipts/batch provenance;
 - intended-use rights.
 
 Same-day undocumented proxy substitution is forbidden.
 
 ## Final Judge blockers still open
 
-1. **External data/auth:** approved exact KRX historical route/product; current audited CI has no KRX credentials and Gate A is blocked.
+1. **External data/auth:** approved exact KRX historical route/product. Current audited Data Marketplace probe environment lacks `KRX_ID`, `KRX_PW` and `KRX_AUTH_EVIDENCE_REF`; Gate A remains blocked. `KRX_OPENAPI_AUTH_KEY` is also absent and would be a separate route rather than a substitute.
 2. **Security/status evidence:** full common-stock/security-status history with stable issue mapping and PIT lineage; exact halt/cleanup/delisting economics joins.
-3. **Investor-flow evidence:** full official historical data passing the new Gate C/D validators; performance testing remains blocked.
+3. **Investor-flow evidence:** full official historical data passing Gate C/D plus receipt/batch Gate-E provenance checks; performance testing remains blocked.
 4. **Execution evidence:** empirical fill ratio, fill time/price, partial fills, post-fill markout, latency/expiry and real capacity.
 5. **Research governance:** full multiple-testing/ledger discipline continues; no rejected-candidate revival.
 6. **One-shot sealed holdout:** untouched until source/execution/code/protocol blockers are frozen, then Shadow S1 -> Fresh Confirmation S2.
