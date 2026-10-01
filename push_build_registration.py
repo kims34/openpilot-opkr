@@ -11,6 +11,9 @@ adds only two operational routes to an existing FastAPI app:
 The overlay is idempotent so multiple runtime layers can install it without
 creating duplicate routes. Legacy clients remain compatible but fail closed for
 current-build physical-E2E attestation because their installed build is unknown.
+A legacy registration is still recorded as the most recent registration with an
+empty build sentinel so an older build-aware device can never resurface as the
+"latest" device merely because the new client omitted client_build.
 """
 from __future__ import annotations
 
@@ -74,20 +77,25 @@ def _init_device_build_db() -> None:
 
 
 def _record_device_build(token: str, build: str | None) -> None:
+    """Record every successful registration, including build-unknown clients.
+
+    The existing table has a NOT NULL build column. An empty string is therefore
+    the private storage sentinel for a successful legacy/rollback registration
+    whose build is unknown. Public readers normalize that sentinel back to None.
+    Keeping the row is essential: deleting it would allow an older build-aware
+    device to become the apparent latest registration and could cross-attest a
+    stale physical-E2E receipt.
+    """
     _init_device_build_db()
+    stored_build = build or ""
     with monitor.db() as con:
-        if build is None:
-            # Legacy/rollback clients cannot attest their installed build. Clear
-            # any older observation for this token instead of silently reusing it.
-            con.execute("DELETE FROM device_builds WHERE token=?", (token,))
-            return
         con.execute(
             """INSERT INTO device_builds(token,client_build,updated_at)
                VALUES(?,?,?)
                ON CONFLICT(token) DO UPDATE SET
                  client_build=excluded.client_build,
                  updated_at=excluded.updated_at""",
-            (token, build, datetime.now(timezone.utc).isoformat()),
+            (token, stored_build, datetime.now(timezone.utc).isoformat()),
         )
 
 
@@ -96,6 +104,8 @@ def _latest_registered_device_build() -> tuple[str | None, str | None, str | Non
 
     The raw token is server-private and is used only to bind the registration
     record to the exact self-test device. It is never returned by /push-health.
+    An empty private build sentinel is returned publicly as None so the physical
+    E2E state fails closed with NO_REGISTERED_BUILD.
     """
     _init_device_build_db()
     with monitor.db() as con:
@@ -108,7 +118,8 @@ def _latest_registered_device_build() -> tuple[str | None, str | None, str | Non
         ).fetchone()
     if not row:
         return None, None, None
-    return str(row[0]), str(row[1]), str(row[2])
+    build = str(row[1] or "").strip() or None
+    return str(row[0]), build, str(row[2])
 
 
 def _latest_registered_build() -> tuple[str | None, str | None]:
