@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
+import client_registration
 import execution_evidence_ledger
 import monitor
 import production
@@ -178,6 +179,10 @@ push_receipts.attach(app)
 # app build. This proves server -> FCM -> client -> /push-ack without touching
 # market threshold history, recommendation logic or trading state.
 push_self_test.attach(app)
+
+# Record the Android app build at /register without exposing the raw FCM token.
+# This lets operations distinguish an old APK from a client-side worker failure.
+client_registration.attach(app)
 
 # Sanitized aggregate push-health endpoint. No FCM token or device payload is
 # returned; this is operational observability only.
