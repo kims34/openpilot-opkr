@@ -62,6 +62,7 @@ jobs:
                curl -fsS --max-time 30 "$BASE/status" >/tmp/status.json && \
                curl -fsS --max-time 30 "$BASE/laggards" >/tmp/laggards.json && \
                curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
+              set +e
               python - <<'PY'
           import json
           from datetime import datetime
@@ -196,6 +197,7 @@ jobs:
           print(json.dumps({'status': by_id, 'push_health': push_health, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
           PY
               validation_rc=$?
+              set -e
               if [ "$validation_rc" -eq 0 ]; then
                 exit 0
               fi
