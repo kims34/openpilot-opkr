@@ -1,18 +1,13 @@
 """Minimal fail-closed KRX investor-flow source probe.
 
 This is NOT a backtest and does not persist KRX numeric market data. It only
-checks whether an authenticated KRX Data Marketplace web session is available
-and whether the documented individual-investor daily screen route returns a
-parseable frame for one security over a tiny historical window.
+checks whether an explicitly authorized KRX Data Marketplace web-session probe
+may be attempted and whether the documented individual-investor daily screen
+route returns a parseable frame for one security over a tiny historical window.
 
-Authentication routes are deliberately distinct:
-- KRX_ID/KRX_PW: Data Marketplace authenticated web-session route used here.
-- KRX OpenAPI AUTH_KEY: separate official OpenAPI route requiring key approval
-  and approval for each API service. No exact public OpenAPI mapping for this
-  required per-security investor-flow dataset is assumed by this probe.
-
-Credentials are never printed or written to artifacts. Source feasibility is
-not feature-promotion evidence.
+Credentials are not authorization. KRX_ID/KRX_PW plus a non-secret
+KRX_AUTH_EVIDENCE_REF are required before this probe makes an authenticated
+request. KRX OpenAPI AUTH_KEY is a separate route and is never substituted.
 """
 from __future__ import annotations
 
@@ -22,6 +17,10 @@ import os
 from pathlib import Path
 from typing import Any
 
+from research_v1_krx_auth_preflight import (
+    DATA_MARKETPLACE_ROUTE,
+    evaluate_auth_preflight,
+)
 from research_v1_krx_public_evidence import (
     PUBLIC_EVIDENCE_VERSION,
     public_evidence_fingerprint_sha256,
@@ -46,10 +45,10 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def source_gate_audit(*, session_configured: bool) -> dict:
+def source_gate_audit(*, request_authorized: bool) -> dict:
     """Map this tiny probe to the frozen A-F contract conservatively."""
     statuses = {
-        "A": "PARTIAL" if session_configured else "BLOCKED",
+        "A": "PARTIAL" if request_authorized else "BLOCKED",
         "B": "PARTIAL",
         "C": "BLOCKED",
         "D": "PARTIAL",
@@ -58,27 +57,15 @@ def source_gate_audit(*, session_configured: bool) -> dict:
     }
     evidence = {
         "A": (
-            "Data Marketplace session credentials are present and the probe may exercise the authenticated route, "
-            "but the reproducible authorized historical access contract for the required per-security history is not frozen."
-            if session_configured
-            else "KRX_ID/KRX_PW are absent in the active runtime, so the authenticated Data Marketplace route is not exercised."
+            "Route-specific Data Marketplace credentials and a non-secret authorization evidence reference are present, so the tiny authenticated probe may be exercised; the full historical access contract is still not closed."
+            if request_authorized
+            else "The active runtime has not satisfied both route-specific credentials and authorization-evidence requirements, so no authenticated Data Marketplace request is attempted."
         ),
-        "B": (
-            "The MDCSTAT02303 individual-investor daily source family is identified, but exact approved historical service/schema equivalence is not closed."
-        ),
-        "C": (
-            "The tiny three-session probe cannot establish full research-period coverage or stable security mapping."
-        ),
-        "D": (
-            "The after-20:00 publication rule is frozen, but record-level event_time/published_at/available_at/ingested_at lineage is not implemented for historical research data."
-        ),
-        "E": (
-            "The client revision, probe window, route metadata and fail-closed diagnostics are reproducible, "
-            "but bulk historical acquisition and coverage integrity remain unverified."
-        ),
-        "F": (
-            "Internal research and external/commercial use are separated by contract, but rights for the ultimately selected investor-flow route remain unverified."
-        ),
+        "B": "The MDCSTAT02303 individual-investor daily source family is identified, but exact approved historical service/schema equivalence is not closed.",
+        "C": "The tiny three-session probe cannot establish full research-period coverage or stable security mapping.",
+        "D": "The after-20:00 publication rule is frozen, but complete record-level event_time/published_at/available_at/ingested_at lineage has not yet been demonstrated on real historical research data.",
+        "E": "The client revision, probe window, route metadata and fail-closed diagnostics are reproducible, but bulk historical acquisition and coverage integrity remain unverified.",
+        "F": "Internal research and external/commercial use are separated by contract, but rights for the ultimately selected investor-flow route remain unverified.",
     }
     return audit_source_gates(
         source_family=SOURCE_FAMILY,
@@ -88,10 +75,10 @@ def source_gate_audit(*, session_configured: bool) -> dict:
     )
 
 
-def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dict[str, Any]:
+def _finalise_report(report: dict[str, Any], *, request_authorized: bool) -> dict[str, Any]:
     public_evidence_fingerprint = public_evidence_fingerprint_sha256()
-    report["authenticated_request_attempted"] = bool(session_configured)
-    report["source_gate_audit"] = source_gate_audit(session_configured=session_configured)
+    report["authenticated_request_attempted"] = bool(request_authorized)
+    report["source_gate_audit"] = source_gate_audit(request_authorized=request_authorized)
     report["feature_performance_testing_authorized"] = False
     report["public_contract_evidence_version"] = PUBLIC_EVIDENCE_VERSION
     report["public_contract_evidence_fingerprint_sha256"] = public_evidence_fingerprint
@@ -107,19 +94,19 @@ def _finalise_report(report: dict[str, Any], *, session_configured: bool) -> dic
         "probe_window": ["2026-09-21", "2026-09-23"],
         "public_contract_evidence_version": PUBLIC_EVIDENCE_VERSION,
         "public_contract_evidence_fingerprint_sha256": public_evidence_fingerprint,
+        "authorization_preflight_required": True,
     }
     report["probe_contract_fingerprint_sha256"] = _canonical_sha256(contract_material)
     result_material = {
-        key: value
-        for key, value in report.items()
+        key: value for key, value in report.items()
         if key not in {"probe_result_fingerprint_sha256"}
     }
     report["probe_result_fingerprint_sha256"] = _canonical_sha256(result_material)
     return report
 
 
-def _write_report(out: Path, report: dict[str, Any], *, session_configured: bool) -> None:
-    final = _finalise_report(report, session_configured=session_configured)
+def _write_report(out: Path, report: dict[str, Any], *, request_authorized: bool) -> None:
+    final = _finalise_report(report, request_authorized=request_authorized)
     (out / "summary.json").write_text(
         json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -130,55 +117,63 @@ def main() -> None:
     out = Path("research_results/krx_investor_flow_probe")
     out.mkdir(parents=True, exist_ok=True)
 
-    session_configured = bool(os.getenv("KRX_ID")) and bool(os.getenv("KRX_PW"))
-    openapi_key_present = bool(os.getenv("KRX_OPENAPI_AUTH_KEY"))
+    environment = {
+        "KRX_ID": os.getenv("KRX_ID"),
+        "KRX_PW": os.getenv("KRX_PW"),
+        "KRX_OPENAPI_AUTH_KEY": os.getenv("KRX_OPENAPI_AUTH_KEY"),
+    }
+    session_credentials_present = bool(environment["KRX_ID"]) and bool(environment["KRX_PW"])
+    openapi_key_present = bool(environment["KRX_OPENAPI_AUTH_KEY"])
+    auth_ref = os.getenv("KRX_AUTH_EVIDENCE_REF")
+    preflight = evaluate_auth_preflight(
+        source_family=SOURCE_FAMILY,
+        access_route=DATA_MARKETPLACE_ROUTE,
+        environment=environment,
+        authorization_evidence_reference=auth_ref,
+    )
+    request_authorized = bool(preflight["request_attempt_authorized"])
+
     report: dict[str, Any] = {
         "purpose": "DATA_SOURCE_FEASIBILITY_ONLY_NOT_PERFORMANCE_RESEARCH",
         "source": SOURCE_NAME,
         "numeric_market_data_persisted": False,
-        # Backward-compatible field: this refers to the web-session route only.
-        "credentials_present": session_configured,
-        "data_marketplace_session_credentials_present": session_configured,
+        "credentials_present": session_credentials_present,
+        "data_marketplace_session_credentials_present": session_credentials_present,
         "official_openapi_auth_key_present": openapi_key_present,
-        "active_probe_access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+        "authorization_evidence_reference_present": preflight["authorization_evidence_reference_present"],
+        "authorization_preflight": preflight,
+        "active_probe_access_route": DATA_MARKETPLACE_ROUTE,
         "pinned_krx_data_api_commit": PINNED_KRX_DATA_API,
         "openapi_route_status": (
             "KEY_PRESENT_BUT_REQUIRED_INVESTOR_FLOW_API_MAPPING_NOT_ESTABLISHED"
             if openapi_key_present
             else "AUTH_KEY_NOT_CONFIGURED_AND_REQUIRED_INVESTOR_FLOW_API_MAPPING_NOT_ESTABLISHED"
         ),
-        "status": "AUTH_NOT_CONFIGURED" if not session_configured else "PENDING",
+        "status": "PENDING" if request_authorized else "AUTHORIZATION_PREFLIGHT_BLOCKED",
         "available_at_policy_if_adopted": (
             "day_D final stock investor trading results must not enter a decision before publication; "
             "the official KRX Data Marketplace investor-trading page states final day-D results are provided after 20:00"
         ),
         "source_route_policy": {
-            "data_marketplace_session": (
-                "KRX_ID/KRX_PW may be used only for authenticated Data Marketplace source-feasibility checks"
-            ),
-            "official_openapi": (
-                "AUTH_KEY is separate and must not be treated as equivalent unless an exact approved API service covers the required dataset"
-            ),
+            "data_marketplace_session": "KRX_ID/KRX_PW plus a non-secret authorization evidence reference are required for the tiny authenticated Data Marketplace source-feasibility check",
+            "official_openapi": "AUTH_KEY is separate and must not be treated as equivalent unless an exact approved API service covers the required dataset",
             "no_auth_substitution": True,
         },
         "why_not_feature_ready": [
             "official reproducible historical access contract is not yet frozen",
             "exact public OpenAPI service mapping for required per-security investor flow is not established",
-            "historical coverage and stable security mapping are not yet audited",
-            "event_time/published_at/available_at/ingested_at lineage is not yet complete",
+            "historical coverage and stable security mapping are not yet audited on real data",
+            "full historical event_time/published_at/available_at/ingested_at lineage is not yet demonstrated",
         ],
     }
 
-    if not session_configured:
-        _write_report(out, report, session_configured=False)
+    if not request_authorized:
+        _write_report(out, report, request_authorized=False)
         return
 
     try:
         from krx_data_api import fetch
 
-        # One security, three already-completed sessions only. No bulk crawl.
-        # This uses the authenticated Data Marketplace session route, not the
-        # KRX OpenAPI AUTH_KEY route.
         df = fetch(
             "investor_trading_individual_daily",
             isuCd="KR7005930003",
@@ -196,14 +191,14 @@ def main() -> None:
             "probe_security": "005930",
             "probe_window": ["2026-09-21", "2026-09-23"],
         })
-    except Exception as exc:  # fail closed but keep CI diagnostic artifact
+    except Exception as exc:
         report.update({
             "status": "SOURCE_UNREACHABLE_OR_AUTH_FAILED",
             "error_type": type(exc).__name__,
             "error_message": str(exc)[:500],
         })
 
-    _write_report(out, report, session_configured=True)
+    _write_report(out, report, request_authorized=True)
 
 
 if __name__ == "__main__":
