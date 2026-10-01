@@ -163,11 +163,11 @@ Latest APK Action `36815959241` succeeded:
 
 The Android receipt path schedules privacy-safe `/push-ack` for the exact server event and only marks the build self-test complete after `receipt_confirmed=true`. Provider send success is never treated as handset receipt.
 
-Server branch `index-alert-server` now has audited HEAD `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` (`Run Physical E2E verifier in server CI`). The server self-test reuses one event per token/build and never re-sends a successful provider send merely because handset receipt is pending. `/push-ack` is bound to a registered token hash plus an already-sent exact event and is idempotent.
+Server branch `index-alert-server` currently has operational HEAD `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3` (`Verify mover exclusion provenance in production smoke`). The build-specific Physical-E2E verifier/receipt contract introduced at `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` remains intact. The server self-test reuses one event per token/build and never re-sends a successful provider send merely because handset receipt is pending. `/push-ack` is bound to a registered token hash plus an already-sent exact event and is idempotent.
 
 `/push-health` binds confirmation to the latest created Android build self-test instead of aggregate receipt history. Its build-specific fields are `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, `latest_self_test_created_at`, and `current_build_physical_e2e_confirmed`. Tests explicitly prove an older-build ACK cannot confirm the newer build. Read-only verifier `verify_push_physical_e2e.py` requires the exact expected build and cannot send FCM, register a device, or write a receipt.
 
-Latest server CI Action `36837589631` at `b592e048...` succeeded. It compile/tests the Physical-E2E verifier and the server push/receipt contract.
+Latest server Tests Action `36851598148` at the provenance change set succeeded, and production Smoke Action `36851667612` job `110334516116` also succeeded after exact production deployment of `cc3272b4...`.
 
 Exact Physical E2E closure for the current audited app requires a real handset path showing at the test point:
 - `latest_self_test_build == "4.6-46"`;
@@ -180,7 +180,7 @@ Aggregate `received_deliveries >= 1` alone is insufficient because it may belong
 
 ### Current production observation — Physical E2E still OPEN
 
-Railway production now runs deployment `3b1df2eb-df74-42fd-b7cb-5e50edb23c59`, built from server commit `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07`. The deployment completed successfully. The strengthened production-smoke rerun, Action `36836821948` job `110321079146`, also succeeded, proving the new build-specific `/push-health` contract is actually live in production.
+Railway production now runs deployment `87e224d7-b0f5-447e-8239-7b7ea910e872`, built from server commit `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3`. The deployment completed successfully. Production Smoke Action `36851667612` job `110334516116` succeeded, proving the current server contract and mover-provenance schema are live in production.
 
 At that smoke observation, production reported:
 - `registered_devices = 1`;
@@ -197,11 +197,22 @@ Therefore deployment drift is CLOSED, but Physical E2E remains OPEN. More specif
 
 No physical receipt is fabricated or inferred from provider send success.
 
+## U.S. mover production-data integrity — fail-closed and auditable
+
+Constituent mover quotes now require Yahoo instrument type `EQUITY`; index/ETF/fund/currency contamination is rejected before ranking. Corporate-action discontinuities are not removed by an arbitrary percentage threshold. They are suppressed only on a source-backed event/date registered in `corporate_action_registry.py` when raw previous-close comparison is economically non-comparable.
+
+`/laggards` now exposes per-universe exclusion provenance through `excluded_non_equity_symbols` and `excluded_corporate_action_symbols`. Production Smoke Action `36851667612` verified the live contract after deployment `87e224d7...`:
+- S&P500 coverage `502/503`, `excluded_corporate_action_symbols=["CTVA"]` on the documented 2026-10-01 CTVA/Vylor separation date;
+- NASDAQ100 coverage `100/100`, no deliberate exclusion;
+- SCHD coverage `98/99`, `excluded_non_equity_symbols=["USD"]`, preventing ProShares Ultra Semiconductors from masquerading as a stock constituent.
+
+Direction/sign checks remained valid for all three universes. This is an operational data-integrity safeguard, not Alpha/promotion evidence and not a change to the frozen research statistics or KRX A-F state.
+
 ## Operational deployment evidence state
 
-Railway `indexalert-runtime` is now aligned to server commit `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` through deployment `3b1df2eb-df74-42fd-b7cb-5e50edb23c59` (SUCCESS). Production-smoke rerun job `110321079146` in Action `36836821948` succeeded after the deployment and verified the new health schema in the live service.
+Railway `indexalert-runtime` is aligned to server commit `cc3272b4ddb7c1ae960a77c4d5c48389956ac1d3` through deployment `87e224d7-b0f5-447e-8239-7b7ea910e872` (SUCCESS). Server Tests Action `36851598148` and production Smoke Action `36851667612` succeeded; the latter verified both the build-specific push-health contract and live mover-exclusion provenance.
 
-This closes the prior server deployment-drift blocker only. It does not close the Physical E2E blocker, execution evidence blocker, KRX blockers, sealed holdout, promotion, or live-order authority. Real-account ordering remains disabled.
+This closes the prior server deployment-drift blocker and the identified mover-provenance observability gap only. It does not close the Physical E2E blocker, execution evidence blocker, KRX blockers, sealed holdout, promotion, or live-order authority. Real-account ordering remains disabled.
 
 ## External evidence still missing
 
