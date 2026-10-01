@@ -14,7 +14,7 @@ Allowed states are exactly `PASS`, `PARTIAL`, `BLOCKED`; only `PASS` closes a ga
 
 ## 2. Frozen gate definitions
 
-- **Gate A — `AUTHORIZED_OFFICIAL_ROUTE`**: exact official KRX route/product and appropriate authorization; access routes are not interchangeable.
+- **Gate A — `AUTHORIZED_OFFICIAL_ROUTE`**: exact official KRX route/product, appropriate authorization and explicit per-run request consent; access routes are not interchangeable.
 - **Gate B — `EXACT_DATASET_SCHEMA_MAPPING`**: exact API service/screen/feed and required schema verified; similar names/provisional transports are insufficient.
 - **Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING`**: full requested history/relevant securities, stable mapping and common-stock identity where required.
 - **Gate D — `PIT_AVAILABILITY_LINEAGE`**: explicit `event_time`, `published_at` where applicable, `available_at`, `ingested_at` and decision eligibility.
@@ -29,11 +29,11 @@ Overall: **OPEN — NOT ALL A-F PASS**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | `research_v1_krx_auth_preflight.py` requires route-specific credentials plus a non-secret authorization-evidence reference before even a tiny authenticated request. Latest status probe Action `36811927281` had `KRX_ID`, `KRX_PW`, `KRX_OPENAPI_AUTH_KEY`, `KRX_AUTH_EVIDENCE_REF` all absent; `request_attempt_authorized=false`, `authenticated_request_attempted=false`. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | `research_v1_krx_auth_preflight.py` now requires route-specific credentials, a non-secret authorization-evidence reference and exact per-run explicit consent before a tiny authenticated request. Push Action `36813950791` ran the push-safe dry-run successfully and skipped the authenticated step entirely. No authorized authenticated KRX status request has been demonstrated. |
 | Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Public contracts MDCSTAT213/237/238/239 and status semantics are identified, but exact approved historical transport/schema equivalence and stable full issue-ID contract for Final Judge remain unfrozen. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_status_coverage.py` can exact-audit caller-attested `(snapshot_date, symbol, isu_cd)` scope, but no authorized full-period scope/history with stable full issue identity has been supplied. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | Status adapters require availability lineage, but complete historical event/publication/availability/ingestion evidence across all required status families is absent. |
-| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, pinned probes, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. No authenticated end-to-end full historical acquisition has yet demonstrated the real-data chain. |
+| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, pinned probes, push-safe workflow isolation, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. No authenticated end-to-end full historical acquisition has yet demonstrated the real-data chain. |
 | Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | Current OpenAPI terms are audited as non-commercial/no-third-party-distribution; exact rights for the final selected historical route/product remain unverified. |
 
 Current verdict: `judge_security_status_ready=false`.
@@ -46,11 +46,11 @@ Overall: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Data Marketplace preflight requires `KRX_ID` + `KRX_PW` + non-secret `KRX_AUTH_EVIDENCE_REF`; OpenAPI key cannot substitute. Investor Action `36811913060` had all four values absent, returned `AUTHORIZATION_PREFLIGHT_BLOCKED`, and made no authenticated request. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Data Marketplace preflight requires `KRX_ID` + `KRX_PW` + non-secret `KRX_AUTH_EVIDENCE_REF` + the exact explicit per-run consent sentinel; OpenAPI key cannot substitute. Push Action `36813973236` completed the dry-run and skipped the authenticated step. No authorized authenticated investor-flow request has been demonstrated. |
 | Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Official stock investor-trading screen family is known and exploratory mapping points to MDCSTAT02303, but exact approved historical transport/OpenAPI equivalence remains unestablished. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_investor_flow_coverage.py` exact-compares caller-attested `(event_date, symbol, isu_cd)` scope to validated observed keys and never invents dates/universe/zeros. No authorized full-period scope/history exists yet. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `PARTIAL` | `research_v1_krx_investor_flow_lineage.py` enforces timezone-aware chronology, day-D publication floor >=20:00 KST, current public-contract fingerprint, one source contract and decision-time availability. No real full historical dataset has passed it. |
-| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Probe/public evidence, immutable acquisition receipts, batch provenance, PIT and exact coverage validators, and `research_v1_krx_source_data_admission.py` are fail-closed. Bulk authenticated historical retrieval and real-data admission evidence remain unavailable. |
+| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Probe/public evidence, push-safe workflow isolation, immutable acquisition receipts, batch provenance, PIT and exact coverage validators, and `research_v1_krx_source_data_admission.py` are fail-closed. Bulk authenticated historical retrieval and real-data admission evidence remain unavailable. |
 | Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | Current public OpenAPI restrictions are frozen; exact rights for the selected investor-flow route/use scope remain unverified. |
 
 Current verdict: investor-flow feature-performance experiments remain blocked.
@@ -70,11 +70,23 @@ The 2026-10-01 official public re-audit established:
 
 These facts improve Gate B/F evidence only; they do not close A/C/D/E.
 
-## 6. Latest authorization and workflow evidence
+## 6. Authorization and workflow evidence
 
-Latest preflight-bound probes:
-- **Status `36811927281`** — diagnostic success, `AUTHORIZATION_PREFLIGHT_BLOCKED`, no authenticated request; contract fp `766ccb09304434f947cea290a29e7f3f6322dbc06d53997d4eef4a44fe0c3e9d`, result fp `1ab3b8e1b0cb73e8eba5ae0765faa9e64eb2a037c5ef8f5219c7eeac77d3a59d`, artifact `11140235232`.
-- **Investor `36811913060`** — diagnostic success, `AUTHORIZATION_PREFLIGHT_BLOCKED`, no authenticated request; contract fp `75b10d1d6dd46f43821840532fc97b59129e402f169847a8c8bb6edaaf14102d`, result fp `9508451f23a64ba62220b9ae09c4eb45629203843fa2a8c6ba4a2f7e04cd34e3`, artifact `11140075783`.
+Current Data Marketplace probe request boundary:
+- credentials alone do not authorize a request;
+- credentials + approval reference still do not authorize a request;
+- the exact sentinel `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST` is additionally required;
+- generic values such as `true`, `1` or `yes` are rejected;
+- push workflows pass no KRX credentials to the probe process and run dry-run only;
+- authenticated probe steps are eligible only on explicit `workflow_dispatch` with `allow_authenticated_request=true`.
+
+Latest push-safe workflow evidence:
+- **Status Action `36813950791`** — overall success; `Run push-safe dry-run status diagnostic` success; `Run explicitly consented authenticated status probe` skipped.
+- **Investor Action `36813973236`** — overall success; `Run push-safe dry-run investor-flow diagnostic` success; `Run explicitly consented authenticated investor-flow probe` skipped.
+
+Earlier preflight-bound diagnostic artifacts remain useful as evidence that the runtime had no configured KRX credentials/reference at that time:
+- **Status `36811927281`** — `AUTHORIZATION_PREFLIGHT_BLOCKED`, no authenticated request; artifact `11140235232`.
+- **Investor `36811913060`** — `AUTHORIZATION_PREFLIGHT_BLOCKED`, no authenticated request; artifact `11140075783`.
 
 Key integrity Actions:
 - `36809680268` — investor PIT lineage: **success**.
@@ -87,6 +99,8 @@ Key integrity Actions:
 - `36812655201` — source-data admission: **success**.
 - `36812891969` — updated continuity/doc-drift suite: **success**.
 - `36813025229` — Source Access Contract authorization/provenance freeze: **success**.
+- `36813918295` — explicit-consent probe code + unit tests: **success**.
+- `36814088731` — explicit per-run consent contract and full KRX integrity suite: **success**.
 
 Transient implementation-test failures were corrected without weakening any A-F gate, research threshold, economic criterion or promotion boundary.
 
@@ -94,7 +108,7 @@ Transient implementation-test failures were corrected without weakening any A-F 
 
 Future real KRX history must follow:
 
-`authorization preflight -> authenticated acquisition -> immutable receipt -> consistent receipt batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`
+`explicit manual request consent -> authorization preflight -> authenticated acquisition -> immutable receipt -> consistent receipt batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`
 
 `research_v1_krx_source_data_admission.py` requires, for investor flow, a closed A-F contract, valid untampered batch, current public evidence, structurally valid PIT lineage, exact coverage, and matching source family/use scope before setting `source_data_structurally_admissible=true`.
 
@@ -110,17 +124,18 @@ Therefore no infrastructure-only success can skip the Research Ledger/preregistr
 
 - approved/authenticated exact historical KRX route/product;
 - route credentials plus real non-secret authorization-evidence reference;
+- one explicitly consented manual tiny probe demonstrating the approved route without exposing credentials;
 - complete historical status/investor-flow data;
 - independently attested full expected scope/stable security mapping;
 - record-level historical PIT timestamps/availability;
 - exact rights for the selected route/use scope;
 - actual execution/recovery economics where status events affect tradability/liquidation.
 
-The presence of preflight, receipts, batches, validators and admission code does not change A-F states by itself.
+The presence of preflight, workflow consent controls, receipts, batches, validators and admission code does not change A-F states by itself.
 
 ## 9. Evidence required to close gates
 
-- **Gate A:** approved exact route/product plus demonstrated authorized access, without exposing credentials.
+- **Gate A:** approved exact route/product plus explicitly consented demonstrated authorized access, without exposing credentials.
 - **Gate B:** exact service/screen/feed, schema, version/transport and equivalence boundaries for the actual route.
 - **Gate C:** full-period attested expected scope + exact observed coverage + stable security identity.
 - **Gate D:** real record-level PIT lineage and decision eligibility.
