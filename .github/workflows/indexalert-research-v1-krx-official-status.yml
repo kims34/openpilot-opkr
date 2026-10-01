@@ -8,6 +8,10 @@ on:
       - 'test_research_v1_krx_official_status.py'
       - 'research_v1_krx_cleanup_status.py'
       - 'test_research_v1_krx_cleanup_status.py'
+      - 'research_v1_krx_source_gates.py'
+      - 'test_research_v1_krx_source_gates.py'
+      - 'INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md'
+      - 'INDEXALERT_KRX_SOURCE_GATE_AUDIT.md'
       - '.github/workflows/indexalert-research-v1-krx-official-status.yml'
   workflow_dispatch:
 
@@ -27,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
-      - name: Compile and test fail-closed KRX official status adapters
+      - name: Compile and test fail-closed KRX official status and source gates
         run: |
-          python -m py_compile research_v1_krx_official_status.py research_v1_krx_cleanup_status.py
-          python -m pytest -q test_research_v1_krx_official_status.py test_research_v1_krx_cleanup_status.py
+          python -m py_compile research_v1_krx_official_status.py research_v1_krx_cleanup_status.py research_v1_krx_source_gates.py
+          python -m pytest -q test_research_v1_krx_official_status.py test_research_v1_krx_cleanup_status.py test_research_v1_krx_source_gates.py
