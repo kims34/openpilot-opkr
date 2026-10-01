@@ -1,5 +1,6 @@
 import importlib
 import unittest
+from unittest import mock
 
 from fastapi import FastAPI
 
@@ -82,6 +83,83 @@ class PushBuildRegistrationOverlayTests(unittest.TestCase):
                 "CONFIRMED",
             },
         )
+
+    def test_display_only_server_rules_are_filled_without_synthesizing_alert_rules(self):
+        build_overlay = self.build_overlay
+        rules = build_overlay.monitor.RULES
+        original = dict(rules)
+        try:
+            rules.clear()
+            rules.update({
+                "sp500": {"levels": [(5, 10)]},
+                "ndx": {"levels": [(10, 10)]},
+                "djdiv": {"levels": [(5, 15)]},
+                "kospi100": {"levels": []},
+                "usdkrw": {"levels": []},
+            })
+            supplied = {
+                "sp500": [5],
+                "ndx": [10],
+                "djdiv": [5],
+                "kospi100": [],
+            }
+            normalized = build_overlay._complete_display_only_levels(supplied)
+            self.assertEqual(normalized["usdkrw"], [])
+            self.assertEqual(normalized["sp500"], [5])
+
+            # A missing alert-bearing rule must stay missing so the established
+            # exact-key/threshold validator can still reject it fail-closed.
+            missing_alert_rule = dict(supplied)
+            missing_alert_rule.pop("ndx")
+            normalized_missing = build_overlay._complete_display_only_levels(missing_alert_rule)
+            self.assertNotIn("ndx", normalized_missing)
+            self.assertEqual(normalized_missing["usdkrw"], [])
+        finally:
+            rules.clear()
+            rules.update(original)
+
+    def test_v47_registration_passes_completed_display_only_settings_to_base_validator(self):
+        build_overlay = self.build_overlay
+        rules = build_overlay.monitor.RULES
+        original = dict(rules)
+        captured = {}
+        try:
+            rules.clear()
+            rules.update({
+                "sp500": {"levels": [(5, 10)]},
+                "ndx": {"levels": [(10, 10)]},
+                "djdiv": {"levels": [(5, 15)]},
+                "kospi100": {"levels": []},
+                "usdkrw": {"levels": []},
+            })
+
+            def fake_register(body):
+                captured["body"] = body
+                return {"ok": True, "registered": True, "firebase": True, "protocol": 2}
+
+            body = build_overlay.RegisterBodyV32(
+                token="t" * 80,
+                platform="android",
+                protocol=2,
+                client_build="4.7-47",
+                enabled_levels={
+                    "sp500": [5],
+                    "ndx": [10],
+                    "djdiv": [5],
+                    "kospi100": [],
+                },
+            )
+            with mock.patch.object(build_overlay.production, "register", side_effect=fake_register), \
+                 mock.patch.object(build_overlay, "_record_device_build"):
+                result = build_overlay.register_v32(body)
+
+            self.assertEqual(captured["body"].enabled_levels["usdkrw"], [])
+            self.assertEqual(captured["body"].enabled_levels["kospi100"], [])
+            self.assertEqual(result["client_build"], "4.7-47")
+            self.assertTrue(result["client_build_observed"])
+        finally:
+            rules.clear()
+            rules.update(original)
 
     def test_v31_runtime_installs_the_same_build_bound_routes(self):
         build_overlay = self.build_overlay
