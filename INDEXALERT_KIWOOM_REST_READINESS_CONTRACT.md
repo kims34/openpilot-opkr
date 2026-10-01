@@ -72,6 +72,8 @@ Rules:
 - a successful token, account query, quote query or websocket connection is technical connectivity only;
 - possession of REAL credentials alone does not authorize a REAL request or any order submission.
 
+Observed demo plumbing is recorded separately in `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md`. The observed `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FILLS_OK` sequence confirms only demo/read-only connectivity and does not change any project promotion or execution gate.
+
 ## 5. Current network permission matrix
 
 Until a later explicit promotion-stage change is committed and independently reviewed:
@@ -135,6 +137,24 @@ The reviewed official stream includes broker-native fields for:
 
 For a future admitted genuine-LIVE evidence bundle, broker order number and execution number must remain broker-native stable identifiers. Project row IDs or CSV row numbers cannot substitute for them.
 
+### Implemented offline normalizers and reconciliation
+
+`research_v1_kiwoom_native_execution.py` implements offline-only normalization for:
+- real-time order/fill type `00`;
+- REST account order/fill detail `kt00007`;
+- REST filled-order query `ka10076`;
+- same-order `kt00007` / `ka10076` structural reconciliation.
+
+The implementation contains no network, authentication, account-query, order-create, amend, or cancel code.
+
+A critical source-granularity distinction is frozen:
+- real-time type `00` exposes broker-native execution/fill number `909`, so a positive fill quantity requires that execution identifier;
+- `kt00007` and `ka10076` expose order-level/aggregate fill snapshots but do **not** expose `909` or an equivalent per-execution identifier in the reviewed schema;
+- therefore `kt00007` / `ka10076` normalized rows must retain `record_granularity=order_aggregate_snapshot`, must keep `broker_execution_id` empty, and must set `broker_execution_id_available_in_source=false`;
+- the project must never synthesize an execution ID from `ord_no`, a CSV row number, a project row ID, a hash, a timestamp, or any other locally invented value.
+
+The REST reconciliation helper may compare only normalized `kt00007` / `ka10076` rows for the same intended order snapshot. It fail-closes on conflicting account fingerprint, broker order ID, symbol, original-order ID, order/fill quantity, remaining quantity, order price, or fill price when both sources provide the field. A successful structural reconciliation remains plumbing evidence only and always keeps `genuine_live_provenance_verified=false` and `project_live_evidence_admitted=false`.
+
 ## 7. Provenance admission remains separate from metric evaluation
 
 No caller-supplied label, filename, CSV hash, source string, self-authored manifest or unit fixture can authenticate a genuine real-account origin.
@@ -191,6 +211,6 @@ No such change is authorized by this document.
 
 ## 11. Current conclusion
 
-Kiwoom REST is a viable future broker adapter/evidence source based on the reviewed official schema, including broker-native order and execution identifiers plus fill/fee/tax fields. The project may prepare read-only/demo connectivity and evidence mapping now.
+Kiwoom REST is a viable future broker adapter/evidence source based on the reviewed official schema, including broker-native order and execution identifiers plus fill/fee/tax fields. Demo/read-only authentication, account, balance and filled-order connectivity has been observed successfully, and offline normalization/reconciliation plumbing is implemented for the reviewed broker-native schemas.
 
-**Real-account order submission remains disabled. Demo/paper evidence is not genuine LIVE evidence. The sealed holdout remains untouched.**
+**Real-account order submission remains disabled. Demo/paper evidence is not genuine LIVE evidence. REST order snapshots without broker execution IDs cannot be promoted into per-execution evidence. The sealed holdout remains untouched.**
