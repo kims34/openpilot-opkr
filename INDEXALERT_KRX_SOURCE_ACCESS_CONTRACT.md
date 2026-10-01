@@ -6,7 +6,7 @@ Status: **SOURCE / LICENSING CONTRACT — NO ALPHA CLAIM**
 
 ## 1. Purpose
 
-This document prevents IndexAlert from confusing distinct KRX data-access products, authentication methods, authorization evidence, acquisition provenance and licensing terms. It is source-governance infrastructure only. Nothing here is performance evidence and nothing here authorizes sealed-holdout use or live trading.
+This document prevents IndexAlert from confusing distinct KRX data-access products, authentication methods, authorization evidence, runtime consent, acquisition provenance and licensing terms. It is source-governance infrastructure only. Nothing here is performance evidence and nothing here authorizes sealed-holdout use or live trading.
 
 ## 2. Frozen KRX source gates A-F
 
@@ -16,7 +16,9 @@ The following six gates are the canonical source-governance contract for every K
 
 The exact official KRX access route/product must be identified and the dataset must be accessed under the appropriate authorization. KRX OpenAPI `AUTH_KEY`, Data Marketplace authenticated web-session credentials and purchased/distributed data products are distinct routes and must never be substituted for one another.
 
-**Credential presence is not authorization.** For any online route, IndexAlert must preserve a non-secret authorization/approval evidence reference separately from the credential itself. A tiny authenticated reachability probe may be attempted only after the route-specific preflight is satisfied. Successful reachability may contribute only partial Gate-A evidence; it can never make Gate A `PASS` by itself.
+**Credential presence is not authorization, and authorization metadata is not runtime consent.** For any online route, IndexAlert must preserve a non-secret authorization/approval evidence reference separately from the credential itself. A tiny authenticated reachability probe may be attempted only after the route-specific preflight is satisfied **and** the exact per-run explicit-consent sentinel is present. Successful reachability may contribute only partial Gate-A evidence; it can never make Gate A `PASS` by itself.
+
+Normal push-triggered diagnostics are dry-run only. Pushes must not inject KRX credentials into the probe process and must never trigger an authenticated request merely because repository secrets happen to be configured.
 
 ### Gate B — `EXACT_DATASET_SCHEMA_MAPPING`
 
@@ -56,7 +58,7 @@ Each gate has exactly one audit status: `PASS`, `PARTIAL` or `BLOCKED`.
 
 Executable gate semantics are frozen in `research_v1_krx_source_gates.py`; the current evidence assessment is `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`.
 
-## 3. Authorization preflight contract
+## 3. Authorization and runtime-consent preflight contract
 
 `research_v1_krx_auth_preflight.py` is the canonical pre-request guard.
 
@@ -65,22 +67,38 @@ Executable gate semantics are frozen in `research_v1_krx_source_gates.py`; the c
 A tiny authenticated probe requires all of:
 - `KRX_ID` present through secret management;
 - `KRX_PW` present through secret management;
-- non-secret `KRX_AUTH_EVIDENCE_REF` identifying the approval/authorization basis.
+- non-secret `KRX_AUTH_EVIDENCE_REF` identifying the approval/authorization basis;
+- exact runtime sentinel `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST` for that specific run.
 
 `KRX_AUTH_EVIDENCE_REF` is an opaque reference only. It must not contain a password, token, cookie, API key, bearer token or session identifier. Its presence is necessary for the probe but is not itself proof that Gate A passes.
+
+The explicit-consent sentinel is deliberately exact. Generic values such as `true`, `1`, `yes` or similar text are not accepted. The sentinel is not a persistent authorization grant and must not be stored as a substitute for the per-run workflow control.
 
 ### KRX OpenAPI route
 
 A tiny OpenAPI request requires all of:
 - `KRX_OPENAPI_AUTH_KEY` present through secret management;
 - exact approved OpenAPI service mapping for the dataset;
-- non-secret authorization-evidence reference for the relevant service approval.
+- non-secret authorization-evidence reference for the relevant service approval;
+- the same exact explicit per-run request-consent sentinel.
 
 An `AUTH_KEY` alone is not authorization for every KRX API and cannot substitute for Data Marketplace session credentials.
 
 ### Purchased/distributed-data route
 
 Purchased/distributed product access must be verified by a product-specific ingestion/authorization contract. Online `KRX_ID`/`KRX_PW` or OpenAPI `AUTH_KEY` cannot be used to infer this route is authorized.
+
+### Workflow execution boundary
+
+The two current Data Marketplace probe workflows are frozen as follows:
+- `push` events run a dry-run diagnostic only;
+- dry-run steps receive empty KRX credential/authorization/consent environment values;
+- the authenticated step is skipped on push;
+- an authenticated tiny probe is eligible only on `workflow_dispatch` when `allow_authenticated_request=true` is explicitly selected;
+- only that authenticated manual step receives `KRX_ID`/`KRX_PW`, an authorization-evidence reference and the exact consent sentinel;
+- `KRX_OPENAPI_AUTH_KEY` is not injected into these Data Marketplace probe steps.
+
+This workflow boundary is defense in depth. The Python preflight independently enforces the same consent sentinel, so a future workflow mistake or local invocation must still fail closed without the sentinel.
 
 ### Preflight authority boundary
 
@@ -108,11 +126,11 @@ An OpenAPI key therefore does not by itself authorize every API service. IndexAl
 
 ### Route 2 — KRX Data Marketplace authenticated web session
 
-The current feasibility probes are explicitly Data Marketplace web-session probes through a pinned exploratory client. They may attempt an authenticated request only when `KRX_ID`, `KRX_PW` **and** `KRX_AUTH_EVIDENCE_REF` satisfy the preflight.
+The current feasibility probes are explicitly Data Marketplace web-session probes through a pinned exploratory client. They may attempt an authenticated request only when `KRX_ID`, `KRX_PW`, `KRX_AUTH_EVIDENCE_REF` **and** the exact explicit per-run consent sentinel satisfy the preflight.
 
 Candidate low-level BLDs or screen transports remain provisional until live authorized responses, exact schema equivalence, historical coverage and PIT lineage are validated.
 
-`KRX_ID` / `KRX_PW` must never be described as OpenAPI `AUTH_KEY` authentication. A green workflow with `AUTHORIZATION_PREFLIGHT_BLOCKED` and `authenticated_request_attempted=false` is diagnostic execution evidence only.
+`KRX_ID` / `KRX_PW` must never be described as OpenAPI `AUTH_KEY` authentication. A green push workflow whose authenticated step was skipped is diagnostic execution evidence only.
 
 ### Route 3 — KRX data purchase / distribution products
 
@@ -208,7 +226,7 @@ Even then, `source_data_structurally_admissible=true` means only `eligible_for_e
 
 ## 9. Fail-closed source policy
 
-If any Gate A-F requirement for the declared source family/use scope is not `PASS`, or if authorization, provenance, coverage, mapping, PIT publication/availability or licensing scope is unknown:
+If any Gate A-F requirement for the declared source family/use scope is not `PASS`, or if authorization, runtime consent, provenance, coverage, mapping, PIT publication/availability or licensing scope is unknown:
 - `judge_security_status_ready = false` where security/status evidence is affected;
 - investor-flow feature testing remains blocked where investor-flow evidence is affected;
 - no sealed holdout is consumed to compensate for missing source quality;
@@ -220,11 +238,12 @@ Receipts, batches, validators or green diagnostic workflows must never be used a
 
 The current source strategy is:
 1. keep Data Marketplace probes explicitly labeled as that route;
-2. require route-specific credentials **and** non-secret approval evidence before a tiny authenticated request;
-3. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
-4. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
-5. create immutable acquisition receipts and consistent batch manifests for any future real history;
-6. require PIT/coverage/source-data admission before research-registry review;
-7. do not run investor-flow performance research merely because a probe, receipt, batch or admission validator exists;
-8. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
-9. never store KRX IDs/passwords/authentication keys in source, artifacts or logs; use repository/deployment secret management.
+2. require route-specific credentials, non-secret approval evidence **and exact per-run consent** before a tiny authenticated request;
+3. keep push-triggered probe runs dry-run only and never inject KRX secrets on push;
+4. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
+5. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
+6. create immutable acquisition receipts and consistent batch manifests for any future real history;
+7. require PIT/coverage/source-data admission before research-registry review;
+8. do not run investor-flow performance research merely because a probe, receipt, batch or admission validator exists;
+9. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
+10. never store KRX IDs/passwords/authentication keys in source, artifacts or logs; use repository/deployment secret management.
