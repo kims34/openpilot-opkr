@@ -273,3 +273,7 @@ Older IndexAlert chat/work rooms are not project-state dependencies. Material co
 ## 13. Continuous Research governance
 
 Continuous post-Core research is enabled as an isolated Research Lab. Every evaluative trial requires pre-outcome protocol fingerprinting; protocol mutation/post-hoc criteria changes or sealed-holdout use invalidate the trial. `ACCEPTED_CHALLENGER` is not production promotion. The Research Lab has no production-write, sealed-holdout, or live-order authority.
+
+## 14. Internal completeness audit
+
+Internal audit hardened successor promotion: `automatic_code_update_eligible` is only an eligibility signal; `automatic_code_update_allowed=false` and `promotion_authority_verified=false` remain fail-closed until a future independent canonical promotion-authority mechanism exists. No real-order or sealed-holdout authority was introduced.
