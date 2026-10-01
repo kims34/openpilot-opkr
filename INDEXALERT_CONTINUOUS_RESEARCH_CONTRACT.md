@@ -29,6 +29,7 @@ An accepted challenger may proceed to separately required independent/prospectiv
 6. Research Lab may automatically generate ideas, diagnostics and preregistrations, but may not automatically promote, deploy, enable live ordering, open the sealed holdout or weaken frozen gates.
 7. Production/Core changes require an explicit successor version and all then-applicable source, execution, holdout, Shadow S1 and Fresh Confirmation S2 gates.
 8. Missing/invalid protocol fields, fingerprint mismatch, results attached before preregistration, or forbidden holdout access invalidate the trial fail-closed.
+9. Caller-supplied booleans, labels, filenames, hashes, self-authored manifests or status strings are never promotion authority. A promotion-capable consumer must verify immutable outputs from the independent canonical gate auditors it relies on.
 
 ## Continuous triggers
 
@@ -42,8 +43,28 @@ This contract does not alter any existing H5/H10 disposition, KRX blocker, execu
 
 `research_v1_research_orchestrator.py` may translate explicit, evidence-referenced diagnostic flags into deterministic `IDEA` queue items for calibration drift, execution-cost drift, feature freshness drift, regime drift and data-quality drift. Unknown/free-form flags and signals without an evidence reference are not queued. No signal means no research churn. Any sealed-holdout input fails closed. The orchestrator has no authority to execute a challenger, alter Core, change frozen thresholds, promote, open holdout, or authorize live orders.
 
-## Successor Core auto-staging and promotion boundary
+## Successor Core auto-staging boundary
 
 `research_v1_successor_core.py` permits deterministic automatic creation of a versioned `SHADOW_CANDIDATE` successor artifact only after an `ACCEPTED_CHALLENGER` also passes explicit independent OOS, cost-stress, tail-risk, recent-stability, PIT-integrity, no-leakage and frozen-protocol-match gates. Post-hoc criteria changes or sealed-holdout use at this stage block successor creation.
 
-A successor may become `PROMOTION_ELIGIBLE` for automatic **code/Core version update** only after Shadow S1, Fresh Confirmation S2, the separately authorized sealed-holdout contract, all external blockers, and the empirical execution blocker are independently closed. This permission never enables real-account ordering: `automatic_live_order_activation_allowed=false` and `live_order_authorized=false` remain hard boundaries. Promotion eligibility therefore means that validated program logic may advance to the next Core version; capital-moving authority remains separately gated.
+The resulting artifact is staging material only:
+- `production_active=false`;
+- `promotion_authority_granted=false`;
+- `automatic_code_update_allowed=false`;
+- `sealed_holdout_authorized=false`;
+- `live_order_authorized=false`.
+
+## Promotion-condition assessment is not promotion authority
+
+`assess_shadow_promotion()` may receive caller-declared flags describing Shadow S1, Fresh Confirmation S2, sealed-holdout contract, external blockers and execution blocker state. Those flags are useful only for deterministic structural diagnostics. Even when every caller flag is `true`, the function must not infer that the underlying independent canonical auditors actually admitted the evidence.
+
+Therefore, until a separate trusted promotion-authority adapter is implemented and bound to immutable outputs from the relevant canonical gate auditors:
+- all caller conditions may at most yield `promotion_conditions_structurally_satisfied=true`;
+- `promotion_eligible=false` remains mandatory;
+- `independent_gate_admission_verified=false` remains mandatory;
+- `promotion_authority_granted=false` remains mandatory;
+- `automatic_code_update_allowed=false` remains mandatory;
+- `automatic_live_order_activation_allowed=false` and `live_order_authorized=false` remain mandatory;
+- `INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED` remains an explicit blocker.
+
+A future promotion-authority adapter must be separately reviewed. It may not trust a caller-supplied `all_external_blockers_closed`, `execution_blocker_closed`, `sealed_holdout_contract_passed`, `shadow_s1_passed` or `fresh_confirmation_s2_passed` boolean as evidence. It must verify immutable, provenance-bound outputs produced by the authoritative source/execution/holdout/confirmation auditors. Until then, no automatic Core mutation is authorized by this contract.
