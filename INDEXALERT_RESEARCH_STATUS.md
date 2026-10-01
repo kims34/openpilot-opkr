@@ -153,7 +153,9 @@ A structurally valid protocol still keeps sufficiency unassessed and blocker/pro
 
 Execution preregistration Action `36835013828` succeeded. Strengthened contract-drift Action `36835231533` also succeeded.
 
-## Android / push Physical E2E state
+## Android / push Physical E2E state — CONFIRMED
+
+Canonical audit: `INDEXALERT_PHYSICAL_E2E_AUDIT.md`.
 
 Current Android build branch is `index-alert-build`, HEAD `5154ef7943353791f615622394523ecd52ef8b0f`. The audited build is `versionName=4.7`, `versionCode=47`, therefore `client_build=4.7-47`.
 
@@ -163,9 +165,11 @@ Latest APK Action `36856589300` succeeded:
 
 The v4.7 Android client sends its privacy-safe `client_build` during registration and uses the build-specific self-test/receipt path. Provider send success is never treated as handset receipt; confirmation requires the actual client `/push-ack` for the exact server event.
 
-Server branch `index-alert-server` currently has operational HEAD `b43b478bc624925b0fd58d5986f8fd293ae2d65f` (`Test fail-closed legacy registration ordering`). The shared build-registration overlay is installed by both v31 and v32 entrypoints, and production uses `production_v32:app`.
+During the real handset audit, the first v4.7 registration attempts reached production but returned HTTP 400. Root cause was an exact-key mismatch between the Android `enabled_levels` payload and server-side display-only rules such as `usdkrw` whose alert `levels` are empty. The server overlay was fixed to synthesize only missing **display-only** empty-level keys; alert-bearing keys are never synthesized and continue to fail closed when missing or invalid.
 
-Frozen Physical-E2E contracts are:
+The validated server branch `index-alert-server` production revision is now `d8523810b1c2c092a9ffc8f6245586e3bb719645` (`Test v4.7 registration with display-only server rules`). Server Tests Action `36874615526` succeeded, including regression coverage for the v4.7 payload/display-only compatibility boundary.
+
+Frozen Physical-E2E contracts remain:
 - `registration_build_contract = "register-client-build-v1"`;
 - `self_test_trigger_contract = "android-register-direct-v1"`;
 - `physical_e2e_binding_contract = "registered-device-build-receipt-v1"`;
@@ -175,42 +179,27 @@ The server binds Physical E2E to the exact latest registered **device and build*
 
 `/push-health` exposes privacy-safe diagnostics including `latest_registered_client_build`, `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, `registration_device_matches_self_test`, `registration_build_matches_self_test`, `physical_e2e_blocker`, and `current_build_physical_e2e_confirmed`. Raw token/event IDs remain server-private.
 
-The blocker is exactly one of `NO_REGISTERED_BUILD`, `NO_SELF_TEST`, `DEVICE_MISMATCH`, `BUILD_MISMATCH`, `SELF_TEST_NOT_SENT`, `RECEIPT_PENDING`, `CONFIRMED`.
-
 Read-only verifier `verify_push_physical_e2e.py` requires the exact expected registered build, same-device/same-build binding, all frozen contract markers, sent self-test, real receipt timestamp and `physical_e2e_blocker == "CONFIRMED"`; it cannot send FCM, register a device, or manufacture a receipt.
 
-Server Tests Action `36868822598` succeeded at exact HEAD `b43b478b...`, with **159 tests** passing. v32 Build Contract Smoke Action `36868822607` initially timed out only because Railway completed the exact-source rollout just after the first run's 30-attempt window. Rerun job `110397147003` succeeded after production was on the exact revision.
+### Real production Physical E2E evidence — DONE
 
-### Current production observation — Physical E2E still OPEN
+Railway production deployment `4cde730b-2aca-49c2-9950-f895897fe642` is built from exact server revision `d8523810b1c2c092a9ffc8f6245586e3bb719645` and completed SUCCESS.
 
-Railway production now runs deployment `10d09f6a-daec-45cb-b5fa-25b7e192d405`, built from exact server commit `b43b478bc624925b0fd58d5986f8fd293ae2d65f`. The service start command is `production_v32:app`, and the successful rerun smoke observed `runtime_revision = "b43b478bc624925b0fd58d5986f8fd293ae2d65f"`.
+After that revision became live, the real Android handset performed the physical path in production:
+- `POST /register` — HTTP 200;
+- `POST /push-self-test` — HTTP 200;
+- real handset `POST /push-ack` — HTTP 200.
 
-At the successful exact-revision smoke observation, production reported:
-- `registration_build_contract = "register-client-build-v1"`;
-- `self_test_trigger_contract = "android-register-direct-v1"`;
-- `physical_e2e_binding_contract = "registered-device-build-receipt-v1"`;
-- `physical_e2e_blocker_contract = "physical-e2e-blocker-v1"`;
-- `physical_e2e_blocker = "NO_REGISTERED_BUILD"`;
-- `latest_registered_client_build = null`;
-- `latest_self_test_build = null`;
-- `registration_device_matches_self_test = false`;
-- `registration_build_matches_self_test = false`;
-- `current_build_physical_e2e_confirmed = false`.
+The v32 Build Contract Smoke Action `36874615527` was rerun after the real handset ACK and completed SUCCESS. Its exact-revision `/push-health` observation reported:
+- `runtime_revision = "d8523810b1c2c092a9ffc8f6245586e3bb719645"`;
+- `physical_e2e_blocker = "CONFIRMED"`;
+- `latest_registered_client_build = "4.7-47"`;
+- `latest_self_test_build = "4.7-47"`;
+- `registration_device_matches_self_test = true`;
+- `registration_build_matches_self_test = true`;
+- `current_build_physical_e2e_confirmed = true`.
 
-Therefore server deployment/configuration drift is CLOSED, but Physical E2E remains OPEN for one precise reason: production has not yet observed a current build-aware v4.7-47 handset registration. Older aggregate sent/received counters cannot be reclassified as current-build evidence.
-
-Exact Physical E2E closure now requires one real handset running `4.7-47` to produce, on that same registered device:
-- `latest_registered_client_build == "4.7-47"`;
-- `latest_self_test_build == "4.7-47"`;
-- `registration_device_matches_self_test == true`;
-- `registration_build_matches_self_test == true`;
-- `latest_self_test_sent == true`;
-- `latest_self_test_receipt_confirmed == true`;
-- `physical_e2e_blocker == "CONFIRMED"`;
-- `current_build_physical_e2e_confirmed == true`;
-- a non-null real client receipt timestamp/ledger row.
-
-No physical receipt is fabricated or inferred from provider send success.
+Therefore the Android notification Physical E2E blocker is **CLOSED for the audited v4.7-47 build and exact production revision above**. This is plumbing/safety evidence only. It is not model-promotion evidence, execution sufficiency, KRX evidence, sealed-holdout evidence or live-order authority.
 
 ## U.S. mover production-data integrity — fail-closed and auditable
 
@@ -241,13 +230,13 @@ The timing-sensitive smoke did **not** itself capture a complete public response
 
 ## Operational deployment evidence state
 
-Railway `indexalert-runtime` is aligned to exact server commit `b43b478bc624925b0fd58d5986f8fd293ae2d65f` through deployment `10d09f6a-daec-45cb-b5fa-25b7e192d405` (SUCCESS). Server Tests Action `36868822598` and v32 Build Contract Smoke `36868822607` rerun job `110397147003` succeeded on the exact production revision. The smoke verifies the current privacy-safe build/device/blocker push-health contract and exact runtime revision while preserving the existing market/probability endpoint contracts.
+Railway `indexalert-runtime` is aligned to exact server revision `d8523810b1c2c092a9ffc8f6245586e3bb719645` through deployment `4cde730b-2aca-49c2-9950-f895897fe642` (SUCCESS). Server Tests Action `36874615526` and rerun v32 Build Contract Smoke Action `36874615527` succeeded on the exact production revision. The successful smoke observed the real v4.7-47 same-device/same-build receipt contract in `CONFIRMED` state.
 
-This closes server deployment drift, stale-runtime ambiguity, the latest-registration ordering gap, the mover-provenance observability gap and the public startup FX-basis leakage path. It does not close the Physical E2E blocker, execution evidence blocker, KRX blockers, sealed holdout, promotion, or live-order authority. Real-account ordering remains disabled.
+This closes server deployment drift, stale-runtime ambiguity, the latest-registration ordering gap, the v4.7 display-only registration compatibility gap, the Physical E2E blocker, the mover-provenance observability gap and the public startup FX-basis leakage path. It does not close the execution evidence blocker, KRX blockers, sealed holdout, promotion, or live-order authority. Real-account ordering remains disabled.
 
 ## External evidence still missing
 
-Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations, a later independent execution-sufficiency assessment, or a real current-build handset receipt.
+Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment.
 
 ## Remaining blockers
 
@@ -257,7 +246,7 @@ Internal code cannot fabricate approved KRX source access/history/PIT/use rights
 4. **Execution:** genuine staged LIVE observations plus a separately frozen-before-LIVE sufficiency protocol and later assessment. Structurally valid LIVE rows alone do not close this blocker.
 5. **Research governance:** no rejected-candidate revival; maintain Ledger/multiple-testing discipline.
 6. **One-shot sealed holdout:** untouched until source/execution/code/protocol freeze; then Shadow S1 -> Fresh Confirmation S2.
-7. **Physical notification E2E:** server-side exact revision, same-device/build binding and fail-closed blocker contract are DONE; current blocker is `NO_REGISTERED_BUILD`. A real v4.7-47 handset must register, create the exact build self-test, receive it and ACK it on that same device until `physical_e2e_blocker == "CONFIRMED"`.
+7. **Physical notification E2E:** **DONE for audited Android v4.7-47 and production revision `d8523810…`**; do not reinterpret this plumbing success as Alpha/execution/promotion evidence.
 8. **Live ordering:** disabled until all frozen promotion/safety gates and explicit user activation requirements are met.
 
 ## Promotion rule
