@@ -10,6 +10,9 @@ on:
       - 'test_research_v1_krx_cleanup_status.py'
       - 'research_v1_krx_source_gates.py'
       - 'test_research_v1_krx_source_gates.py'
+      - 'research_v1_krx_status_source_probe.py'
+      - 'research_v1_krx_investor_flow_probe.py'
+      - 'test_research_v1_krx_source_probes.py'
       - 'INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md'
       - 'INDEXALERT_KRX_SOURCE_GATE_AUDIT.md'
       - 'INDEXALERT_MASTER_SPEC.md'
@@ -35,5 +38,5 @@ jobs:
           pip install pandas==2.3.3 numpy==2.5.3 pytest==8.4.2
       - name: Compile and test fail-closed KRX official status and source gates
         run: |
-          python -m py_compile research_v1_krx_official_status.py research_v1_krx_cleanup_status.py research_v1_krx_source_gates.py
-          python -m pytest -q test_research_v1_krx_official_status.py test_research_v1_krx_cleanup_status.py test_research_v1_krx_source_gates.py
+          python -m py_compile research_v1_krx_official_status.py research_v1_krx_cleanup_status.py research_v1_krx_source_gates.py research_v1_krx_status_source_probe.py research_v1_krx_investor_flow_probe.py
+          python -m pytest -q test_research_v1_krx_official_status.py test_research_v1_krx_cleanup_status.py test_research_v1_krx_source_gates.py test_research_v1_krx_source_probes.py
