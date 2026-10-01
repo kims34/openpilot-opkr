@@ -1,7 +1,7 @@
 name: IndexAlert Server Tests
 on:
   push:
-    branches: [ index-alert-server, index-alert-shadow-ledger, index-alert-app-milestone, index-alert-monthly-10pct ]
+    branches: [ index-alert-server, index-alert-server-execution-provenance-hardening, index-alert-shadow-ledger, index-alert-app-milestone, index-alert-monthly-10pct ]
     paths:
       - 'monitor.py'
       - 'production_v30.py'
