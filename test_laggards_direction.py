@@ -1,7 +1,13 @@
 import unittest
 from datetime import datetime, timezone
 
-from laggards import _market_quote, _rank_directional, _regular_session_points
+from laggards import (
+    _classify_constituent_exclusion,
+    _market_quote,
+    _meta_symbol_list,
+    _rank_directional,
+    _regular_session_points,
+)
 
 
 def utc_ts(iso: str) -> int:
@@ -86,6 +92,23 @@ class DirectionalMoverTests(unittest.TestCase):
         # not applied to those calls.
         with self.assertRaisesRegex(RuntimeError, "invalid quote basis"):
             _market_quote(_FakeMonitor("ETF"), "SCHD", require_equity=False)
+
+    def test_exclusion_classifier_only_emits_auditable_categories(self):
+        self.assertEqual(
+            _classify_constituent_exclusion(RuntimeError("non-equity constituent: ETF")),
+            "non_equity",
+        )
+        self.assertEqual(
+            _classify_constituent_exclusion(RuntimeError("non-comparable corporate action: spin_off")),
+            "corporate_action",
+        )
+        self.assertIsNone(_classify_constituent_exclusion(RuntimeError("quote unavailable")))
+        self.assertIsNone(_classify_constituent_exclusion(RuntimeError("invalid quote basis")))
+
+    def test_meta_symbol_list_is_fail_closed_deduplicated_and_sorted(self):
+        self.assertEqual(_meta_symbol_list('["usd","CTVA","USD","bad symbol"]'), ["CTVA", "USD"])
+        self.assertEqual(_meta_symbol_list("not-json"), [])
+        self.assertEqual(_meta_symbol_list('{"USD":true}'), [])
 
 
 if __name__ == "__main__":
