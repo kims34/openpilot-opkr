@@ -1,0 +1,40 @@
+name: IndexAlert Research v1 KRX Auth Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      authorization_evidence_reference:
+        description: 'Opaque non-secret approval/authorization reference; leave blank only if repository variable KRX_AUTH_EVIDENCE_REF is configured'
+        required: false
+        type: string
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run network-free KRX configuration readiness check
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+          KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}
+          KRX_AUTH_EVIDENCE_REF: ${{ inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF }}
+          KRX_EXPLICIT_PROBE_CONSENT: ''
+        run: |
+          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_public_evidence.py research_v1_krx_auth_readiness.py
+          python research_v1_krx_auth_readiness.py
+          cat research_results/krx_auth_readiness/summary.json
+      - name: Upload readiness result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-krx-auth-readiness
+          path: research_results/krx_auth_readiness/summary.json
+          if-no-files-found: warn
+          retention-days: 14
