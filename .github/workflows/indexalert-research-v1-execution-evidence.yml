@@ -6,6 +6,8 @@ on:
     paths:
       - 'research_v1_execution_evidence.py'
       - 'test_research_v1_execution_evidence.py'
+      - 'INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md'
+      - 'test_research_v1_execution_evidence_contract.py'
       - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
   workflow_dispatch:
 
@@ -28,4 +30,4 @@ jobs:
       - name: Compile and test fail-closed empirical execution evidence schema
         run: |
           python -m py_compile research_v1_execution_evidence.py
-          python -m pytest -q test_research_v1_execution_evidence.py
+          python -m pytest -q test_research_v1_execution_evidence.py test_research_v1_execution_evidence_contract.py
