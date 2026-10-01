@@ -63,6 +63,8 @@ jobs:
                curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
               if python - <<'PY'
           import json
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
           health=json.load(open('/tmp/health.json'))
           push_health=json.load(open('/tmp/push-health.json'))
           openapi=json.load(open('/tmp/openapi.json'))
@@ -116,6 +118,7 @@ jobs:
           assert abs(calc-float(fx.get('day_change_percent'))) < 0.011, fx
           assert abs((fx['last_value']-fx['previous_close'])-float(fx.get('day_change'))) < 0.011, fx
 
+          ny_today=datetime.now(ZoneInfo('America/New_York')).date().isoformat()
           for universe, section in (movers.get('sections') or {}).items():
               direction=section.get('direction')
               all_rows=[]
@@ -127,10 +130,11 @@ jobs:
               # remain equity-only after the fail-closed instrument gate.
               if universe == 'schd':
                   assert 'USD' not in symbols, section
-              # On the documented 2026-10-01 CTVA/Vylor separation date raw
-              # CTVA previous-close math is non-comparable and must be absent
-              # from mover ranking rather than shown as a fake ~-76% decline.
-              if universe == 'sp500':
+              # This assertion is date-scoped to the registered event. On the
+              # documented 2026-10-01 CTVA/Vylor separation date raw CTVA
+              # previous-close math is non-comparable; later dates are not
+              # suppressed by this static event record.
+              if universe == 'sp500' and ny_today == '2026-10-01':
                   assert 'CTVA' not in symbols, section
               for item in section.get('items') or []:
                   pct=float(item.get('day_change_percent'))
