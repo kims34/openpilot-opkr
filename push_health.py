@@ -1,8 +1,9 @@
 """Sanitized push-delivery health for IndexAlert production.
 
 This endpoint intentionally exposes no FCM registration token or device payload.
-It only reports aggregate registration/delivery state so current Android-to-server
-wiring can be verified without leaking credentials.
+It only reports aggregate registration/delivery state plus privacy-safe status of
+the most recently created build self-test, so current Android-to-server wiring
+can be verified without confusing an old-build receipt with the current build.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ import firebase_admin
 
 import monitor
 import push_receipts
+import push_self_test
 
 
 def snapshot() -> dict:
@@ -27,6 +29,7 @@ def snapshot() -> dict:
             "SELECT COUNT(*) FROM deliveries WHERE sent=1"
         ).fetchone()
     receipt = push_receipts.stats()
+    latest_self_test = push_self_test.latest_self_test_status()
     sent = int((sent_row or [0])[0] or 0)
     received = int(receipt.get("received_deliveries") or 0)
     return {
@@ -41,6 +44,12 @@ def snapshot() -> dict:
         "last_client_receipt_at": receipt.get("last_client_receipt_at"),
         "latest_receipt_notifications_enabled": receipt.get("latest_receipt_notifications_enabled"),
         "client_receipts_supported": True,
+        **latest_self_test,
+        "current_build_physical_e2e_confirmed": bool(
+            latest_self_test.get("latest_self_test_build")
+            and latest_self_test.get("latest_self_test_sent")
+            and latest_self_test.get("latest_self_test_receipt_confirmed")
+        ),
         "execution_logging_configured": bool(os.getenv("INDEXALERT_EXECUTION_LOG_TOKEN", "").strip()),
         "tokens_exposed": False,
     }
