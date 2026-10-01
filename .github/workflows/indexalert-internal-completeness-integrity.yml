@@ -1,0 +1,35 @@
+name: IndexAlert Internal Completeness Integrity
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_successor_core.py'
+      - 'test_research_v1_successor_core.py'
+      - 'research_v1_continuous_research.py'
+      - 'research_v1_research_orchestrator.py'
+      - 'indexalert_automation_control.py'
+      - 'research_v1_kiwoom_native_execution.py'
+      - 'INDEXALERT_INTERNAL_COMPLETENESS_AUDIT.md'
+      - '.github/workflows/indexalert-internal-completeness-integrity.yml'
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install test dependency
+        run: pip install pytest==8.3.5
+      - name: Compile authority-sensitive modules
+        run: python -m py_compile research_v1_successor_core.py research_v1_continuous_research.py research_v1_research_orchestrator.py indexalert_automation_control.py research_v1_kiwoom_native_execution.py
+      - name: Run authority boundary regression tests
+        run: |
+          python -m unittest test_research_v1_successor_core.py test_research_v1_continuous_research.py test_research_v1_research_orchestrator.py test_indexalert_automation_control.py
+          pytest -q test_research_v1_kiwoom_native_execution.py
+      - name: Assert no network/order implementation in Kiwoom normalizer
+        run: |
+          ! grep -En 'requests\.|httpx\.|urllib\.|/api/dostk/ordr|oauth2/token' research_v1_kiwoom_native_execution.py
