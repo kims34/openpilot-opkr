@@ -10,6 +10,16 @@ on:
       - 'research_v1_krx_public_evidence.py'
       - '.github/workflows/indexalert-research-v1-krx-investor-flow-probe.yml'
   workflow_dispatch:
+    inputs:
+      allow_authenticated_request:
+        description: 'Explicitly allow the tiny authenticated Data Marketplace probe for this run'
+        required: true
+        default: false
+        type: boolean
+      authorization_evidence_reference:
+        description: 'Opaque non-secret approval/authorization reference; leave blank only if repository variable KRX_AUTH_EVIDENCE_REF is configured'
+        required: false
+        type: string
 
 jobs:
   source-probe:
@@ -17,11 +27,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-    env:
-      KRX_ID: ${{ secrets.KRX_ID }}
-      KRX_PW: ${{ secrets.KRX_PW }}
-      KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}
-      KRX_AUTH_EVIDENCE_REF: ${{ vars.KRX_AUTH_EVIDENCE_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,7 +38,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas==2.3.3 requests==2.32.3 python-dotenv
           pip install 'git+https://github.com/beaten-by-the-market/krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e'
-      - name: Run metadata-only investor-flow diagnostic with A-F audit
+      - name: Run push-safe dry-run investor-flow diagnostic
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.allow_authenticated_request != true }}
+        env:
+          KRX_ID: ''
+          KRX_PW: ''
+          KRX_OPENAPI_AUTH_KEY: ''
+          KRX_AUTH_EVIDENCE_REF: ''
+          KRX_EXPLICIT_PROBE_CONSENT: ''
+        run: |
+          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_investor_flow_probe.py
+          python research_v1_krx_investor_flow_probe.py
+          cat research_results/krx_investor_flow_probe/summary.json
+      - name: Run explicitly consented authenticated investor-flow probe
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_authenticated_request == true }}
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+          KRX_OPENAPI_AUTH_KEY: ''
+          KRX_AUTH_EVIDENCE_REF: ${{ inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF }}
+          KRX_EXPLICIT_PROBE_CONSENT: 'ALLOW_TINY_AUTHENTICATED_REQUEST'
         run: |
           python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_investor_flow_probe.py
           python research_v1_krx_investor_flow_probe.py
