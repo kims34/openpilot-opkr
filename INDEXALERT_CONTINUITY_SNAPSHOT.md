@@ -1,6 +1,6 @@
 # IndexAlert Continuity Snapshot — Canonical Cross-Chat Handoff
 
-Updated: 2026-09-30 KST
+Updated: 2026-10-01 KST
 Branch of record: `index-alert-research-v1`
 
 ## 0. Purpose and authority
@@ -12,7 +12,7 @@ Authority order:
 2. `INDEXALERT_RESEARCH_LEDGER.md` — experiments, outcomes, dispositions, negative evidence.
 3. Current GitHub code + reproducible Actions artifacts/logs — implementation/execution evidence.
 4. `INDEXALERT_RESEARCH_STATUS.md` — status summary; older passages may be superseded.
-5. `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md` and `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md` — source/evidence boundary contracts.
+5. `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`, `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` and `INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md` — source/evidence boundary contracts and current source audit.
 6. This snapshot — cross-chat/cross-branch handoff and unfinished-work registry.
 7. Older chats/notes — historical context only.
 
@@ -89,31 +89,75 @@ Disposition: **ADOPT STRUCTURAL ALIGNMENT / NO PERFORMANCE CHANGE / NOT PROMOTIO
 - H20: out of scope/archive.
 - Stop price-only threshold/feature mining; future information must be genuinely independent and PIT-valid.
 
-## 3. KRX official source/access state
+## 3. KRX official source/access state — audited 2026-10-01
 
-Canonical source boundary: `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`.
+Canonical source boundary: `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`.  
+Current source audit: `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`.
 
 Three access routes must remain distinct:
 1. KRX OpenAPI — separate `AUTH_KEY`, administrator approval and per-API service approval.
-2. KRX Data Marketplace authenticated web session — current exploratory probes use `KRX_ID` / `KRX_PW` only for this route.
+2. KRX Data Marketplace authenticated web session — exploratory probes use `KRX_ID` / `KRX_PW` only for this route when configured.
 3. KRX purchased/distributed data products — separate access/licensing route.
 
 Do not substitute one authentication/access route for another. Do not assume an OpenAPI key supplies a dataset until the exact official service mapping, schema, history and approval are established.
 
-Required Final Judge status families include common-stock identity/mapping, trading halt, cleanup trading, delisting and delisted-price/economic history. Known official Data Marketplace screens include MDCSTAT213/237/238/239. Candidate low-level BLDs for MDCSTAT213/237 remain provisional until a live authorized response validates them.
+### Frozen A-F source gates
 
-Current adapters:
+- A `AUTHORIZED_OFFICIAL_ROUTE`
+- B `EXACT_DATASET_SCHEMA_MAPPING`
+- C `HISTORICAL_COVERAGE_SECURITY_MAPPING`
+- D `PIT_AVAILABILITY_LINEAGE`
+- E `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED`
+- F `INTENDED_USE_RIGHTS`
+
+Only `PASS` closes a gate; `PARTIAL` is not a pass. Even A-F all PASS is source-governance evidence only and cannot by itself authorize Alpha/Final-Judge promotion, sealed holdout or live trading.
+
+Required Final Judge status families include common-stock identity/mapping, trading halt, cleanup trading, delisting and delisted-price/economic history. Known official Data Marketplace screens include MDCSTAT213/237/238/239. Candidate low-level BLDs for MDCSTAT213/237 remain provisional until an authorized response and exact contract validate them.
+
+Current adapters and gate infrastructure:
 - `research_v1_krx_official_status.py`
 - `research_v1_krx_cleanup_status.py`
-- official status integrity Action `36646910657` = success
+- `research_v1_krx_source_gates.py`
+- `research_v1_krx_status_source_probe.py`
+- `research_v1_krx_investor_flow_probe.py`
+- `test_research_v1_krx_source_gates.py`
+- `test_research_v1_krx_source_probes.py`
 
-Source probes were clarified to report Data Marketplace session and OpenAPI-key presence separately without exposing credentials:
-- status source workflow latest audited run `36668563968` = success
-- investor-flow workflow `36668579581` = success
+### Important correction: prior green source-probe Actions were not authenticated-source successes
 
-A successful probe workflow is infrastructure evidence only. It does not establish Judge readiness or feature readiness.
+Direct audit of Actions logs established that the source-probe runtimes had no KRX credentials configured:
+- status source Action `36668563968`: `KRX_ID`, `KRX_PW`, `KRX_OPENAPI_AUTH_KEY` all absent; internal result `AUTH_NOT_CONFIGURED`.
+- investor-flow Action `36668579581`: same; internal result `AUTH_NOT_CONFIGURED`.
 
-Investor-flow rule: final day-D KRX investor trading results are not eligible before official publication; the official Data Marketplace page states final day-D results are supplied after 20:00. Therefore final D flow may enter only the next eligible decision after publication. No same-day undocumented proxy substitution.
+Therefore neither run made an authenticated KRX request. The green workflow result means the diagnostic program executed successfully; it is **not** authenticated source evidence.
+
+The probe code now emits `authenticated_request_attempted`, machine-readable `source_gate_audit`, and contract/result SHA256 fingerprints. Missing session credentials force Gate A to `BLOCKED`; merely supplying credentials may raise A only to `PARTIAL`, never directly to `PASS`.
+
+Latest machine-audited source runs:
+
+**Security/status — Action `36808057709`**
+- workflow conclusion: success as diagnostic
+- `authenticated_request_attempted=false`
+- A `BLOCKED`, B `PARTIAL`, C `BLOCKED`, D `BLOCKED`, E `PARTIAL`, F `PARTIAL`
+- `source_contract_closed_for_declared_scope=false`
+- `judge_security_status_ready=false`
+- contract fingerprint `1a78f35d3f207d97a168efa594962358de63f7686e993d2af5539d2b0d3d582a`
+- result fingerprint `21764684b02ec8c572d63171ed44bfa3393e39c02e2b1c4990a2b616efd0e2b5`
+- artifact ID `11138570329`
+
+**Investor flow — Action `36808077021`**
+- workflow conclusion: success as diagnostic
+- `authenticated_request_attempted=false`
+- A `BLOCKED`, B `PARTIAL`, C `BLOCKED`, D `PARTIAL`, E `PARTIAL`, F `PARTIAL`
+- `source_contract_closed_for_declared_scope=false`
+- `feature_performance_testing_authorized=false`
+- contract fingerprint `b00669f4c82102a2feaca436ba83f309bf6cfd5f33ab2fccd9bce024a2cbf8d8`
+- result fingerprint `31015fb1e623f5eaf204753a0b5e61b4438405cf9f8ec8818f2eced4e9f4283a`
+- artifact ID `11137504925`
+
+Official KRX integrity including source-gate/probe tests passed in Actions `36808122270` and `36808133821`.
+
+Investor-flow rule remains frozen: final day-D KRX investor trading results are not eligible before official publication; the audited Data Marketplace page states final day-D results are supplied after 20:00. Therefore final D flow may enter only the next eligible decision after publication. No same-day undocumented proxy substitution.
 
 Current product/licensing rule: free/public OpenAPI permissions must not be assumed to permit a future external/commercial IndexAlert service. Data-use rights are a product activation gate independent of Alpha promotion.
 
@@ -144,9 +188,9 @@ Server implementation:
 - Server Tests Action `36669071810` on server commit `65855916afd52d081453bc511b6b82df3ec948b1` completed **successfully**, including the full unittest suite.
 
 Production deployment:
-- Railway production service `indexalert-runtime` now runs server commit `65855916afd52d081453bc511b6b82df3ec948b1`.
+- Railway production service `indexalert-runtime` runs server commit `65855916afd52d081453bc511b6b82df3ec948b1`.
 - deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` completed **SUCCESS** on 2026-09-30 KST.
-- the corrected PAPER/LIVE ledger semantics are therefore production-active.
+- the corrected PAPER/LIVE ledger semantics are production-active.
 - persistent `/data` volume remained mounted and `production_v31:app` reached application startup successfully.
 - Railway healthcheck `GET /health` returned **200 OK** during deployment.
 - protected `INDEXALERT_EXECUTION_LOG_TOKEN` remains configured; no secret value is stored in this snapshot.
@@ -211,22 +255,24 @@ Continue from the first actionable unresolved item supported by latest GitHub st
 1. **DONE:** corrected 60-case H5/H10 CPCV archived.
 2. **DONE:** Uncertainty Audit -> KEEP_ABSTENTION.
 3. **DONE:** Policy Calibration -> structural alignment only.
-4. **DONE (contract/adapter preparation) / EXTERNAL DATA-AUTH BLOCKER:** KRX source routes are explicitly separated; obtain an authorized reproducible historical status source + coverage/PIT lineage before Judge readiness.
-5. **EXTERNAL DATA-AUTH BLOCKER:** establish authorized investor-flow history/mapping/availability lineage before any performance test.
-6. **DONE:** Shadow/Paper/Live execution evidence semantics corrected; research CI and server full tests pass.
-7. **DONE:** corrected execution ledger deployed to Railway production as deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba`; `/health` 200 OK. Deployment does not authorize trading.
-8. **EMPIRICAL DATA BLOCKER:** collect genuine execution evidence only at the appropriate staged mode. Shadow supplies decisions, Paper supplies plumbing evidence, Tiny Live+ supplies real empirical fill evidence. Do not fabricate rows.
-9. Keep sealed holdout untouched until official data/execution blockers, code and protocol are frozen; then follow the frozen holdout -> Shadow S1 -> Fresh Confirmation S2 sequence.
-10. **PHYSICAL E2E PENDING:** one current Android-build handset receipt is still required for full notification end-to-end verification.
-11. **LIVE ORDERING DISABLED:** minimal-control UX is frozen, but real Kiwoom ordering remains gated by research/promotion, official API verification, safety controls and explicit user activation.
+4. **DONE:** KRX A-F source-governance contract, machine audit, probe fingerprints and CI enforcement are implemented and tested.
+5. **EXTERNAL DATA-AUTH BLOCKER:** Gate A for both KRX status and investor-flow is `BLOCKED` because the audited GitHub Actions runtime has no KRX credentials/authorized source configured. Do not place secrets in source code/logs; configure an approved route through secure secret management before an authenticated diagnostic can occur.
+6. **EXTERNAL DATA/COVERAGE BLOCKER:** status Gates C/D remain blocked until full historical common-stock/security-status coverage and PIT lineage are reconstructed/audited; investor Gate C remains blocked and D partial until historical availability lineage is complete.
+7. **DONE:** Shadow/Paper/Live execution evidence semantics corrected; research CI and server full tests pass.
+8. **DONE:** corrected execution ledger deployed to Railway production as deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba`; `/health` 200 OK. Deployment does not authorize trading.
+9. **EMPIRICAL DATA BLOCKER:** collect genuine execution evidence only at the appropriate staged mode. Shadow supplies decisions, Paper supplies plumbing evidence, Tiny Live+ supplies real empirical fill evidence. Do not fabricate rows.
+10. Keep sealed holdout untouched until official data/execution blockers, code and protocol are frozen; then follow the frozen holdout -> Shadow S1 -> Fresh Confirmation S2 sequence.
+11. **PHYSICAL E2E PENDING:** one current Android-build handset receipt is still required for full notification end-to-end verification.
+12. **LIVE ORDERING DISABLED:** minimal-control UX is frozen, but real Kiwoom ordering remains gated by research/promotion, official API verification, safety controls and explicit user activation.
 
 ## 8. Continuation rule
 
 On every continuation:
-- re-read current Master Spec, Ledger, source/evidence contracts, this snapshot and relevant branch HEAD/Actions;
+- re-read current Master Spec, Ledger, source/evidence contracts, source-gate audit, this snapshot and relevant branch HEAD/Actions;
 - skip completed/rejected experiments;
 - never revive rejected candidates by threshold/cost/horizon mining;
 - never convert Shadow or Paper observations into live empirical evidence;
+- never interpret a green source-probe workflow as authenticated-source success without checking its internal result and `authenticated_request_attempted` flag;
 - if old chat conflicts with reproducible GitHub evidence, GitHub wins;
 - commit each material result/contract correction to canonical GitHub docs so chat history remains nonessential.
 
