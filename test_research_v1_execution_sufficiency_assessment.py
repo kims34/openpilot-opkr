@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-import json
 from pathlib import Path
 
 import pandas as pd
@@ -76,13 +75,19 @@ def test_frozen_project_protocol_document_hash_matches():
     assert out["live_trading_authorized"] is False
 
 
-def test_synthetic_fixture_can_exercise_pass_path_but_never_authorizes_promotion():
+def test_synthetic_fixture_can_pass_metric_path_but_cannot_close_project_blocker():
     p, doc = load_frozen_project_protocol(ROOT)
     out = assess_execution_sufficiency(_evidence(), p, protocol_document_text=doc)
-    # Unit-test fixtures validate only the evaluator path; they are never project evidence.
-    assert out["empirical_execution_sufficiency_assessed"] is True
-    assert out["empirical_execution_blocker_closed"] is True
+    # Unit-test fixtures validate only the numerical evaluator path. A self-labelled
+    # LIVE CSV is not genuine project evidence and cannot close the blocker.
+    assert out["execution_metric_gates_passed"] is True
     assert out["failed_gates"] == []
+    assert out["genuine_live_provenance_verified"] is False
+    assert out["provenance_admission_required"] is True
+    assert out["project_failed_gates"] == ["independent_live_provenance_admission"]
+    assert out["empirical_execution_sufficiency_assessed"] is True
+    assert out["live_empirical_execution_evidence_ready"] is False
+    assert out["empirical_execution_blocker_closed"] is False
     assert out["promotion_ready"] is False
     assert out["sealed_holdout_authorized"] is False
     assert out["live_trading_authorized"] is False
@@ -91,9 +96,11 @@ def test_synthetic_fixture_can_exercise_pass_path_but_never_authorizes_promotion
 def test_insufficient_sample_fails_without_relaxing_thresholds():
     p, doc = load_frozen_project_protocol(ROOT)
     out = assess_execution_sufficiency(_evidence(300), p, protocol_document_text=doc)
+    assert out["execution_metric_gates_passed"] is False
     assert out["empirical_execution_blocker_closed"] is False
     assert "minimum_live_observations" in out["failed_gates"]
     assert "minimum_distinct_decision_dates" in out["failed_gates"]
+    assert "independent_live_provenance_admission" in out["project_failed_gates"]
 
 
 def test_excess_slippage_and_capacity_breach_fail_closed():
@@ -101,6 +108,7 @@ def test_excess_slippage_and_capacity_breach_fail_closed():
     out = assess_execution_sufficiency(
         _evidence(bad_slippage=True), p, protocol_document_text=doc
     )
+    assert out["execution_metric_gates_passed"] is False
     assert out["empirical_execution_blocker_closed"] is False
     assert "mean_excess_slippage_ucb95" in out["failed_gates"]
     assert "slippage_budget_ratio_p95" in out["failed_gates"]
@@ -108,6 +116,7 @@ def test_excess_slippage_and_capacity_breach_fail_closed():
     out2 = assess_execution_sufficiency(
         _evidence(over_capacity=True), p, protocol_document_text=doc
     )
+    assert out2["execution_metric_gates_passed"] is False
     assert out2["empirical_execution_blocker_closed"] is False
     assert "zero_capacity_breaches" in out2["failed_gates"]
 
