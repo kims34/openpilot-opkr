@@ -55,6 +55,16 @@ jobs:
           expected_registration_contract = 'register-client-build-v1'
           expected_self_test_contract = 'android-register-direct-v1'
           expected_binding_contract = 'registered-device-build-receipt-v1'
+          expected_blocker_contract = 'physical-e2e-blocker-v1'
+          allowed_blockers = {
+              'NO_REGISTERED_BUILD',
+              'NO_SELF_TEST',
+              'DEVICE_MISMATCH',
+              'BUILD_MISMATCH',
+              'SELF_TEST_NOT_SENT',
+              'RECEIPT_PENDING',
+              'CONFIRMED',
+          }
 
           health = json.load(open('/tmp/health.json'))
           push = json.load(open('/tmp/push-health.json'))
@@ -72,13 +82,14 @@ jobs:
               }, ensure_ascii=False))
               raise SystemExit(1)
 
-          # Once the exact GitHub revision is live, missing build/device contract
-          # markers are not a rollout delay. They prove that the wrong runtime
-          # entrypoint/route set is serving production and must fail immediately.
+          # Once the exact GitHub revision is live, missing build/device/blocker
+          # contract markers are not a rollout delay. They prove that the wrong
+          # runtime entrypoint/route set is serving production and must fail.
           if (
               push.get('registration_build_contract') != expected_registration_contract
               or push.get('self_test_trigger_contract') != expected_self_test_contract
               or push.get('physical_e2e_binding_contract') != expected_binding_contract
+              or push.get('physical_e2e_blocker_contract') != expected_blocker_contract
           ):
               print('EXACT_REVISION_BUILD_CONTRACT_VIOLATION', json.dumps({
                   'runtime_revision': status.get('runtime_revision'),
@@ -95,13 +106,19 @@ jobs:
           assert isinstance(push.get('registration_build_matches_self_test'), bool), push
           assert isinstance(push.get('current_build_physical_e2e_confirmed'), bool), push
 
+          blocker = push.get('physical_e2e_blocker')
+          assert blocker in allowed_blockers, push
+
           registered_build = push.get('latest_registered_client_build')
           self_test_build = push.get('latest_self_test_build')
           if registered_build is not None:
               assert isinstance(registered_build, str) and registered_build, push
           if self_test_build is not None:
               assert isinstance(self_test_build, str) and self_test_build, push
-          if push['current_build_physical_e2e_confirmed']:
+
+          confirmed = push['current_build_physical_e2e_confirmed']
+          assert confirmed == (blocker == 'CONFIRMED'), push
+          if confirmed:
               assert registered_build == self_test_build and registered_build, push
               assert push.get('registration_device_matches_self_test') is True, push
               assert push.get('registration_build_matches_self_test') is True, push
@@ -129,11 +146,13 @@ jobs:
               'registration_build_contract': push.get('registration_build_contract'),
               'self_test_trigger_contract': push.get('self_test_trigger_contract'),
               'physical_e2e_binding_contract': push.get('physical_e2e_binding_contract'),
+              'physical_e2e_blocker_contract': push.get('physical_e2e_blocker_contract'),
+              'physical_e2e_blocker': blocker,
               'latest_registered_client_build': registered_build,
               'latest_self_test_build': self_test_build,
               'registration_device_matches_self_test': push.get('registration_device_matches_self_test'),
               'registration_build_matches_self_test': push.get('registration_build_matches_self_test'),
-              'current_build_physical_e2e_confirmed': push.get('current_build_physical_e2e_confirmed'),
+              'current_build_physical_e2e_confirmed': confirmed,
           }, ensure_ascii=False, indent=2))
           PY
               validation_rc=$?
