@@ -78,6 +78,21 @@ jobs:
           assert isinstance(push_health.get('sent_deliveries'), int), push_health
           assert isinstance(push_health.get('received_deliveries'), int), push_health
           assert isinstance(push_health.get('unconfirmed_sent_deliveries'), int), push_health
+
+          # Physical-E2E readiness must be bound to the latest Android build self-test,
+          # not inferred from an old aggregate receipt. These fields also serve as a
+          # production-deployment contract: stale server deployments fail this smoke.
+          assert 'latest_self_test_build' in push_health, push_health
+          assert isinstance(push_health.get('latest_self_test_sent'), bool), push_health
+          assert isinstance(push_health.get('latest_self_test_receipt_confirmed'), bool), push_health
+          assert isinstance(push_health.get('current_build_physical_e2e_confirmed'), bool), push_health
+          if push_health.get('latest_self_test_build') is not None:
+              assert isinstance(push_health['latest_self_test_build'], str) and push_health['latest_self_test_build'], push_health
+          if push_health['current_build_physical_e2e_confirmed']:
+              assert push_health.get('latest_self_test_build'), push_health
+              assert push_health['latest_self_test_sent'] is True, push_health
+              assert push_health['latest_self_test_receipt_confirmed'] is True, push_health
+
           paths=openapi.get('paths') or {}
           assert '/push-ack' in paths, paths
           assert '/push-self-test' in paths, paths
