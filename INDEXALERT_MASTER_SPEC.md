@@ -1,6 +1,6 @@
 # IndexAlert Master Spec — Current Research Authority
 
-Updated: 2026-09-30 KST
+Updated: 2026-10-01 KST
 Branch: `index-alert-research-v1`
 
 This document supersedes earlier research notes when they conflict with the architecture below.
@@ -370,3 +370,18 @@ Future pre-trade capital accounting must conservatively include automated positi
 `projected_committed_automation_capital_krw <= max_automation_capital_krw`
 
 Pre-existing/manual holdings are outside automated control unless a separately explicit future contract opts them in. Full product/control details are frozen in `INDEXALERT_AUTOMATION_UX_CONTRACT.md`; broker/order lifecycle details remain in `INDEXALERT_BROKER_EXECUTION_CONTRACT.md`.
+
+## 16. Frozen KRX source gates A-F — 2026-10-01
+
+Before a KRX source family may be treated as source-ready for its declared scope, it must satisfy all six source-governance gates below. Canonical detailed semantics are in `INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md`; the current evidence state is in `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md`; executable audit semantics are in `research_v1_krx_source_gates.py`.
+
+- **Gate A — `AUTHORIZED_OFFICIAL_ROUTE`**: exact official route/product and appropriate authorization; OpenAPI, Data Marketplace web-session and purchased/distributed routes are not interchangeable.
+- **Gate B — `EXACT_DATASET_SCHEMA_MAPPING`**: exact service/screen/feed and required schema/fields must be verified; similar names or provisional transports do not pass.
+- **Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING`**: required historical period and relevant securities must be covered with stable security mapping/common-stock identity where required.
+- **Gate D — `PIT_AVAILABILITY_LINEAGE`**: event/publication/availability/ingestion lineage must be explicit and no observation may be used before official availability.
+- **Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED`**: acquisition and source metadata must be reproducible/auditable; ambiguity, undocumented proxies and synthetic source substitution fail closed.
+- **Gate F — `INTENDED_USE_RIGHTS`**: permitted use must be verified for the declared scope; internal research and external/commercial product use are separate scopes.
+
+Each gate is `PASS`, `PARTIAL` or `BLOCKED`; only `PASS` closes it. `PARTIAL` is never treated as a pass. Any non-PASS gate keeps that source contract open for the declared scope.
+
+Even six PASS results are **source-governance evidence only**. They do not by themselves authorize model/Final-Judge promotion, sealed-holdout consumption, Shadow/Paper/Tiny-Live progression or live trading. All existing PIT/time consistency, anchored Walk-Forward, Purged/CPCV, realistic transaction/execution cost and fill modeling, distributional NetEV, tail/recency/capacity, one-shot holdout, Shadow S1 and Fresh Confirmation S2 requirements remain unchanged and independent.
