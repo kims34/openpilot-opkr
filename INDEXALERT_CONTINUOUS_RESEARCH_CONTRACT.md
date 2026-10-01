@@ -41,3 +41,9 @@ This contract does not alter any existing H5/H10 disposition, KRX blocker, execu
 ## Automated research orchestrator
 
 `research_v1_research_orchestrator.py` may translate explicit, evidence-referenced diagnostic flags into deterministic `IDEA` queue items for calibration drift, execution-cost drift, feature freshness drift, regime drift and data-quality drift. Unknown/free-form flags and signals without an evidence reference are not queued. No signal means no research churn. Any sealed-holdout input fails closed. The orchestrator has no authority to execute a challenger, alter Core, change frozen thresholds, promote, open holdout, or authorize live orders.
+
+## Successor Core auto-staging and promotion boundary
+
+`research_v1_successor_core.py` permits deterministic automatic creation of a versioned `SHADOW_CANDIDATE` successor artifact only after an `ACCEPTED_CHALLENGER` also passes explicit independent OOS, cost-stress, tail-risk, recent-stability, PIT-integrity, no-leakage and frozen-protocol-match gates. Post-hoc criteria changes or sealed-holdout use at this stage block successor creation.
+
+A successor may become `PROMOTION_ELIGIBLE` for automatic **code/Core version update** only after Shadow S1, Fresh Confirmation S2, the separately authorized sealed-holdout contract, all external blockers, and the empirical execution blocker are independently closed. This permission never enables real-account ordering: `automatic_live_order_activation_allowed=false` and `live_order_authorized=false` remain hard boundaries. Promotion eligibility therefore means that validated program logic may advance to the next Core version; capital-moving authority remains separately gated.
