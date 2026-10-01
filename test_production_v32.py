@@ -32,11 +32,11 @@ class ProductionV32RegistrationTests(unittest.TestCase):
     def _register_device(self, token: str):
         return monitor.register(monitor.RegisterBody(token=token, protocol=2))
 
-    def _insert_self_test(self, token: str, build: str, event_id: str, created: float):
+    def _insert_self_test(self, token: str, build: str, event_id: str, created: float, sent: int = 1):
         with monitor.db() as con:
             con.execute(
                 """INSERT INTO deliveries(token,index_id,cycle,threshold,event_id,payload,created,sent)
-                   VALUES(?,?,?,?,?,?,?,1)""",
+                   VALUES(?,?,?,?,?,?,?,?)""",
                 (
                     token,
                     push_self_test.INDEX_ID,
@@ -45,6 +45,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
                     event_id,
                     "{}",
                     created,
+                    sent,
                 ),
             )
 
@@ -110,6 +111,22 @@ class ProductionV32RegistrationTests(unittest.TestCase):
             ).fetchone()
         self.assertIsNone(row)
 
+    def test_blocker_codes_are_fail_closed_and_ordered(self):
+        p = self.p
+        empty = p.push_health_v32()
+        self.assertEqual(empty["physical_e2e_blocker"], "NO_REGISTERED_BUILD")
+        self.assertFalse(empty["current_build_physical_e2e_confirmed"])
+
+        token = "n" * 40
+        self._register_device(token)
+        p._record_device_build(token, "4.7-47")
+        no_test = p.push_health_v32()
+        self.assertEqual(no_test["physical_e2e_blocker"], "NO_SELF_TEST")
+
+        self._insert_self_test(token, "4.7-47", "evt-unsent", 1.0, sent=0)
+        unsent = p.push_health_v32()
+        self.assertEqual(unsent["physical_e2e_blocker"], "SELF_TEST_NOT_SENT")
+
     def test_health_requires_receipt_for_exact_registered_device_and_build(self):
         p = self.p
         token = "h" * 40
@@ -123,6 +140,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertEqual(old["latest_self_test_build"], "4.6-46")
         self.assertTrue(old["registration_device_matches_self_test"])
         self.assertFalse(old["registration_build_matches_self_test"])
+        self.assertEqual(old["physical_e2e_blocker"], "BUILD_MISMATCH")
         self.assertFalse(old["current_build_physical_e2e_confirmed"])
 
         self._insert_self_test(token, "4.7-47", "evt-current", 2.0)
@@ -130,10 +148,12 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertEqual(sent["latest_self_test_build"], "4.7-47")
         self.assertTrue(sent["registration_device_matches_self_test"])
         self.assertTrue(sent["registration_build_matches_self_test"])
+        self.assertEqual(sent["physical_e2e_blocker"], "RECEIPT_PENDING")
         self.assertFalse(sent["current_build_physical_e2e_confirmed"])
 
         self._ack(token, "evt-current")
         confirmed = p.push_health_v32()
+        self.assertEqual(confirmed["physical_e2e_blocker"], "CONFIRMED")
         self.assertTrue(confirmed["current_build_physical_e2e_confirmed"])
         self.assertTrue(confirmed["registration_build_observed"])
         self.assertTrue(confirmed["registration_device_matches_self_test"])
@@ -165,6 +185,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertEqual(wrong_device["latest_self_test_build"], "4.7-47")
         self.assertFalse(wrong_device["registration_device_matches_self_test"])
         self.assertTrue(wrong_device["registration_build_matches_self_test"])
+        self.assertEqual(wrong_device["physical_e2e_blocker"], "DEVICE_MISMATCH")
         self.assertFalse(wrong_device["current_build_physical_e2e_confirmed"])
 
         self._insert_self_test(latest_token, "4.7-47", "evt-device-b", 11.0)
@@ -172,7 +193,20 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         right_device = p.push_health_v32()
         self.assertTrue(right_device["registration_device_matches_self_test"])
         self.assertTrue(right_device["registration_build_matches_self_test"])
+        self.assertEqual(right_device["physical_e2e_blocker"], "CONFIRMED")
         self.assertTrue(right_device["current_build_physical_e2e_confirmed"])
+
+    def test_public_health_never_exposes_private_token_or_event_id(self):
+        p = self.p
+        token = "p" * 40
+        event_id = "evt-private-should-never-leak"
+        self._register_device(token)
+        p._record_device_build(token, "4.7-47")
+        self._insert_self_test(token, "4.7-47", event_id, 1.0)
+        self._ack(token, event_id)
+        rendered = repr(p.push_health_v32())
+        self.assertNotIn(token, rendered)
+        self.assertNotIn(event_id, rendered)
 
     def test_invalid_build_is_rejected_before_registration(self):
         p = self.p
