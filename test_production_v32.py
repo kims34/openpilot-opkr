@@ -1,4 +1,5 @@
 import hashlib
+import importlib
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -6,17 +7,24 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 import monitor
-import production_v32 as p
 import push_receipts
 import push_self_test
 
 
 class ProductionV32RegistrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # unittest discovery imports every test module before test_monitor runs.
+        # Loading the full production stack at module import time mutates the
+        # shared monitor globals and makes the isolated monitor tests order-
+        # dependent. Import v32 only when this suite actually starts.
+        cls.p = importlib.import_module("production_v32")
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         monitor.DB_PATH = self.tmp.name + "/test.db"
         monitor.ATH_REFRESH.clear()
-        p._init_device_build_db()
+        self.p._init_device_build_db()
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -51,6 +59,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         )
 
     def test_register_records_build_and_advertises_direct_client_self_test(self):
+        p = self.p
         token = "r" * 40
         with patch.object(
             p.production,
@@ -78,6 +87,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertEqual(row, ("4.7-47",))
 
     def test_legacy_registration_clears_old_build_observation(self):
+        p = self.p
         token = "l" * 40
         p._record_device_build(token, "4.7-47")
         with patch.object(
@@ -97,6 +107,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         self.assertIsNone(row)
 
     def test_health_requires_receipt_for_exact_registered_build(self):
+        p = self.p
         token = "h" * 40
         self._register_device(token)
         p._record_device_build(token, "4.7-47")
@@ -125,6 +136,7 @@ class ProductionV32RegistrationTests(unittest.TestCase):
         )
 
     def test_invalid_build_is_rejected_before_registration(self):
+        p = self.p
         with self.assertRaises(HTTPException):
             p.register_v32(
                 p.RegisterBodyV32(
