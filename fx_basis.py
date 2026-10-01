@@ -52,6 +52,55 @@ def prior_business_close(
     return float(value), day.isoformat()
 
 
+def public_basis_fields(extra: dict | None) -> dict:
+    """Return only a fully verified public USD/KRW day-change basis.
+
+    Older runtime layers can briefly populate a live FX value plus a provider
+    fallback previous-close before the Bank of Korea ECOS 15:30 reference has
+    been verified.  That value may remain useful as a current quote, but it must
+    never be exposed as an official day-change basis.  Any incomplete or
+    malformed verified state therefore collapses to an explicit fail-closed
+    public shape instead of leaking stale/fallback comparison data.
+    """
+    state = dict(extra or {})
+    try:
+        previous = float(state.get("previous_close"))
+        change = float(state.get("day_change"))
+        percent = float(state.get("day_change_percent"))
+        previous_date = str(state.get("previous_close_date") or "").strip()
+        basis_provider = str(state.get("basis_provider") or "").strip()
+        valid = (
+            state.get("basis_verified") is True
+            and math.isfinite(previous)
+            and previous > 0
+            and math.isfinite(change)
+            and math.isfinite(percent)
+            and bool(previous_date)
+            and "ECOS" in basis_provider
+        )
+    except Exception:
+        valid = False
+
+    if not valid:
+        return {
+            "previous_close": None,
+            "previous_close_date": None,
+            "day_change": None,
+            "day_change_percent": None,
+            "basis_verified": False,
+            "basis_provider": None,
+        }
+
+    return {
+        "previous_close": previous,
+        "previous_close_date": previous_date,
+        "day_change": change,
+        "day_change_percent": percent,
+        "basis_verified": True,
+        "basis_provider": basis_provider,
+    }
+
+
 def fetch_usdkrw_1530_closes(
     requests_module,
     *,
