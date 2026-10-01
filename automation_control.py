@@ -50,9 +50,9 @@ class PlannedOrder:
     estimated_notional_krw: int
 
 
-def _strict_bool(value: Any) -> bool:
+def _strict_bool(value: Any, field: str) -> bool:
     if type(value) is not bool:  # bool only; do not silently accept 0/1 or strings.
-        raise AutomationControlError("automation_enabled must be a boolean")
+        raise AutomationControlError(f"{field} must be a boolean")
     return value
 
 
@@ -90,7 +90,7 @@ def parse_user_control(payload: Mapping[str, Any]) -> AutomationControl:
     if missing:
         raise AutomationControlError("missing automation control keys: " + ", ".join(missing))
     return AutomationControl(
-        automation_enabled=_strict_bool(payload["automation_enabled"]),
+        automation_enabled=_strict_bool(payload["automation_enabled"], "automation_enabled"),
         max_automation_capital_krw=_positive_won(payload["max_automation_capital_krw"]),
     )
 
@@ -105,10 +105,16 @@ def validate_engine_plan(
     """Apply user authority and capital ceiling to an engine-generated plan.
 
     This is a pre-broker safety gate, not an order sender. LIVE ordering stays
-    disabled unless a later staged-release gate explicitly supplies
-    ``live_ordering_authorized=True`` after all research/operational controls
-    have been satisfied.
+    disabled unless a later staged-release gate explicitly supplies the literal
+    boolean ``True`` after all research/operational controls have been satisfied.
+    Truthy strings/integers are rejected rather than coerced.
     """
+    live_authorized = _strict_bool(live_ordering_authorized, "live_ordering_authorized")
+    if not isinstance(control, AutomationControl):
+        raise AutomationControlError("control must be a validated AutomationControl")
+    if isinstance(orders, (str, bytes)) or not isinstance(orders, Sequence):
+        raise AutomationControlError("orders must be a sequence of PlannedOrder values")
+
     normalized_decision = str(decision).strip().upper()
     if normalized_decision not in {"TRADE", "NO_TRADE"}:
         raise AutomationControlError("decision must be TRADE or NO_TRADE")
@@ -137,19 +143,17 @@ def validate_engine_plan(
 
     total = 0
     for order in orders:
+        if not isinstance(order, PlannedOrder):
+            raise AutomationControlError("orders must contain only PlannedOrder values")
         if str(order.side).upper() != "BUY":
             raise AutomationControlError("current automated-entry contract supports BUY plans only")
         if not str(order.symbol).strip():
             raise AutomationControlError("planned order symbol is required")
-        if isinstance(order.quantity, bool) or int(order.quantity) != order.quantity or order.quantity <= 0:
+        if type(order.quantity) is not int or order.quantity <= 0:
             raise AutomationControlError("planned order quantity must be a positive integer")
-        if (
-            isinstance(order.estimated_notional_krw, bool)
-            or int(order.estimated_notional_krw) != order.estimated_notional_krw
-            or order.estimated_notional_krw <= 0
-        ):
+        if type(order.estimated_notional_krw) is not int or order.estimated_notional_krw <= 0:
             raise AutomationControlError("estimated order notional must be a positive integer amount")
-        total += int(order.estimated_notional_krw)
+        total += order.estimated_notional_krw
 
     if total > control.max_automation_capital_krw:
         raise AutomationControlError(
@@ -163,5 +167,5 @@ def validate_engine_plan(
         "planned_notional_krw": total,
         "uncommitted_cash_capacity_krw": control.max_automation_capital_krw - total,
         "max_automation_capital_krw": control.max_automation_capital_krw,
-        "live_ordering_authorized": bool(live_ordering_authorized),
+        "live_ordering_authorized": live_authorized,
     }
