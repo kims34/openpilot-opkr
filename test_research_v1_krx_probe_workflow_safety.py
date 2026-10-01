@@ -28,6 +28,7 @@ def test_probe_workflow_keeps_push_dry_and_authenticated_probe_manual_only(path,
     assert "allow_authenticated_request:" in text
     assert "default: false" in text
     assert "authorization_evidence_reference:" in text
+    assert "authorization_evidence_json:" in text
 
     dry_marker = f"- name: {dry_name}"
     auth_marker = f"- name: {auth_name}"
@@ -44,16 +45,20 @@ def test_probe_workflow_keeps_push_dry_and_authenticated_probe_manual_only(path,
     assert "KRX_PW: ''" in dry
     assert "KRX_OPENAPI_AUTH_KEY: ''" in dry
     assert "KRX_AUTH_EVIDENCE_REF: ''" in dry
+    assert "KRX_AUTH_EVIDENCE_JSON: ''" in dry
     assert "KRX_EXPLICIT_PROBE_CONSENT: ''" in dry
     assert "secrets.KRX_ID" not in dry
     assert "secrets.KRX_PW" not in dry
+    assert "vars.KRX_AUTH_EVIDENCE_JSON" not in dry
 
     assert "github.event_name == 'workflow_dispatch' && inputs.allow_authenticated_request == true" in auth
     assert "KRX_ID: ${{ secrets.KRX_ID }}" in auth
     assert "KRX_PW: ${{ secrets.KRX_PW }}" in auth
     assert "KRX_OPENAPI_AUTH_KEY: ''" in auth
     assert "inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF" in auth
+    assert "inputs.authorization_evidence_json || vars.KRX_AUTH_EVIDENCE_JSON" in auth
     assert "KRX_EXPLICIT_PROBE_CONSENT: 'ALLOW_TINY_AUTHENTICATED_REQUEST'" in auth
+    assert "research_v1_krx_authorization_evidence.py" in auth
 
     # Data Marketplace probe workflows must never consume the OpenAPI secret.
     assert "secrets.KRX_OPENAPI_AUTH_KEY" not in text
@@ -77,14 +82,21 @@ def test_auth_readiness_workflow_is_manual_only_and_cannot_enable_request_consen
 
     assert "workflow_dispatch:" in trigger_block
     assert "push:" not in trigger_block
+    assert "source_family:" in trigger_block
+    assert "KRX_INVESTOR_FLOW" in trigger_block
+    assert "KRX_SECURITY_STATUS" in trigger_block
     assert "authorization_evidence_reference:" in trigger_block
+    assert "authorization_evidence_json:" in trigger_block
 
     assert "KRX_ID: ${{ secrets.KRX_ID }}" in run_block
     assert "KRX_PW: ${{ secrets.KRX_PW }}" in run_block
     assert "KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}" in run_block
     assert "inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF" in run_block
+    assert "inputs.authorization_evidence_json || vars.KRX_AUTH_EVIDENCE_JSON" in run_block
+    assert "KRX_READINESS_SOURCE_FAMILY: ${{ inputs.source_family }}" in run_block
     assert "KRX_EXPLICIT_PROBE_CONSENT: ''" in run_block
     assert "ALLOW_TINY_AUTHENTICATED_REQUEST" not in run_block
+    assert "research_v1_krx_authorization_evidence.py" in run_block
     assert "research_v1_krx_auth_readiness.py" in run_block
 
 
