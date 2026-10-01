@@ -2,8 +2,8 @@ import pytest
 
 from research_v1_kiwoom_native_execution import (
     KiwoomNativeExecutionError,
-    canonical_event_sha256,
     normalize_realtime_order_fill_event,
+    privacy_safe_event_sha256,
 )
 
 
@@ -93,12 +93,18 @@ def test_raw_account_binding_and_privacy_safe_fingerprint_are_required():
         normalize_realtime_order_fill_event(_fill_event(), account_fingerprint="unsafe")
 
 
-def test_event_hash_is_deterministic_identity_only():
+def test_privacy_safe_event_hash_is_deterministic_and_excludes_raw_account_number():
     raw = _fill_event()
     reordered = dict(reversed(list(raw.items())))
-    assert canonical_event_sha256(raw) == canonical_event_sha256(reordered)
+    assert privacy_safe_event_sha256(raw) == privacy_safe_event_sha256(reordered)
+
+    other_account = dict(raw)
+    other_account["9201"] = "9999999999"
+    assert privacy_safe_event_sha256(raw) == privacy_safe_event_sha256(other_account)
+
     row = normalize_realtime_order_fill_event(raw, account_fingerprint=ACCOUNT_FP)
-    assert row["raw_event_sha256"] == canonical_event_sha256(raw)
+    assert row["privacy_safe_event_sha256"] == privacy_safe_event_sha256(raw)
+    assert "raw_event_sha256" not in row
     assert row["genuine_live_provenance_verified"] is False
 
 
