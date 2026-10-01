@@ -111,8 +111,9 @@ Even a structurally valid preregistered protocol sets only protocol validity. It
 
 Canonical contract: `INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md`.
 
-`research_v1_execution_sufficiency_assessment.py` is a numerical metric evaluator. It cannot authenticate broker provenance from a caller-supplied CSV. Therefore a metric pass by itself must keep:
+`research_v1_execution_sufficiency_assessment.py` is a numerical metric evaluator. It cannot authenticate broker provenance from a caller-supplied CSV. Therefore a metric pass by itself must keep all project-level empirical state fail-closed:
 - `genuine_live_provenance_verified=false`;
+- `empirical_execution_sufficiency_assessed=false`;
 - `live_empirical_execution_evidence_ready=false`;
 - `empirical_execution_blocker_closed=false`.
 

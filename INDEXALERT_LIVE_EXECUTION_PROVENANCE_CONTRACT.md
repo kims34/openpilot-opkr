@@ -60,6 +60,8 @@ The provenance review must preserve negative/adverse observations. Missing broke
 Therefore, until an independent broker-native provenance admission exists and passes for the exact evidence bundle, the evaluator/CLI must keep:
 
 - `genuine_live_provenance_verified=false`;
+- `execution_metric_sufficiency_assessed=true` may describe only the numerical evaluation that was run;
+- `empirical_execution_sufficiency_assessed=false`;
 - `live_empirical_execution_evidence_ready=false`;
 - `empirical_execution_blocker_closed=false`;
 - `promotion_ready=false`;

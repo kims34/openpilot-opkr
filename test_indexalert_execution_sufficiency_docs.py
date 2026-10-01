@@ -67,6 +67,8 @@ def test_live_execution_provenance_is_required_before_project_blocker_closure():
     provenance = _read("INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md")
 
     assert "execution_metric_gates_passed" in master
+    assert "execution_metric_sufficiency_assessed=true" in master
+    assert "empirical_execution_sufficiency_assessed=false" in provenance
     assert "INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md" in master
     assert "genuine_live_provenance_verified=false" in status
     assert "broker-native provenance admission" in snapshot

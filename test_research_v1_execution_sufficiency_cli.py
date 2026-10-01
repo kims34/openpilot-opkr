@@ -25,6 +25,8 @@ def test_cli_writes_hash_bound_metric_result_without_closing_project_blocker(tmp
     assert saved["evidence_rows_read"] == 600
     assert saved["evidence_file_sha256"] == hashlib.sha256(csv_path.read_bytes()).hexdigest()
     assert saved["execution_metric_gates_passed"] is True
+    assert saved["execution_metric_sufficiency_assessed"] is True
+    assert saved["empirical_execution_sufficiency_assessed"] is False
     assert saved["genuine_live_provenance_verified"] is False
     assert saved["project_failed_gates"] == ["independent_live_provenance_admission"]
     assert saved["live_empirical_execution_evidence_ready"] is False

@@ -85,7 +85,8 @@ def test_synthetic_fixture_can_pass_metric_path_but_cannot_close_project_blocker
     assert out["genuine_live_provenance_verified"] is False
     assert out["provenance_admission_required"] is True
     assert out["project_failed_gates"] == ["independent_live_provenance_admission"]
-    assert out["empirical_execution_sufficiency_assessed"] is True
+    assert out["execution_metric_sufficiency_assessed"] is True
+    assert out["empirical_execution_sufficiency_assessed"] is False
     assert out["live_empirical_execution_evidence_ready"] is False
     assert out["empirical_execution_blocker_closed"] is False
     assert out["promotion_ready"] is False
