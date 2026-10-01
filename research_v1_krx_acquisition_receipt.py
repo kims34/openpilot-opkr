@@ -4,8 +4,9 @@ This module creates metadata-only immutable receipts for future authenticated
 historical KRX acquisitions. It does not perform a KRX request and it does not
 persist numeric market data. A receipt binds an acquisition to the declared
 source family, access route/product, dataset identifier, request parameters,
-client revision, public-contract evidence version/fingerprint, observed schema
-and payload/content fingerprint.
+client revision, the validated structured authorization-evidence record
+fingerprint, public-contract evidence version/fingerprint, observed schema and
+payload/content fingerprint.
 
 A receipt is Gate-E infrastructure only. Creating a valid receipt does not make
 any A-F source gate PASS, does not authorize feature testing, sealed holdout,
@@ -14,7 +15,6 @@ promotion or live trading.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime
 import hashlib
 import json
 import re
@@ -63,6 +63,7 @@ class KRXAcquisitionReceipt:
     access_route: str
     dataset_identifier: str
     authorization_evidence_reference: str
+    authorization_evidence_fingerprint_sha256: str
     client_revision: str
     retrieved_at: str
     request_metadata_sha256: str
@@ -169,8 +170,6 @@ def dataframe_payload_fingerprint(frame: pd.DataFrame) -> str:
         raise KRXAcquisitionReceiptError("response frame is None")
     if frame.columns.duplicated().any():
         raise KRXAcquisitionReceiptError("response frame contains duplicate column names")
-    # pandas' stable row hashes are combined with schema/row count so the result
-    # changes on value, ordering, schema or length drift without persisting data.
     row_hashes = pd.util.hash_pandas_object(frame, index=True).astype("uint64").tolist()
     material = {
         "columns": [str(x) for x in frame.columns],
@@ -188,6 +187,7 @@ def build_acquisition_receipt(
     access_route: str,
     dataset_identifier: str,
     authorization_evidence_reference: str,
+    authorization_evidence_fingerprint_sha256: str,
     client_revision: str,
     retrieved_at: Any,
     request_metadata: Mapping[str, Any],
@@ -197,9 +197,10 @@ def build_acquisition_receipt(
 ) -> dict[str, Any]:
     """Build a deterministic metadata-only acquisition receipt.
 
-    `authorization_evidence_reference` must be an opaque non-secret reference
-    such as an internal approval/ticket/product-contract ID. Never pass an auth
-    key, password, token, cookie or session identifier into this function.
+    The authorization reference must be opaque/non-secret. The structured
+    authorization record itself is not embedded; its validated canonical
+    fingerprint is required so changing the approval record changes every
+    downstream receipt/batch fingerprint and cannot be silently mixed.
     """
     family = _require_text(source_family, "source_family")
     if family not in ALLOWED_SOURCE_FAMILIES:
@@ -217,6 +218,10 @@ def build_acquisition_receipt(
         raise KRXAcquisitionReceiptError(
             "authorization_evidence_reference must be an opaque non-secret reference"
         )
+    auth_evidence_fp = _require_sha256(
+        authorization_evidence_fingerprint_sha256,
+        "authorization_evidence_fingerprint_sha256",
+    )
     revision = _require_text(client_revision, "client_revision")
     retrieved = _aware_iso(retrieved_at, "retrieved_at")
     request = canonical_request_metadata(request_metadata)
@@ -250,12 +255,13 @@ def build_acquisition_receipt(
     request_sha = _sha256(request)
 
     body = {
-        "receipt_version": "2026-10-01.v1",
+        "receipt_version": "2026-10-01.v2",
         "source_family": family,
         "intended_use_scope": scope,
         "access_route": route,
         "dataset_identifier": dataset,
         "authorization_evidence_reference": auth_ref,
+        "authorization_evidence_fingerprint_sha256": auth_evidence_fp,
         "client_revision": revision,
         "retrieved_at": retrieved,
         "request_metadata_sha256": request_sha,
@@ -265,7 +271,6 @@ def build_acquisition_receipt(
         "response_columns": columns,
         "public_contract_evidence_version": public_version,
         "public_contract_evidence_fingerprint_sha256": current_public_fp,
-        # Receipt validity is provenance evidence only, never promotion authority.
         "alpha_or_final_judge_promotion_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
@@ -278,7 +283,7 @@ def build_acquisition_receipt(
     out = asdict(receipt)
     out["response_columns"] = list(receipt.response_columns)
     out["guardrail"] = (
-        "This receipt proves only reproducible provenance/integrity metadata for one acquisition. "
+        "This receipt proves only reproducible provenance/integrity metadata for one acquisition, including the validated structured authorization-record fingerprint. "
         "It does not make any A-F source gate PASS and cannot authorize feature testing, holdout, promotion or live trading."
     )
     return out
