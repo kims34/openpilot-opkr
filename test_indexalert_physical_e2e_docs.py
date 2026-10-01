@@ -6,7 +6,10 @@ STATUS = Path("INDEXALERT_RESEARCH_STATUS.md")
 SNAPSHOT = Path("INDEXALERT_CONTINUITY_SNAPSHOT.md")
 
 EXPECTED_BUILD = "4.7-47"
-EXPECTED_SERVER_REVISION = "d8523810b1c2c092a9ffc8f6245586e3bb719645"
+ORIGINAL_HANDSET_SERVER_REVISION = "d8523810b1c2c092a9ffc8f6245586e3bb719645"
+CURRENT_REVALIDATED_SERVER_REVISION = "4491bceea722341af62ca2c5bf71fa34cd6d05b4"
+CURRENT_REVALIDATION_ACTION = "36904659864"
+CURRENT_REVALIDATION_ARTIFACT = "11182369446"
 EXPECTED_CONTRACTS = (
     "register-client-build-v1",
     "android-register-direct-v1",
@@ -20,7 +23,7 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def test_physical_e2e_canonical_documents_agree_on_confirmed_build_and_revision():
+def test_physical_e2e_canonical_documents_preserve_original_real_handset_proof():
     docs = {
         "audit": _read(AUDIT),
         "status": _read(STATUS),
@@ -28,10 +31,24 @@ def test_physical_e2e_canonical_documents_agree_on_confirmed_build_and_revision(
     }
     for name, text in docs.items():
         assert EXPECTED_BUILD in text, f"{name} lost audited Android build"
-        assert EXPECTED_SERVER_REVISION in text, f"{name} lost audited production revision"
+        assert ORIGINAL_HANDSET_SERVER_REVISION in text, f"{name} lost original handset-proof revision"
         assert "CONFIRMED" in text, f"{name} lost confirmed Physical E2E state"
         for contract in EXPECTED_CONTRACTS:
             assert contract in text, f"{name} lost frozen contract {contract}"
+
+
+def test_physical_e2e_audit_records_current_production_read_only_revalidation_separately():
+    text = _read(AUDIT)
+    assert CURRENT_REVALIDATED_SERVER_REVISION in text
+    assert CURRENT_REVALIDATION_ACTION in text
+    assert CURRENT_REVALIDATION_ARTIFACT in text
+    assert "physical_e2e_confirmed = true" in text
+    assert 'physical_e2e_blocker = "CONFIRMED"' in text
+    assert "latest_self_test_receipt_confirmed = true" in text
+    assert "real_receipt_timestamp_present = true" in text
+    assert "received_delivery_count_positive = true" in text
+    assert "read-only persistence/rebinding verification" in text
+    assert "does not manufacture a new receipt" in text
 
 
 def test_physical_e2e_audit_preserves_real_handset_not_provider_send_boundary():
