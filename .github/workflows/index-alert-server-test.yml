@@ -12,6 +12,7 @@ on:
       - 'push_receipts.py'
       - 'push_self_test.py'
       - 'push_health.py'
+      - 'push_build_registration.py'
       - 'verify_push_physical_e2e.py'
       - 'corporate_action_registry.py'
       - 'laggards.py'
@@ -39,5 +40,5 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -r requirements.txt
-      - run: python -m py_compile production_v30.py production_v31.py production_v32.py execution_evidence_ledger.py automation_control.py push_receipts.py push_self_test.py push_health.py verify_push_physical_e2e.py corporate_action_registry.py laggards.py
+      - run: python -m py_compile production_v30.py production_v31.py production_v32.py execution_evidence_ledger.py automation_control.py push_receipts.py push_self_test.py push_health.py push_build_registration.py verify_push_physical_e2e.py corporate_action_registry.py laggards.py
       - run: python -m unittest discover -p 'test_*.py' -v
