@@ -100,7 +100,7 @@ A valid protocol record must include at least:
 
 If LIVE evidence already exists, `frozen_at` must be **strictly earlier** than the first LIVE recommendation being evaluated. A protocol frozen at or after that first LIVE observation is rejected as post-hoc.
 
-The numeric values used in unit-test fixtures are illustrative test data only and are not IndexAlert promotion thresholds.
+Unit-test fixture values remain non-evidence. The canonical IndexAlert project thresholds are now frozen separately in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and its SHA-256-bound `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`; they were fixed before any genuine LIVE observation.
 
 Even a structurally valid preregistered protocol sets only protocol validity. It deliberately keeps:
 - `empirical_execution_sufficiency_assessed=false`;
@@ -109,7 +109,7 @@ Even a structurally valid preregistered protocol sets only protocol validity. It
 - `sealed_holdout_authorized=false`;
 - `live_trading_authorized=false`.
 
-A later evaluator may assess genuine LIVE evidence against a properly frozen protocol, but that assessment must remain separate from the protocol-registration step.
+`research_v1_execution_sufficiency_assessment.py` is the separate evaluator for genuine LIVE evidence against the frozen project protocol. Protocol registration and evidence assessment remain independent steps.
 
 ## 7. Immutability and identity
 
@@ -125,7 +125,7 @@ Historical rows written under the former source label `PROSPECTIVE_SHADOW_EXECUT
 - Paper evidence = operational/broker-pipeline behavior only.
 - Structurally valid Live evidence = eligible raw empirical observations, not sufficiency by itself.
 - Valid execution-sufficiency protocol = preregistered criteria only, not evidence that criteria pass.
-- Empirical execution sufficiency = a separate future assessment that is currently **not assessed / not closed**.
+- Empirical execution sufficiency = a separate genuine-LIVE assessment that is currently **not assessed / not closed because no genuine LIVE evidence window exists yet**.
 
 No evidence tier changes the frozen statistical contract. In particular:
 - q25 / TopK / costs / horizon are not relaxed because execution evidence is sparse;
@@ -135,6 +135,6 @@ No evidence tier changes the frozen statistical contract. In particular:
 
 ## 9. Current implementation state
 
-The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
+The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. The project protocol is now frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` / `.json`, and the independent evaluator is implemented and Actions-tested. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
 
-The empirical execution blocker remains open. A genuinely frozen future sufficiency protocol plus staged LIVE evidence and its later independent assessment are still required.
+The empirical execution blocker remains open because genuine staged LIVE evidence has not been collected or assessed. The frozen protocol must be evaluated on that future genuine-LIVE window; passing it still does not independently authorize sealed holdout, promotion or live trading.

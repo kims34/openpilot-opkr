@@ -143,15 +143,25 @@ Evidence tiers remain:
 
 Execution integrity Action `36834616144` succeeded after freezing this separation.
 
-## Execution-sufficiency preregistration — validator implemented, project thresholds not yet frozen
+## Execution-sufficiency preregistration — project v1 frozen, genuine LIVE not yet observed
 
-`research_v1_execution_sufficiency_protocol.py` prevents post-hoc execution-threshold selection. It validates a future protocol's explicit criteria, document fingerprint and required dimensions, and requires `frozen_at` to be **strictly earlier** than the first LIVE recommendation that protocol will judge.
+Canonical preregistration/evaluator stack is now:
+- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` — human-readable frozen protocol;
+- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json` — SHA-256-bound machine-readable schema v2 criteria;
+- `research_v1_execution_sufficiency_protocol.py` — fail-closed preregistration validator with legacy schema-v1 compatibility;
+- `research_v1_execution_sufficiency_assessment.py` — independent genuine-LIVE evaluator.
 
-It requires future criteria to explicitly cover live observation count, distinct dates, filled/no-fill/partial-fill evidence, 5m/30m/close markouts, slippage, latency, capacity and tail evidence. Unit-test threshold numbers are test fixtures only and are **not IndexAlert promotion thresholds**.
+The project protocol was frozen before any genuine LIVE observation. Core criteria include at least 600 LIVE observations across at least 200 distinct decision dates, at least 400 filled observations, decision-time PIT ADV participation capped at the existing research assumption `0.0005` (0.05%), 120 near-capacity observations at >=80% of that ceiling, date-cluster fill/slippage gates, Wilson no-fill/partial-fill bounds, 5m/30m/close markouts with ES95/ES99 reporting, latency/expiry controls, fee/tax comparison, and zero unknown/reconciliation/risk/capacity-integrity breaches. Thresholds are bound to the protocol document fingerprint and may not be weakened using outcomes from the evidence window they judge.
 
-A structurally valid protocol still keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. The actual project sufficiency criteria must be separately decided and frozen before the LIVE observations they will evaluate.
+The evaluator accepts only `PROSPECTIVE_LIVE_EXECUTION_LOG`, requires the frozen decision/execution policy IDs and PIT provenance timestamps, and keeps `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` even if the execution-only gates later pass.
 
-Execution preregistration Action `36835013828` succeeded. Strengthened contract-drift Action `36835231533` also succeeded.
+No genuine staged LIVE execution observations exist yet, so current project state remains:
+- `live_empirical_execution_evidence_ready=false`;
+- `empirical_execution_sufficiency_assessed=false`;
+- `empirical_execution_blocker_closed=false`;
+- `promotion_ready=false`.
+
+Historical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures exercise pass/fail code paths only and are not project evidence.
 
 ## Android / push Physical E2E state — CONFIRMED
 
