@@ -11,6 +11,12 @@ fills:
 This module does not simulate fills. Missing fills, partial fills, latency and
 markouts are outcomes to preserve, not records to drop. Backtest/synthetic
 fills and Shadow would-be fills are rejected.
+
+Important terminology boundary:
+- structurally valid LIVE rows only prove that real-account observations exist
+  in the expected schema;
+- they do NOT establish sample sufficiency, capacity, tail behavior or closure
+  of the empirical execution blocker.
 """
 from __future__ import annotations
 
@@ -60,6 +66,10 @@ class ExecutionAudit:
     observations: int
     paper_observations: int
     live_observations: int
+    live_filled_observations: int
+    live_no_fill_observations: int
+    live_partial_fill_observations: int
+    live_full_fill_observations: int
     filled_observations: int
     no_fill_observations: int
     partial_fill_observations: int
@@ -77,7 +87,12 @@ class ExecutionAudit:
     live_execution_source_only: bool
     complete_markout_for_fills: bool
     structural_execution_evidence_ready: bool
+    live_structural_execution_evidence_present: bool
+    # Deprecated compatibility field. It is deliberately never raised merely
+    # because one or more LIVE rows are structurally valid.
     live_empirical_execution_evidence_ready: bool
+    empirical_execution_sufficiency_assessed: bool
+    empirical_execution_blocker_closed: bool
 
 
 def _ts(series: pd.Series) -> pd.Series:
@@ -203,7 +218,6 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         ("30m", "markout_30m_price"),
         ("close", "markout_close_price"),
     ]:
-        # Positive markout means price moved in the BUY direction after fill.
         x[f"markout_{label}_bps"] = np.where(
             filled,
             (x[col] / x["avg_fill_price"] - 1.0) * 10000.0,
@@ -227,11 +241,16 @@ def audit_execution_evidence(table: pd.DataFrame) -> dict:
         x.loc[live_filled, ["markout_5m_price", "markout_30m_price", "markout_close_price"]]
         .notna().all().all()
     ) if live_filled.any() else False
+    live_structural = bool(live_filled.any() and live_complete_markout)
 
     audit = ExecutionAudit(
         observations=int(len(x)),
         paper_observations=int(paper.sum()),
         live_observations=int(live.sum()),
+        live_filled_observations=int((live & filled).sum()),
+        live_no_fill_observations=int((live & x["no_fill"]).sum()),
+        live_partial_fill_observations=int((live & x["partial_fill"]).sum()),
+        live_full_fill_observations=int((live & x["full_fill"]).sum()),
         filled_observations=int(filled.sum()),
         no_fill_observations=int(x["no_fill"].sum()),
         partial_fill_observations=int(x["partial_fill"].sum()),
@@ -248,17 +267,20 @@ def audit_execution_evidence(table: pd.DataFrame) -> dict:
         contains_live_execution_evidence=bool(live.any()),
         live_execution_source_only=bool(live.all()),
         complete_markout_for_fills=complete_markout,
-        # Structural only: either broker execution tier may validate the shape,
-        # but PAPER evidence does not establish real-market fill quality.
         structural_execution_evidence_ready=bool(filled.any() and complete_markout),
-        # Still structural only; no sufficiency threshold is invented here.
-        live_empirical_execution_evidence_ready=bool(live_filled.any() and live_complete_markout),
+        live_structural_execution_evidence_present=live_structural,
+        # One or more structurally valid LIVE rows are not sufficient to close
+        # the empirical execution blocker. Keep the legacy-looking field false
+        # until a separately frozen sufficiency protocol exists and passes.
+        live_empirical_execution_evidence_ready=False,
+        empirical_execution_sufficiency_assessed=False,
+        empirical_execution_blocker_closed=False,
     )
     out = asdict(audit)
     out["promotion_ready"] = False
     out["promotion_note"] = (
-        "Paper observations validate broker/execution plumbing only. Only LIVE observations may count toward "
-        "empirical market-fill evidence, and even LIVE structural validity is not a promotion gate; sample "
-        "sufficiency, capacity, tails, sealed holdout and prospective confirmation remain separate requirements."
+        "Paper observations validate broker/execution plumbing only. Structurally valid LIVE observations may contribute to empirical evidence, "
+        "but this audit does not invent a sample-sufficiency threshold. live_empirical_execution_evidence_ready and empirical_execution_blocker_closed therefore remain false until a separately frozen, preregistered sufficiency protocol exists and passes. "
+        "Capacity, tails, sealed holdout and prospective confirmation remain separate requirements."
     )
     return out
