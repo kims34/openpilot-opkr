@@ -2,6 +2,7 @@ import unittest
 
 from verify_push_physical_e2e import (
     PHYSICAL_E2E_BINDING_CONTRACT,
+    PHYSICAL_E2E_BLOCKER_CONTRACT,
     PhysicalE2EVerificationError,
     REGISTRATION_BUILD_CONTRACT,
     SELF_TEST_TRIGGER_CONTRACT,
@@ -22,6 +23,8 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
             "registration_build_contract": REGISTRATION_BUILD_CONTRACT,
             "self_test_trigger_contract": SELF_TEST_TRIGGER_CONTRACT,
             "physical_e2e_binding_contract": PHYSICAL_E2E_BINDING_CONTRACT,
+            "physical_e2e_blocker_contract": PHYSICAL_E2E_BLOCKER_CONTRACT,
+            "physical_e2e_blocker": "CONFIRMED",
             "registration_device_matches_self_test": True,
             "registration_build_matches_self_test": True,
             "latest_self_test_build": "4.7-47",
@@ -44,6 +47,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
             self._payload(
                 latest_self_test_build="4.6-46",
                 registration_build_matches_self_test=False,
+                physical_e2e_blocker="BUILD_MISMATCH",
                 current_build_physical_e2e_confirmed=False,
             ),
             expected_build="4.7-47",
@@ -51,12 +55,14 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         self.assertFalse(out["physical_e2e_confirmed"])
         self.assertFalse(out["checks"]["latest_self_test_build_matches"])
         self.assertFalse(out["checks"]["registered_and_self_test_build_match"])
+        self.assertFalse(out["checks"]["physical_e2e_blocker_confirmed"])
 
     def test_old_registered_build_never_attests_new_self_test(self):
         out = verify_push_health(
             self._payload(
                 latest_registered_client_build="4.6-46",
                 registration_build_matches_self_test=False,
+                physical_e2e_blocker="BUILD_MISMATCH",
                 current_build_physical_e2e_confirmed=False,
             ),
             expected_build="4.7-47",
@@ -69,6 +75,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         out = verify_push_health(
             self._payload(
                 registration_device_matches_self_test=False,
+                physical_e2e_blocker="DEVICE_MISMATCH",
                 current_build_physical_e2e_confirmed=False,
             ),
             expected_build="4.7-47",
@@ -81,6 +88,8 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         out = verify_push_health(
             self._payload(
                 registration_build_observed=False,
+                latest_registered_client_build=None,
+                physical_e2e_blocker="NO_REGISTERED_BUILD",
                 current_build_physical_e2e_confirmed=False,
             ),
             expected_build="4.7-47",
@@ -121,10 +130,33 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         self.assertFalse(out["physical_e2e_confirmed"])
         self.assertFalse(out["checks"]["physical_e2e_binding_contract_matches"])
 
+    def test_blocker_contract_drift_fails_closed(self):
+        out = verify_push_health(
+            self._payload(
+                physical_e2e_blocker_contract="legacy-blocker",
+                current_build_physical_e2e_confirmed=False,
+            ),
+            expected_build="4.7-47",
+        )
+        self.assertFalse(out["physical_e2e_confirmed"])
+        self.assertFalse(out["checks"]["physical_e2e_blocker_contract_matches"])
+
+    def test_non_confirmed_blocker_fails_even_if_other_evidence_looks_positive(self):
+        out = verify_push_health(
+            self._payload(
+                physical_e2e_blocker="RECEIPT_PENDING",
+                current_build_physical_e2e_confirmed=True,
+            ),
+            expected_build="4.7-47",
+        )
+        self.assertFalse(out["physical_e2e_confirmed"])
+        self.assertFalse(out["checks"]["physical_e2e_blocker_confirmed"])
+
     def test_provider_send_without_receipt_fails(self):
         out = verify_push_health(
             self._payload(
                 latest_self_test_receipt_confirmed=False,
+                physical_e2e_blocker="RECEIPT_PENDING",
                 current_build_physical_e2e_confirmed=False,
                 received_deliveries=1,
                 last_client_receipt_at=1790856000.0,
@@ -139,6 +171,7 @@ class PhysicalE2EVerifierTests(unittest.TestCase):
         out = verify_push_health(
             self._payload(
                 latest_self_test_receipt_confirmed=False,
+                physical_e2e_blocker="RECEIPT_PENDING",
                 current_build_physical_e2e_confirmed=False,
                 received_deliveries=9,
             ),
