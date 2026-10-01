@@ -109,55 +109,65 @@ Protocol validity alone keeps sufficiency unassessed and blocker/promotion/holdo
 
 Execution preregistration Action `36835013828` succeeded; strengthened contract-drift Action `36835231533` also succeeded.
 
-## 6. Android / push Physical E2E — current build identified, server audit hardened, physical receipt still OPEN
+## 6. Android / push Physical E2E — server/prod aligned, handset self-test still OPEN
 
 ### Android current audited build
 
 Current build branch: `index-alert-build`.  
 Current branch HEAD: `396501f9df3bdf4fd7cea4a2c97116a02f8961d5` (`Name APK artifacts for v4.6`).  
-This is a direct descendant of the older audited `55d72dc...` WorkManager receipt fix.
-
-`index-alert/app/build.gradle.kts` freezes:
-- `versionName = "4.6"`
-- `versionCode = 46`
-- self-test `client_build` therefore resolves to **`4.6-46`**.
+`versionName = "4.6"`, `versionCode = 46`; self-test `client_build` therefore resolves to **`4.6-46`**.
 
 Latest APK Action `36815959241`: SUCCESS.
 - debug artifact `IndexAlert-v4.6-debug`, artifact ID `11141577031`, SHA256 `d32c468bb3f719dcdafe99f3614358723cceeb566239bbedbbb3927c6f740dbf`;
 - unsigned release artifact `IndexAlert-v4.6-unsigned-release`, artifact ID `11141532240`, SHA256 `b95c8f28417c1b3f901ad2c0768970ae2942f2167ed49e9373f3666a4edf19a6`.
 
-Current Android `Push.kt` schedules privacy-safe `/push-ack` for the server-issued event ID on Firebase receipt and polls the same build self-test until `receipt_confirmed=true`. A provider `sent` result is never treated as handset receipt.
+Current Android `Push.kt` schedules privacy-safe `/push-ack` for the server-issued event ID on Firebase receipt and polls the same build self-test until `receipt_confirmed=true`. Provider send success is never treated as handset receipt.
 
 ### Server current audited code
 
-Current server branch: `index-alert-server`.
+Current server branch: `index-alert-server`.  
+Audited server HEAD: `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` (`Run Physical E2E verifier in server CI`).
 
-The server self-test contract already reuses the same `token + client_build` event after it has been sent, so polling never generates a fresh event merely because receipt is pending. `/push-ack` accepts only SHA256(token) for a registered device plus an already-sent matching event, and duplicate ACKs are idempotent.
+The server self-test reuses the same `token + client_build` event after successful send, so polling never generates a fresh event merely because receipt is pending. `/push-ack` accepts only SHA256(token) for a registered device plus an already-sent matching event, and duplicate ACKs are idempotent.
 
-Physical-E2E health was further hardened on 2026-10-01:
-- `push_self_test.latest_self_test_status()` binds health to the most recently created build self-test and omits raw token/event IDs;
-- `/push-health` now exposes `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, and `current_build_physical_e2e_confirmed`;
-- tests explicitly prove that an ACK from an older build cannot confirm a newer build;
-- server unit test Action `36836572820` at server commit `36b7250b31afcf2ca775cb59987c0c6c305cfc17` succeeded.
+Physical-E2E health is build-specific:
+- `latest_self_test_build`
+- `latest_self_test_sent`
+- `latest_self_test_receipt_confirmed`
+- `latest_self_test_created_at`
+- `current_build_physical_e2e_confirmed`
 
-Server smoke was then strengthened at server commit `12f6676287db487199a8b0644a7d568c11de77a1` to require the new build-specific `/push-health` fields in production. This prevents a stale production deployment from passing merely because old aggregate receipts exist.
+Tests prove an older-build ACK cannot confirm a newer build. `verify_push_physical_e2e.py` is a read-only verifier: it cannot send FCM, register a device, or write a receipt and fails closed unless the exact expected build has a real confirmed ACK.
 
-### Railway production deployment state
+Server CI Action `36837589631` at `b592e048...` succeeded.
 
-Railway service `indexalert-runtime` is sourced from `index-alert-server`, but the latest confirmed production deployment is still deployment `5b5fc540-2925-4c83-aa83-0688eef31159`, commit `65855916afd52d081453bc511b6b82df3ec948b1` (`Test paper live execution evidence ledger tiers`). It predates the new build-specific E2E health contract.
+### Railway production — deployment drift CLOSED
 
-Therefore current GitHub/server code and production are intentionally treated as **deployment-drifted** until production is updated. A smoke green on the old aggregate contract is no longer sufficient; the strengthened smoke requires the new fields.
+Railway `indexalert-runtime` is now deployed from the exact current server commit `b592e04802fc4f9f015ac1f9881ba9ad9da0fa07` in deployment `3b1df2eb-df74-42fd-b7cb-5e50edb23c59` (SUCCESS).
 
-### Exact Physical E2E closure condition
+The hardened production smoke that had failed while production was stale was rerun after this deployment. Action `36836821948`, rerun job `110321079146`, succeeded. Therefore the new build-specific `/push-health` contract is confirmed live in production and the prior server deployment-drift blocker is CLOSED.
 
-For the current audited Android build, Physical E2E remains OPEN until a real handset running build `4.6-46` causes server evidence at the test point showing at least:
-- `latest_self_test_build == "4.6-46"`;
-- `latest_self_test_sent == true`;
-- `latest_self_test_receipt_confirmed == true`;
-- `current_build_physical_e2e_confirmed == true`;
-- a non-null client receipt timestamp / receipt ledger entry from the real handset path.
+### Current Physical E2E evidence — still OPEN
 
-Aggregate `received_deliveries >= 1` by itself is no longer sufficient because it may refer to an older build.
+The successful production smoke observed:
+- `registered_devices = 1`
+- `sent_deliveries = 1`
+- `received_deliveries = 0`
+- `unconfirmed_sent_deliveries = 1`
+- `last_client_receipt_at = null`
+- `latest_self_test_build = null`
+- `latest_self_test_sent = false`
+- `latest_self_test_receipt_confirmed = false`
+- `current_build_physical_e2e_confirmed = false`
+
+This means there is not merely an unacknowledged `4.6-46` self-test: **no latest Android self-test row exists in production yet**. The existing aggregate sent delivery cannot be treated as a current-build self-test.
+
+Exact Physical E2E closure still requires a real handset running build `4.6-46` to produce:
+- `latest_self_test_build == "4.6-46"`
+- `latest_self_test_sent == true`
+- `latest_self_test_receipt_confirmed == true`
+- `current_build_physical_e2e_confirmed == true`
+- a non-null real client receipt timestamp / receipt ledger entry.
 
 No physical receipt is fabricated or inferred from Firebase provider send success.
 
@@ -178,8 +188,8 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.
 7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. SERVER DEPLOYMENT DRIFT — current production still runs server commit `65855916...`; build-specific E2E health exists only on newer `index-alert-server` code until deployed.
-10. PHYSICAL E2E — current v4.6-46 handset receipt meeting the build-specific conditions above is still required.
+9. DONE — server deployment drift; Railway production is aligned to server commit `b592e048...` and hardened production smoke succeeds.
+10. PHYSICAL E2E — production currently has `latest_self_test_build=null`; the real current v4.6-46 handset must create and ACK the build-specific self-test.
 11. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
 
 ## 9. Continuation rules
@@ -195,6 +205,7 @@ On every continuation:
 - never treat one/few LIVE rows as empirical execution sufficiency;
 - never freeze execution thresholds after seeing the LIVE outcomes they will judge;
 - never treat Firebase provider send success or an old-build receipt as current-build Physical E2E;
+- never infer a current-build self-test from aggregate sent/received counters when `latest_self_test_build` is null or mismatched;
 - never revive rejected candidates through threshold/cost/horizon mining;
 - never convert Shadow/Paper observations into live empirical evidence;
 - if chat conflicts with reproducible GitHub evidence, GitHub wins;
