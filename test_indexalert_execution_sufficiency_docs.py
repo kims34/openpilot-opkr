@@ -33,7 +33,7 @@ def test_status_snapshot_contract_and_ledger_do_not_reopen_frozen_protocol():
     assert "project criteria NOT FROZEN" not in snapshot
     assert "DONE — frozen project execution-sufficiency protocol" in snapshot
 
-    assert "canonical IndexAlert project thresholds are now frozen" in contract
+    assert "canonical IndexAlert project thresholds are frozen" in contract
     assert "genuine staged LIVE evidence has not been collected or assessed" in contract
 
     assert "Execution-sufficiency project protocol v1" in ledger
@@ -58,6 +58,7 @@ def test_docs_preserve_holdout_and_live_order_guardrails():
     assert "untouched" in snapshot.lower()
     assert "LIVE ORDERING — disabled" in snapshot
 
+
 def test_live_execution_provenance_is_required_before_project_blocker_closure():
     master = _read("INDEXALERT_MASTER_SPEC.md")
     status = _read("INDEXALERT_RESEARCH_STATUS.md")
@@ -72,5 +73,4 @@ def test_live_execution_provenance_is_required_before_project_blocker_closure():
     assert "self-authored or unit-test rows" in contract
     assert "A file hash proves byte identity only" in provenance
     assert "empirical_execution_blocker_closed=false" in provenance
-    assert "Real-account ordering remains disabled" in provenance
-
+    assert "Current automated real-account ordering remains disabled" in provenance
