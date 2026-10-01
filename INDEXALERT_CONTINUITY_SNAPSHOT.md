@@ -53,47 +53,43 @@ Current source states remain unchanged:
 - **Security/status:** A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
 - **Investor flow:** A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; `feature_performance_testing_authorized=false`.
 
-New validators/provenance code do not upgrade these states without real source evidence.
+New validators/provenance/consent controls do not upgrade these states without real source evidence.
 
-## 3. KRX public evidence and authorization reality
+## 3. KRX public evidence, authorization and runtime consent
 
 `research_v1_krx_public_evidence.py` freezes public evidence version `2026-10-01.v1`, fingerprint:
 `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`.
 
-`research_v1_krx_auth_preflight.py` freezes the rule **credentials are not authorization**:
-- Data Marketplace tiny probes require `KRX_ID` + `KRX_PW` + non-secret `KRX_AUTH_EVIDENCE_REF`;
+`research_v1_krx_auth_preflight.py` freezes:
+- credentials are not authorization;
+- authorization metadata is not runtime consent;
+- Data Marketplace tiny probes require `KRX_ID` + `KRX_PW` + non-secret `KRX_AUTH_EVIDENCE_REF` + exact `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST`;
+- generic consent strings such as `true`, `1`, `yes` are rejected;
 - `KRX_OPENAPI_AUTH_KEY` is a separate route and cannot substitute for the Data Marketplace session;
 - OpenAPI additionally requires an exact approved service mapping;
 - purchased/distributed product access cannot be inferred from either online credential route;
 - a successful tiny-request preflight may raise Gate A only to `PARTIAL`, never `PASS`, and never authorizes bulk history, performance testing, holdout, promotion or live trading.
 
-Latest audited probe reality:
+Workflow defense-in-depth is now frozen:
+- push events run dry-run only;
+- push dry-run steps receive empty KRX credential/reference/consent environment values;
+- authenticated steps are skipped on push;
+- authenticated tiny requests are eligible only on `workflow_dispatch` with `allow_authenticated_request=true`;
+- only that manual step receives Data Marketplace credentials, approval reference and exact consent sentinel;
+- OpenAPI key is not injected into the Data Marketplace authenticated step.
 
-**Status Action `36811927281`**
-- workflow success as diagnostic;
-- `status=AUTHORIZATION_PREFLIGHT_BLOCKED`;
-- `KRX_ID`, `KRX_PW`, `KRX_OPENAPI_AUTH_KEY`, `KRX_AUTH_EVIDENCE_REF` all absent;
-- `request_attempt_authorized=false`, `authenticated_request_attempted=false`;
-- contract fp `766ccb09304434f947cea290a29e7f3f6322dbc06d53997d4eef4a44fe0c3e9d`;
-- result fp `1ab3b8e1b0cb73e8eba5ae0765faa9e64eb2a037c5ef8f5219c7eeac77d3a59d`;
-- artifact `11140235232`.
+Latest workflow evidence:
+- **Status Action `36813950791`** — success; push-safe dry-run success; authenticated status step skipped.
+- **Investor-flow Action `36813973236`** — success; push-safe dry-run success; authenticated investor step skipped.
+- **Integrity Action `36814088731`** — success; full KRX fail-closed suite including exact-consent tests and Source Access Contract drift checks.
 
-**Investor-flow Action `36811913060`**
-- workflow success as diagnostic;
-- `status=AUTHORIZATION_PREFLIGHT_BLOCKED`;
-- same four values absent;
-- `request_attempt_authorized=false`, `authenticated_request_attempted=false`;
-- contract fp `75b10d1d6dd46f43821840532fc97b59129e402f169847a8c8bb6edaaf14102d`;
-- result fp `9508451f23a64ba62220b9ae09c4eb45629203843fa2a8c6ba4a2f7e04cd34e3`;
-- artifact `11140075783`.
-
-Never interpret a green source-probe workflow as authenticated KRX success without its internal preflight/request/gate state.
+No authenticated KRX request has yet been demonstrated. Gate A remains BLOCKED.
 
 ## 4. KRX internal audit/provenance pipeline — implemented
 
-The safe pipeline for future real KRX history is now:
+Safe future real-data flow:
 
-`authorization preflight -> authenticated acquisition -> immutable receipt -> consistent receipt batch -> PIT lineage -> exact expected-scope coverage -> A-F source audit -> source-data admission -> separate experiment-registry/preregistration review`
+`explicit manual request consent -> authorization preflight -> authenticated acquisition -> immutable receipt -> consistent receipt batch -> PIT lineage -> exact expected-scope coverage -> A-F source audit -> source-data admission -> separate experiment-registry/preregistration review`
 
 Implemented components:
 - `research_v1_krx_investor_flow_lineage.py`: timezone-aware `event_time <= published_at <= available_at <= ingested_at`, investor final-result publication floor >= 20:00 KST, current public-evidence fingerprint, one source-contract fingerprint, decision-time availability;
@@ -109,9 +105,10 @@ Even when source-data admission is structurally true, it grants only `eligible_f
 Latest relevant integrity evidence:
 - `36811118588` — status-event integrity: success;
 - `36811648510` — acquisition receipt integrity: success;
-- `36812137960` — authorization preflight + credential-value redaction: success;
 - `36812299630` — acquisition batch integrity: success;
-- `36812655201` — source-data admission integrity: success.
+- `36812655201` — source-data admission integrity: success;
+- `36813918295` — explicit-consent probe code/unit tests: success;
+- `36814088731` — explicit-consent contract/full KRX integrity suite: success.
 
 Transient implementation-test failures were fixed without changing any A-F gate, q25/TopK/horizon/cost rule or promotion threshold.
 
@@ -119,14 +116,15 @@ Transient implementation-test failures were fixed without changing any A-F gate,
 
 Internal code cannot manufacture the remaining evidence. Required next external evidence is:
 1. approved exact KRX historical route/product;
-2. for the current Data Marketplace probe path, secure `KRX_ID` + `KRX_PW` and a real non-secret `KRX_AUTH_EVIDENCE_REF` describing the approval basis;
-3. real complete historical status/investor-flow datasets;
-4. independently attested full expected scope and stable security mapping;
-5. real record-level PIT timestamps/availability evidence;
-6. exact intended-use rights for the final route;
-7. actual execution/recovery economics where halt/cleanup/delisting affects tradability/liquidation.
+2. for the current Data Marketplace route, secure `KRX_ID` + `KRX_PW` and a real non-secret `KRX_AUTH_EVIDENCE_REF` describing the approval basis;
+3. one explicitly consented manual tiny authenticated probe demonstrating the approved route without exposing credentials;
+4. real complete historical status/investor-flow datasets;
+5. independently attested full expected scope and stable security mapping;
+6. real record-level PIT timestamps/availability evidence;
+7. exact intended-use rights for the final route;
+8. actual execution/recovery economics where halt/cleanup/delisting affects tradability/liquidation.
 
-`KRX_OPENAPI_AUTH_KEY` is also currently absent and, even if later supplied, is a separate route rather than a substitute for Data Marketplace credentials/approval.
+`KRX_OPENAPI_AUTH_KEY`, if later supplied, remains a separate route rather than a substitute for Data Marketplace credentials/approval.
 
 Until real data passes the frozen pipeline, investor-flow performance research remains blocked and Final Judge status evidence remains incomplete.
 
@@ -162,8 +160,8 @@ Physical E2E gate remains open: one current-build handset receipt must produce `
 
 1. **DONE:** corrected H5/H10 CPCV, Uncertainty Audit, Policy Calibration and frozen negative dispositions.
 2. **DONE:** KRX A-F contract, Master Spec boundary, public-evidence manifest/fingerprint, source audit and doc-drift guards.
-3. **DONE — INTERNAL:** authorization preflight, source-probe fingerprints, investor PIT lineage, investor/status exact coverage, status-event integrity, acquisition receipt, acquisition batch and source-data admission are fail-closed and CI-tested.
-4. **EXTERNAL KRX AUTH BLOCKER:** secure approved route/product and route-specific credentials/approval reference. Current Data Marketplace preflight is blocked before making any request.
+3. **DONE — INTERNAL:** authorization + explicit-consent preflight, push-safe source workflows, source-probe fingerprints, investor PIT lineage, investor/status exact coverage, status-event integrity, acquisition receipt, acquisition batch and source-data admission are fail-closed and CI-tested.
+4. **EXTERNAL KRX AUTH BLOCKER:** secure approved route/product and route-specific credentials/approval reference, then explicitly dispatch one tiny authenticated probe. No authenticated KRX request has yet been demonstrated.
 5. **EXTERNAL KRX DATA BLOCKER:** real full history + stable IDs + independently attested expected scope + record-level PIT lineage must pass the existing validators.
 6. **EXACT STATUS ECONOMICS BLOCKER:** halt/cleanup/delisting execution/recovery economics remain required for Final Judge.
 7. **EMPIRICAL EXECUTION BLOCKER:** genuine staged execution evidence remains required; never fabricate Shadow/Paper/Live evidence.
@@ -177,8 +175,10 @@ On every continuation:
 - re-fetch current branch HEAD and relevant Actions first;
 - re-read Master Spec, Ledger, Research Status, KRX source contract/audit, execution-evidence contract and this snapshot;
 - skip completed/rejected experiments;
-- never interpret green probe execution as authenticated-source evidence without the internal preflight/request state;
-- never treat credentials alone as authorization or substitute one KRX access route for another;
+- never interpret green push probe execution as authenticated-source evidence: push is dry-run only;
+- never allow an authenticated probe without exact per-run explicit consent;
+- never treat credentials or approval metadata alone as runtime request consent;
+- never substitute one KRX access route for another;
 - never treat a receipt/batch alone as coverage, PIT or Alpha evidence;
 - never run investor-flow performance research merely because source data is structurally admitted; first require separate experiment registry/preregistration authority;
 - never revive rejected candidates by threshold/cost/horizon mining;
