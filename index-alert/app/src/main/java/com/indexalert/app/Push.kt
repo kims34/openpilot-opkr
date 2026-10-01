@@ -140,7 +140,14 @@ object PushBridge {
                     code in 200..299 -> {
                         val text = c.inputStream.bufferedReader().use { it.readText() }
                         val reply = runCatching { JSONObject(text) }.getOrNull()
-                        if (reply?.optBoolean("ok") == true) SelfTestResult.SUCCESS else SelfTestResult.RETRY
+                        when {
+                            reply?.optBoolean("ok") != true -> SelfTestResult.RETRY
+                            // FCM provider send success is not handset receipt.
+                            // Mark this build complete only after the server sees
+                            // the privacy-safe /push-ack for the original event.
+                            reply.optBoolean("receipt_confirmed", false) -> SelfTestResult.SUCCESS
+                            else -> SelfTestResult.RETRY
+                        }
                     }
                     code == 404 || code == 408 || code == 425 || code == 429 || code >= 500 -> SelfTestResult.RETRY
                     else -> SelfTestResult.DROP
@@ -164,6 +171,9 @@ object PushBridge {
             }
             SelfTestResult.DROP -> ListenableWorker.Result.success()
             SelfTestResult.RETRY -> if (attempt >= 4) {
+                // Do not mark the build done when the receipt is still unconfirmed.
+                // A future registration/settings/token sync can schedule another
+                // confirmation attempt for the same already-sent event.
                 ListenableWorker.Result.success()
             } else {
                 ListenableWorker.Result.retry()
