@@ -1,0 +1,24 @@
+name: IndexAlert Research Orchestrator Integrity
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_research_orchestrator.py'
+      - 'test_research_v1_research_orchestrator.py'
+      - 'INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md'
+      - '.github/workflows/indexalert-research-orchestrator-integrity.yml'
+  workflow_dispatch:
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify research queue isolation
+        run: |
+          python -m py_compile research_v1_research_orchestrator.py
+          python -m unittest test_research_v1_research_orchestrator.py test_research_v1_continuous_research.py
