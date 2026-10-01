@@ -3,8 +3,9 @@
 This verifier never sends FCM, registers a device or writes a receipt. It only
 checks the privacy-safe production /push-health payload for evidence that the
 specified Android build was the latest observed registration and that the exact
-same build's most recent self-test was sent and acknowledged by a real client
-receipt under the frozen registration/self-test contracts.
+same registered device/build's most recent self-test was sent and acknowledged
+by a real client receipt under the frozen registration/self-test/binding
+contracts.
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import requests
 
 REGISTRATION_BUILD_CONTRACT = "register-client-build-v1"
 SELF_TEST_TRIGGER_CONTRACT = "android-register-direct-v1"
+PHYSICAL_E2E_BINDING_CONTRACT = "registered-device-build-receipt-v1"
 
 
 class PhysicalE2EVerificationError(ValueError):
@@ -33,7 +35,7 @@ def _build(value: str) -> str:
 
 
 def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> dict[str, Any]:
-    """Return a fail-closed, read-only audit of current-build physical receipt evidence."""
+    """Return a fail-closed, read-only audit of current-device/build receipt evidence."""
     build = _build(expected_build)
     if not isinstance(payload, Mapping):
         raise PhysicalE2EVerificationError("push health payload must be an object")
@@ -47,6 +49,9 @@ def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> di
         "latest_registered_client_build_matches": payload.get("latest_registered_client_build") == build,
         "registration_build_contract_matches": payload.get("registration_build_contract") == REGISTRATION_BUILD_CONTRACT,
         "self_test_trigger_contract_matches": payload.get("self_test_trigger_contract") == SELF_TEST_TRIGGER_CONTRACT,
+        "physical_e2e_binding_contract_matches": payload.get("physical_e2e_binding_contract") == PHYSICAL_E2E_BINDING_CONTRACT,
+        "registration_device_matches_self_test": payload.get("registration_device_matches_self_test") is True,
+        "registration_build_matches_self_test": payload.get("registration_build_matches_self_test") is True,
         "latest_self_test_build_matches": payload.get("latest_self_test_build") == build,
         "registered_and_self_test_build_match": (
             payload.get("latest_registered_client_build") == payload.get("latest_self_test_build") == build
@@ -69,6 +74,9 @@ def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> di
             "latest_registered_client_build_at": payload.get("latest_registered_client_build_at"),
             "registration_build_contract": payload.get("registration_build_contract"),
             "self_test_trigger_contract": payload.get("self_test_trigger_contract"),
+            "physical_e2e_binding_contract": payload.get("physical_e2e_binding_contract"),
+            "registration_device_matches_self_test": payload.get("registration_device_matches_self_test"),
+            "registration_build_matches_self_test": payload.get("registration_build_matches_self_test"),
             "latest_self_test_build": payload.get("latest_self_test_build"),
             "latest_self_test_sent": payload.get("latest_self_test_sent"),
             "latest_self_test_receipt_confirmed": payload.get("latest_self_test_receipt_confirmed"),
@@ -77,9 +85,8 @@ def verify_push_health(payload: Mapping[str, Any], *, expected_build: str) -> di
             "last_client_receipt_at": payload.get("last_client_receipt_at"),
         },
         "guardrail": (
-            "This is read-only verification. Provider send success, an older-build receipt, or an unbound "
-            "self-test cannot pass. The expected build must be the latest observed registered client build, "
-            "the latest self-test build, and have its exact real-client receipt confirmed under the frozen contracts."
+            "This is read-only verification. Provider send success, an older-build receipt, a same-build receipt from another device, or an unbound self-test cannot pass. "
+            "The expected build must be the latest observed registered client build on the exact same device as the latest self-test, and that exact event must have a real client receipt under the frozen contracts."
         ),
     }
 
