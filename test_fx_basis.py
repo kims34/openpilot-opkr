@@ -45,6 +45,56 @@ class FxBasisTests(unittest.TestCase):
         self.assertIsNone(value)
         self.assertIsNone(basis_day)
 
+    def test_public_basis_fields_rejects_startup_provider_fallback(self):
+        # Startup can briefly inherit a mathematically valid provider previous
+        # close from an older layer. Without explicit ECOS verification that
+        # comparison must not escape through /status or /history.
+        out = fx_basis.public_basis_fields({
+            "previous_close": 1356.54,
+            "previous_close_date": None,
+            "day_change": 6.05,
+            "day_change_percent": 0.446,
+            "basis_verified": None,
+            "basis_provider": None,
+        })
+        self.assertEqual(out, {
+            "previous_close": None,
+            "previous_close_date": None,
+            "day_change": None,
+            "day_change_percent": None,
+            "basis_verified": False,
+            "basis_provider": None,
+        })
+
+    def test_public_basis_fields_accepts_only_complete_ecos_basis(self):
+        out = fx_basis.public_basis_fields({
+            "previous_close": 1352.8,
+            "previous_close_date": "2026-09-30",
+            "day_change": 9.4,
+            "day_change_percent": 0.695,
+            "basis_verified": True,
+            "basis_provider": "Bank of Korea ECOS 731Y003/0000003 15:30 close",
+        })
+        self.assertEqual(out["previous_close"], 1352.8)
+        self.assertEqual(out["previous_close_date"], "2026-09-30")
+        self.assertEqual(out["day_change"], 9.4)
+        self.assertEqual(out["day_change_percent"], 0.695)
+        self.assertIs(out["basis_verified"], True)
+        self.assertIn("ECOS", out["basis_provider"])
+
+    def test_public_basis_fields_rejects_false_verified_shape(self):
+        out = fx_basis.public_basis_fields({
+            "previous_close": 1352.8,
+            "previous_close_date": "2026-09-30",
+            "day_change": 9.4,
+            "day_change_percent": 0.695,
+            "basis_verified": True,
+            "basis_provider": "Yahoo Finance fallback",
+        })
+        self.assertIs(out["basis_verified"], False)
+        self.assertIsNone(out["previous_close"])
+        self.assertIsNone(out["day_change_percent"])
+
 
 if __name__ == "__main__":
     unittest.main()
