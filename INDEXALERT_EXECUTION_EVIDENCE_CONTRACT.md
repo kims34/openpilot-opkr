@@ -1,12 +1,14 @@
 # IndexAlert Execution Evidence Contract
 
-Updated: 2026-09-30 KST
+Updated: 2026-10-01 KST
 Branch: `index-alert-research-v1`
 Status: **FROZEN EVIDENCE-CLASSIFICATION CONTRACT — NOT PROMOTION EVIDENCE**
 
 ## 1. Purpose
 
 This contract prevents Shadow decisions, paper-broker executions and real-account executions from being conflated. It governs evidence classification only; it does not activate live ordering and does not change Alpha/statistical promotion gates.
+
+A second boundary is equally important: **structurally valid LIVE rows are not the same thing as sufficient empirical execution evidence.** One or a few real-account fills may demonstrate that the execution ledger works, but cannot by themselves close the empirical execution blocker.
 
 ## 2. Evidence tiers
 
@@ -32,7 +34,7 @@ This contract prevents Shadow decisions, paper-broker executions and real-accoun
 - Operating modes: `TINY_LIVE`, `LIMITED_LIVE`, later `LIVE` after their independent gates.
 - Represents actual real-account broker order/execution observations.
 - Is the only tier eligible to contribute to empirical live fill ratio/time/price, partial/no-fill behavior, slippage, markout, latency/expiry and later capacity evidence.
-- Presence of one or more structurally valid LIVE rows is **not** sufficient for promotion. Sample sufficiency, tail/risk behavior, capacity, operational reliability, sealed holdout and prospective confirmation remain separate gates.
+- Presence of one or more structurally valid LIVE rows is **not** sufficient for promotion and does **not** close the empirical execution blocker. Sample sufficiency, tails, capacity, operational reliability, sealed holdout and prospective confirmation remain separate gates.
 
 ## 3. Forbidden source substitution
 
@@ -59,7 +61,27 @@ For PAPER or LIVE broker execution rows:
 - ingestion timestamp cannot precede the recommendation;
 - source tier must be explicit.
 
-## 5. Immutability and identity
+## 5. Structural LIVE evidence vs empirical sufficiency
+
+`research_v1_execution_evidence.py` must distinguish these concepts explicitly.
+
+A structurally valid LIVE filled row with required markouts may set:
+- `contains_live_execution_evidence=true`;
+- `live_structural_execution_evidence_present=true`.
+
+It must **not** merely from that fact set:
+- `live_empirical_execution_evidence_ready=true`;
+- `empirical_execution_blocker_closed=true`;
+- `promotion_ready=true`.
+
+Until a separate preregistered execution-sufficiency protocol is frozen and evaluated, the implementation must keep:
+- `live_empirical_execution_evidence_ready=false`;
+- `empirical_execution_sufficiency_assessed=false`;
+- `empirical_execution_blocker_closed=false`.
+
+No numeric sample threshold may be invented after observing the live outcomes merely to obtain a pass. Any future sufficiency protocol must be separately frozen before it is used as a promotion input and must cover the relevant dimensions in the Master Spec, including live fill/no-fill/partial-fill behavior, fill time/price, slippage, markouts, latency/expiry, capacity and adverse/tail conditions.
+
+## 6. Immutability and identity
 
 Broker execution observations are immutable once written. A retry with the same stable observation identity may be idempotent only if the normalized payload is identical.
 
@@ -67,11 +89,12 @@ New execution observation identity must include the source tier so that PAPER an
 
 Historical rows written under the former source label `PROSPECTIVE_SHADOW_EXECUTION_LOG` must not be rewritten or deleted to manufacture cleaner evidence. They remain quarantined as `legacy_shadow_fill` and are excluded from live empirical-evidence claims.
 
-## 6. Promotion interpretation
+## 7. Promotion interpretation
 
 - Shadow evidence = prospective decision behavior only.
 - Paper evidence = operational/broker-pipeline behavior only.
-- Live evidence = potentially eligible empirical execution behavior, subject to separate sufficiency and risk gates.
+- Structurally valid Live evidence = eligible raw empirical observations, not sufficiency by itself.
+- Empirical execution sufficiency = a separate future preregistered assessment that is currently **not assessed / not closed**.
 
 No evidence tier changes the frozen statistical contract. In particular:
 - q25 / TopK / costs / horizon are not relaxed because execution evidence is sparse;
@@ -79,6 +102,8 @@ No evidence tier changes the frozen statistical contract. In particular:
 - technical broker connectivity does not authorize real-account trading;
 - `promotion_ready` remains false unless the full Master Spec promotion path independently passes.
 
-## 7. Current implementation state
+## 8. Current implementation state
 
-The research integrity schema and production execution ledger are being aligned to this contract. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
+The research integrity schema separates PAPER from LIVE and now separates LIVE structural presence from empirical sufficiency. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.
+
+The empirical execution blocker remains open. A future preregistered sufficiency protocol and genuine staged live evidence are still required.
