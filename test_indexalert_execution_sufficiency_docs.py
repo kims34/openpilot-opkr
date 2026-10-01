@@ -34,7 +34,7 @@ def test_status_snapshot_contract_and_ledger_do_not_reopen_frozen_protocol():
     assert "DONE — frozen project execution-sufficiency protocol" in snapshot
 
     assert "canonical IndexAlert project thresholds are frozen" in contract
-    assert "genuine staged LIVE evidence has not been collected or assessed" in contract
+    assert "no genuine staged LIVE evidence window and no independent broker-native provenance admission exist yet" in contract
 
     assert "Execution-sufficiency project protocol v1" in ledger
     assert "600 LIVE observations" in ledger
