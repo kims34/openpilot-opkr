@@ -3,9 +3,13 @@
 This layer closes the remaining physical-push observability gap without changing
 market, probability, KRX, recommendation, or execution logic. New Android clients
 include a privacy-safe build identifier in /register. The server records that
-identifier separately from the raw FCM token, starts the existing idempotent
-self-test after registration, and only reports current-build physical E2E when
-that exact registered build has a confirmed handset receipt.
+identifier separately from the raw FCM token and only reports current-build
+physical E2E when that exact registered build has a confirmed handset receipt.
+
+The v4.7 Android client performs its self-test immediately on the same confirmed
+registration path, before falling back to WorkManager retries. The server therefore
+does not launch a second concurrent self-test; the existing /push-self-test route
+remains the single idempotent transport endpoint.
 
 Legacy clients that do not send client_build remain fully compatible, but are
 fail-closed for current-build physical-E2E attestation because their installed
@@ -15,17 +19,17 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 import monitor
 import production
 import production_v31
 import push_health
-import push_self_test
 
 app = production_v31.app
 REGISTRATION_BUILD_CONTRACT = "register-client-build-v1"
+SELF_TEST_TRIGGER_CONTRACT = "android-register-direct-v1"
 
 
 class RegisterBodyV32(BaseModel):
@@ -95,42 +99,6 @@ def _latest_registered_build() -> tuple[str | None, str | None]:
     return str(row[0]), str(row[1])
 
 
-def _bootstrap_self_test(token: str, platform: str, protocol: int, build: str) -> None:
-    try:
-        result = push_self_test.request_self_test(
-            push_self_test.PushSelfTestBody(
-                token=token,
-                platform=platform,
-                protocol=protocol,
-                client_build=build,
-            )
-        )
-        print(
-            "push self-test registration bootstrap",
-            {
-                "client_build": build,
-                "ok": bool(result.get("ok")),
-                "queued": bool(result.get("queued")),
-                "receipt_confirmed": bool(result.get("receipt_confirmed")),
-            },
-            flush=True,
-        )
-    except HTTPException as exc:
-        # Registration itself has already succeeded. Keep the self-test retryable
-        # and never log the raw token or provider payload.
-        print(
-            "push self-test registration bootstrap deferred",
-            {"client_build": build, "status": int(exc.status_code)},
-            flush=True,
-        )
-    except Exception as exc:
-        print(
-            "push self-test registration bootstrap failed",
-            {"client_build": build, "error": type(exc).__name__},
-            flush=True,
-        )
-
-
 # Replace only the operational registration/health routes. All market and
 # research routes remain the exact v31 stack.
 app.router.routes = [
@@ -141,7 +109,7 @@ app.router.routes = [
 
 
 @app.post("/register")
-def register_v32(body: RegisterBodyV32, background_tasks: BackgroundTasks):
+def register_v32(body: RegisterBodyV32):
     build = _clean_client_build(body.client_build)
     base_body = monitor.RegisterBody(
         token=body.token,
@@ -154,26 +122,11 @@ def register_v32(body: RegisterBodyV32, background_tasks: BackgroundTasks):
     if result.get("registered"):
         _record_device_build(token, build)
 
-    bootstrap = bool(
-        result.get("registered")
-        and result.get("firebase")
-        and body.protocol >= 2
-        and build
-    )
-    if bootstrap:
-        background_tasks.add_task(
-            _bootstrap_self_test,
-            token,
-            body.platform,
-            body.protocol,
-            build,
-        )
-
     result.update(
         client_build=build,
         client_build_observed=bool(build),
-        self_test_bootstrap_scheduled=bootstrap,
         registration_build_contract=REGISTRATION_BUILD_CONTRACT,
+        self_test_trigger_contract=SELF_TEST_TRIGGER_CONTRACT if build else None,
     )
     return result
 
@@ -187,6 +140,7 @@ def push_health_v32():
         latest_registered_client_build_at=observed_at,
         registration_build_observed=bool(build),
         registration_build_contract=REGISTRATION_BUILD_CONTRACT,
+        self_test_trigger_contract=SELF_TEST_TRIGGER_CONTRACT,
     )
     # A receipt for an older build cannot attest the newly registered client.
     payload["current_build_physical_e2e_confirmed"] = bool(
