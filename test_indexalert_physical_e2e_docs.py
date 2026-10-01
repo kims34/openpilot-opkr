@@ -51,7 +51,7 @@ def test_status_and_snapshot_do_not_reopen_completed_handset_blocker():
     snapshot = _read(SNAPSHOT)
 
     assert "Physical E2E state — CONFIRMED" in status
-    assert "Physical notification E2E: **DONE" in status
+    assert "Physical notification E2E:** **DONE" in status
     assert "Physical E2E — DONE for audited v4.7-47" in snapshot
     assert "DONE — PHYSICAL E2E for audited Android v4.7-47" in snapshot
 
