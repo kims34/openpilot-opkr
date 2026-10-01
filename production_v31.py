@@ -338,6 +338,7 @@ def history_v31(index_id: str, snapshot_id: str = ""):
             payload["previous_close_date"] = public_basis["previous_close_date"]
             payload["basis_verified"] = public_basis["basis_verified"]
             payload["basis_provider"] = public_basis["basis_provider"]
+            payload["basis_contract"] = public_basis["basis_contract"]
             payload["quote_provider"] = extra.get("quote_provider")
         else:
             payload["previous_close"] = extra.get("previous_close")
