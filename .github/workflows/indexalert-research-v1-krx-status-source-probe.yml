@@ -6,6 +6,7 @@ on:
     paths:
       - 'research_v1_krx_status_source_probe.py'
       - 'research_v1_krx_source_gates.py'
+      - 'research_v1_krx_public_evidence.py'
       - '.github/workflows/indexalert-research-v1-krx-status-source-probe.yml'
   workflow_dispatch:
 
@@ -32,7 +33,7 @@ jobs:
           pip install 'git+https://github.com/beaten-by-the-market/krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e'
       - name: Run metadata-only status source diagnostic with A-F audit
         run: |
-          python -m py_compile research_v1_krx_source_gates.py research_v1_krx_status_source_probe.py
+          python -m py_compile research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_status_source_probe.py
           python research_v1_krx_status_source_probe.py
           cat research_results/krx_status_source_probe/summary.json
       - name: Upload metadata-only source result
