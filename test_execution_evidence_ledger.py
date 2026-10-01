@@ -41,16 +41,37 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
         data.update(updates)
         return e.ExecutionObservation(**data)
 
+    def assert_project_state_fail_closed(self, payload):
+        self.assertFalse(payload["genuine_live_provenance_verified"])
+        self.assertFalse(payload["promotion_ready"])
+        self.assertFalse(payload["sealed_holdout_authorized"])
+        self.assertFalse(payload["live_trading_authorized"])
+
     def test_full_fill_record_is_immutable_and_idempotent(self):
         first = e.record(self.full_fill())
         second = e.record(self.full_fill())
         self.assertTrue(first["created"])
         self.assertFalse(second["created"])
         self.assertEqual(first["observation_key"], second["observation_key"])
+        self.assertTrue(first["source_label_only"])
+        self.assertFalse(first["project_live_evidence_admitted"])
+        self.assert_project_state_fail_closed(first)
+
         s = e.summary()
         self.assertEqual(s["full_fill"], 1)
         self.assertEqual(s["live_observations"], 1)
-        self.assertTrue(s["contains_live_execution_evidence"])
+        self.assertEqual(s["live_labelled_observations"], 1)
+        self.assertTrue(s["live_structural_execution_rows_present"])
+        self.assertFalse(s["contains_live_execution_evidence"])
+        self.assertEqual(
+            s["contains_live_execution_evidence_semantics"],
+            "DEPRECATED_FAIL_CLOSED_USE_LIVE_LABELLED_OBSERVATIONS",
+        )
+        self.assertFalse(s["project_live_evidence_admitted"])
+        self.assertFalse(s["live_empirical_execution_evidence_ready"])
+        self.assertFalse(s["empirical_execution_sufficiency_assessed"])
+        self.assertFalse(s["empirical_execution_blocker_closed"])
+        self.assert_project_state_fail_closed(s)
 
     def test_same_key_different_payload_is_rejected(self):
         e.record(self.full_fill())
@@ -64,16 +85,20 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
         self.assertNotEqual(live["observation_key"], paper["observation_key"])
         s = e.summary()
         self.assertEqual(s["observations"], 2)
-        self.assertEqual(s["live_observations"], 1)
+        self.assertEqual(s["live_labelled_observations"], 1)
         self.assertEqual(s["paper_observations"], 1)
+        self.assertFalse(s["contains_live_execution_evidence"])
+        self.assertFalse(s["genuine_live_provenance_verified"])
 
     def test_paper_only_is_not_live_execution_evidence(self):
         e.record(self.full_fill(source=e.PAPER_EXECUTION_SOURCE))
         s = e.summary()
         self.assertEqual(s["paper_observations"], 1)
         self.assertEqual(s["live_observations"], 0)
+        self.assertEqual(s["live_labelled_observations"], 0)
+        self.assertFalse(s["live_structural_execution_rows_present"])
         self.assertFalse(s["contains_live_execution_evidence"])
-        self.assertFalse(s["promotion_ready"])
+        self.assert_project_state_fail_closed(s)
 
     def test_partial_and_zero_fill_are_preserved(self):
         e.record(self.full_fill(symbol="660", requested_qty=20, filled_qty=5))
@@ -86,7 +111,8 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
         self.assertEqual(s["observations"], 2)
         self.assertEqual(s["partial_fill"], 1)
         self.assertEqual(s["no_fill"], 1)
-        self.assertFalse(s["promotion_ready"])
+        self.assertFalse(s["contains_live_execution_evidence"])
+        self.assert_project_state_fail_closed(s)
 
     def test_zero_fill_cannot_fabricate_fill_price(self):
         with self.assertRaises(HTTPException):
@@ -131,6 +157,7 @@ class ExecutionEvidenceLedgerTests(unittest.TestCase):
         self.assertEqual(s["legacy_shadow_fill_observations"], 1)
         self.assertEqual(s["live_observations"], 0)
         self.assertFalse(s["contains_live_execution_evidence"])
+        self.assertFalse(s["genuine_live_provenance_verified"])
 
     def test_logging_auth_fails_closed(self):
         with patch.dict(os.environ, {}, clear=True):
