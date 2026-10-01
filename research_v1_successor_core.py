@@ -39,4 +39,4 @@ def assess_shadow_promotion(*,artifact:dict,confirmation:dict)->dict:
  if confirmation.get("sealed_holdout_contract_passed") is not True: blockers.append("SEALED_HOLDOUT_CONTRACT_NOT_PASSED")
  if confirmation.get("all_external_blockers_closed") is not True: blockers.append("EXTERNAL_BLOCKERS_OPEN")
  if confirmation.get("execution_blocker_closed") is not True: blockers.append("EXECUTION_BLOCKER_OPEN")
- return {"promotion_eligible":not blockers,"classification":"PROMOTION_ELIGIBLE" if not blockers else "PROMOTION_BLOCKED","blockers":blockers,"automatic_code_update_allowed":not blockers,"automatic_live_order_activation_allowed":False,"live_order_authorized":False}
+ return {"promotion_eligible":not blockers,"classification":"PROMOTION_ELIGIBLE" if not blockers else "PROMOTION_BLOCKED","blockers":blockers,"automatic_code_update_eligible":not blockers,"automatic_code_update_allowed":False,"promotion_authority_verified":False,"automatic_live_order_activation_allowed":False,"live_order_authorized":False}
