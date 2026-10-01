@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from research_v1_krx_source_gates import (
@@ -85,3 +87,30 @@ def test_empty_evidence_is_rejected():
             statuses={gate: "BLOCKED" for gate in "ABCDEF"},
             evidence=evidence,
         )
+
+
+def test_contract_master_and_audit_docs_freeze_the_same_gate_names():
+    docs = [
+        Path("INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md"),
+        Path("INDEXALERT_KRX_SOURCE_GATE_AUDIT.md"),
+        Path("INDEXALERT_MASTER_SPEC.md"),
+    ]
+    for path in docs:
+        text = path.read_text(encoding="utf-8")
+        for gate, definition in SOURCE_GATE_DEFINITIONS.items():
+            assert f"Gate {gate}" in text, f"{path} missing Gate {gate}"
+            assert definition["name"] in text, (
+                f"{path} missing canonical name for Gate {gate}: {definition['name']}"
+            )
+
+
+def test_master_and_contract_preserve_non_promotion_boundary():
+    master = Path("INDEXALERT_MASTER_SPEC.md").read_text(encoding="utf-8")
+    contract = Path("INDEXALERT_KRX_SOURCE_ACCESS_CONTRACT.md").read_text(encoding="utf-8")
+    audit = Path("INDEXALERT_KRX_SOURCE_GATE_AUDIT.md").read_text(encoding="utf-8")
+
+    assert "Even six PASS results" in master
+    assert "All six gates passing means only" in contract
+    assert "one-shot sealed holdout" in audit
+    assert "Purged/CPCV" in master
+    assert "distributional NetEV" in master
