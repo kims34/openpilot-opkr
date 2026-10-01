@@ -265,3 +265,7 @@ On every continuation:
 ## 11. Old-chat deletion gate
 
 Older IndexAlert chat/work rooms are not project-state dependencies. Material continuity lives in GitHub code, Actions evidence and canonical documents.
+
+## 12. Kiwoom demo/read-only connectivity continuity note
+
+`INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md` is canonical on `index-alert-research-v1` and records `TOKEN_OK / ACCOUNT_OK / BALANCE_OK / FILLS_OK` from the Kiwoom mock/demo host only. Treat this as completed demo/read-only plumbing evidence, never as genuine LIVE provenance or execution-sufficiency evidence. It changes no external blocker, does not authorize the sealed holdout, and does not enable real-account ordering.
