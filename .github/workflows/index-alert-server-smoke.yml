@@ -65,10 +65,12 @@ jobs:
               set +e
               python - <<'PY'
           import json
+          import os
           from datetime import datetime
           from zoneinfo import ZoneInfo
 
           EXPECTED_FX_CONTRACT='ecos-1530-fail-closed-v1'
+          EXPECTED_RUNTIME_REVISION=str(os.environ.get('GITHUB_SHA') or '').strip()
           health=json.load(open('/tmp/health.json'))
           push_health=json.load(open('/tmp/push-health.json'))
           openapi=json.load(open('/tmp/openapi.json'))
@@ -86,6 +88,16 @@ jobs:
           assert isinstance(push_health.get('sent_deliveries'), int), push_health
           assert isinstance(push_health.get('received_deliveries'), int), push_health
           assert isinstance(push_health.get('unconfirmed_sent_deliveries'), int), push_health
+
+          # Never let a green response from a stale production deployment count
+          # as validation for a newer GitHub revision. Railway's deploy trigger
+          # is deliberately exposed as a non-secret runtime revision marker.
+          if not EXPECTED_RUNTIME_REVISION or status.get('runtime_revision') != EXPECTED_RUNTIME_REVISION:
+              print('production runtime revision not deployed yet', json.dumps({
+                  'expected': EXPECTED_RUNTIME_REVISION,
+                  'actual': status.get('runtime_revision'),
+              }, ensure_ascii=False))
+              raise SystemExit(1)
 
           # Physical-E2E readiness must be bound to the latest Android build self-test,
           # not inferred from an old aggregate receipt. These fields also serve as a
@@ -194,7 +206,7 @@ jobs:
               assert isinstance(row.get('shadow_validation'), dict), (key,row)
               assert isinstance(row.get('milestone_60'), dict), (key,row)
               assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
-          print(json.dumps({'status': by_id, 'push_health': push_health, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
+          print(json.dumps({'runtime_revision': status.get('runtime_revision'), 'status': by_id, 'push_health': push_health, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
           PY
               validation_rc=$?
               set -e
