@@ -1,9 +1,13 @@
-"""Offline CLI for assessing genuine LIVE execution evidence against frozen v1.
+"""Offline metric CLI for the frozen IndexAlert execution-sufficiency v1 protocol.
 
-This command performs no broker/network action and cannot create evidence. It
-only reads an existing CSV, binds the exact input bytes by SHA-256, validates the
-frozen protocol/document pair and writes the evaluator result. Passing never
-independently authorizes holdout, promotion or live trading.
+This command performs no broker/network action and cannot create or authenticate
+evidence. It reads an existing CSV, binds the exact input bytes by SHA-256,
+validates the frozen protocol/document pair and writes the numerical evaluator
+result.
+
+A CSV hash and `PROSPECTIVE_LIVE_EXECUTION_LOG` source label do not prove genuine
+real-account provenance. Therefore this CLI cannot by itself close the empirical
+execution blocker, authorize holdout/promotion or enable live trading.
 """
 from __future__ import annotations
 
@@ -60,7 +64,10 @@ def assess_execution_sufficiency_file(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Assess existing genuine LIVE execution CSV against the frozen IndexAlert v1 protocol."
+        description=(
+            "Assess the frozen numerical IndexAlert v1 execution gates for an existing "
+            "LIVE-labelled CSV. This does not authenticate broker provenance."
+        )
     )
     parser.add_argument("--input", required=True, help="existing execution-evidence CSV")
     parser.add_argument("--output", help="optional result JSON path; otherwise print JSON")
