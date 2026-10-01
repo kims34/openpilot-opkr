@@ -385,3 +385,25 @@ Before a KRX source family may be treated as source-ready for its declared scope
 Each gate is `PASS`, `PARTIAL` or `BLOCKED`; only `PASS` closes it. `PARTIAL` is never treated as a pass. Any non-PASS gate keeps that source contract open for the declared scope.
 
 Even six PASS results are **source-governance evidence only**. They do not by themselves authorize model/Final-Judge promotion, sealed-holdout consumption, Shadow/Paper/Tiny-Live progression or live trading. All existing PIT/time consistency, anchored Walk-Forward, Purged/CPCV, realistic transaction/execution cost and fill modeling, distributional NetEV, tail/recency/capacity, one-shot holdout, Shadow S1 and Fresh Confirmation S2 requirements remain unchanged and independent.
+
+## 17. Frozen empirical execution-sufficiency protocol — 2026-10-01
+
+The project execution-sufficiency criteria are frozen before any genuine LIVE observation in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and the SHA-256-bound machine-readable `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`. `research_v1_execution_sufficiency_assessment.py` is the independent evaluator. Unit-test fixtures are code-path tests only and are never project evidence.
+
+The frozen v1 evidence window requires at least:
+- 600 genuine `PROSPECTIVE_LIVE_EXECUTION_LOG` observations;
+- 200 distinct decision dates;
+- 400 filled observations;
+- decision-time PIT ADV participation no greater than the existing research assumption `0.0005` (0.05%);
+- 120 observations at or above 80% of that participation ceiling;
+- date-cluster fill-ratio/slippage/fee-tax uncertainty gates;
+- Wilson upper bounds for no-fill and partial-fill rates;
+- complete 5m/30m/close markouts with ES95/ES99 reporting;
+- recommendation-TTL/order-expiry latency integrity;
+- zero capacity breaches, unknown order outcomes, unresolved reconciliation rows and risk-limit-breach rows.
+
+The evaluator is bound to frozen decision/execution policy IDs, exact protocol-document fingerprint and PIT provenance timestamps. Thresholds may not be weakened using outcomes from the evidence window they judge. A future revision requires a new protocol ID/fingerprint and an evidence window beginning strictly after that revision is frozen.
+
+Passing the execution-only protocol may close `empirical_execution_blocker_closed` for that protocol, but it must still leave `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` until every independent Master Spec gate passes. No sealed holdout may be opened merely because execution sufficiency passes, and no real-account order mode may be activated from this evidence alone.
+
+Current project state: the protocol/evaluator are frozen and Actions-tested, but no genuine staged LIVE evidence window exists yet. Therefore empirical execution sufficiency remains unassessed/open. KRX A-F evidence, exact status-event economics, sealed holdout, Shadow S1 and Fresh Confirmation S2 remain independent blockers.

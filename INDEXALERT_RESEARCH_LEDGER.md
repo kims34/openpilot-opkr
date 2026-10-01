@@ -2,7 +2,7 @@
 
 Purpose: prevent research-memory bias and repeated policy mining. This ledger records material experiments, their fixed question, outcome and disposition. It is not a performance marketing document.
 
-Updated: 2026-09-30 KST
+Updated: 2026-10-01 KST
 
 ## Governance
 
@@ -156,6 +156,15 @@ The older 15-combination H10 CPCV result is historical/superseded. Conflicting o
 
 Earlier exit-137/143 CPCV failures were engineering memory/process failures caused by accumulating prediction DataFrames. Splitwise generate -> evaluate -> release fixed execution without changing the statistical protocol.
 
+### Execution-sufficiency project protocol v1 — preregistration freeze
+Status: **FROZEN BEFORE GENUINE LIVE / EVALUATOR IMPLEMENTED / NOT PROMOTION EVIDENCE**. Action `36881327868`.
+
+The project criteria are frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and SHA-256-bound `.json` before any genuine LIVE execution evidence is used. The independent evaluator accepts only the real-account `PROSPECTIVE_LIVE_EXECUTION_LOG` tier with frozen decision/execution policy identity and PIT provenance.
+
+Minimum scope is 600 LIVE observations across at least 200 distinct decision dates and at least 400 fills; empirical capacity is bounded to the existing `0.0005` decision-time ADV participation assumption with at least 120 near-capacity observations. Prespecified non-compensating gates cover fill quality, Wilson no-fill/partial-fill bounds, slippage versus the pre-order budget, fee/tax excess, TTL/expiry latency, complete 5m/30m/close markouts with ES95/ES99, near-capacity behavior, and zero unknown/reconciliation/capacity/risk-integrity breaches.
+
+Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. A later pass cannot by itself authorize the sealed holdout, model promotion or live trading.
+
 ## Next independent information family
 
 Do **not** continue price-only feature/threshold mining. The next research family must be genuinely independent and PIT-valid.
@@ -174,6 +183,6 @@ A source/auth probe alone is not feature-promotion evidence. If reproducible off
 1. Obtain and validate real official historical KRX common-stock/security-status raw data with PIT availability lineage.
 2. Model exact halt, cleanup-trading and delisting economics/status rather than proxy inference.
 3. Establish official reproducible KRX investor-flow historical access/lineage before any performance test.
-4. Build empirical execution evidence: fill ratio, fill time/price, partial fills, post-fill markout, latency/expiry and capacity.
-5. Do **not** burn the sealed holdout until blockers, code and protocol are frozen.
+4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.
+5. Do **not** burn the sealed holdout while external KRX/status-economics and empirical execution blockers remain open; the execution protocol itself is now frozen.
 6. After a valid holdout, require prospective Shadow S1 then frozen Fresh Confirmation S2.
