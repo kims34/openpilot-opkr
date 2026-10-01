@@ -11,6 +11,7 @@ statistical/execution gates remain separate.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import re
 from typing import Any, Mapping
 
 from research_v1_krx_acquisition_receipt import _sha256
@@ -24,6 +25,7 @@ class KRXSourceDataAdmissionError(ValueError):
     """Raised when composed source evidence is malformed, mixed or tampered."""
 
 
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 BATCH_BODY_FIELDS = (
     "batch_version",
     "source_family",
@@ -31,6 +33,7 @@ BATCH_BODY_FIELDS = (
     "access_route",
     "dataset_identifier",
     "authorization_evidence_reference",
+    "authorization_evidence_fingerprint_sha256",
     "client_revision",
     "response_schema_sha256",
     "public_contract_evidence_version",
@@ -51,8 +54,10 @@ class KRXSourceDataAdmission:
     source_family: str
     intended_use_scope: str
     dataset_identifier: str
+    authorization_evidence_fingerprint_sha256: str
     source_contract_closed: bool
     acquisition_batch_integrity_valid: bool
+    authorization_evidence_provenance_bound: bool
     public_contract_evidence_current: bool
     pit_lineage_structurally_valid: bool
     historical_coverage_structurally_complete: bool
@@ -75,12 +80,19 @@ def _verify_batch(batch: Mapping[str, Any]) -> bool:
     missing = [field for field in BATCH_BODY_FIELDS if field not in batch]
     if missing:
         raise KRXSourceDataAdmissionError(f"batch manifest missing required fields: {missing}")
+    if str(batch.get("batch_version")) != "2026-10-01.v2":
+        raise KRXSourceDataAdmissionError("unsupported acquisition batch version")
     claimed = str(batch.get("batch_fingerprint_sha256") or "").strip().lower()
-    if len(claimed) != 64 or any(ch not in "0123456789abcdef" for ch in claimed):
+    if not SHA256_RE.fullmatch(claimed):
         raise KRXSourceDataAdmissionError("batch fingerprint is missing or malformed")
     body = {field: batch[field] for field in BATCH_BODY_FIELDS}
     if claimed != _sha256(body):
         raise KRXSourceDataAdmissionError("batch fingerprint mismatch; manifest may be tampered")
+    auth_fp = str(batch["authorization_evidence_fingerprint_sha256"]).strip().lower()
+    if not SHA256_RE.fullmatch(auth_fp):
+        raise KRXSourceDataAdmissionError(
+            "batch authorization evidence fingerprint is missing or malformed"
+        )
     if int(batch["receipt_count"]) <= 0:
         raise KRXSourceDataAdmissionError("batch must contain at least one receipt")
     fps = list(batch["receipt_fingerprints_sha256"])
@@ -117,6 +129,10 @@ def assess_investor_flow_source_data_admission(
         raise KRXSourceDataAdmissionError("acquisition batch is not KRX_INVESTOR_FLOW")
 
     batch_valid = _verify_batch(batch)
+    auth_evidence_fp = str(
+        batch.get("authorization_evidence_fingerprint_sha256") or ""
+    ).strip().lower()
+    auth_provenance_bound = bool(SHA256_RE.fullmatch(auth_evidence_fp))
     public_current = bool(
         batch.get("public_contract_evidence_version") == PUBLIC_EVIDENCE_VERSION
         and batch.get("public_contract_evidence_fingerprint_sha256")
@@ -139,6 +155,7 @@ def assess_investor_flow_source_data_admission(
     structurally_admissible = bool(
         source_closed
         and batch_valid
+        and auth_provenance_bound
         and public_current
         and lineage_valid
         and coverage_complete
@@ -148,16 +165,16 @@ def assess_investor_flow_source_data_admission(
         source_family="KRX_INVESTOR_FLOW",
         intended_use_scope=str(gates.get("intended_use_scope") or ""),
         dataset_identifier=str(batch.get("dataset_identifier") or ""),
+        authorization_evidence_fingerprint_sha256=auth_evidence_fp,
         source_contract_closed=source_closed,
         acquisition_batch_integrity_valid=batch_valid,
+        authorization_evidence_provenance_bound=auth_provenance_bound,
         public_contract_evidence_current=public_current,
         pit_lineage_structurally_valid=lineage_valid,
         historical_coverage_structurally_complete=coverage_complete,
         source_family_and_scope_consistent=family_scope_consistent,
         source_data_structurally_admissible=structurally_admissible,
         eligible_for_experiment_registry_review=structurally_admissible,
-        # The experiment ledger/preregistration, statistical protocol and all
-        # promotion gates remain separate; this module never grants them.
         feature_performance_testing_authorized=False,
         sealed_holdout_authorized=False,
         alpha_or_final_judge_promotion_authorized=False,
@@ -169,6 +186,7 @@ def assess_investor_flow_source_data_admission(
         for name, ok in (
             ("SOURCE_CONTRACT_A_TO_F_NOT_CLOSED", source_closed),
             ("ACQUISITION_BATCH_INTEGRITY_INVALID", batch_valid),
+            ("STRUCTURED_AUTHORIZATION_EVIDENCE_PROVENANCE_NOT_BOUND", auth_provenance_bound),
             ("PUBLIC_CONTRACT_EVIDENCE_NOT_CURRENT", public_current),
             ("PIT_LINEAGE_NOT_STRUCTURALLY_VALID", lineage_valid),
             ("HISTORICAL_COVERAGE_NOT_STRUCTURALLY_COMPLETE", coverage_complete),
@@ -177,7 +195,7 @@ def assess_investor_flow_source_data_admission(
         if not ok
     ]
     out["guardrail"] = (
-        "Structural source-data admission is only eligibility for the next governance review. "
+        "Structural source-data admission requires acquisition provenance bound to one validated structured authorization-evidence fingerprint, but remains only eligibility for the next governance review. "
         "It never authorizes feature-performance testing, sealed holdout, promotion or live trading."
     )
     return out
