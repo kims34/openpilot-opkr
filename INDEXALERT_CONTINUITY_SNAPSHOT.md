@@ -60,7 +60,7 @@ Internal safe source sequence:
 
 Source-data admission only permits experiment-registry review; performance testing, holdout, promotion and live authority stay false.
 
-Latest broad KRX source-governance reference: Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission.
+Latest broad KRX source-governance reference: Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission. Final documentation-drift repair Action `36835918274` succeeded at research branch state before the later Android/server handoff update.
 
 External KRX blockers remain: approved exact route/product, credentials and genuine approval evidence, authenticated route proof, full official history/stable IDs, independently attested expected scope, record-level PIT lineage and exact use rights.
 
@@ -89,7 +89,7 @@ Tiers:
 - `PROSPECTIVE_PAPER_EXECUTION_LOG`: paper/simulation plumbing, not real fill quality.
 - `PROSPECTIVE_LIVE_EXECUTION_LOG`: real-account observations; only tier eligible to contribute raw live execution evidence.
 
-`research_v1_execution_evidence.py` now separates `live_structural_execution_evidence_present` from empirical sufficiency. One/few LIVE rows never close the blocker.
+`research_v1_execution_evidence.py` separates `live_structural_execution_evidence_present` from empirical sufficiency. One/few LIVE rows never close the blocker.
 
 Until a separately frozen protocol is evaluated:
 - `live_empirical_execution_evidence_ready=false`
@@ -107,20 +107,68 @@ If the protocol will judge existing LIVE observations, `frozen_at` must be stric
 
 Protocol validity alone keeps sufficiency unassessed and blocker/promotion/holdout/live authority false. A later independent evaluator must judge genuine staged LIVE evidence against a properly frozen protocol.
 
-Execution preregistration Action `36835013828` succeeded; contract-drift semantics are CI-guarded.
+Execution preregistration Action `36835013828` succeeded; strengthened contract-drift Action `36835231533` also succeeded.
 
-## 6. Broker/server/Android boundary
+## 6. Android / push Physical E2E — current build identified, server audit hardened, physical receipt still OPEN
+
+### Android current audited build
+
+Current build branch: `index-alert-build`.  
+Current branch HEAD: `396501f9df3bdf4fd7cea4a2c97116a02f8961d5` (`Name APK artifacts for v4.6`).  
+This is a direct descendant of the older audited `55d72dc...` WorkManager receipt fix.
+
+`index-alert/app/build.gradle.kts` freezes:
+- `versionName = "4.6"`
+- `versionCode = 46`
+- self-test `client_build` therefore resolves to **`4.6-46`**.
+
+Latest APK Action `36815959241`: SUCCESS.
+- debug artifact `IndexAlert-v4.6-debug`, artifact ID `11141577031`, SHA256 `d32c468bb3f719dcdafe99f3614358723cceeb566239bbedbbb3927c6f740dbf`;
+- unsigned release artifact `IndexAlert-v4.6-unsigned-release`, artifact ID `11141532240`, SHA256 `b95c8f28417c1b3f901ad2c0768970ae2942f2167ed49e9373f3666a4edf19a6`.
+
+Current Android `Push.kt` schedules privacy-safe `/push-ack` for the server-issued event ID on Firebase receipt and polls the same build self-test until `receipt_confirmed=true`. A provider `sent` result is never treated as handset receipt.
+
+### Server current audited code
+
+Current server branch: `index-alert-server`.
+
+The server self-test contract already reuses the same `token + client_build` event after it has been sent, so polling never generates a fresh event merely because receipt is pending. `/push-ack` accepts only SHA256(token) for a registered device plus an already-sent matching event, and duplicate ACKs are idempotent.
+
+Physical-E2E health was further hardened on 2026-10-01:
+- `push_self_test.latest_self_test_status()` binds health to the most recently created build self-test and omits raw token/event IDs;
+- `/push-health` now exposes `latest_self_test_build`, `latest_self_test_sent`, `latest_self_test_receipt_confirmed`, and `current_build_physical_e2e_confirmed`;
+- tests explicitly prove that an ACK from an older build cannot confirm a newer build;
+- server unit test Action `36836572820` at server commit `36b7250b31afcf2ca775cb59987c0c6c305cfc17` succeeded.
+
+Server smoke was then strengthened at server commit `12f6676287db487199a8b0644a7d568c11de77a1` to require the new build-specific `/push-health` fields in production. This prevents a stale production deployment from passing merely because old aggregate receipts exist.
+
+### Railway production deployment state
+
+Railway service `indexalert-runtime` is sourced from `index-alert-server`, but the latest confirmed production deployment is still deployment `5b5fc540-2925-4c83-aa83-0688eef31159`, commit `65855916afd52d081453bc511b6b82df3ec948b1` (`Test paper live execution evidence ledger tiers`). It predates the new build-specific E2E health contract.
+
+Therefore current GitHub/server code and production are intentionally treated as **deployment-drifted** until production is updated. A smoke green on the old aggregate contract is no longer sufficient; the strengthened smoke requires the new fields.
+
+### Exact Physical E2E closure condition
+
+For the current audited Android build, Physical E2E remains OPEN until a real handset running build `4.6-46` causes server evidence at the test point showing at least:
+- `latest_self_test_build == "4.6-46"`;
+- `latest_self_test_sent == true`;
+- `latest_self_test_receipt_confirmed == true`;
+- `current_build_physical_e2e_confirmed == true`;
+- a non-null client receipt timestamp / receipt ledger entry from the real handset path.
+
+Aggregate `received_deliveries >= 1` by itself is no longer sufficient because it may refer to an older build.
+
+No physical receipt is fabricated or inferred from Firebase provider send success.
+
+## 7. Broker / live-order boundary
 
 Execution progression remains:
 `Research / Backtest -> Shadow -> Kiwoom Paper API -> Tiny Live -> Limited Live -> Production`.
 
-Real-account ordering remains disabled. Structurally valid LIVE rows or broker connectivity cannot skip stages.
+Real-account ordering remains disabled. Structurally valid LIVE rows, broker connectivity, Android push receipt, or server deployment success cannot skip any research/promotion stage.
 
-Railway `indexalert-runtime` previously ran server commit `65855916afd52d081453bc511b6b82df3ec948b1`; deployment `34e76729-ff9b-4fa5-8334-b8b591a336ba` had `/health` 200. Operational evidence only.
-
-Last audited Android build branch head: `55d72dc576131d1f8c2f6f01b9f4951a2e088911`. APK Action `36665289417` succeeded. Physical E2E remains open: current-build handset receipt must produce `received_deliveries >= 1` and non-null `last_client_receipt_at`.
-
-## 7. Explicit unfinished-work registry
+## 8. Explicit unfinished-work registry
 
 1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
 2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure.
@@ -130,13 +178,14 @@ Last audited Android build branch head: `55d72dc576131d1f8c2f6f01b9f4951a2e08891
 6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.
 7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations plus later independent sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. PHYSICAL E2E — current-build Android receipt still required.
-10. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
+9. SERVER DEPLOYMENT DRIFT — current production still runs server commit `65855916...`; build-specific E2E health exists only on newer `index-alert-server` code until deployed.
+10. PHYSICAL E2E — current v4.6-46 handset receipt meeting the build-specific conditions above is still required.
+11. LIVE ORDERING — disabled until every frozen promotion/safety gate and explicit activation requirement passes.
 
-## 8. Continuation rules
+## 9. Continuation rules
 
 On every continuation:
-- re-fetch branch HEAD and relevant Actions first;
+- re-fetch branch HEADs and relevant Actions first;
 - read Master Spec, Ledger, Research Status, contracts/audits and this snapshot;
 - skip completed/rejected work;
 - never treat green source workflows as authenticated KRX evidence without internal state;
@@ -145,11 +194,12 @@ On every continuation:
 - never treat daily prices/status chronology as exact realized status economics;
 - never treat one/few LIVE rows as empirical execution sufficiency;
 - never freeze execution thresholds after seeing the LIVE outcomes they will judge;
+- never treat Firebase provider send success or an old-build receipt as current-build Physical E2E;
 - never revive rejected candidates through threshold/cost/horizon mining;
 - never convert Shadow/Paper observations into live empirical evidence;
 - if chat conflicts with reproducible GitHub evidence, GitHub wins;
 - commit material state changes to canonical GitHub docs.
 
-## 9. Old-chat deletion gate
+## 10. Old-chat deletion gate
 
 Older IndexAlert chat/work rooms are not project-state dependencies. Material continuity lives in GitHub code, Actions evidence and canonical documents.
