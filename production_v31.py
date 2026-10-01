@@ -353,3 +353,10 @@ def history_v31(index_id: str, snapshot_id: str = ""):
             payload["previous_close"] = extra.get("previous_close")
             payload["previous_close_date"] = extra.get("previous_close_date")
     return payload
+
+
+# The build-bound Android registration/receipt contract must survive runtime
+# entrypoint drift. Install the same idempotent overlay here as v32 so either
+# `production_v31:app` or `production_v32:app` exposes identical push semantics.
+import push_build_registration as _push_build_registration
+_push_build_registration.attach(app)
