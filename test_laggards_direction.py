@@ -9,12 +9,13 @@ def utc_ts(iso: str) -> int:
 
 
 class _FakeMonitor:
-    def __init__(self, instrument_type: str):
+    def __init__(self, instrument_type: str, quote_ts: int | None = None):
         self.instrument_type = instrument_type
+        self.quote_ts = quote_ts or utc_ts("2026-09-25T14:00:00")
 
     def yahoo_result(self, symbol, range_, interval, prepost):
         return {
-            "timestamp": [utc_ts("2026-09-25T14:00:00")],
+            "timestamp": [self.quote_ts],
             "indicators": {"quote": [{"close": [100.0]}]},
             "meta": {
                 "instrumentType": self.instrument_type,
@@ -70,6 +71,14 @@ class DirectionalMoverTests(unittest.TestCase):
         # constituent cache merely because the symbol is syntactically valid.
         with self.assertRaisesRegex(RuntimeError, "non-equity constituent"):
             _market_quote(_FakeMonitor("ETF"), "USD", require_equity=True)
+
+    def test_constituent_quote_suppresses_registered_spin_off_date(self):
+        # CTVA's raw 2026-09-30 close is not economically comparable to the
+        # ex-distribution CTVA share on 2026-10-01. The mover layer must fail
+        # closed before attempting ordinary previous-close math.
+        monitor = _FakeMonitor("EQUITY", utc_ts("2026-10-01T14:00:00"))
+        with self.assertRaisesRegex(RuntimeError, "non-comparable corporate action"):
+            _market_quote(monitor, "CTVA", require_equity=True)
 
     def test_etf_direction_quote_is_not_subject_to_constituent_equity_gate(self):
         # SPY/QQQ/SCHD themselves are intentionally used only to choose the
