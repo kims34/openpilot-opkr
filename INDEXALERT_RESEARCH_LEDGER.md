@@ -186,3 +186,7 @@ A source/auth probe alone is not feature-promotion evidence. If reproducible off
 4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol, retain broker-native order/execution provenance for row-level independent admission, then run the frozen metric assessment: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.
 5. Do **not** burn the sealed holdout while external KRX/status-economics and empirical execution blockers remain open; the execution protocol itself is now frozen.
 6. After a valid holdout, require prospective Shadow S1 then frozen Fresh Confirmation S2.
+
+## 2026-10-02 — Kiwoom demo/read-only connectivity evidence synchronized
+
+Canonical `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md` records a user-operated mock-host smoke result of `TOKEN_OK / ACCOUNT_OK / BALANCE_OK / FILLS_OK`. Disposition: **DEMO READ-ONLY PLUMBING OBSERVED; NO PROMOTION CREDIT**. This evidence must not be counted as genuine LIVE provenance, empirical fill/slippage/capacity evidence, exact status-event economics, KRX authorization/data evidence, sealed-holdout authorization, or live-order authorization.
