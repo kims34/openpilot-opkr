@@ -64,6 +64,7 @@ class FxBasisTests(unittest.TestCase):
             "day_change_percent": None,
             "basis_verified": False,
             "basis_provider": None,
+            "basis_contract": fx_basis.PUBLIC_BASIS_CONTRACT,
         })
 
     def test_public_basis_fields_accepts_only_complete_ecos_basis(self):
@@ -81,6 +82,7 @@ class FxBasisTests(unittest.TestCase):
         self.assertEqual(out["day_change_percent"], 0.695)
         self.assertIs(out["basis_verified"], True)
         self.assertIn("ECOS", out["basis_provider"])
+        self.assertEqual(out["basis_contract"], fx_basis.PUBLIC_BASIS_CONTRACT)
 
     def test_public_basis_fields_rejects_false_verified_shape(self):
         out = fx_basis.public_basis_fields({
@@ -94,6 +96,7 @@ class FxBasisTests(unittest.TestCase):
         self.assertIs(out["basis_verified"], False)
         self.assertIsNone(out["previous_close"])
         self.assertIsNone(out["day_change_percent"])
+        self.assertEqual(out["basis_contract"], fx_basis.PUBLIC_BASIS_CONTRACT)
 
 
 if __name__ == "__main__":
