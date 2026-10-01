@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Synchronize canonical status and execution contract
+      - name: Synchronize Master Spec continuity and ledger
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -31,68 +31,98 @@ jobs:
                   raise SystemExit(f'missing end heading: {end_heading}')
               return text[:start] + replacement.rstrip() + '\n\n' + text[end:]
 
-          status = Path('INDEXALERT_RESEARCH_STATUS.md')
-          s = status.read_text(encoding='utf-8')
-          status_lines = [
-              '## Execution-sufficiency preregistration — project v1 frozen, genuine LIVE not yet observed',
-              '',
-              'Canonical preregistration/evaluator stack is now:',
-              '- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` — human-readable frozen protocol;',
-              '- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json` — SHA-256-bound machine-readable schema v2 criteria;',
-              '- `research_v1_execution_sufficiency_protocol.py` — fail-closed preregistration validator with legacy schema-v1 compatibility;',
-              '- `research_v1_execution_sufficiency_assessment.py` — independent genuine-LIVE evaluator.',
-              '',
-              'The project protocol was frozen before any genuine LIVE observation. Core criteria include at least 600 LIVE observations across at least 200 distinct decision dates, at least 400 filled observations, decision-time PIT ADV participation capped at the existing research assumption `0.0005` (0.05%), 120 near-capacity observations at >=80% of that ceiling, date-cluster fill/slippage gates, Wilson no-fill/partial-fill bounds, 5m/30m/close markouts with ES95/ES99 reporting, latency/expiry controls, fee/tax comparison, and zero unknown/reconciliation/risk/capacity-integrity breaches. Thresholds are bound to the protocol document fingerprint and may not be weakened using outcomes from the evidence window they judge.',
-              '',
-              'The evaluator accepts only `PROSPECTIVE_LIVE_EXECUTION_LOG`, requires the frozen decision/execution policy IDs and PIT provenance timestamps, and keeps `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` even if the execution-only gates later pass.',
-              '',
-              'No genuine staged LIVE execution observations exist yet, so current project state remains:',
-              '- `live_empirical_execution_evidence_ready=false`;',
-              '- `empirical_execution_sufficiency_assessed=false`;',
-              '- `empirical_execution_blocker_closed=false`;',
-              '- `promotion_ready=false`.',
-              '',
-              'Historical preregistration Actions `36835013828` and `36835231533` succeeded. The frozen project protocol/evaluator Action `36881327868` also succeeded. Unit-test fixtures exercise pass/fail code paths only and are not project evidence.',
-          ]
-          s = replace_section(
-              s,
-              '## Execution-sufficiency preregistration',
-              '## Android / push Physical E2E state',
-              '\n'.join(status_lines),
-          )
-          status.write_text(s, encoding='utf-8')
+          master = Path('INDEXALERT_MASTER_SPEC.md')
+          m = master.read_text(encoding='utf-8')
+          heading = '## 17. Frozen empirical execution-sufficiency protocol — 2026-10-01'
+          if heading not in m:
+              lines = [
+                  heading,
+                  '',
+                  'The project execution-sufficiency criteria are frozen before any genuine LIVE observation in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and the SHA-256-bound machine-readable `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`. `research_v1_execution_sufficiency_assessment.py` is the independent evaluator. Unit-test fixtures are code-path tests only and are never project evidence.',
+                  '',
+                  'The frozen v1 evidence window requires at least:',
+                  '- 600 genuine `PROSPECTIVE_LIVE_EXECUTION_LOG` observations;',
+                  '- 200 distinct decision dates;',
+                  '- 400 filled observations;',
+                  '- decision-time PIT ADV participation no greater than the existing research assumption `0.0005` (0.05%);',
+                  '- 120 observations at or above 80% of that participation ceiling;',
+                  '- date-cluster fill-ratio/slippage/fee-tax uncertainty gates;',
+                  '- Wilson upper bounds for no-fill and partial-fill rates;',
+                  '- complete 5m/30m/close markouts with ES95/ES99 reporting;',
+                  '- recommendation-TTL/order-expiry latency integrity;',
+                  '- zero capacity breaches, unknown order outcomes, unresolved reconciliation rows and risk-limit-breach rows.',
+                  '',
+                  'The evaluator is bound to frozen decision/execution policy IDs, exact protocol-document fingerprint and PIT provenance timestamps. Thresholds may not be weakened using outcomes from the evidence window they judge. A future revision requires a new protocol ID/fingerprint and an evidence window beginning strictly after that revision is frozen.',
+                  '',
+                  'Passing the execution-only protocol may close `empirical_execution_blocker_closed` for that protocol, but it must still leave `promotion_ready=false`, `sealed_holdout_authorized=false` and `live_trading_authorized=false` until every independent Master Spec gate passes. No sealed holdout may be opened merely because execution sufficiency passes, and no real-account order mode may be activated from this evidence alone.',
+                  '',
+                  'Current project state: the protocol/evaluator are frozen and Actions-tested, but no genuine staged LIVE evidence window exists yet. Therefore empirical execution sufficiency remains unassessed/open. KRX A-F evidence, exact status-event economics, sealed holdout, Shadow S1 and Fresh Confirmation S2 remain independent blockers.',
+              ]
+              m = m.rstrip() + '\n\n' + '\n'.join(lines) + '\n'
+          master.write_text(m, encoding='utf-8')
 
-          contract = Path('INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md')
-          c = contract.read_text(encoding='utf-8')
-          replacements = [
-              (
-                  'The numeric values used in unit-test fixtures are illustrative test data only and are not IndexAlert promotion thresholds.',
-                  'Unit-test fixture values remain non-evidence. The canonical IndexAlert project thresholds are now frozen separately in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and its SHA-256-bound `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`; they were fixed before any genuine LIVE observation.'
-              ),
-              (
-                  'A later evaluator may assess genuine LIVE evidence against a properly frozen protocol, but that assessment must remain separate from the protocol-registration step.',
-                  '`research_v1_execution_sufficiency_assessment.py` is the separate evaluator for genuine LIVE evidence against the frozen project protocol. Protocol registration and evidence assessment remain independent steps.'
-              ),
-              (
-                  '- Empirical execution sufficiency = a separate future assessment that is currently **not assessed / not closed**.',
-                  '- Empirical execution sufficiency = a separate genuine-LIVE assessment that is currently **not assessed / not closed because no genuine LIVE evidence window exists yet**.'
-              ),
-              (
-                  'The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.\n\nThe empirical execution blocker remains open. A genuinely frozen future sufficiency protocol plus staged LIVE evidence and its later independent assessment are still required.',
-                  'The research integrity schema separates PAPER from LIVE, separates LIVE structural presence from empirical sufficiency, and has a fail-closed preregistration validator preventing post-hoc execution-sufficiency threshold selection. The project protocol is now frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` / `.json`, and the independent evaluator is implemented and Actions-tested. Real-account ordering remains disabled. No synthetic execution observations may be inserted to populate the ledger.\n\nThe empirical execution blocker remains open because genuine staged LIVE evidence has not been collected or assessed. The frozen protocol must be evaluated on that future genuine-LIVE window; passing it still does not independently authorize sealed holdout, promotion or live trading.'
-              ),
+          snapshot = Path('INDEXALERT_CONTINUITY_SNAPSHOT.md')
+          s = snapshot.read_text(encoding='utf-8')
+          snapshot_lines = [
+              '## 5. Execution-sufficiency preregistration — project v1 FROZEN, genuine LIVE not yet observed',
+              '',
+              'Canonical files:',
+              '- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md`;',
+              '- `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`;',
+              '- `research_v1_execution_sufficiency_protocol.py`;',
+              '- `research_v1_execution_sufficiency_assessment.py`.',
+              '',
+              'Project v1 was frozen before any genuine LIVE observation. Minimum sample is 600 LIVE observations across at least 200 distinct decision dates with at least 400 fills. Capacity scope is capped at decision-time PIT ADV participation `0.0005`; at least 120 observations must be near capacity (>=80% of the ceiling). Fill, no-fill/partial-fill, slippage, fee/tax, latency/expiry, 5m/30m/close markout, ES95/ES99, reconciliation, unknown-outcome, capacity and risk-integrity gates are all preregistered and non-compensating.',
+              '',
+              'The evaluator accepts only genuine `PROSPECTIVE_LIVE_EXECUTION_LOG` rows with the frozen decision/execution policy IDs and PIT provenance. Unit-test fixtures are never project evidence.',
+              '',
+              'Current state remains `live_empirical_execution_evidence_ready=false`, `empirical_execution_sufficiency_assessed=false`, `empirical_execution_blocker_closed=false`, `promotion_ready=false`, `sealed_holdout_authorized=false`, `live_trading_authorized=false` because no genuine staged LIVE evidence window exists yet.',
+              '',
+              'Frozen project protocol/evaluator Action `36881327868` succeeded. The protocol cannot be weakened from outcomes it judges; any revision requires a new protocol ID/fingerprint and only later observations.',
           ]
-          for old, new in replacements:
-              if old not in c:
-                  raise SystemExit(f'canonical execution contract text not found: {old[:80]}')
-              c = c.replace(old, new)
-          contract.write_text(c, encoding='utf-8')
+          s = replace_section(s, '## 5. Execution-sufficiency preregistration', '## 6. Android / push Physical E2E', '\n'.join(snapshot_lines))
+          old_registry = '6. DONE — execution-sufficiency preregistration validator; FUTURE PROTOCOL BLOCKER remains because actual project criteria have not been frozen.'
+          new_registry = '6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, independent evaluator and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence has not been collected/assessed.'
+          if old_registry not in s:
+              raise SystemExit('stale registry item 6 not found')
+          s = s.replace(old_registry, new_registry)
+          snapshot.write_text(s, encoding='utf-8')
+
+          ledger = Path('INDEXALERT_RESEARCH_LEDGER.md')
+          l = ledger.read_text(encoding='utf-8')
+          l = l.replace('Updated: 2026-09-30 KST', 'Updated: 2026-10-01 KST')
+          ledger_heading = '### Execution-sufficiency project protocol v1 — preregistration freeze'
+          if ledger_heading not in l:
+              insert_at = l.find('## Next independent information family')
+              if insert_at < 0:
+                  raise SystemExit('ledger insertion heading not found')
+              ledger_lines = [
+                  ledger_heading,
+                  'Status: **FROZEN BEFORE GENUINE LIVE / EVALUATOR IMPLEMENTED / NOT PROMOTION EVIDENCE**. Action `36881327868`.',
+                  '',
+                  'The project criteria are frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and SHA-256-bound `.json` before any genuine LIVE execution evidence is used. The independent evaluator accepts only the real-account `PROSPECTIVE_LIVE_EXECUTION_LOG` tier with frozen decision/execution policy identity and PIT provenance.',
+                  '',
+                  'Minimum scope is 600 LIVE observations across at least 200 distinct decision dates and at least 400 fills; empirical capacity is bounded to the existing `0.0005` decision-time ADV participation assumption with at least 120 near-capacity observations. Prespecified non-compensating gates cover fill quality, Wilson no-fill/partial-fill bounds, slippage versus the pre-order budget, fee/tax excess, TTL/expiry latency, complete 5m/30m/close markouts with ES95/ES99, near-capacity behavior, and zero unknown/reconciliation/capacity/risk-integrity breaches.',
+                  '',
+                  'Disposition: no genuine LIVE evidence window exists yet, so the empirical execution blocker remains open and unassessed. Synthetic/unit-test rows cannot close it. A later pass cannot by itself authorize the sealed holdout, model promotion or live trading.',
+                  '',
+              ]
+              l = l[:insert_at] + '\n'.join(ledger_lines) + '\n' + l[insert_at:]
+          l = l.replace(
+              '4. Build empirical execution evidence: fill ratio, fill time/price, partial fills, post-fill markout, latency/expiry and capacity.',
+              '4. Collect genuine LIVE execution evidence against the already-frozen project v1 protocol: fill ratio, fill time/price, partial/no fills, post-fill markout, latency/expiry, fees/tax, reconciliation and capacity.'
+          )
+          l = l.replace(
+              '5. Do **not** burn the sealed holdout until blockers, code and protocol are frozen.',
+              '5. Do **not** burn the sealed holdout while external KRX/status-economics and empirical execution blockers remain open; the execution protocol itself is now frozen.'
+          )
+          ledger.write_text(l, encoding='utf-8')
           PY
-      - name: Commit synchronized documents
+      - name: Commit synchronized authority documents
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add INDEXALERT_RESEARCH_STATUS.md INDEXALERT_EXECUTION_EVIDENCE_CONTRACT.md
+          git add INDEXALERT_MASTER_SPEC.md INDEXALERT_CONTINUITY_SNAPSHOT.md INDEXALERT_RESEARCH_LEDGER.md
           git diff --cached --check
-          git commit -m 'Sync status with frozen execution sufficiency protocol'
+          git commit -m 'Align authority docs to frozen execution sufficiency protocol'
           git push origin HEAD:index-alert-research-v1
