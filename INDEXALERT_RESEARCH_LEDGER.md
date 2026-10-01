@@ -190,3 +190,7 @@ A source/auth probe alone is not feature-promotion evidence. If reproducible off
 ## 2026-10-02 — Kiwoom demo/read-only connectivity evidence synchronized
 
 Canonical `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md` records a user-operated mock-host smoke result of `TOKEN_OK / ACCOUNT_OK / BALANCE_OK / FILLS_OK`. Disposition: **DEMO READ-ONLY PLUMBING OBSERVED; NO PROMOTION CREDIT**. This evidence must not be counted as genuine LIVE provenance, empirical fill/slippage/capacity evidence, exact status-event economics, KRX authorization/data evidence, sealed-holdout authorization, or live-order authorization.
+
+## 2026-10-02 — Internal completeness audit
+
+Disposition: **INTERNAL AUTHORITY BOUNDARY HARDENED; NO EXTERNAL BLOCKER CREDIT**. Whole-boundary review of continuous research, successor staging, automation controls, Kiwoom offline normalization and execution evidence found one internal authority ambiguity and fixed it fail-closed. Promotion eligibility is now explicitly distinct from Core mutation authority. No sealed holdout or genuine LIVE evidence was consumed.
