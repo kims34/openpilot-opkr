@@ -155,3 +155,15 @@ def test_data_marketplace_requires_explicit_automation_permission():
     denied = _validate(_record(automated_collection_authorized=False))
     assert denied["sufficient_for_tiny_probe_preflight"] is False
     assert "AUTOMATED_COLLECTION_NOT_EXPLICITLY_AUTHORIZED" in denied["reason_codes"]
+
+
+def test_permitted_without_separate_approval_is_valid_for_tiny_probe():
+    out = _validate(
+        _record(
+            approval_state="PERMITTED_NO_SEPARATE_APPROVAL",
+            automated_collection_authorized=True,
+        )
+    )
+    assert out["sufficient_for_tiny_probe_preflight"] is True
+    assert out["reason_codes"] == []
+    assert out["gate_a_status_ceiling"] == "PARTIAL"
