@@ -12,6 +12,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     KRXHistoricalWorkerEntrypointError,
     execute_identity_seed,
     execute_identity_standard_code_binding,
+    prepare_per_security_history,
     preflight_only,
 )
 from research_v1_krx_private_store import write_raw_object
@@ -276,3 +277,119 @@ def test_identity_binding_executes_private_task_set_after_seed_completion(tmp_pa
     assert out["live_trading_authorized"] is False
     assert "20200102" not in str(out)
     assert (tmp_path / "private" / out["private_batch_relpath"]).is_file()
+
+
+def _complete_binding_predecessor(tmp_path, worktree):
+    _complete_seed_predecessor(tmp_path, worktree)
+    root = (tmp_path / "private").resolve()
+    task = _binding_task()
+    initialize_phase_state(
+        root=str(root),
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        tasks=[task],
+        git_worktree=str(worktree),
+    )
+    raw = write_raw_object(root, b"binding-predecessor", git_worktree=str(worktree))
+    record_task_completion(
+        root=str(root),
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        task_id=task["task_id"],
+        worker_result={
+            "completed": True,
+            "request_metadata_sha256": "9" * 64,
+            "raw_object_sha256": raw["raw_object_sha256"],
+            "raw_bytes_size": raw["raw_bytes_size"],
+            "response_rows": 1,
+            "response_schema_sha256": "a" * 64,
+            "response_payload_sha256": "b" * 64,
+            "receipt_fingerprint_sha256": "c" * 64,
+            "raw_rows_emitted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        },
+        git_worktree=str(worktree),
+    )
+
+
+def _per_security_task():
+    return {
+        "phase": "PER_SECURITY_HISTORY",
+        "task_id": "f" * 64,
+        "source_family": "KRX_SECURITY_STATUS",
+        "request_spec": {
+            "kind": "trading_halt",
+            "params": {
+                "isuCd": "KR7005930003",
+                "isuCd2": "005930",
+                "strtDd": "20150615",
+                "endDd": "20170613",
+            },
+        },
+        "contains_security_identifier": True,
+    }
+
+
+def test_prepare_per_security_history_requires_completed_binding(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_seed_predecessor(tmp_path, worktree)
+    with pytest.raises(Exception, match="prior phase IDENTITY_STANDARD_CODE_BINDING"):
+        prepare_per_security_history(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            task_builder=lambda *args, **kwargs: [_per_security_task()],
+        )
+
+
+def test_prepare_per_security_history_is_network_free_without_bulk_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_binding_predecessor(tmp_path, worktree)
+
+    out = prepare_per_security_history(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=lambda *args, **kwargs: [_per_security_task()],
+    )
+    assert out["mode"] == "PREPARE_PER_SECURITY_HISTORY"
+    assert out["task_count"] == 1
+    assert out["task_count_by_kind"] == {"trading_halt": 1}
+    assert out["phase_status"] == "PENDING"
+    assert out["phase_complete"] is False
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["source_gate_c_closed"] is False
+    assert out["source_gate_d_closed"] is False
+    assert out["source_gate_e_closed"] is False
+    assert out["feature_performance_testing_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+    assert "005930" not in str(out)
+    assert "KR7005930003" not in str(out)
+
+    manifest = tmp_path / "private" / out["private_task_manifest_relpath"]
+    assert manifest.is_file()
+    assert manifest.stat().st_mode & 0o777 == 0o600
+    private_text = manifest.read_text(encoding="utf-8")
+    assert "005930" in private_text
+    assert "KR7005930003" in private_text
+
+
+def test_prepare_per_security_history_rejects_public_runtime_even_network_free(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_binding_predecessor(tmp_path, worktree)
+    env = _env(tmp_path, consent=False)
+    env["RAILWAY_SERVICE_NAME"] = "indexalert-runtime"
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="DEDICATED_WORKER_SERVICE_ISOLATION",
+    ):
+        prepare_per_security_history(
+            environment=env,
+            git_worktree=str(worktree),
+            task_builder=lambda *args, **kwargs: [_per_security_task()],
+        )
