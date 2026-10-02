@@ -32,18 +32,20 @@ def validate_permission_reply_evidence(data: Mapping[str, Any]) -> dict[str, Any
         _require(bool(SHA256_RE.fullmatch(str(data.get(key) or ""))), f"{key} invalid")
     _require(
         data.get("latest_redacted_email_record_sha256")
-        == "3fa82170250320e4b406ae343e6a5872ca4945119cd4df4c17115754ddc301c1",
+        == "7361065e06599f947216233fc84e97126b1675de5af41068114cf6ef9577e304",
         "latest normalized email-record hash drift",
     )
     _require(data.get("image_stored_in_repository") is False, "image must not be stored in repository")
 
     meta = data.get("email_metadata") or {}
     _require(meta.get("subject") == "[KRX Data Marketplace] 데이터 이용 문의에 대한 답변의 건", "subject drift")
-    _require(meta.get("sender_address") == "krxdata@krx.co.kr", "sender address drift")
-    _require(meta.get("sender_domain") == "krx.co.kr", "sender domain drift")
-    _require(meta.get("reply_at") == "2026-10-02T14:40:00+09:00", "reply timestamp drift")
+    _require(meta.get("thread_sender_address") == "krxdata@krx.co.kr", "sender address drift")
+    _require(meta.get("thread_sender_domain") == "krx.co.kr", "sender domain drift")
+    _require(meta.get("prior_reply_at") == "2026-10-02T14:40:00+09:00", "prior reply timestamp drift")
+    _require(meta.get("latest_reply_exact_timestamp") is None, "latest reply timestamp must remain unknown")
+    _require(meta.get("latest_reply_timestamp_not_reprovided") is True, "latest reply timestamp provenance drift")
     _require(meta.get("recipient_redacted") is True, "recipient must stay redacted")
-    _require(meta.get("metadata_source") == "USER_PROVIDED_EMAIL_HEADER_TEXT", "metadata-source drift")
+    _require(meta.get("metadata_source") == "USER_PROVIDED_EMAIL_THREAD_CONTEXT_AND_LATEST_REPLY_TEXT", "metadata-source drift")
 
     scope = data.get("supported_scope") or {}
     for key in (
