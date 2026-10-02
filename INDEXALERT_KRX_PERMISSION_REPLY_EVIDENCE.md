@@ -10,12 +10,13 @@ Status: **EXPLICIT PERSONAL-RESEARCH FULL-HISTORY / AUTOMATED / HIGH-FREQUENCY U
 The user supplied the KRX reply text plus email-header metadata in the conversation. The recipient identity/email is deliberately not stored in GitHub.
 
 - original screenshot SHA-256: `1983036114310ea42dd60ad49fc52c19a7378f7f1d3f1c1a65dabc7b4d1cf1e1`
-- normalized redacted latest email-record SHA-256: `3fa82170250320e4b406ae343e6a5872ca4945119cd4df4c17115754ddc301c1`
+- normalized redacted latest email-record SHA-256: `2aa1c2a08c108d9f71e4b5027fb697e593f2f874268567faa0d62c3ac95c3c39`
 - subject: `[KRX Data Marketplace] 데이터 이용 문의에 대한 답변의 건`
-- sender: `krxdata@krx.co.kr`
-- reply time: `2026-10-02T14:40:00+09:00`
+- thread sender: `krxdata@krx.co.kr`
+- prior reply time previously supplied: `2026-10-02T14:40:00+09:00`
+- latest v3 reply exact timestamp: **not re-provided / intentionally unknown**
 - recipient: **redacted**
-- sender metadata source: user-provided email-header text
+- metadata source: user-provided email-thread context plus latest reply text
 - sender domain matches the official `krx.co.kr` domain
 - sender origin remains user-attested, not independently fetched by the repository
 
