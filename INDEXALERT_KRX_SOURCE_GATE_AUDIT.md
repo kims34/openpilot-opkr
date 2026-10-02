@@ -55,6 +55,8 @@ Overall: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 
 Current verdict: investor-flow feature-performance experiments remain blocked.
 
+Authorization configuration remains canonical and explicit: `KRX_AUTH_EVIDENCE_REF` identifies the non-secret evidence reference, while `KRX_AUTH_EVIDENCE_JSON` carries the structured non-secret record validated by `research_v1_krx_authorization_evidence.py`. For the Data Marketplace web-session route, that record is insufficient unless it also establishes `automated_collection_authorized=true` from KRX-issued permission evidence.
+
 ## 5. Official public evidence
 
 Machine-readable public evidence is frozen in `research_v1_krx_public_evidence.py` version `2026-10-02.v2`, fingerprint:
