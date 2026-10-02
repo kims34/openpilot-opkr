@@ -156,6 +156,8 @@ Latest integrated KRX integrity reference for the worker deployment boundary: Ac
 
 No bulk KRX network job has started. The public `indexalert-runtime` service is explicitly forbidden from running it. Before the first 27-request `IDENTITY_SEED` stage can execute, the project still requires a separate dedicated Railway worker, its own private persistent `/data` volume, worker-only KRX secrets, and a distinct explicit user bulk-execution consent. Initial worker deployment must remain preflight-only with the bulk consent environment variable absent.
 
+Canonical Railway gap evidence is `INDEXALERT_KRX_HISTORICAL_RAILWAY_READINESS_EVIDENCE.md/.json`. Provisioning itself is now separated by `INDEXALERT_KRX_WORKER_PROVISIONING_CONSENT_CONTRACT.md/.json`: service/volume creation requires the exact provisioning approval phrase and may authorize only preflight-only infrastructure setup. It cannot authorize historical bulk acquisition or expected-scope network execution.
+
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
 Final Judge requires exact halt/delisting economics. Structural status-event consistency or daily price history is not sufficient.
