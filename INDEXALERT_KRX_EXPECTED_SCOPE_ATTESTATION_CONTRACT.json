@@ -1,0 +1,78 @@
+{
+  "schema_version": "1",
+  "contract_id": "INDEXALERT-KRX-EXPECTED-SCOPE-ATTESTATION-v1",
+  "bound_historical_plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+  "frozen_date": "2026-10-02",
+  "purpose": "Provide an independent official-KRX expected scope for Gate-C coverage audits without deriving expected keys from the same Data Marketplace status/investor-flow observations being audited.",
+  "research_period": {
+    "start": "2015-06-15",
+    "end": "2026-10-01",
+    "calendar_date_count": 4127,
+    "market": "KOSPI"
+  },
+  "official_attestation_sources": {
+    "trading_date_and_trade_scope": {
+      "service_name": "유가증권 일별매매정보",
+      "endpoint": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+      "method": "GET",
+      "date_parameter": "basDd",
+      "sweep_rule": "Query every calendar date in the frozen research period; never infer a trading calendar from weekday/holiday rules.",
+      "trading_date_rule": "A date is eligible as an official observed trading-date scope only when the authenticated response is non-empty and every returned BAS_DD equals the requested date.",
+      "empty_date_rule": "An empty response is evidence only that this exact request produced no daily-trade rows; it must not be silently converted into a trading day."
+    },
+    "same_date_security_identity": {
+      "service_name": "유가증권 종목기본정보",
+      "endpoint": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+      "method": "GET",
+      "date_parameter": "basDd",
+      "request_rule": "Request the same date only after the daily-trade response for that date is non-empty.",
+      "common_stock_rule": "MKT_TP_NM identifies KOSPI scope and SECUGRP_NM/KIND_STKCERT_TP_NM must explicitly establish common-stock identity.",
+      "stable_join_rule": "Join exact ISU_CD on the same requested date; name-only joins are forbidden."
+    }
+  },
+  "expected_scope_rules": {
+    "investor_flow": {
+      "key": [
+        "event_date",
+        "symbol",
+        "isu_cd"
+      ],
+      "rule": "Use the exact same-date intersection of non-empty KOSPI daily-trade rows and same-date officially attested common-stock identity rows joined by ISU_CD. Never add a missing security/date or synthesize a zero-flow row.",
+      "output_requires_scope_contract_fingerprint": true
+    },
+    "security_status": {
+      "key": [
+        "snapshot_date",
+        "symbol",
+        "isu_cd"
+      ],
+      "rule": "For each independently observed trading date, use all same-date officially attested KOSPI common-stock identity rows from the basic-info response. Never infer an identity row from later snapshots.",
+      "output_requires_scope_contract_fingerprint": true
+    }
+  },
+  "integrity": {
+    "raw_responses_private_only": true,
+    "every_request_requires_receipt": true,
+    "response_payload_sha256_required": true,
+    "response_schema_sha256_required": true,
+    "exact_requested_date_response_date_consistency_required": true,
+    "mixed_contract_fingerprints_forbidden": true,
+    "expected_scope_must_not_be_derived_from_audited_data_marketplace_rows": true
+  },
+  "execution": {
+    "rights_to_use_approved_openapi_services": true,
+    "network_execution_authorized_by_user": false,
+    "separate_execution_consent_required": true,
+    "execution_consent_env": "KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT",
+    "execution_consent_exact_value": "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1",
+    "default_network_request_attempted": false
+  },
+  "authority": {
+    "source_gate_c_closed": false,
+    "source_gate_d_closed": false,
+    "source_gate_e_closed": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  }
+}
