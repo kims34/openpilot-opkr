@@ -32,7 +32,17 @@ def validate_readiness(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(req.get("dedicated_volume_mount") == "/data", "volume mount drift")
     _require(req.get("private_raw_root") == "/data/indexalert/krx-historical-v3", "raw root drift")
     _require(req.get("public_domain_forbidden") is True, "public-domain guard lost")
+    _require(req.get("cron_forbidden") is True, "cron guard lost")
     _require(req.get("restart_policy") == "NEVER", "restart-policy drift")
+    _require(
+        set(req.get("required_secret_names") or []) == {"KRX_ID","KRX_PW","KRX_AUTH_KEY"},
+        "worker secret-name set drift",
+    )
+    nonsecret = req.get("required_nonsecret_variables") or {}
+    _require(nonsecret.get("KRX_PRIVATE_RAW_DIR") == "/data/indexalert/krx-historical-v3", "KRX_PRIVATE_RAW_DIR drift")
+    _require(nonsecret.get("INDEXALERT_KRX_HIST_WORKER_ROLE") == "DEDICATED_ONE_SHOT", "worker role drift")
+    _require(req.get("bulk_consent_env") == "KRX_HISTORICAL_ACQUISITION_CONSENT", "bulk consent env drift")
+    _require(req.get("bulk_consent_must_be_absent_initially") is True, "initial bulk-consent guard lost")
 
     services = {str(x.get("name")): x for x in (data.get("observed_services") or [])}
     _require("indexalert-runtime" in services, "runtime observation missing")
@@ -44,12 +54,15 @@ def validate_readiness(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(data.get("dedicated_worker_volume_exists") is False, "worker volume cannot be claimed present")
     _require(data.get("production_runtime_volume_reuse_allowed") is False, "production volume reuse illegally allowed")
     _require(data.get("infrastructure_ready_for_bulk_execution") is False, "infrastructure cannot be pre-authorized")
+    _require(data.get("worker_only_secrets_configured") is False, "worker secrets cannot be claimed configured in this snapshot")
 
     auth = data.get("authority") or {}
     for key in (
         "service_creation_authorized",
         "volume_creation_or_attachment_authorized",
+        "worker_secret_configuration_authorized",
         "bulk_network_execution_authorized_by_user",
+        "expected_scope_network_execution_authorized_by_user",
         "feature_performance_testing_authorized",
         "sealed_holdout_authorized",
         "live_trading_authorized",
@@ -63,7 +76,9 @@ def validate_readiness(data: Mapping[str, Any]) -> dict[str, Any]:
         "infrastructure_ready_for_bulk_execution": False,
         "service_creation_authorized": False,
         "volume_creation_or_attachment_authorized": False,
+        "worker_secret_configuration_authorized": False,
         "bulk_network_execution_authorized_by_user": False,
+        "expected_scope_network_execution_authorized_by_user": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
     }
