@@ -77,6 +77,31 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(stage.get("prior_identity_seed_authorization_reusable") is False, "seed authority reuse illegally allowed")
     _require(stage.get("later_stage_auto_authorization") is False, "binding later-stage auto authority illegally enabled")
 
+    stage_auth = data.get("stage_specific_authority") or {}
+
+    per_security = stage_auth.get("per_security_history") or {}
+    _require(per_security.get("predecessor_phase") == "IDENTITY_STANDARD_CODE_BINDING", "per-security predecessor drift")
+    _require(per_security.get("network_free_prepare_required") is True, "per-security preparation guard lost")
+    _require(per_security.get("private_task_manifest_required") is True, "per-security manifest guard lost")
+    _require(per_security.get("stage_consent_env") == "KRX_PER_SECURITY_HISTORY_CONSENT", "per-security stage consent env drift")
+    _require(per_security.get("stage_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1", "per-security stage sentinel drift")
+    _require(per_security.get("both_consents_required") is True, "per-security dual-consent guard lost")
+    _require(per_security.get("currently_authorized") is False, "per-security stage cannot be pre-authorized")
+    _require(per_security.get("prior_stage_authorization_reusable") is False, "per-security prior-stage reuse illegally allowed")
+    _require(per_security.get("later_stage_auto_authorization") is False, "per-security later-stage auto authority illegally enabled")
+
+    status_economics = stage_auth.get("status_economics") or {}
+    _require(status_economics.get("predecessor_phase") == "PER_SECURITY_HISTORY", "status-economics predecessor drift")
+    _require(status_economics.get("network_free_prepare_required") is True, "status-economics preparation guard lost")
+    _require(status_economics.get("private_task_manifest_required") is True, "status-economics manifest guard lost")
+    _require(status_economics.get("stage_consent_env") == "KRX_STATUS_ECONOMICS_CONSENT", "status-economics stage consent env drift")
+    _require(status_economics.get("stage_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1", "status-economics stage sentinel drift")
+    _require(status_economics.get("both_consents_required") is True, "status-economics dual-consent guard lost")
+    _require(status_economics.get("currently_authorized") is False, "status-economics stage cannot be pre-authorized")
+    _require(status_economics.get("prior_stage_authorization_reusable") is False, "status-economics prior-stage reuse illegally allowed")
+    _require(status_economics.get("exact_status_economics_claim_allowed") is False, "exact status economics claim illegally allowed")
+    _require(status_economics.get("later_stage_auto_authorization") is False, "status-economics later-stage auto authority illegally enabled")
+
     storage = data.get("private_storage") or {}
     for key in (
         "persistent_private_volume_required",
