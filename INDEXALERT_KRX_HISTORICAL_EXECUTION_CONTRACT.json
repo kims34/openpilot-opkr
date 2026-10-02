@@ -122,6 +122,33 @@
       "currently_authorized": false,
       "prior_identity_seed_authorization_reusable": false,
       "later_stage_auto_authorization": false
+    },
+    "per_security_history": {
+      "predecessor_phase": "IDENTITY_STANDARD_CODE_BINDING",
+      "network_free_prepare_required": true,
+      "private_task_manifest_required": true,
+      "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
+      "bulk_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
+      "stage_consent_env": "KRX_PER_SECURITY_HISTORY_CONSENT",
+      "stage_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1",
+      "both_consents_required": true,
+      "currently_authorized": false,
+      "prior_stage_authorization_reusable": false,
+      "later_stage_auto_authorization": false
+    },
+    "status_economics": {
+      "predecessor_phase": "PER_SECURITY_HISTORY",
+      "network_free_prepare_required": true,
+      "private_task_manifest_required": true,
+      "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
+      "bulk_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
+      "stage_consent_env": "KRX_STATUS_ECONOMICS_CONSENT",
+      "stage_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1",
+      "both_consents_required": true,
+      "currently_authorized": false,
+      "prior_stage_authorization_reusable": false,
+      "exact_status_economics_claim_allowed": false,
+      "later_stage_auto_authorization": false
     }
   }
 }
