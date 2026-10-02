@@ -188,6 +188,31 @@ def test_master_snapshot_overlap_is_deduped_only_when_identity_matches():
     assert out.duplicated(["decision_date", "symbol"]).sum() == 0
 
 
+def test_master_snapshot_overlap_normalizes_equivalent_short_code_representations():
+    seed = pd.DataFrame([
+        _normal_master_row(
+            "2026-10-01",
+            "KR7005930003",
+            "5930",
+            "1975-06-11",
+            "삼성전자",
+        )
+    ])
+    binding = pd.DataFrame([
+        _normal_master_row(
+            "2026-10-01",
+            "KR7005930003",
+            "005930",
+            "1975-06-11",
+            "삼성전자",
+        )
+    ])
+
+    out = m._merge_master_snapshots_fail_closed(seed, binding)
+    assert len(out) == 1
+    assert out.iloc[0]["symbol"] == "005930"
+
+
 def test_master_snapshot_overlap_conflict_fails_closed():
     seed = pd.DataFrame([
         _normal_master_row(
@@ -211,6 +236,32 @@ def test_master_snapshot_overlap_conflict_fails_closed():
     with pytest.raises(
         m.KRXHistoricalIdentityMaterializerError,
         match="overlap conflict: standard_code",
+    ):
+        m._merge_master_snapshots_fail_closed(seed, binding)
+
+
+def test_duplicate_key_after_short_code_normalization_still_fails_closed():
+    seed = pd.DataFrame([
+        _normal_master_row(
+            "2026-10-01",
+            "KR7005930003",
+            "5930",
+            "1975-06-11",
+            "삼성전자",
+        ),
+        _normal_master_row(
+            "2026-10-01",
+            "KR7005930003",
+            "005930",
+            "1975-06-11",
+            "삼성전자",
+        ),
+    ])
+    binding = pd.DataFrame(columns=seed.columns)
+
+    with pytest.raises(
+        m.KRXHistoricalIdentityMaterializerError,
+        match="duplicate symbol inside seed security-master snapshot",
     ):
         m._merge_master_snapshots_fail_closed(seed, binding)
 
