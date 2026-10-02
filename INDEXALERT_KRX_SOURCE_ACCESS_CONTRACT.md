@@ -123,7 +123,7 @@ This workflow boundary is defense in depth. The Python preflight independently e
 ### Preflight authority boundary
 
 A positive preflight may authorize only the explicitly declared tiny source request. It must keep:
-- bulk historical acquisition authority = false unless separately approved;
+- bulk historical **rights** are now established for the declared personal-research scope by KRX permission v3; bulk network **execution** remains false until the frozen historical-acquisition plan receives exact user execution consent;
 - feature-performance testing authority = false;
 - sealed-holdout authority = false;
 - Alpha/Final-Judge promotion authority = false;
@@ -207,7 +207,7 @@ Before any investor-flow performance experiment, real data must establish:
 - historical coverage and stable security mapping;
 - `event_time`, `published_at`, `available_at`, `ingested_at`;
 - immutable acquisition provenance;
-- exact intended-use rights;
+- intended-use rights for the declared personal/internal-research scope are now established by KRX permission v3; any external/commercial/redistribution scope remains separate;
 - fail-closed handling of missing/unavailable observations.
 
 A source/authentication probe alone is not feature-performance evidence.
@@ -234,7 +234,7 @@ Production server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5` and Smoke 
 - `유가증권 종목기본정보` / `stk_isu_base_info` — HTTP 200, 942 rows, expected schema verified, response schema/payload SHA-256 frozen;
 - `유가증권 일별매매정보` / `stk_bydd_trd` — HTTP 200, 942 rows, expected schema verified, response schema/payload SHA-256 frozen.
 
-This is exact-service connectivity/schema evidence. It is **not** an approved mapping for MDCSTAT213/237/238/239, is not investor-by-security flow, is not a complete historical acquisition, and does not satisfy Gates C/D/F. The declared security/status Gate A remains blocked until the exact official status-event route is approved and evidenced under the canonical route-specific authorization contract. Investor-flow Gate A remains blocked independently.
+This is exact-service OpenAPI connectivity/schema evidence. **By itself** it is not a mapping for MDCSTAT213/237/238/239 or investor-by-security flow and does not satisfy Gates C/D. Subsequent Data Marketplace tiny probes moved Gate A to `PARTIAL` for both families, and KRX permission v3 moved Gate F to PASS for the declared personal/internal-research scope. Full-history/PIT/provenance closure remains independent.
 
 ## 7. Licensing / product boundary
 
