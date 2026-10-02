@@ -1,0 +1,77 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-INVESTOR-FLOW-TINY-PROBE-2026-10-02-v1",
+  "evidence_class": "AUTHENTICATED_METADATA_ONLY_TINY_PROBE",
+  "github_action_run_id": 36976873119,
+  "github_action_job_id": 110742487933,
+  "workflow_commit": "1010e1001848800d76e27d902ecd3d20c6725ccc",
+  "artifact_id": 11213931502,
+  "source_family": "KRX_INVESTOR_FLOW",
+  "access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+  "source": "KRX_Data_Marketplace_MDCSTAT02303_via_authenticated_web_session",
+  "authenticated_request_attempted": true,
+  "numeric_market_data_persisted": false,
+  "authorization": {
+    "permission_state": "PERMITTED_NO_SEPARATE_APPROVAL",
+    "automated_collection_authorized": true,
+    "explicit_probe_consent_present": true,
+    "request_attempt_authorized": true
+  },
+  "status": "SOURCE_REACHABLE",
+  "probe": {
+    "bld": "dbms/MDC/STAT/standard/MDCSTAT02303",
+    "security": "005930",
+    "window": [
+      "2026-09-21",
+      "2026-09-23"
+    ],
+    "rows": 3,
+    "columns": [
+      "일자",
+      "금융투자",
+      "보험",
+      "투신",
+      "사모",
+      "은행",
+      "기타금융",
+      "연기금 등",
+      "기타법인",
+      "개인",
+      "외국인",
+      "기타외국인",
+      "전체"
+    ]
+  },
+  "pit_policy": {
+    "official_publication_floor": "20:00 Asia/Seoul",
+    "rule": "day_D final stock investor trading results must not enter a decision before publication and are eligible only for a later decision after the official publication floor"
+  },
+  "gate_state_after_probe": {
+    "A": "PARTIAL",
+    "B": "PARTIAL",
+    "C": "BLOCKED",
+    "D": "PARTIAL",
+    "E": "PARTIAL",
+    "F": "PARTIAL"
+  },
+  "authority": {
+    "source_contract_closed_for_declared_scope": false,
+    "feature_performance_testing_authorized": false,
+    "alpha_or_final_judge_promotion_authorized": false,
+    "bulk_historical_acquisition_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "why_not_feature_ready": [
+    "official reproducible historical access contract is not yet frozen",
+    "exact public OpenAPI service mapping for required per-security investor flow is not established",
+    "historical coverage and stable security mapping are not yet audited on real data",
+    "full historical event_time/published_at/available_at/ingested_at lineage is not yet demonstrated"
+  ],
+  "fingerprints": {
+    "authorization_record_sha256": "4d916892d8c67ce15381d13a1122195f69979f5a9d8f5db2f62f6979cf3ef5f5",
+    "public_contract_evidence_sha256": "39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380",
+    "probe_contract_sha256": "5f6f73a6e47c6324c85eb8a38b7cfaf112dce9fc535c680c48ad04e94ff4cf00",
+    "probe_result_sha256": "15feb20688f23d4ec2e9bcf5e7b1a4d1dd0046269dbfa28e032349118628c8cc"
+  }
+}
