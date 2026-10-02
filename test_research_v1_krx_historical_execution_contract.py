@@ -24,6 +24,7 @@ def test_committed_execution_contract_is_private_and_nonexecuting():
     assert out["rights_to_acquire"] is True
     assert out["bulk_network_execution_authorized_by_user"] is False
     assert out["private_persistent_storage_required"] is True
+    assert _data()["private_storage"]["recommended_mount_root"] == "/data/indexalert/krx-historical-v3"
     assert out["raw_publication_forbidden"] is True
     assert out["gate_c_closed"] is False
     assert out["gate_d_closed"] is False
