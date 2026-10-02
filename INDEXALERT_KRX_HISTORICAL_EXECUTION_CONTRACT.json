@@ -159,7 +159,16 @@
       "currently_authorized": false,
       "prior_stage_authorization_reusable": false,
       "exact_status_economics_claim_allowed": false,
-      "later_stage_auto_authorization": false
+      "later_stage_auto_authorization": false,
+      "preparation_complete": false,
+      "preparation_evidence_id": null,
+      "predecessor_completion_evidence_id": null,
+      "prepared_task_count": null,
+      "prepared_task_set_fingerprint_sha256": null,
+      "prepared_private_task_manifest_metadata_sha256": null,
+      "prepared_private_task_manifest_relpath": "task_manifests/status-economics-v3.json",
+      "network_request_attempted_during_prepare": false,
+      "exact_prepared_scope_required": true
     }
   }
 }
