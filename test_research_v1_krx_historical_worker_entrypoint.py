@@ -9,6 +9,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     execute_identity_seed,
     preflight_only,
 )
+from research_v1_krx_private_store import write_raw_object
 
 
 EVAL = datetime(2026, 10, 2, 11, 0, tzinfo=timezone.utc)
@@ -70,17 +71,23 @@ def test_identity_seed_executes_exactly_27_tasks_and_writes_private_batch(tmp_pa
         calls.append(kwargs["spec"])
         n = len(calls)
         digest = f"{n:064x}"[-64:]
+        raw = write_raw_object(
+            Path(kwargs["environment"]["KRX_PRIVATE_RAW_DIR"]),
+            f"identity-seed-{n}".encode(),
+            git_worktree=kwargs["git_worktree"],
+        )
         return {
             "completed": True,
             "resumed": False,
             "request_metadata_sha256": digest,
-            "raw_object_sha256": digest,
-            "raw_bytes_size": n,
+            "raw_object_sha256": raw["raw_object_sha256"],
+            "raw_bytes_size": raw["raw_bytes_size"],
             "response_rows": n,
             "response_schema_sha256": "a" * 64,
             "response_payload_sha256": "b" * 64,
             "receipt_fingerprint_sha256": "c" * 64,
             "network_request_attempted": False,
+            "raw_rows_emitted": False,
             "feature_performance_testing_authorized": False,
             "sealed_holdout_authorized": False,
             "live_trading_authorized": False,
@@ -98,6 +105,9 @@ def test_identity_seed_executes_exactly_27_tasks_and_writes_private_batch(tmp_pa
     assert out["completed_task_count"] == 27
     assert out["resumed_task_count"] == 0
     assert out["network_request_attempt_count"] == 0
+    assert out["phase_status"] == "COMPLETE"
+    assert out["phase_complete"] is True
+    assert out["phase_completed_task_count"] == 27
     assert out["raw_rows_emitted"] is False
     assert out["feature_performance_testing_authorized"] is False
     assert out["sealed_holdout_authorized"] is False
