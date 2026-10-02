@@ -19,6 +19,7 @@ from research_v1_krx_historical_batch_orchestrator import (
     PLAN_ID,
     build_identity_seed_tasks,
     build_listing_date_master_tasks,
+    build_per_security_history_tasks,
     public_task_summary,
 )
 from research_v1_krx_historical_batch_state import require_phase_complete
@@ -27,13 +28,16 @@ from research_v1_krx_historical_fetchers import (
     parse_openapi_raw,
 )
 from research_v1_krx_historical_identity import (
+    identity_summary,
     listing_dates_for_standard_code_binding,
+    reconstruct_historical_kospi_episodes,
 )
 from research_v1_krx_official_status import normalise_basic_info
 from research_v1_krx_private_store import read_private_json, read_raw_object
 
 
 SEED_BATCH_REL = "batches/identity-seed-v3.json"
+BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
 
 KIND_META = {
     "security_master": {
@@ -235,6 +239,162 @@ def public_identity_seed_material_summary(
         "identifiers_emitted": False,
         "raw_rows_emitted": False,
         "network_request_attempted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
+def load_identity_binding_master_snapshots(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> pd.DataFrame:
+    """Load exact listing-date security-master snapshots from private binding batch."""
+    require_phase_complete(
+        root=root,
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        git_worktree=git_worktree,
+    )
+    tasks = build_identity_binding_tasks_from_private_seed(
+        root,
+        git_worktree=git_worktree,
+    )
+    summary = public_task_summary(tasks)
+    batch = read_private_json(
+        root,
+        BINDING_BATCH_REL,
+        git_worktree=git_worktree,
+    )["value"]
+
+    _require(batch.get("plan_id") == PLAN_ID, "identity-binding batch plan drift")
+    _require(
+        batch.get("execution_contract_id") == EXECUTION_CONTRACT_ID,
+        "identity-binding batch execution contract drift",
+    )
+    _require(
+        batch.get("phase") == "IDENTITY_STANDARD_CODE_BINDING",
+        "identity-binding phase drift",
+    )
+    _require(
+        int(batch.get("task_count", -1)) == len(tasks),
+        "identity-binding task count drift",
+    )
+    _require(
+        int(batch.get("completed_task_count", -1)) == len(tasks),
+        "identity-binding completion count drift",
+    )
+    _require(
+        batch.get("task_set_fingerprint_sha256")
+        == summary["task_set_fingerprint_sha256"],
+        "identity-binding task-set fingerprint drift",
+    )
+
+    completed = list(batch.get("tasks") or [])
+    _require(
+        len(completed) == len(tasks),
+        "identity-binding completion rows missing",
+    )
+    by_id = {}
+    for row in completed:
+        tid = str(row.get("task_id") or "")
+        _require(tid and tid not in by_id, "duplicate/missing identity-binding task_id")
+        by_id[tid] = dict(row)
+    _require(
+        set(by_id) == {str(row["task_id"]) for row in tasks},
+        "identity-binding completion set does not match frozen task set",
+    )
+
+    masters: list[pd.DataFrame] = []
+    for task in tasks:
+        completion = by_id[str(task["task_id"])]
+        raw = read_raw_object(
+            root,
+            str(completion["raw_object_sha256"]),
+            expected_size=int(completion["raw_bytes_size"]),
+            git_worktree=git_worktree,
+        )
+        frame = parse_openapi_raw(raw)
+        _require(
+            len(frame) == int(completion["response_rows"]),
+            "identity-binding parsed row count differs from recorded receipt",
+        )
+        retrieved_at = _timestamp(completion.get("retrieved_at"), "retrieved_at")
+        bas_dd = str(task["request_spec"]["params"]["basDd"])
+        masters.append(
+            normalise_basic_info(
+                frame,
+                asof_date=pd.Timestamp(bas_dd),
+                available_at=retrieved_at,
+            )
+        )
+
+    _require(masters, "identity-binding master snapshots are empty")
+    return pd.concat(masters, ignore_index=True)
+
+
+def reconstruct_private_historical_episodes(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> pd.DataFrame:
+    """Reconstruct stable historical KOSPI common-stock episodes from private evidence."""
+    seed = load_identity_seed_material(root, git_worktree=git_worktree)
+    binding = load_identity_binding_master_snapshots(
+        root,
+        git_worktree=git_worktree,
+    )
+    masters = pd.concat(
+        [seed["security_master_snapshots"], binding],
+        ignore_index=True,
+    )
+    return reconstruct_historical_kospi_episodes(
+        security_master_snapshots=masters,
+        new_listing=seed["new_listing_history"],
+        delisted=seed["delisted_history"],
+    )
+
+
+def build_per_security_history_tasks_from_private_identity(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> list[dict[str, Any]]:
+    """Build the exact private halt/investor request queue from reconstructed episodes."""
+    episodes = reconstruct_private_historical_episodes(
+        root,
+        git_worktree=git_worktree,
+    )
+    tasks = build_per_security_history_tasks(episodes)
+    _require(tasks, "per-security history task set is empty")
+    return tasks
+
+
+def public_historical_identity_summary(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> dict[str, Any]:
+    """Return counts/fingerprints only after exact identity reconstruction."""
+    episodes = reconstruct_private_historical_episodes(
+        root,
+        git_worktree=git_worktree,
+    )
+    tasks = build_per_security_history_tasks(episodes)
+    ids = identity_summary(episodes)
+    req = public_task_summary(tasks)
+    return {
+        **ids,
+        "per_security_request_count": int(req["task_count"]),
+        "per_security_task_set_fingerprint_sha256": req[
+            "task_set_fingerprint_sha256"
+        ],
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "network_request_attempted": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
