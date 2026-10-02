@@ -11,6 +11,8 @@ from research_v1_krx_historical_batch_state import (
 from research_v1_krx_historical_worker_entrypoint import (
     IDENTITY_BINDING_CONSENT_ENV,
     IDENTITY_BINDING_CONSENT_SENTINEL,
+    PER_SECURITY_CONSENT_ENV,
+    PER_SECURITY_CONSENT_SENTINEL,
     KRXHistoricalWorkerEntrypointError,
     execute_identity_seed,
     execute_identity_standard_code_binding,
@@ -426,6 +428,12 @@ def _complete_binding_predecessor(tmp_path, worktree):
     )
 
 
+def _per_security_env(tmp_path):
+    env = _env(tmp_path, consent=True)
+    env[PER_SECURITY_CONSENT_ENV] = PER_SECURITY_CONSENT_SENTINEL
+    return env
+
+
 def _per_security_task():
     return {
         "phase": "PER_SECURITY_HISTORY",
@@ -535,6 +543,28 @@ def test_execute_per_security_history_blocks_without_bulk_consent(tmp_path):
     assert calls == []
 
 
+def test_execute_per_security_history_rejects_reused_bulk_consent_without_stage_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _prepare_per_security_predecessor(tmp_path, worktree)
+    calls = []
+    loaders = []
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="EXPLICIT_PER_SECURITY_HISTORY_CONSENT",
+    ):
+        execute_per_security_history(
+            environment=_env(tmp_path, consent=True),
+            git_worktree=str(worktree),
+            executor=lambda **kwargs: calls.append(kwargs),
+            task_loader=lambda *args, **kwargs: loaders.append(True) or [_per_security_task()],
+            evaluation_time=EVAL,
+        )
+    assert calls == []
+    assert loaders == []
+
+
 def test_execute_per_security_history_uses_only_prepared_frozen_tasks(tmp_path):
     worktree = (tmp_path / "repo").resolve()
     worktree.mkdir()
@@ -567,7 +597,7 @@ def test_execute_per_security_history_uses_only_prepared_frozen_tasks(tmp_path):
         }
 
     out = execute_per_security_history(
-        environment=_env(tmp_path, consent=True),
+        environment=_per_security_env(tmp_path),
         git_worktree=str(worktree),
         executor=executor,
         task_loader=lambda *args, **kwargs: [_per_security_task()],
