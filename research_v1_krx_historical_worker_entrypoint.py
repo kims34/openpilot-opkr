@@ -4,10 +4,11 @@ Default behavior is network-free preflight only.
 
 Actual network execution is limited to explicitly implemented frozen stages
 (identity seed, identity binding, prepared per-security history and prepared
-status-economics price context) and requires
-ALL of:
-- --execute-identity-seed OR --execute-identity-standard-code-binding
-- exact v3 bulk-acquisition consent sentinel in the environment
+status-economics price context) and requires the exact frozen authority for the
+requested stage. In particular, identity binding requires BOTH:
+- the exact v3 bulk-acquisition consent sentinel; and
+- a separate exact identity-binding stage consent sentinel.
+The completed IDENTITY_SEED authorization cannot be reused for binding.
 - dedicated worker role
 - non-public Railway service identity
 - safe private persistent raw directory
@@ -57,10 +58,20 @@ PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
 PER_SECURITY_BATCH_REL = "batches/per-security-history-v3.json"
 STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
 STATUS_ECONOMICS_BATCH_REL = "batches/status-economics-v3.json"
+IDENTITY_BINDING_CONSENT_ENV = "KRX_IDENTITY_BINDING_CONSENT"
+IDENTITY_BINDING_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1"
 
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
     pass
+
+
+def _require_identity_binding_stage_consent(environment: Mapping[str, str]) -> None:
+    if str(environment.get(IDENTITY_BINDING_CONSENT_ENV) or "").strip() != IDENTITY_BINDING_CONSENT_SENTINEL:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding stage consent blocked: "
+            "EXPLICIT_IDENTITY_STANDARD_CODE_BINDING_CONSENT"
+        )
 
 
 def _public_preflight(environment: Mapping[str, str]) -> dict[str, Any]:
@@ -282,6 +293,7 @@ def execute_identity_standard_code_binding(
             "historical acquisition preflight blocked: "
             + ",".join(preflight["missing_requirements"])
         )
+    _require_identity_binding_stage_consent(env)
 
     worktree = git_worktree or str(Path.cwd().resolve())
     tasks = task_builder(
