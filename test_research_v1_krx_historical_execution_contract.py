@@ -19,7 +19,7 @@ def _data():
 def test_committed_execution_contract_is_private_and_nonexecuting():
     out = validate_file()
     assert out["valid"] is True
-    assert out["contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v2"
+    assert out["contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v3"
     assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v3"
     assert out["rights_to_acquire"] is True
     assert out["bulk_network_execution_authorized_by_user"] is False
@@ -90,14 +90,36 @@ def test_cleanup_source_correction_is_frozen():
         validate_execution_contract(data)
 
 
-def test_human_execution_contract_tracks_machine_v2_plan_v3():
+def test_human_execution_contract_tracks_machine_v3_plan_v3():
     text = Path("INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.md").read_text(encoding="utf-8")
-    assert "# IndexAlert KRX Historical Execution Contract v2" in text
-    assert "Contract ID: `INDEXALERT-KRX-HIST-EXEC-v2`" in text
+    assert "# IndexAlert KRX Historical Execution Contract v3" in text
+    assert "Contract ID: `INDEXALERT-KRX-HIST-EXEC-v3`" in text
     assert "Bound acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v3`" in text
     assert "`I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3`" in text
     assert "MDCSTAT23801" in text
     assert "MDCSTAT23701" in text
     assert "must **never** invent historical `strtDd/endDd` semantics" in text
-    assert "INDEXALERT-KRX-HIST-EXEC-v1" not in text
+    assert "INDEXALERT-KRX-HIST-EXEC-v2" not in text
     assert "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2" not in text
+
+
+def test_dedicated_worker_identity_contract_is_frozen():
+    data = _data()
+    iso = data["execution_isolation"]
+    assert iso["dedicated_worker_role_env"] == "INDEXALERT_KRX_HIST_WORKER_ROLE"
+    assert iso["dedicated_worker_role_value"] == "DEDICATED_ONE_SHOT"
+    assert iso["railway_service_name_env"] == "RAILWAY_SERVICE_NAME"
+    assert set(iso["forbidden_public_service_names"]) == {
+        "indexalert-runtime",
+        "indexalert-backend",
+        "indexalert-push",
+    }
+    assert iso["forbidden_public_service_bulk_execution"] is True
+    assert data["private_storage"]["recommended_mount_root"] == "/data/indexalert/krx-historical-v3"
+
+
+def test_dedicated_worker_guards_cannot_be_weakened():
+    data = _data()
+    data["execution_isolation"]["forbidden_public_service_bulk_execution"] = False
+    with pytest.raises(KRXHistoricalExecutionContractError, match="prohibition lost"):
+        validate_execution_contract(data)
