@@ -1,0 +1,97 @@
+{
+  "schema_version": "1",
+  "contract_id": "INDEXALERT-KRX-HIST-EXEC-v1",
+  "acquisition_plan_id": "INDEXALERT-KRX-HIST-ACQ-v2",
+  "created_date": "2026-10-02",
+  "execution_authorized": false,
+  "repository_context": {
+    "repository": "kims34/openpilot-opkr",
+    "repository_public": true,
+    "raw_data_in_repository_forbidden": true
+  },
+  "execution_isolation": {
+    "dedicated_one_shot_worker_required": true,
+    "production_web_process_must_not_run_bulk_job": true,
+    "concurrent_public_web_serving_from_raw_root_forbidden": true,
+    "network_execution_requires_exact_plan_preflight": true,
+    "exact_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2"
+  },
+  "private_storage": {
+    "persistent_private_volume_required": true,
+    "raw_root_env": "KRX_PRIVATE_RAW_DIR",
+    "recommended_mount_root": "/data/indexalert/krx-historical-v2",
+    "raw_root_must_be_absolute": true,
+    "raw_root_inside_git_worktree_forbidden": true,
+    "raw_root_under_public_static_directory_forbidden": true,
+    "directory_mode_octal": "0700",
+    "file_mode_octal": "0600",
+    "content_addressed_objects": true,
+    "object_relpath_template": "objects/sha256/{first2}/{sha256}.bin",
+    "overwrite_existing_raw_object_forbidden": true,
+    "atomic_write_required": true,
+    "fsync_before_rename_required": true,
+    "raw_artifact_upload_to_github_forbidden": true,
+    "raw_rows_in_actions_logs_forbidden": true
+  },
+  "source_capture": {
+    "raw_response_bytes_required": true,
+    "raw_bytes_sha256_required": true,
+    "raw_bytes_size_required": true,
+    "parsed_dataframe_payload_sha256_required": true,
+    "parsed_schema_sha256_required": true,
+    "request_metadata_sha256_required": true,
+    "retrieved_at_timezone_aware_required": true,
+    "transport_status_required": true,
+    "acquisition_receipt_required": true,
+    "raw_object_manifest_required": true,
+    "raw_object_manifest_must_not_contain_credentials": true
+  },
+  "checkpoint_and_resume": {
+    "checkpoint_after_every_request": true,
+    "completed_request_requires_raw_object_and_receipt": true,
+    "resume_only_from_verified_raw_object_and_receipt": true,
+    "retry_never_overwrites_prior_object": true,
+    "same_request_different_payload_must_create_new_object_and_fail_reconciliation": true,
+    "auth_failure_abort_batch": true,
+    "schema_drift_abort_batch": true,
+    "identity_mapping_failure_abort_before_per_security_requests": true
+  },
+  "public_output_allowlist": [
+    "plan_id",
+    "execution_contract_id",
+    "batch_id",
+    "request_counts",
+    "completed_request_count",
+    "failed_request_count",
+    "row_counts",
+    "schema_sha256",
+    "payload_sha256",
+    "raw_object_sha256",
+    "receipt_fingerprint_sha256",
+    "batch_fingerprint_sha256",
+    "coverage_summary",
+    "pit_summary",
+    "error_type_without_raw_payload_or_credentials"
+  ],
+  "forbidden_public_output": [
+    "raw_rows",
+    "raw_response_bytes",
+    "security_level_numeric_values_from_raw_responses",
+    "KRX_ID",
+    "KRX_PW",
+    "KRX_AUTH_KEY",
+    "cookies",
+    "session_tokens",
+    "authorization_headers"
+  ],
+  "authority": {
+    "rights_to_acquire": true,
+    "bulk_network_execution_authorized_by_user": false,
+    "source_gate_c_closed": false,
+    "source_gate_d_closed": false,
+    "source_gate_e_closed": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  }
+}
