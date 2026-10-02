@@ -80,6 +80,8 @@ on:
       - 'research_v1_krx_historical_request_planner.py'
       - 'test_research_v1_krx_historical_identity.py'
       - 'research_v1_krx_historical_identity.py'
+      - 'research_v1_krx_historical_identity_materializer.py'
+      - 'test_research_v1_krx_historical_identity_materializer.py'
       - 'test_research_v1_krx_historical_acquisition_preflight.py'
       - 'INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.md'
       - 'INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.json'
