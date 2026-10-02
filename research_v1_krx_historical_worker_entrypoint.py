@@ -54,6 +54,7 @@ from research_v1_krx_private_store import read_private_json, write_private_json
 CLIENT_REVISION = "krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 PRIVATE_BATCH_REL = "batches/identity-seed-v3.json"
 IDENTITY_BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
+IDENTITY_BINDING_TASK_MANIFEST_REL = "task_manifests/identity-standard-code-binding-v1.json"
 PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
 PER_SECURITY_BATCH_REL = "batches/per-security-history-v3.json"
 STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
@@ -274,12 +275,160 @@ def execute_identity_seed(
     }
 
 
+def prepare_identity_standard_code_binding(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    task_builder=build_identity_binding_tasks_from_private_seed,
+) -> dict[str, Any]:
+    """Freeze the exact identity-binding task set without network access.
+
+    This consumes only the already-completed private IDENTITY_SEED evidence.
+    It deliberately does not require either network-execution consent because
+    it cannot issue a request.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding preparation blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding preparation blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding preparation blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+    require_phase_complete(
+        root=root,
+        phase="IDENTITY_SEED",
+        git_worktree=worktree,
+    )
+    tasks = task_builder(root, git_worktree=worktree)
+    summary = public_task_summary(tasks)
+    if summary["task_count"] <= 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity standard-code binding task set is empty"
+        )
+
+    state = initialize_phase_state(
+        root=root,
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        tasks=tasks,
+        git_worktree=worktree,
+    )
+    safe_phase = public_phase_summary(state)
+
+    private_manifest = {
+        "manifest_version": "2026-10-02.identity-standard-code-binding-v1",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "phase": "IDENTITY_STANDARD_CODE_BINDING",
+        "task_count": len(tasks),
+        "task_set_fingerprint_sha256": summary["task_set_fingerprint_sha256"],
+        "tasks": tasks,
+        "network_request_attempted": False,
+        "raw_rows_emitted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+    manifest_write = write_private_json(
+        root,
+        IDENTITY_BINDING_TASK_MANIFEST_REL,
+        private_manifest,
+        git_worktree=worktree,
+    )
+
+    return {
+        "mode": "PREPARE_IDENTITY_STANDARD_CODE_BINDING",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "task_count": int(summary["task_count"]),
+        "task_count_by_kind": dict(summary["task_count_by_kind"]),
+        "task_set_fingerprint_sha256": summary["task_set_fingerprint_sha256"],
+        "private_task_manifest_metadata_sha256": manifest_write["metadata_sha256"],
+        "private_task_manifest_relpath": IDENTITY_BINDING_TASK_MANIFEST_REL,
+        "phase_status": safe_phase["status"],
+        "phase_complete": safe_phase["phase_complete"],
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
+def load_frozen_identity_binding_tasks(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+    task_builder=build_identity_binding_tasks_from_private_seed,
+) -> list[dict[str, Any]]:
+    """Load and verify the prepared private IDENTITY_STANDARD_CODE_BINDING tasks."""
+    worktree = git_worktree or str(Path.cwd().resolve())
+    regenerated = task_builder(root, git_worktree=worktree)
+    regenerated_summary = public_task_summary(regenerated)
+    manifest = read_private_json(
+        root,
+        IDENTITY_BINDING_TASK_MANIFEST_REL,
+        git_worktree=worktree,
+    )["value"]
+
+    if manifest.get("plan_id") != PLAN_ID:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding task manifest plan drift"
+        )
+    if manifest.get("execution_contract_id") != EXECUTION_CONTRACT_ID:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding task manifest execution contract drift"
+        )
+    if manifest.get("phase") != "IDENTITY_STANDARD_CODE_BINDING":
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding task manifest phase drift"
+        )
+    if int(manifest.get("task_count", -1)) != len(regenerated):
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding task manifest count drift"
+        )
+    if (
+        manifest.get("task_set_fingerprint_sha256")
+        != regenerated_summary["task_set_fingerprint_sha256"]
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding task manifest fingerprint drift"
+        )
+
+    frozen = list(manifest.get("tasks") or [])
+    if frozen != regenerated:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding private task ordering/content drift"
+        )
+
+    initialize_phase_state(
+        root=root,
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        tasks=frozen,
+        git_worktree=worktree,
+    )
+    return frozen
+
+
 def execute_identity_standard_code_binding(
     *,
     environment: Mapping[str, str] | None = None,
     git_worktree: str | None = None,
     executor=execute_request_spec,
-    task_builder=build_identity_binding_tasks_from_private_seed,
+    task_loader=load_frozen_identity_binding_tasks,
     evaluation_time: datetime | None = None,
 ) -> dict[str, Any]:
     """Execute exact listing-date security-master requests after seed completion."""
@@ -296,10 +445,13 @@ def execute_identity_standard_code_binding(
     _require_identity_binding_stage_consent(env)
 
     worktree = git_worktree or str(Path.cwd().resolve())
-    tasks = task_builder(
-        str(env["KRX_PRIVATE_RAW_DIR"]),
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+    require_phase_complete(
+        root=root,
+        phase="IDENTITY_SEED",
         git_worktree=worktree,
     )
+    tasks = task_loader(root, git_worktree=worktree)
     task_summary = public_task_summary(tasks)
     if task_summary["task_count"] <= 0:
         raise KRXHistoricalWorkerEntrypointError(
@@ -1084,6 +1236,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     group.add_argument(
+        "--prepare-identity-standard-code-binding",
+        action="store_true",
+        help=(
+            "Network-free: after IDENTITY_SEED is complete, derive and freeze "
+            "the exact listing-date security-master task set. No KRX request "
+            "is issued and no execution consent is required."
+        ),
+    )
+    group.add_argument(
         "--execute-identity-standard-code-binding",
         action="store_true",
         help=(
@@ -1135,6 +1296,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.execute_identity_seed:
         result = execute_identity_seed()
+    elif args.prepare_identity_standard_code_binding:
+        result = prepare_identity_standard_code_binding()
     elif args.execute_identity_standard_code_binding:
         result = execute_identity_standard_code_binding()
     elif args.prepare_per_security_history:
