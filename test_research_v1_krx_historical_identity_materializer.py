@@ -283,3 +283,106 @@ def test_public_historical_identity_summary_never_emits_security_identifiers(mon
     assert out["source_gate_e_closed"] is False
     assert "005930" not in str(out)
     assert "KR7005930003" not in str(out)
+
+
+def test_private_status_economics_tasks_derive_from_cleanup_intervals(monkeypatch):
+    episodes = pd.DataFrame([
+        {
+            "episode_key": "KOSPI|111111|2020-01-02",
+            "short_code": "111111",
+            "standard_code": "KR7111110000",
+            "listing_date": pd.Timestamp("2020-01-02"),
+            "delisting_date": pd.Timestamp("2024-06-20"),
+            "source_delisted": True,
+        },
+        {
+            "episode_key": "KOSPI|222222|2021-03-04",
+            "short_code": "222222",
+            "standard_code": "KR7222220000",
+            "listing_date": pd.Timestamp("2021-03-04"),
+            "delisting_date": pd.Timestamp("2025-07-10"),
+            "source_delisted": True,
+        },
+    ])
+    delisted = pd.DataFrame([
+        {
+            "종목코드": "111111",
+            "상장일": "20200102",
+            "폐지일": "20240620",
+            "정리매매기간_시작일": "20240610",
+            "정리매매기간_종료일": "20240618",
+        },
+        {
+            "종목코드": "222222",
+            "상장일": "20210304",
+            "폐지일": "20250710",
+            "정리매매기간_시작일": "",
+            "정리매매기간_종료일": "",
+        },
+    ])
+    monkeypatch.setattr(
+        m,
+        "load_identity_seed_material",
+        lambda *a, **k: {
+            "security_master_snapshots": pd.DataFrame(),
+            "new_listing_history": pd.DataFrame(),
+            "delisted_history": delisted,
+            "cleanup_current": pd.DataFrame(),
+        },
+    )
+    monkeypatch.setattr(
+        m,
+        "reconstruct_private_historical_episodes",
+        lambda *a, **k: episodes,
+    )
+
+    tasks, summary = m.build_status_economics_tasks_from_private_identity("/private")
+    assert len(tasks) == 1
+    assert tasks[0]["phase"] == "STATUS_ECONOMICS"
+    assert tasks[0]["request_spec"]["kind"] == "delisted_stock_price"
+    assert summary["delisted_episode_count"] == 2
+    assert summary["cleanup_price_task_count"] == 1
+    assert summary["delisted_without_cleanup_interval_count"] == 1
+
+
+def test_public_status_economics_summary_never_claims_exact_fill_economics(monkeypatch):
+    task = {
+        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+        "execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+        "phase": "STATUS_ECONOMICS",
+        "source_family": "KRX_SECURITY_STATUS",
+        "request_spec": {
+            "kind": "delisted_stock_price",
+            "params": {
+                "isuCd": "KR7111110000",
+                "strtDd": "20240610",
+                "endDd": "20240618",
+            },
+        },
+        "contains_security_identifier": True,
+        "task_id": "a" * 64,
+    }
+    monkeypatch.setattr(
+        m,
+        "build_status_economics_tasks_from_private_identity",
+        lambda *a, **k: (
+            [task],
+            {
+                "delisted_episode_count": 2,
+                "cleanup_price_task_count": 1,
+                "delisted_without_cleanup_interval_count": 1,
+            },
+        ),
+    )
+    out = m.public_status_economics_task_summary("/private")
+    assert out["task_count"] == 1
+    assert out["exact_status_economics_ready"] is False
+    assert out["source_gate_c_closed"] is False
+    assert out["source_gate_d_closed"] is False
+    assert out["source_gate_e_closed"] is False
+    assert out["feature_performance_testing_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert "111111" not in str(out)
+    assert "KR7111110000" not in str(out)
