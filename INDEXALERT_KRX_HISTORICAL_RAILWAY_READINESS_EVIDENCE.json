@@ -2,7 +2,7 @@
   "schema_version": "1",
   "evidence_id": "INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1",
   "evidence_class": "RAILWAY_PREFLIGHT_PROVISIONING_EVIDENCE",
-  "observed_at": "2026-10-02T22:47:00+09:00",
+  "observed_at": "2026-10-02T23:08:15+09:00",
   "project": {
     "name": "IndexAlert",
     "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
@@ -64,7 +64,7 @@
       "restart_policy": "NEVER",
       "dockerfile": "Dockerfile.krx-historical-worker",
       "start_command": "python research_v1_krx_historical_worker_entrypoint.py",
-      "corrected_preflight_deployment_id": "02b5697c-b959-45b5-9ef5-600c05efcf32",
+      "corrected_preflight_deployment_id": "83be77ba-ccb1-4dcf-a40d-dd67a49fa9fb",
       "corrected_preflight_deployment_status": "SUCCESS"
     }
   ],
@@ -82,7 +82,7 @@
     "worker_secret_configuration_authorized": false,
     "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "Obtain explicit bulk-execution consent sentinel I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3 before the 27-request IDENTITY_SEED. Do not authorize expected-scope execution, sealed holdout, or live trading.",
+  "next_external_action": "IDENTITY_SEED is complete. IDENTITY_STANDARD_CODE_BINDING is the next protected network stage; obtain a separate explicit stage authorization before executing it.",
   "worker_only_secrets_configured": true,
   "preflight_infrastructure_ready": true,
   "runtime_preflight": {
@@ -108,5 +108,24 @@
     "corrected_name": "KRX_PW",
     "corrected": true,
     "unsafe_auto_redeploy_network_request_attempted": false
+  },
+  "identity_seed_execution": {
+    "evidence_id": "INDEXALERT-KRX-HIST-IDENTITY-SEED-2026-10-02-v1",
+    "deployment_id": "d268e5b0-b7c2-46be-b9ae-ca41d27cdb02",
+    "source_revision": "6343f01b493404d59736e06eb6968e9820d0e595",
+    "task_count": 27,
+    "completed_task_count": 27,
+    "resumed_task_count": 0,
+    "network_request_attempt_count": 27,
+    "phase_status": "COMPLETE",
+    "phase_complete": true,
+    "raw_rows_emitted": false,
+    "private_batch_metadata_sha256": "054a9689adac7f57fa5a797f10ff9a69d3a7abd34a8697b624464588c6f0502f"
+  },
+  "post_identity_seed_lock": {
+    "exact_execution_sentinel_active": false,
+    "start_command_preflight_only": true,
+    "expected_scope_network_execution_authorized": false,
+    "identity_standard_code_binding_authorized": false
   }
 }
