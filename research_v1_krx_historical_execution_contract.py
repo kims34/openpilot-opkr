@@ -135,6 +135,73 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(status_economics.get("prior_stage_authorization_reusable") is False, "status-economics prior-stage reuse illegally allowed")
     _require(status_economics.get("exact_status_economics_claim_allowed") is False, "exact status economics claim illegally allowed")
     _require(status_economics.get("later_stage_auto_authorization") is False, "status-economics later-stage auto authority illegally enabled")
+    _require(
+        status_economics.get("prepared_private_task_manifest_relpath")
+        == "task_manifests/status-economics-v3.json",
+        "status-economics prepared manifest relpath drift",
+    )
+    _require(
+        status_economics.get("network_request_attempted_during_prepare") is False,
+        "status-economics preparation illegally attempted network",
+    )
+    _require(
+        status_economics.get("exact_prepared_scope_required") is True,
+        "status-economics exact prepared scope guard lost",
+    )
+
+    status_prep_complete = status_economics.get("preparation_complete") is True
+    if status_prep_complete:
+        _require(
+            status_economics.get("preparation_evidence_id")
+            == "INDEXALERT-KRX-STATUS-ECONOMICS-PREP-v1",
+            "status-economics preparation evidence binding drift",
+        )
+        _require(
+            status_economics.get("predecessor_completion_evidence_id")
+            == "INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1",
+            "status-economics predecessor completion evidence drift",
+        )
+        _require(
+            int(status_economics.get("prepared_task_count", -1)) > 0,
+            "status-economics prepared task count must be positive",
+        )
+        status_task_sha = str(
+            status_economics.get("prepared_task_set_fingerprint_sha256") or ""
+        ).lower()
+        status_manifest_sha = str(
+            status_economics.get("prepared_private_task_manifest_metadata_sha256") or ""
+        ).lower()
+        _require(
+            len(status_task_sha) == 64
+            and all(ch in "0123456789abcdef" for ch in status_task_sha),
+            "status-economics prepared task-set SHA-256 invalid",
+        )
+        _require(
+            len(status_manifest_sha) == 64
+            and all(ch in "0123456789abcdef" for ch in status_manifest_sha),
+            "status-economics prepared manifest SHA-256 invalid",
+        )
+    else:
+        _require(
+            status_economics.get("preparation_evidence_id") is None,
+            "status-economics preparation evidence prematurely bound",
+        )
+        _require(
+            status_economics.get("predecessor_completion_evidence_id") is None,
+            "status-economics predecessor completion evidence prematurely bound",
+        )
+        _require(
+            status_economics.get("prepared_task_count") is None,
+            "status-economics prepared task count prematurely frozen",
+        )
+        _require(
+            status_economics.get("prepared_task_set_fingerprint_sha256") is None,
+            "status-economics prepared task-set prematurely frozen",
+        )
+        _require(
+            status_economics.get("prepared_private_task_manifest_metadata_sha256") is None,
+            "status-economics prepared manifest prematurely frozen",
+        )
 
     storage = data.get("private_storage") or {}
     for key in (
