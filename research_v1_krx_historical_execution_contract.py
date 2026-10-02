@@ -63,6 +63,20 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "public-service bulk-execution prohibition lost",
     )
 
+    stage = (data.get("stage_specific_authority") or {}).get(
+        "identity_standard_code_binding"
+    ) or {}
+    _require(stage.get("network_free_prepare_required") is True, "binding preparation guard lost")
+    _require(stage.get("private_task_manifest_required") is True, "binding manifest guard lost")
+    _require(stage.get("bulk_consent_env") == "KRX_HISTORICAL_ACQUISITION_CONSENT", "binding bulk consent env drift")
+    _require(stage.get("bulk_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3", "binding bulk sentinel drift")
+    _require(stage.get("stage_consent_env") == "KRX_IDENTITY_BINDING_CONSENT", "binding stage consent env drift")
+    _require(stage.get("stage_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1", "binding stage sentinel drift")
+    _require(stage.get("both_consents_required") is True, "binding dual-consent guard lost")
+    _require(stage.get("currently_authorized") is False, "binding stage cannot be pre-authorized")
+    _require(stage.get("prior_identity_seed_authorization_reusable") is False, "seed authority reuse illegally allowed")
+    _require(stage.get("later_stage_auto_authorization") is False, "binding later-stage auto authority illegally enabled")
+
     storage = data.get("private_storage") or {}
     for key in (
         "persistent_private_volume_required",
