@@ -43,7 +43,7 @@ A-F gates remain:
 - F `INTENDED_USE_RIGHTS`
 
 Current states:
-- Security/status: A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`. Exact production OpenAPI connectivity/schema is now proven only for `유가증권 종목기본정보` and `유가증권 일별매매정보`; that evidence does not map the unresolved halt/cleanup/delisting route.
+- Security/status: A PARTIAL, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`. Authenticated status tiny probe Action `36976085781` succeeded and live-validated `MDCSTAT21301` and `MDCSTAT23701` metadata reachability. Exact production OpenAPI connectivity/schema is now proven only for `유가증권 종목기본정보` and `유가증권 일별매매정보`; that evidence does not map the unresolved halt/cleanup/delisting route.
 - Investor flow: A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; feature-performance testing blocked.
 
 Even all six PASS closes only the declared source contract; it does not authorize promotion, sealed holdout or live trading.
@@ -224,7 +224,7 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 
 1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
 2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure. Legacy `research_v1_krx.py` is now explicitly staging-only: `judge_eligible=false`, source-governance admission required, sealed-holdout/live authority false.
-3. EXTERNAL KRX AUTH/DATA BLOCKER — basic-info/daily-trade OpenAPI authentication is proven; status/investor BLD candidates are pinned; Data Marketplace ID/PW and explicit low-frequency automation permission are validated. Network-free readiness is complete. Remaining next step is one explicit-consent tiny authenticated probe per source family, followed by exact route/schema, full-history/stable-ID, PIT and rights verification.
+3. EXTERNAL KRX AUTH/DATA BLOCKER — basic-info/daily-trade OpenAPI authentication is proven; status/investor BLD candidates are pinned; Data Marketplace ID/PW and explicit low-frequency automation permission are validated. Network-free readiness is complete. Status tiny probe is complete; investor-flow still needs its explicit-consent tiny authenticated probe. After that, exact route/schema, full-history/stable-ID, PIT and rights verification remain.
 4. DONE — internal exact status-economics auditor; EXTERNAL EVIDENCE BLOCKER remains for real fill/recovery data.
 5. DONE — execution schema hardening: LIVE structural presence is no longer mislabeled as empirical sufficiency.
 6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, metric evaluator, provenance fail-closed hardening and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence and broker-native provenance admission do not exist.
