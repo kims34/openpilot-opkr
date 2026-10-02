@@ -1,0 +1,50 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-PERMISSION-REPLY-2026-10-02-v1",
+  "evidence_class": "USER_PROVIDED_KRX_REPLY_SCREENSHOT_SCOPE_EVIDENCE_AUTOMATION_AMBIGUOUS",
+  "observed_in_conversation_at": "2026-10-02T15:06:00+09:00",
+  "image_sha256": "1983036114310ea42dd60ad49fc52c19a7378f7f1d3f1c1a65dabc7b4d1cf1e1",
+  "image_stored_in_repository": false,
+  "visible_sender_identity": false,
+  "visible_reply_date": false,
+  "visible_original_question": false,
+  "visible_text": [
+    "KRX Data Marketplace 데이터 이용에 대해 문의해 주셔서 감사합니다.",
+    "문의하신 개인 내부 연구 목적의 데이터 조회 및 이용 건과 관련하여 안내해 드립니다.",
+    "개인 사용자에 한해 비상업적·내부 연구 목적으로 저빈도 조회를 수행하는 경우에는 별도의 승인 절차 없이 제한 없이 이용 가능합니다.",
+    "추가로 궁금하신 사항이 있으시면 언제든지 문의해 주시기 바랍니다.",
+    "감사합니다."
+  ],
+  "supported_scope": {
+    "personal_user": true,
+    "noncommercial_internal_research": true,
+    "low_frequency_querying": true,
+    "separate_approval_procedure_required": false,
+    "use_available_without_stated_limit_within_visible_scope": true
+  },
+  "not_explicitly_supported_by_visible_text": {
+    "automated_or_programmatic_querying": true,
+    "authenticated_web_session_automation": true,
+    "bulk_or_high_frequency_collection": true,
+    "specific_bld_routes": true,
+    "full_historical_download": true,
+    "redistribution": true,
+    "commercial_use": true
+  },
+  "project_classification": {
+    "krx_scope_permission_evidence": "STRONG_BUT_SENDER_AND_AUTOMATION_WORDING_NOT_VISIBLE",
+    "issuer_independently_verified": false,
+    "automated_collection_authorized": false,
+    "sufficient_for_data_marketplace_tiny_probe_preflight": false,
+    "gate_a_status_ceiling": "BLOCKED",
+    "gate_f_evidence_strengthened": true,
+    "bulk_historical_acquisition_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "required_upgrade_evidence": [
+    "A view showing the KRX sender identity or other independently verifiable KRX origin.",
+    "The original question or KRX reply wording explicitly covering programmatic/automated querying, or an explicit follow-up confirmation that low-frequency use includes automated/programmatic querying."
+  ]
+}
