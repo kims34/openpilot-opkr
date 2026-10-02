@@ -76,7 +76,7 @@ These facts improve Gate B/F evidence only; they do not close A/C/D/E.
 
 Canonical record: `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md` and `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json`.
 
-Production server revision `62cb089131ca519815434616dd7f217315fbe346`, Railway deployment `3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681`, and GitHub Smoke Action `36956234911` / job `110667696519` demonstrated authenticated KRX OpenAPI GET access for basis date `20261001` without exposing the authentication key:
+Production server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`, Railway deployment `2ae60f51-720c-463f-96cb-c9ef98fc449b`, and GitHub Smoke Action `36956234911` / job `110679680755` demonstrated authenticated KRX OpenAPI GET access for basis date `20261001` without exposing the authentication key:
 
 - `유가증권 종목기본정보` / `stk_isu_base_info`: HTTP 200, JSON parsed, 942 rows, exact expected schema, schema SHA-256 `11b766977e67ed2f4665a4752a80d18ab76c086d89cf0f853e2642e5575a54e5`, payload SHA-256 `cc64d8b8e9c028ee48a59928195998dfafbfd797587c9f3c1406002a4212792d`.
 - `유가증권 일별매매정보` / `stk_bydd_trd`: HTTP 200, JSON parsed, 942 rows, exact expected schema, schema SHA-256 `5d68cce946a3c9361e7d662351f4896518cad40a3804fd262f577ad29d1d56f3`, payload SHA-256 `b5ff8d6894a1956aaf963aa9bad853eff1c3ee465f50f3ab611f7098ca0f93d3`.
@@ -202,7 +202,7 @@ The presence of structured-evidence validators, readiness, preflight, workflow c
 
 ## 9. Evidence required to close gates
 
-- **Gate A:** for each declared source family, approved exact route/product, matching validated structured authorization evidence, and demonstrated authorized access without exposing credentials. The successful basic-info/daily-trade OpenAPI proof does not substitute for the unresolved status-event or investor-flow route.
+- **Gate A:** for each declared source family, approved/attested route and demonstrated authorized access must be bound to the exact declared use scope. Status and investor-flow route reachability are now demonstrated by the authenticated tiny probes, so Gate A is `PARTIAL`; closing it still requires the complete historical route/product/access contract for the full research period.
 - **Gate B:** exact service/screen/feed, schema, version/transport and equivalence boundaries for the actual route.
 - **Gate C:** full-period attested expected scope + exact observed coverage + stable security identity.
 - **Gate D:** real record-level PIT lineage and decision eligibility.
