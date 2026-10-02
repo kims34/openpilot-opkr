@@ -41,6 +41,13 @@ def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
     assert data["start_contract"][
         "execute_identity_standard_code_binding_forbidden_until_user_bulk_approval"
     ] is True
+    assert data["start_contract"]["prepare_per_security_history_command"].endswith(
+        "--prepare-per-security-history"
+    )
+    assert data["start_contract"]["prepare_per_security_history_network_request_attempted"] is False
+    assert data["start_contract"]["prepare_per_security_history_bulk_consent_required"] is False
+    assert data["start_contract"]["prepare_per_security_history_requires_completed_identity_binding"] is True
+    assert data["start_contract"]["prepare_per_security_history_requires_dedicated_worker_private_volume"] is True
 
 
 def test_worker_deployment_cannot_self_authorize_cloud_or_bulk_actions():
