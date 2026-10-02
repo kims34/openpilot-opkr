@@ -89,6 +89,36 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "seed authorization reuse illegally allowed",
     )
 
+    _require(
+        data.get("status")
+        == "FROZEN_USER_AUTHORIZED_ONCE_EXECUTION_COMPLETE_AUTHORITY_CONSUMED",
+        "binding contract status drift",
+    )
+    _require(user.get("consumed") is True, "binding authorization must be consumed")
+    _require(user.get("reusable") is False, "binding authorization reuse illegally enabled")
+
+    completed = data.get("completed_execution") or {}
+    _require(
+        completed.get("evidence_id")
+        == "INDEXALERT-KRX-IDENTITY-BINDING-EXEC-2026-10-03-v1",
+        "completed execution evidence binding drift",
+    )
+    _require(int(completed.get("task_count", -1)) == 145, "completed execution task count drift")
+    _require(int(completed.get("completed_task_count", -1)) == 145, "completed execution count drift")
+    _require(int(completed.get("network_request_attempt_count", -1)) == 145, "completed execution network count drift")
+    _require(completed.get("phase_status") == "COMPLETE", "completed execution phase drift")
+    _require(completed.get("phase_complete") is True, "completed execution phase not complete")
+    _require(
+        completed.get("task_set_fingerprint_sha256")
+        == "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9",
+        "completed execution task-set drift",
+    )
+    _require(
+        bool(SHA256_RE.fullmatch(str(completed.get("private_batch_metadata_sha256") or ""))),
+        "completed execution batch SHA-256 invalid",
+    )
+    _require(completed.get("raw_rows_emitted") is False, "completed execution leaked raw rows")
+
     runtime = data.get("runtime_gate") or {}
     _require(
         runtime.get("bulk_consent_env") == "KRX_HISTORICAL_ACQUISITION_CONSENT",
