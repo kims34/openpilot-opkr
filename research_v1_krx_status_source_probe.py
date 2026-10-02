@@ -88,6 +88,9 @@ def _validate_authorization_evidence(
             expected_reference=authorization_evidence_reference,
         )
         sufficient = bool(validated["sufficient_for_tiny_probe_preflight"])
+        automated_collection_authorized = bool(
+            validated["record"].get("automated_collection_authorized") is True
+        )
         return sufficient, {
             "configured": True,
             "valid_for_declared_tiny_probe": sufficient,
@@ -95,6 +98,7 @@ def _validate_authorization_evidence(
             "record_fingerprint_sha256": validated["record_fingerprint_sha256"],
             "evidence_reference": validated["record"]["evidence_reference"],
             "approval_state": validated["record"]["approval_state"],
+            "automated_collection_authorized": automated_collection_authorized,
         }
     except KRXAuthorizationEvidenceError as exc:
         return False, {
@@ -104,6 +108,7 @@ def _validate_authorization_evidence(
             "record_fingerprint_sha256": None,
             "evidence_reference": None,
             "approval_state": None,
+            "automated_collection_authorized": False,
         }
 
 
@@ -197,6 +202,9 @@ def main() -> None:
         environment=environment,
         authorization_evidence_reference=auth_ref,
         authorization_evidence_record_validated=evidence_valid,
+        automated_collection_authorized=bool(
+            evidence_summary.get("automated_collection_authorized") is True
+        ),
     )
     request_authorized = bool(preflight["request_attempt_authorized"])
 
@@ -217,7 +225,7 @@ def main() -> None:
             else "AUTH_KEY_NOT_CONFIGURED_AND_REQUIRED_STATUS_API_MAPPING_NOT_ESTABLISHED"
         ),
         "source_route_policy": {
-            "data_marketplace_session": "KRX_ID/KRX_PW, a matching validated non-secret authorization-evidence record and exact explicit per-run consent are required for the tiny authenticated Data Marketplace source-feasibility check",
+            "data_marketplace_session": "KRX_ID/KRX_PW, a matching validated non-secret authorization-evidence record that explicitly authorizes automated collection, and exact explicit per-run consent are required for the tiny authenticated Data Marketplace source-feasibility check",
             "official_openapi": "AUTH_KEY is a separate KRX OpenAPI credential and may be used only after the exact required API service is identified and approved",
             "no_auth_substitution": True,
             "push_is_dry_run_only": True,
