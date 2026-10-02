@@ -66,7 +66,7 @@ Executable gate semantics are frozen in `research_v1_krx_source_gates.py`; the c
 
 An opaque `KRX_AUTH_EVIDENCE_REF` is necessary but not sufficient. Before any tiny authenticated online probe, the matching structured authorization-evidence record must validate for the exact declared source family, access route and intended-use scope. The record is non-secret and must include an evidence reference, KRX issuer identity, approval state, scope statement, evidence-document SHA-256, captured timestamp and any declared validity window. Unknown fields are rejected so credentials/tokens cannot be hidden inside the record.
 
-A valid structured record may raise the authorization-evidence layer only to **eligible for tiny-probe preflight**. It cannot make Gate A `PASS`, cannot establish Gate B/F, and cannot authorize bulk history, performance testing, holdout, promotion or live trading.
+A valid structured tiny-probe record may raise the authorization-evidence layer only to **eligible for tiny-probe preflight**. It cannot make Gate A `PASS`, cannot establish Gate B, and cannot authorize performance testing, holdout, promotion or live trading. Gate F is evaluated separately from route rights evidence; KRX permission v3 now closes Gate F only for the declared personal/internal-research scope. Bulk-history network execution is separately gated by the frozen historical-acquisition plan and exact user execution consent.
 
 ### Network-free readiness
 
@@ -164,15 +164,15 @@ The pinned client login implementation reads `KRX_ID` / `KRX_PW` and posts to th
 
 Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`, enforced by `research_v1_krx_data_marketplace_terms.py`.
 
-The current KRX Data Marketplace homepage terms, effective 2026-08-29, prohibit unauthorized automated collection/reproduction/distribution and require prior KRX permission before copying/reproduction/distribution/transmission/public transmission of site information. Therefore a normal member account is not treated as authorization for programmatic Data Marketplace collection. A user-provided KRX email reply dated 2026-10-02 now explicitly permits personal, non-commercial/internal-research, low-frequency programmatic and automated querying without a separate approval procedure. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`, and the two source-family records are `INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json` and `INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json`. This permission is limited to the stated low-frequency research scope and does not authorize bulk/high-frequency collection.
+The current KRX Data Marketplace homepage terms, effective 2026-08-29, prohibit unauthorized automated collection/reproduction/distribution and require prior KRX permission before copying/reproduction/distribution/transmission/public transmission of site information. Therefore a normal member account is not treated as authorization for programmatic Data Marketplace collection. KRX permission evidence v3 now explicitly permits, for personal research, complete full-historical-period download/query and programmatic/automated collection at both low and high frequency without a separate approval procedure. The same reply explicitly forbids external leakage, sale and third-party distribution. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`. For the declared personal/internal-research scope, Gate F is PASS; this does not grant commercial or redistribution rights.
 
 ### Current Data Marketplace readiness — 2026-10-02
 
-Network-free Action `36973737546` verified, for both `KRX_SECURITY_STATUS` and `KRX_INVESTOR_FLOW`, that route credentials are present, the committed structured authorization record validates, `automated_collection_authorized=true`, and `configuration_ready_for_manual_authenticated_probe=true`. No KRX network request was attempted. The only remaining pre-request requirement is `EXPLICIT_TINY_REQUEST_CONSENT`.
+Network-free Action `36973737546` verified credential/permission readiness for both source families. Subsequent explicitly consented tiny probes succeeded: status Action `36976085781` and investor-flow Action `36976873119`, raising Gate A only to `PARTIAL` for each family.
 
-Canonical readiness evidence: `INDEXALERT_KRX_DATA_MARKETPLACE_READINESS_EVIDENCE.md/.json`.
+Canonical readiness evidence: `INDEXALERT_KRX_DATA_MARKETPLACE_READINESS_EVIDENCE.md/.json`; tiny-probe evidence: `INDEXALERT_KRX_STATUS_TINY_PROBE_EVIDENCE.md/.json` and `INDEXALERT_KRX_INVESTOR_FLOW_TINY_PROBE_EVIDENCE.md/.json`.
 
-A later successful tiny authenticated probe may raise Gate A only to `PARTIAL`; it cannot authorize bulk history, performance testing, sealed holdout or live trading.
+Full-history/high-frequency rights are now confirmed, but actual bulk network execution is separately governed by `INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.md/.json` and `research_v1_krx_historical_acquisition_preflight.py`. Rights evidence alone never starts the bulk job.
 
 ### Route 3 — KRX data purchase / distribution products
 
@@ -294,12 +294,13 @@ The current source strategy is:
 3. preserve route-specific credentials only in secret management and keep the redacted KRX permission evidence plus source-family structured authorization records under version control;
 4. validate structured authorization evidence with `research_v1_krx_authorization_evidence.py`;
 5. treat network-free readiness Action `36973737546` as configuration evidence only; rerun readiness after any credential/permission change;
-6. require exact per-run consent before a tiny authenticated request under the canonical research probe contract;
-7. keep push-triggered probe runs dry-run only and never inject KRX secrets/evidence JSON on push;
-8. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
-9. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
-10. create immutable acquisition receipts and consistent batch manifests for any future real history;
+6. keep the completed tiny-probe evidence immutable and require a new explicit consent for any materially broader network action;
+7. use `INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.md/.json` plus `research_v1_krx_historical_acquisition_preflight.py` for full-history execution; rights evidence never self-authorizes the job;
+8. keep push-triggered probe runs dry-run only and never inject KRX secrets/evidence JSON on push;
+9. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
+10. create immutable acquisition receipts and consistent batch manifests for every real historical request/batch;
 11. require PIT/coverage/source-data admission before research-registry review;
 12. do not run investor-flow performance research merely because readiness, probe, receipt, batch or admission infrastructure exists;
 13. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
-14. never store KRX IDs/passwords/authentication keys in source, artifacts or logs.
+14. never store KRX IDs/passwords/authentication keys in source, artifacts or logs;
+15. never commit raw KRX rows to this public GitHub repository or expose them in public Actions logs/artifacts.
