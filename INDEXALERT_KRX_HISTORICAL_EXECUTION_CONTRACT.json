@@ -109,5 +109,19 @@
     "historical_cleanup_source": "MDCSTAT23801 delisted-history cleanup-period fields",
     "current_cleanup_reconciliation_source": "MDCSTAT23701 mktId=ALL snapshot",
     "mdcstat237_historical_date_window_assumption_forbidden": true
+  },
+  "stage_specific_authority": {
+    "identity_standard_code_binding": {
+      "network_free_prepare_required": true,
+      "private_task_manifest_required": true,
+      "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
+      "bulk_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
+      "stage_consent_env": "KRX_IDENTITY_BINDING_CONSENT",
+      "stage_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1",
+      "both_consents_required": true,
+      "currently_authorized": false,
+      "prior_identity_seed_authorization_reusable": false,
+      "later_stage_auto_authorization": false
+    }
   }
 }
