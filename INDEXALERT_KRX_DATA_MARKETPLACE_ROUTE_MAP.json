@@ -40,14 +40,17 @@
       "menu_id": "MDC0202",
       "official_screen": "MDCSTAT237 / 정리매매종목 현황",
       "required": [
-        "strtDd",
-        "endDd"
+        "mktId"
       ],
-      "mapping_state": "PROVISIONAL_FULL_CONTRACT_PROJECT_AUTHENTICATED_TINY_PROBE_REACHABLE_SCHEMA_OBSERVED",
+      "mapping_state": "PROJECT_AUTHENTICATED_CURRENT_SNAPSHOT_REACHABLE_SCHEMA_OBSERVED_HISTORICAL_WINDOW_NOT_VERIFIED",
       "live_probe_evidence": {
         "github_action_run_id": 36976085781,
         "rows": 10
-      }
+      },
+      "observed_authenticated_request": {
+        "mktId": "ALL"
+      },
+      "historical_date_filter_verified": false
     },
     "delisted_status": {
       "source_family": "KRX_SECURITY_STATUS",
@@ -111,6 +114,6 @@
     "Pinned third-party code can establish reproducible candidate transport mapping only.",
     "It cannot prove KRX authorization, licensing, complete history, PIT lineage, or official schema equivalence.",
     "Any authenticated probe must still pass the project authorization-evidence and explicit-consent preflight.",
-    "Cleanup-trading MDCSTAT23701 remains provisional until project-authenticated response and exact schema verification."
+    "Cleanup-trading MDCSTAT23701 is authenticated only as a current/reconciliation snapshot using mktId=ALL; historical strtDd/endDd window semantics are not verified and must not be invented."
   ]
 }
