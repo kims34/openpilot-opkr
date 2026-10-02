@@ -33,6 +33,13 @@ For the next protected stage, `IDENTITY_STANDARD_CODE_BINDING`, the historical-n
 
 This completed seed does **not** authorize `IDENTITY_STANDARD_CODE_BINDING`, expected-scope execution, per-security history, status-economics execution, feature-performance testing, sealed holdout, promotion or live trading. Each protected later network stage requires its own current authorization boundary.
 
+
+The later historical network stages are also independently gated:
+- `PER_SECURITY_HISTORY`: after binding is complete, its exact private task set must first be prepared network-free; execution additionally requires `KRX_PER_SECURITY_HISTORY_CONSENT=I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1`.
+- `STATUS_ECONOMICS`: after per-security history is complete, its exact private cleanup-price task set must first be prepared network-free; execution additionally requires `KRX_STATUS_ECONOMICS_CONSENT=I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1`.
+
+Neither stage may reuse an earlier stage-specific approval. Completion of `STATUS_ECONOMICS` still cannot claim exact realized fill/recovery economics.
+
 ## Private raw storage
 
 Raw KRX response bytes must be written only to a private persistent volume configured by `KRX_PRIVATE_RAW_DIR`.
