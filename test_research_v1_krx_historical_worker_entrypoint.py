@@ -14,6 +14,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     PER_SECURITY_CONSENT_ENV,
     PER_SECURITY_CONSENT_SENTINEL,
     KRXHistoricalWorkerEntrypointError,
+    diagnose_delisted_start_master_mapping,
     diagnose_identity_master_code_shapes,
     diagnose_new_listing_master_mapping,
     execute_identity_seed,
@@ -146,6 +147,35 @@ def test_new_listing_mapping_diagnostic_rejects_identifier_or_name_emission(tmp_
                 "network_request_attempted": False,
             },
         )
+
+
+def test_delisted_start_mapping_diagnostic_is_network_free_without_execution_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    out = diagnose_delisted_start_master_mapping(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        summary_loader=lambda *args, **kwargs: {
+            "prestart_delisted_episode_count": 3,
+            "represented_by_common_start_master_count": 2,
+            "missing_from_common_start_master_count": 1,
+            "missing_with_raw_start_symbol_noncommon_count": 1,
+            "identifiers_emitted": False,
+            "names_emitted": False,
+            "raw_rows_emitted": False,
+            "network_request_attempted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        },
+    )
+    assert out["mode"] == "DIAGNOSE_DELISTED_START_MASTER_MAPPING"
+    assert out["summary"]["missing_from_common_start_master_count"] == 1
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["names_emitted"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
 
 
 def test_default_preflight_mode_is_network_free_and_reports_missing_consent(tmp_path):
