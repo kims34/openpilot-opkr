@@ -189,6 +189,32 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "identity-binding approval guard lost",
     )
     _require(
+        start.get("status_per_security_history_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --status-per-security-history",
+        "per-security status command drift",
+    )
+    _require(
+        start.get("status_per_security_history_network_request_attempted") is False,
+        "per-security status must remain network-free",
+    )
+    _require(
+        start.get("status_per_security_history_bulk_consent_required") is False,
+        "per-security status must not require bulk consent",
+    )
+    _require(
+        start.get("status_per_security_history_metadata_only") is True,
+        "per-security status metadata-only guard lost",
+    )
+    _require(
+        int(start.get("status_per_security_history_expected_task_count", -1)) == 14296,
+        "per-security status expected count drift",
+    )
+    _require(
+        start.get("status_per_security_history_task_set_fingerprint_sha256")
+        == "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+        "per-security status fingerprint drift",
+    )
+    _require(
         start.get("prepare_per_security_history_command")
         == "python research_v1_krx_historical_worker_entrypoint.py --prepare-per-security-history",
         "per-security preparation command drift",
