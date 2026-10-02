@@ -19,7 +19,7 @@ from research_v1_krx_auth_preflight import ALLOWED_FAMILIES, ALLOWED_ROUTES
 
 
 SCHEMA_VERSION = "1"
-ALLOWED_APPROVAL_STATES = {"APPROVED", "PENDING", "REVOKED", "UNKNOWN"}
+ALLOWED_APPROVAL_STATES = {"APPROVED", "PERMITTED_NO_SEPARATE_APPROVAL", "PENDING", "REVOKED", "UNKNOWN"}
 _REQUIRED_FIELDS = {
     "schema_version",
     "evidence_reference",
@@ -175,7 +175,7 @@ def validate_authorization_evidence(
         reasons.append("INTENDED_USE_SCOPE_MISMATCH")
     if expected_reference is not None and reference != str(expected_reference).strip():
         reasons.append("EVIDENCE_REFERENCE_MISMATCH")
-    if approval_state != "APPROVED":
+    if approval_state not in {"APPROVED", "PERMITTED_NO_SEPARATE_APPROVAL"}:
         reasons.append(f"APPROVAL_STATE_{approval_state}")
     if route == "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION":
         if automated_collection_authorized is not True:
