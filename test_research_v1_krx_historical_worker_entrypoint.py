@@ -12,6 +12,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     KRXHistoricalWorkerEntrypointError,
     execute_identity_seed,
     execute_identity_standard_code_binding,
+    execute_per_security_history,
     prepare_per_security_history,
     preflight_only,
 )
@@ -390,6 +391,123 @@ def test_prepare_per_security_history_rejects_public_runtime_even_network_free(t
     ):
         prepare_per_security_history(
             environment=env,
+            git_worktree=str(worktree),
+            task_builder=lambda *args, **kwargs: [_per_security_task()],
+        )
+
+
+def _prepare_per_security_predecessor(tmp_path, worktree):
+    _complete_binding_predecessor(tmp_path, worktree)
+    return prepare_per_security_history(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=lambda *args, **kwargs: [_per_security_task()],
+    )
+
+
+def test_execute_per_security_history_blocks_without_bulk_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _prepare_per_security_predecessor(tmp_path, worktree)
+    calls = []
+
+    with pytest.raises(KRXHistoricalWorkerEntrypointError, match="preflight blocked"):
+        execute_per_security_history(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            executor=lambda **kwargs: calls.append(kwargs),
+            task_loader=lambda *args, **kwargs: [_per_security_task()],
+            evaluation_time=EVAL,
+        )
+    assert calls == []
+
+
+def test_execute_per_security_history_uses_only_prepared_frozen_tasks(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _prepare_per_security_predecessor(tmp_path, worktree)
+    calls = []
+
+    def executor(**kwargs):
+        calls.append(kwargs["spec"])
+        raw = write_raw_object(
+            Path(kwargs["environment"]["KRX_PRIVATE_RAW_DIR"]),
+            b"per-security-history",
+            git_worktree=kwargs["git_worktree"],
+        )
+        return {
+            "completed": True,
+            "resumed": False,
+            "request_metadata_sha256": "1" * 64,
+            "raw_object_sha256": raw["raw_object_sha256"],
+            "raw_bytes_size": raw["raw_bytes_size"],
+            "response_rows": 1,
+            "retrieved_at": EVAL.isoformat(),
+            "response_schema_sha256": "2" * 64,
+            "response_payload_sha256": "3" * 64,
+            "receipt_fingerprint_sha256": "4" * 64,
+            "network_request_attempted": True,
+            "raw_rows_emitted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        }
+
+    out = execute_per_security_history(
+        environment=_env(tmp_path, consent=True),
+        git_worktree=str(worktree),
+        executor=executor,
+        task_loader=lambda *args, **kwargs: [_per_security_task()],
+        evaluation_time=EVAL,
+    )
+    assert len(calls) == 1
+    assert out["mode"] == "EXECUTE_PER_SECURITY_HISTORY"
+    assert out["task_count"] == 1
+    assert out["completed_task_count"] == 1
+    assert out["network_request_attempt_count"] == 1
+    assert out["phase_complete"] is True
+    assert out["phase_status"] == "COMPLETE"
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["source_gate_c_closed"] is False
+    assert out["source_gate_d_closed"] is False
+    assert out["source_gate_e_closed"] is False
+    assert out["feature_performance_testing_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+    assert "005930" not in str(out)
+    assert "KR7005930003" not in str(out)
+    assert (tmp_path / "private" / out["private_batch_relpath"]).is_file()
+
+
+def test_load_frozen_per_security_tasks_rejects_manifest_drift(tmp_path):
+    from research_v1_krx_historical_worker_entrypoint import (
+        load_frozen_per_security_history_tasks,
+    )
+    from research_v1_krx_private_store import write_private_json
+
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _prepare_per_security_predecessor(tmp_path, worktree)
+    root = (tmp_path / "private").resolve()
+
+    manifest_path = root / "task_manifests" / "per-security-history-v3.json"
+    import json
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["task_set_fingerprint_sha256"] = "0" * 64
+    write_private_json(
+        root,
+        "task_manifests/per-security-history-v3.json",
+        data,
+        git_worktree=str(worktree),
+    )
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="manifest fingerprint drift",
+    ):
+        load_frozen_per_security_history_tasks(
+            str(root),
             git_worktree=str(worktree),
             task_builder=lambda *args, **kwargs: [_per_security_task()],
         )
