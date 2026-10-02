@@ -69,7 +69,12 @@
     "execute_per_security_history_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
     "execute_per_security_history_forbidden_until_user_bulk_approval": true,
     "execute_per_security_history_requires_prepared_private_manifest": true,
-    "execute_per_security_history_requires_completed_identity_binding": true
+    "execute_per_security_history_requires_completed_identity_binding": true,
+    "prepare_status_economics_command": "python research_v1_krx_historical_worker_entrypoint.py --prepare-status-economics",
+    "prepare_status_economics_network_request_attempted": false,
+    "prepare_status_economics_bulk_consent_required": false,
+    "prepare_status_economics_requires_completed_per_security_history": true,
+    "prepare_status_economics_exact_realized_economics_claim_allowed": false
   },
   "public_output": {
     "raw_rows_forbidden": true,
