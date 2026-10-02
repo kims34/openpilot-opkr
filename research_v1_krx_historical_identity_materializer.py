@@ -545,11 +545,13 @@ def _merge_master_snapshots_fail_closed(
 
     for label, frame in (("seed", seed), ("binding", binding)):
         raw_symbol = frame["symbol"].astype("string").str.strip().str.upper()
+        canonical_symbol = _short_code(raw_symbol)
         _require(
-            raw_symbol.str.fullmatch(r"[0-9]{1,6}", na=False).all(),
-            f"{label} KOSPI common-stock master has non-numeric short code",
+            canonical_symbol.ne("").all()
+            and canonical_symbol.str.fullmatch(r"[A-Z0-9]{6}", na=False).all(),
+            f"{label} KOSPI common-stock master has invalid short code",
         )
-        frame["symbol"] = _short_code(raw_symbol)
+        frame["symbol"] = canonical_symbol
     _require(
         not seed[["decision_date", "listing_date_official"]].isna().any().any(),
         "seed master has invalid merge date",
