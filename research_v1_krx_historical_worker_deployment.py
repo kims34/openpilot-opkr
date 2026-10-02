@@ -181,8 +181,9 @@ def validate_worker_requirements(text: str) -> dict[str, Any]:
         "archive/e6ebac9b71482db127348d8a08ebc6743aa3b50e.zip"
     )
     _require(pinned in rendered, "pinned KRX client missing from requirements")
+    krx_lines = [line for line in lines if line.startswith("krx-data-api ")]
     _require(
-        rendered.count("krx-data-api") == 1,
+        len(krx_lines) == 1,
         "requirements must contain exactly one krx-data-api pin",
     )
     return {
