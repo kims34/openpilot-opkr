@@ -95,6 +95,8 @@ on:
       - 'test_research_v1_krx_historical_request_executor.py'
       - 'research_v1_krx_historical_batch_orchestrator.py'
       - 'test_research_v1_krx_historical_batch_orchestrator.py'
+      - 'research_v1_krx_historical_batch_state.py'
+      - 'test_research_v1_krx_historical_batch_state.py'
       - 'research_v1_krx_historical_worker_entrypoint.py'
       - 'test_research_v1_krx_historical_worker_entrypoint.py'
       - 'research_v1_krx_data_marketplace_terms.py'
