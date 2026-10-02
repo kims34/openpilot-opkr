@@ -43,7 +43,7 @@ A-F gates remain:
 - F `INTENDED_USE_RIGHTS`
 
 Current states:
-- Security/status: A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
+- Security/status: A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`. Exact production OpenAPI connectivity/schema is now proven only for `유가증권 종목기본정보` and `유가증권 일별매매정보`; that evidence does not map the unresolved halt/cleanup/delisting route.
 - Investor flow: A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; feature-performance testing blocked.
 
 Even all six PASS closes only the declared source contract; it does not authorize promotion, sealed holdout or live trading.
@@ -53,7 +53,7 @@ Public-evidence fingerprint remains `349d310647c78412e45ac13078259bab2d002958db5
 Authorization boundary:
 `route credentials -> validated structured non-secret authorization evidence -> exact per-run tiny-request consent`.
 
-Canonical validator: `research_v1_krx_authorization_evidence.py`. Canonical structured-evidence variable is `KRX_AUTH_EVIDENCE_JSON`; canonical explicit-consent variable is `KRX_EXPLICIT_PROBE_CONSENT`. The approval reference alone is not validated evidence. Network-free readiness always clears consent and performs no KRX request. Push probe workflows are dry-run only. **Gate A remains BLOCKED** because no authenticated KRX request has yet been demonstrated.
+Canonical validator: `research_v1_krx_authorization_evidence.py`. Canonical structured-evidence variable is `KRX_AUTH_EVIDENCE_JSON`; canonical explicit-consent variable is `KRX_EXPLICIT_PROBE_CONSENT`. The approval reference alone is not validated evidence. Network-free readiness always clears consent and performs no KRX request. Push research-probe workflows are dry-run only. Production OpenAPI now has authenticated proof for the two separately enabled basic-info/daily-trade services (`20261001`, 942 rows each, exact schema; Action `36952309738`), but no authenticated exact status-event or investor-flow route has been demonstrated. **Gate A remains BLOCKED for those declared source families**.
 
 Internal safe source sequence:
 `structured authorization evidence -> network-free readiness -> explicit manual consent -> auth preflight -> tiny authenticated acquisition -> receipt -> batch -> PIT lineage -> exact scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
@@ -62,7 +62,7 @@ Source-data admission only permits experiment-registry review; performance testi
 
 Latest broad KRX source-governance reference: Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission. Final documentation-drift repair Action `36835918274` succeeded at research branch state before the later Android/server handoff update.
 
-External KRX blockers remain: approved exact route/product, credentials and genuine approval evidence, authenticated route proof, full official history/stable IDs, independently attested expected scope, record-level PIT lineage and exact use rights.
+External KRX blockers remain: exact approved/authenticated status-event and investor-flow route/products, route-specific structured authorization provenance, full official history/stable IDs, independently attested expected scope, record-level PIT lineage and exact use rights. The basic-info/daily-trade OpenAPI proof is recorded separately in `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`.
 
 ## 3. Exact KRX status economics — internal auditor DONE, real evidence BLOCKED
 
@@ -224,13 +224,13 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 
 1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
 2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure.
-3. EXTERNAL KRX AUTH/DATA BLOCKER — approved route, real credentials/approval, authenticated proof, full history/stable IDs/PIT/use rights.
+3. EXTERNAL KRX AUTH/DATA BLOCKER — basic-info/daily-trade OpenAPI authentication is proven; exact status-event/investor-flow routes plus full history/stable IDs/PIT/use rights remain unresolved.
 4. DONE — internal exact status-economics auditor; EXTERNAL EVIDENCE BLOCKER remains for real fill/recovery data.
 5. DONE — execution schema hardening: LIVE structural presence is no longer mislabeled as empirical sufficiency.
 6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, metric evaluator, provenance fail-closed hardening and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence and broker-native provenance admission do not exist.
 7. EMPIRICAL EXECUTION BLOCKER — genuine staged LIVE observations + independent broker-native provenance admission + frozen numerical sufficiency assessment.
 8. SEALED HOLDOUT — untouched; use once only after source/execution/code/protocol freeze, then Shadow S1 -> Fresh Confirmation S2.
-9. DONE — server deployment drift, stale-runtime ambiguity, same-device/build binding, blocker-state contract, legacy-registration resurfacing risk and v4.7 display-only registration incompatibility; Railway production is aligned to exact server commit `d8523810...`, Server Tests `36874615526` succeed, and rerun v32 production smoke `36874615527` succeeds.
+9. DONE — server deployment drift/stale-runtime safeguards remain in place; Railway production is currently aligned to exact server commit `62cb089131ca519815434616dd7f217315fbe346` via deployment `3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681`, and Production Smoke `36952309738` succeeds. The original physical handset event remains separately bound to the audited v4.7-47 event evidence and must not be re-dated to this later deployment.
 10. DONE — mover production-integrity provenance; non-equity and registered corporate-action exclusions are fail-closed and visible in `/laggards`.
 11. DONE — USD/KRW public startup basis is fail-closed until ECOS prior-15:30 verification and carries contract marker `ecos-1530-fail-closed-v1`.
 12. DONE — PHYSICAL E2E for audited Android v4.7-47: real production `/register` -> `/push-self-test` -> handset `/push-ack` succeeded on the exact registered device/build and production now reports `physical_e2e_blocker=CONFIRMED`.
