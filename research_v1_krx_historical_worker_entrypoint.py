@@ -179,6 +179,7 @@ def execute_identity_seed(
                 "raw_object_sha256": result["raw_object_sha256"],
                 "raw_bytes_size": int(result["raw_bytes_size"]),
                 "response_rows": int(result["response_rows"]),
+                "retrieved_at": result["retrieved_at"],
                 "response_schema_sha256": result["response_schema_sha256"],
                 "response_payload_sha256": result["response_payload_sha256"],
                 "receipt_fingerprint_sha256": result[
