@@ -19,7 +19,7 @@ def _data():
 def test_committed_plan_is_frozen_and_nonexecuting():
     out=validate_file()
     assert out["valid"] is True
-    assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v1"
+    assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v2"
     assert len(out["plan_fingerprint_sha256"]) == 64
     assert out["rights_to_acquire"] is True
     assert out["network_execution_authorized"] is False
@@ -58,3 +58,26 @@ def test_halt_chunking_and_investor_pit_are_frozen():
     data["phases"]["investor_flow_history"]["pit_publication_floor"]="15:30 Asia/Seoul"
     with pytest.raises(KRXHistoricalPlanError,match="PIT floor drift"):
         validate_plan(data)
+
+
+def test_identity_seed_requires_historical_standard_code_snapshots():
+    data=_data()
+    rules=data["phases"]["identity_seed"]["identity_rules"]
+    assert rules["standard_code_required_for_every_episode"] is True
+    assert rules["standard_code_source_for_preexisting_episode"] == "research_start_security_master"
+    assert rules["standard_code_source_for_new_episode"] == "listing-date security-master snapshot"
+    assert rules["end_snapshot_is_reconciliation_only"] is True
+    assert rules["per_security_isuCd"] == "standard_code"
+    assert rules["trading_halt_isuCd2"] == "short_code"
+
+    data["phases"]["identity_seed"]["dynamic_standard_code_snapshots"]["no_fallback_from_later_snapshot"]=False
+    with pytest.raises(KRXHistoricalPlanError,match="later-snapshot fallback guard lost"):
+        validate_plan(data)
+
+
+def test_identity_history_uses_bounded_year_windows():
+    data=_data()
+    for name in ("new_listing_history","delisted_history"):
+        row=data["phases"]["identity_seed"]["windowed_requests"][name]
+        assert row["request_count"] == 12
+        assert len(row["calendar_year_windows"]) == 12
