@@ -113,3 +113,17 @@ This contract does not close Gates C/D/E and does not authorize:
 - live trading.
 
 Those remain false until the completed private acquisition passes receipts/batches, exact historical coverage, PIT lineage and source-data admission.
+
+
+## Frozen PER_SECURITY_HISTORY prepared scope
+
+Network-free preparation completed on 2026-10-03 KST and is now part of this execution contract:
+- exact prepared request count: **14,296**
+- investor-flow daily: **9,485**
+- trading-halt: **4,811**
+- task-set SHA-256: `fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38`
+- private manifest metadata SHA-256: `0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116`
+- private manifest: `task_manifests/per-security-history-v3.json`
+- preparation network requests: **0**
+
+`PER_SECURITY_HISTORY` execution must match this exact frozen scope and still requires both the v3 historical-network sentinel and the separate stage-specific approval `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1`. No later stage is authorized by this preparation.
