@@ -30,10 +30,10 @@ Overall: **OPEN — NOT ALL A-F PASS**
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
 | Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Authenticated KRX OpenAPI access is now demonstrated in production for the separately enabled `유가증권 종목기본정보` and `유가증권 일별매매정보` services (2026-10-01 basis date, HTTP 200, Action `36956234911`). This proves the OpenAPI transport/key works for those exact services only. The declared `KRX_SECURITY_STATUS` family still lacks an exact approved/authenticated route for trading-halt, cleanup-trading and actual-delisting history, and the canonical structured authorization-evidence / source-acquisition chain for that status route remains incomplete. Therefore Gate A for the declared status family stays `BLOCKED`. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Exact live schemas are now verified for `유가증권 종목기본정보` (`stk_isu_base_info`) and `유가증권 일별매매정보` (`stk_bydd_trd`): both returned 942 rows for `20261001`, and the observed fields matched the KRX development specifications. Public contracts MDCSTAT213/237/238/239 and status semantics are identified, but exact approved historical transport/schema equivalence for halt/cleanup/delisting status and the stable full issue-ID contract for Final Judge remain unfrozen. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Exact live schemas are verified for `유가증권 종목기본정보` and `유가증권 일별매매정보`. `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json` additionally freezes the project's pinned-client candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902` and `MDCSTAT02303`; `MDCSTAT23701` remains explicitly provisional direct transport. These mappings are reproducible candidates, not KRX-authenticated project evidence, so exact approved historical transport/schema equivalence for halt/cleanup/delisting status and the stable full issue-ID contract for Final Judge remain unfrozen. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_status_coverage.py` can exact-audit caller-attested `(snapshot_date, symbol, isu_cd)` scope, but no authorized full-period scope/history with stable full issue identity has been supplied. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | Status adapters require availability lineage, but complete historical event/publication/availability/ingestion evidence across all required status families is absent. |
-| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. Production Action `36956234911` additionally freezes exact-revision sanitized OpenAPI connectivity/schema evidence plus response schema/payload SHA-256 fingerprints for the two enabled services. That startup probe is not a full historical acquisition receipt/batch chain, so Gate E remains `PARTIAL`. |
+| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. Production Action `36956234911` freezes exact-revision OpenAPI response fingerprints, while `research_v1_krx_data_marketplace_route_map.py` fail-closed validates the pinned candidate BLD map. Neither is a full authenticated historical acquisition receipt/batch chain, so Gate E remains `PARTIAL`. |
 | Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | Current OpenAPI terms are audited as non-commercial/no-third-party-distribution; exact rights for the final selected historical route/product remain unverified. |
 
 Current verdict: `judge_security_status_ready=false`.
@@ -47,7 +47,7 @@ Overall: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
 | Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Data Marketplace preflight now requires `KRX_ID` + `KRX_PW` + non-secret `KRX_AUTH_EVIDENCE_REF` + a matching validated `KRX_AUTH_EVIDENCE_JSON` record + exact explicit per-run consent. OpenAPI key cannot substitute. Network-free readiness can validate configuration while forcibly disabling consent. No authorized authenticated investor-flow request has been demonstrated. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Official stock investor-trading screen family is known and exploratory mapping points to MDCSTAT02303, but exact approved historical transport/OpenAPI equivalence remains unestablished. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Official stock investor-trading screen family is known. The pinned-client route map now freezes `MDCSTAT02303` / screen 12009 daily trend with required security/date inputs and the 20:00 publication floor, but the project has not yet demonstrated an authenticated KRX response or exact approved historical route equivalence. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_investor_flow_coverage.py` exact-compares caller-attested `(event_date, symbol, isu_cd)` scope to validated observed keys and never invents dates/universe/zeros. No authorized full-period scope/history exists yet. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `PARTIAL` | `research_v1_krx_investor_flow_lineage.py` enforces timezone-aware chronology, day-D publication floor >=20:00 KST, current public-contract fingerprint, one source contract and decision-time availability. No real full historical dataset has passed it. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Probe/public evidence, structured authorization-evidence validation, network-free readiness, push-safe workflow isolation, immutable acquisition receipts, batch provenance, PIT and exact coverage validators, and `research_v1_krx_source_data_admission.py` are fail-closed. Bulk authenticated historical retrieval and real-data admission evidence remain unavailable. |
@@ -80,6 +80,18 @@ Production server revision `62cb089131ca519815434616dd7f217315fbe346`, Railway d
 - `유가증권 일별매매정보` / `stk_bydd_trd`: HTTP 200, JSON parsed, 942 rows, exact expected schema, schema SHA-256 `5d68cce946a3c9361e7d662351f4896518cad40a3804fd262f577ad29d1d56f3`, payload SHA-256 `b5ff8d6894a1956aaf963aa9bad853eff1c3ee465f50f3ab611f7098ca0f93d3`.
 
 This supersedes the older generic statement that no authenticated KRX request had been demonstrated. It does **not** demonstrate an authenticated halt/cleanup/delisting route or investor-flow route, does not establish full history/PIT/use rights, and grants no performance, holdout, promotion or live authority.
+
+### 5.2 Pinned Data Marketplace route map
+
+Canonical records: `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md` / `.json`.
+
+The project-pinned `beaten-by-the-market/krx-data-api` commit `e6ebac9b71482db127348d8a08ebc6743aa3b50e` maps:
+- `MDCSTAT21301` — trading-halt history candidate;
+- `MDCSTAT23801` — delisted-status candidate;
+- `MDCSTAT23902` — delisted-price candidate;
+- `MDCSTAT02303` — per-security investor-flow daily trend candidate.
+
+`MDCSTAT23701` cleanup-trading remains explicitly provisional direct transport because it is not catalogued by the pinned client. The route map is third-party transport evidence only and is validated fail-closed by `research_v1_krx_data_marketplace_route_map.py`. It cannot make Gate A/B pass, cannot prove rights, and cannot authorize bulk history or performance testing.
 
 ## 6. Authorization, readiness and workflow evidence
 
