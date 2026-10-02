@@ -183,6 +183,26 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         is True,
         "per-security preparation private-worker guard lost",
     )
+    _require(
+        start.get("execute_per_security_history_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
+        "per-security execute command drift",
+    )
+    _require(
+        start.get("execute_per_security_history_forbidden_until_user_bulk_approval")
+        is True,
+        "per-security bulk-approval guard lost",
+    )
+    _require(
+        start.get("execute_per_security_history_requires_prepared_private_manifest")
+        is True,
+        "per-security prepared-manifest guard lost",
+    )
+    _require(
+        start.get("execute_per_security_history_requires_completed_identity_binding")
+        is True,
+        "per-security predecessor guard lost",
+    )
 
     authority = data.get("authority") or {}
     for key in (
