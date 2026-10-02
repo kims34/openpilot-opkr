@@ -226,6 +226,31 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         is False,
         "KRX price context must never claim exact realized economics",
     )
+    _require(
+        start.get("execute_status_economics_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --execute-status-economics",
+        "status-economics execute command drift",
+    )
+    _require(
+        start.get("execute_status_economics_forbidden_until_user_bulk_approval")
+        is True,
+        "status-economics bulk-approval guard lost",
+    )
+    _require(
+        start.get("execute_status_economics_requires_prepared_private_manifest")
+        is True,
+        "status-economics prepared-manifest guard lost",
+    )
+    _require(
+        start.get("execute_status_economics_requires_completed_per_security_history")
+        is True,
+        "status-economics predecessor guard lost",
+    )
+    _require(
+        start.get("execute_status_economics_exact_realized_economics_claim_allowed")
+        is False,
+        "status-economics execution must not claim exact realized economics",
+    )
 
     authority = data.get("authority") or {}
     for key in (
