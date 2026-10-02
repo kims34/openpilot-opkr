@@ -1,9 +1,4 @@
-"""Authenticated KRX point-in-time daily panel builder for IndexAlert Research v1.
-
-This is the Judge-grade path. It intentionally fails fast if the configured
-pykrx/KRX session cannot return a valid historical KOSPI snapshot. It never
-silently falls back to a current-constituent universe.
-"""
+"""KRX point-in-time daily panel staging builder for IndexAlert Research v1.\n\nThis module can stage date-specific KOSPI daily panels, but successful retrieval\nis never Final-Judge admission. KRX A-F source governance, provenance, complete\nhistorical coverage, PIT lineage, exact status economics and later promotion\ngates remain independent. It intentionally fails fast on invalid snapshots and\nnever silently falls back to a current-constituent universe.\n"""
 from __future__ import annotations
 
 import argparse
@@ -37,7 +32,10 @@ class BuildStats:
     sessions_failed: int
     rows_written: int
     point_in_time_universe: bool = True
-    judge_eligible: bool = True
+    judge_eligible: bool = False
+    source_governance_admission_required: bool = True
+    sealed_holdout_authorized: bool = False
+    live_trading_authorized: bool = False
     schema_version: str = SCHEMA_VERSION
 
 
@@ -66,7 +64,7 @@ def _normalize_day(df: pd.DataFrame, ymd: str) -> pd.DataFrame:
         x["value"] = x["close"].astype(float) * x["volume"].astype(float)
     x["decision_date"] = pd.to_datetime(ymd, format="%Y%m%d")
     x["market"] = "KOSPI"
-    x["source"] = "KRX via authenticated pykrx"
+    x["source"] = "KRX via pykrx; route not source-gate admitted"
     x["schema_version"] = SCHEMA_VERSION
     x["point_in_time_universe"] = True
     for c in ["open", "high", "low", "close", "volume", "value"]:
@@ -100,8 +98,8 @@ def _probe_or_fail(sessions: list[str]) -> None:
     except Exception as exc:
         auth_hint = " KRX_ID/KRX_PW are not present." if not (os.getenv("KRX_ID") and os.getenv("KRX_PW")) else ""
         raise KRXSourceUnavailable(
-            f"Judge-grade KRX PIT source unavailable at probe {probe}.{auth_hint} "
-            "Configure an approved KRX-authenticated source before PIT performance claims. "
+            f"KRX daily-panel source unavailable at probe {probe}.{auth_hint} "
+            "Configure and admit an approved KRX source before PIT performance claims. "
             f"Original error: {exc}"
         ) from exc
     if len(frame) < 100:
