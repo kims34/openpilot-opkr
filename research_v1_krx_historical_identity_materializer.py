@@ -1050,6 +1050,92 @@ def _exclude_new_listings_officially_noncommon_on_listing_date(
     return filtered
 
 
+def _exclude_prestart_delisted_officially_noncommon_at_start(
+    delisted_history: pd.DataFrame,
+    raw_start_master: pd.DataFrame,
+) -> pd.DataFrame:
+    """Exclude only pre-start episodes proven non-common by the start master.
+
+    The delisted history can classify an issue broadly enough to pass its own
+    common-stock fields even when the authoritative 2015-06-15 security master
+    says the same exact security (short code + listing date) is not a KOSPI
+    common stock. Such rows are outside the frozen research universe.
+
+    Missing, ambiguous, non-KOSPI, or listing-date-mismatched start-master
+    evidence is not silently excluded here; it remains fail-closed downstream.
+    """
+    normalized = _normal_history(delisted_history, delisted=True)
+    target = normalized[
+        normalized["listing_date"].lt(PLAN_START)
+        & normalized["delisting_date"].notna()
+        & normalized["delisting_date"].ge(PLAN_START)
+        & normalized["delisting_date"].le(PLAN_END)
+    ].copy()
+    if target.empty:
+        return delisted_history.copy()
+
+    masters = raw_start_master.copy()
+    required = {
+        "decision_date",
+        "symbol",
+        "listing_date_official",
+        "market_type_official",
+        "common_stock_identity_official",
+    }
+    missing = required - set(masters.columns)
+    _require(not missing, f"start master missing universe columns: {sorted(missing)}")
+    masters["decision_date"] = pd.to_datetime(
+        masters["decision_date"], errors="coerce"
+    ).dt.normalize()
+    masters["listing_date_official"] = pd.to_datetime(
+        masters["listing_date_official"], errors="coerce"
+    ).dt.normalize()
+    masters["symbol"] = _short_code(masters["symbol"])
+    masters["market_type_official"] = _market(masters["market_type_official"])
+    masters = masters[masters["decision_date"].eq(PLAN_START)].copy()
+    _require(not masters.empty, "research-start master is empty")
+
+    excluded: set[tuple[str, pd.Timestamp]] = set()
+    for row in target.itertuples(index=False):
+        exact = masters[
+            masters["symbol"].eq(row.short_code)
+            & masters["listing_date_official"].eq(row.listing_date)
+        ]
+        if len(exact) != 1:
+            continue
+        m = exact.iloc[0]
+        if (
+            str(m["market_type_official"]) == "KOSPI"
+            and not bool(m["common_stock_identity_official"])
+        ):
+            excluded.add((str(row.short_code), pd.Timestamp(row.listing_date)))
+
+    if not excluded:
+        return delisted_history.copy()
+
+    _require(
+        {"종목코드", "상장일"}.issubset(delisted_history.columns),
+        "delisted history missing exclusion key columns",
+    )
+    out = delisted_history.copy()
+    raw_short = _short_code(out["종목코드"])
+    raw_date = pd.to_datetime(
+        out["상장일"].astype("string").str.replace(r"[^0-9]", "", regex=True),
+        format="%Y%m%d",
+        errors="coerce",
+    ).dt.normalize()
+    keep = [
+        (str(code), pd.Timestamp(dt)) not in excluded if not pd.isna(dt) else True
+        for code, dt in zip(raw_short, raw_date)
+    ]
+    filtered = out.loc[keep].copy()
+    _require(
+        len(out) - len(filtered) == len(excluded),
+        "official non-common prestart-delisted exclusion count drift",
+    )
+    return filtered
+
+
 def reconstruct_private_historical_episodes(
     root: str,
     *,
@@ -1070,6 +1156,10 @@ def reconstruct_private_historical_episodes(
         seed["new_listing_history"],
         raw_masters,
     )
+    delisted = _exclude_prestart_delisted_officially_noncommon_at_start(
+        seed["delisted_history"],
+        seed["security_master_snapshots"],
+    )
     masters = _merge_master_snapshots_fail_closed(
         seed["security_master_snapshots"],
         binding,
@@ -1077,7 +1167,7 @@ def reconstruct_private_historical_episodes(
     return reconstruct_historical_kospi_episodes(
         security_master_snapshots=masters,
         new_listing=new_listing,
-        delisted=seed["delisted_history"],
+        delisted=delisted,
     )
 
 
