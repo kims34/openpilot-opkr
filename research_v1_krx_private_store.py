@@ -164,6 +164,26 @@ def verify_raw_object(
     }
 
 
+
+def read_raw_object(
+    root: str | os.PathLike[str],
+    digest: str,
+    *,
+    expected_size: int | None = None,
+    git_worktree: str | os.PathLike[str] | None = None,
+) -> bytes:
+    """Return verified private raw bytes without emitting or transforming them."""
+    checked = verify_raw_object(
+        root,
+        digest,
+        expected_size=expected_size,
+        git_worktree=git_worktree,
+    )
+    base = validate_private_root(root, git_worktree=git_worktree)
+    target = base / checked["object_relpath"]
+    return target.read_bytes()
+
+
 def _secret_like_key(key: Any) -> bool:
     normal = "".join(ch.lower() if ch.isalnum() else "_" for ch in str(key))
     if normal in SAFE_NONSECRET_METADATA_KEYS:
