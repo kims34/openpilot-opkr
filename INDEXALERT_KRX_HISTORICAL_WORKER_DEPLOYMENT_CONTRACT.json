@@ -60,7 +60,12 @@
     "execute_identity_seed_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-identity-seed",
     "execute_command_forbidden_until_user_bulk_approval": true,
     "execute_identity_standard_code_binding_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-identity-standard-code-binding",
-    "execute_identity_standard_code_binding_forbidden_until_user_bulk_approval": true
+    "execute_identity_standard_code_binding_forbidden_until_user_bulk_approval": true,
+    "prepare_per_security_history_command": "python research_v1_krx_historical_worker_entrypoint.py --prepare-per-security-history",
+    "prepare_per_security_history_network_request_attempted": false,
+    "prepare_per_security_history_bulk_consent_required": false,
+    "prepare_per_security_history_requires_completed_identity_binding": true,
+    "prepare_per_security_history_requires_dedicated_worker_private_volume": true
   },
   "public_output": {
     "raw_rows_forbidden": true,
