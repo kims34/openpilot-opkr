@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "evidence_reference": "KRX_EMAIL_REPLY_2026-10-02_1440KST_C50A76BB",
+  "issuer": "KRX",
+  "access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+  "approval_state": "PERMITTED_NO_SEPARATE_APPROVAL",
+  "scope_statement": "KRX Data Marketplace email reply states that personal, non-commercial/internal-research users may perform low-frequency programmatic and automated querying without a separate approval procedure.",
+  "automated_collection_authorized": true,
+  "evidence_document_sha256": "c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38",
+  "captured_at": "2026-10-02T14:40:00+09:00",
+  "valid_from": "2026-10-02T14:40:00+09:00",
+  "source_family": "KRX_INVESTOR_FLOW",
+  "intended_use_scope": "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION"
+}
