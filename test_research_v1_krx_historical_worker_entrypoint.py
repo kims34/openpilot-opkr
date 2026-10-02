@@ -13,7 +13,11 @@ from research_v1_krx_historical_worker_entrypoint import (
     IDENTITY_BINDING_CONSENT_SENTINEL,
     PER_SECURITY_CONSENT_ENV,
     PER_SECURITY_CONSENT_SENTINEL,
+    PER_SECURITY_EXPECTED_TASK_COUNT,
+    PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+    PER_SECURITY_EXPECTED_MANIFEST_SHA256,
     KRXHistoricalWorkerEntrypointError,
+    _require_frozen_per_security_summary,
     diagnose_delisted_start_master_mapping,
     diagnose_identity_master_code_shapes,
     diagnose_new_listing_master_mapping,
@@ -585,6 +589,42 @@ def _per_security_task():
         },
         "contains_security_identifier": True,
     }
+
+
+def test_prepared_per_security_task_set_is_code_pinned():
+    summary = {
+        "task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "task_set_fingerprint_sha256": PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+    }
+    _require_frozen_per_security_summary(
+        summary,
+        manifest_metadata_sha256=PER_SECURITY_EXPECTED_MANIFEST_SHA256,
+    )
+
+    bad = dict(summary)
+    bad["task_count"] = PER_SECURITY_EXPECTED_TASK_COUNT - 1
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="per-security frozen task count drift",
+    ):
+        _require_frozen_per_security_summary(bad)
+
+    bad = dict(summary)
+    bad["task_set_fingerprint_sha256"] = "0" * 64
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="per-security frozen task-set fingerprint drift",
+    ):
+        _require_frozen_per_security_summary(bad)
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="per-security frozen manifest metadata SHA-256 drift",
+    ):
+        _require_frozen_per_security_summary(
+            summary,
+            manifest_metadata_sha256="0" * 64,
+        )
 
 
 def test_prepare_per_security_history_requires_completed_binding(tmp_path):
