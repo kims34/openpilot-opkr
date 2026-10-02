@@ -27,7 +27,11 @@
         "endDd"
       ],
       "max_period_days": 730,
-      "mapping_state": "PINNED_CLIENT_CATALOGUED_OFFICIAL_SCREEN_MATCH_NOT_YET_AUTHENTICATED_BY_PROJECT"
+      "mapping_state": "PROJECT_AUTHENTICATED_TINY_PROBE_REACHABLE_SCHEMA_OBSERVED",
+      "live_probe_evidence": {
+        "github_action_run_id": 36976085781,
+        "rows": 1
+      }
     },
     "cleanup_trading": {
       "source_family": "KRX_SECURITY_STATUS",
@@ -39,7 +43,11 @@
         "strtDd",
         "endDd"
       ],
-      "mapping_state": "PROVISIONAL_DIRECT_TRANSPORT_NOT_CATALOGUED_IN_PINNED_CLIENT"
+      "mapping_state": "PROVISIONAL_FULL_CONTRACT_PROJECT_AUTHENTICATED_TINY_PROBE_REACHABLE_SCHEMA_OBSERVED",
+      "live_probe_evidence": {
+        "github_action_run_id": 36976085781,
+        "rows": 10
+      }
     },
     "delisted_status": {
       "source_family": "KRX_SECURITY_STATUS",
@@ -77,8 +85,17 @@
         "strtDd",
         "endDd"
       ],
-      "mapping_state": "PINNED_CLIENT_CATALOGUED_DATA_MARKETPLACE_SCREEN_NOT_YET_AUTHENTICATED_BY_PROJECT",
-      "pit_publication_floor": "20:00 Asia/Seoul"
+      "mapping_state": "PROJECT_AUTHENTICATED_TINY_PROBE_REACHABLE_SCHEMA_OBSERVED",
+      "pit_publication_floor": "20:00 Asia/Seoul",
+      "live_probe_evidence": {
+        "github_action_run_id": 36976873119,
+        "security": "005930",
+        "window": [
+          "2026-09-21",
+          "2026-09-23"
+        ],
+        "rows": 3
+      }
     }
   },
   "authority": {
