@@ -87,3 +87,16 @@ def test_cleanup_source_correction_is_frozen():
     data["source_contract_correction"]["mdcstat237_historical_date_window_assumption_forbidden"] = False
     with pytest.raises(KRXHistoricalExecutionContractError, match="prohibition lost"):
         validate_execution_contract(data)
+
+
+def test_human_execution_contract_tracks_machine_v2_plan_v3():
+    text = Path("INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.md").read_text(encoding="utf-8")
+    assert "# IndexAlert KRX Historical Execution Contract v2" in text
+    assert "Contract ID: `INDEXALERT-KRX-HIST-EXEC-v2`" in text
+    assert "Bound acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v3`" in text
+    assert "`I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3`" in text
+    assert "MDCSTAT23801" in text
+    assert "MDCSTAT23701" in text
+    assert "must **never** invent historical `strtDd/endDd` semantics" in text
+    assert "INDEXALERT-KRX-HIST-EXEC-v1" not in text
+    assert "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2" not in text
