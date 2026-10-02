@@ -48,9 +48,9 @@ def test_identity_seed_is_exactly_27_tasks_and_cleanup_is_current_only():
         row for row in tasks
         if row["request_spec"]["kind"] == "cleanup_current_reconciliation"
     )
-    assert cleanup["request_metadata"] == {"mktId": "ALL"}
-    assert "strtDd" not in cleanup["request_metadata"]
-    assert "endDd" not in cleanup["request_metadata"]
+    assert cleanup["request_spec"]["params"] == {"mktId": "ALL"}
+    assert "strtDd" not in cleanup["request_spec"]["params"]
+    assert "endDd" not in cleanup["request_spec"]["params"]
 
 
 def test_seed_routes_and_menu_ids_are_frozen():
