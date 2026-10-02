@@ -33,20 +33,20 @@ def test_identity_seed_is_exactly_27_tasks_and_cleanup_is_current_only():
 
     counts = {}
     for row in tasks:
-        counts[row["dataset_identifier"]] = counts.get(row["dataset_identifier"], 0) + 1
+        counts[row["request_spec"]["kind"]] = counts.get(row["request_spec"]["kind"], 0) + 1
         assert row["phase"] == "IDENTITY_SEED"
         assert row["contains_security_identifier"] is False
 
     assert counts == {
-        "stk_isu_base_info": 2,
-        "MDCSTAT20001": 12,
-        "MDCSTAT23801": 12,
-        "MDCSTAT23701_CURRENT_RECONCILIATION": 1,
+        "security_master": 2,
+        "new_listing": 12,
+        "delisted": 12,
+        "cleanup_current_reconciliation": 1,
     }
 
     cleanup = next(
         row for row in tasks
-        if row["dataset_identifier"] == "MDCSTAT23701_CURRENT_RECONCILIATION"
+        if row["request_spec"]["kind"] == "cleanup_current_reconciliation"
     )
     assert cleanup["request_metadata"] == {"mktId": "ALL"}
     assert "strtDd" not in cleanup["request_metadata"]
@@ -56,20 +56,22 @@ def test_identity_seed_is_exactly_27_tasks_and_cleanup_is_current_only():
 def test_seed_routes_and_menu_ids_are_frozen():
     tasks = build_identity_seed_tasks()
 
-    masters = [x for x in tasks if x["dataset_identifier"] == "stk_isu_base_info"]
-    assert {x["request_metadata"]["basDd"] for x in masters} == {"20150615", "20261001"}
-    assert all(x["access_route"] == "KRX_OPENAPI_APPROVED_SERVICE" for x in masters)
+    masters = [x for x in tasks if x["request_spec"]["kind"] == "security_master"]
+    assert {x["request_spec"]["params"]["basDd"] for x in masters} == {"20150615", "20261001"}
 
-    new = [x for x in tasks if x["dataset_identifier"] == "MDCSTAT20001"]
+    new = [x for x in tasks if x["request_spec"]["kind"] == "new_listing"]
     assert len(new) == 12
-    assert all(x["bld"] == "dbms/MDC/STAT/issue/MDCSTAT20001" for x in new)
-    assert all(x["menu_id"] == "MDC0201" for x in new)
-    assert all(x["method"] == "csv" for x in new)
 
-    dl = [x for x in tasks if x["dataset_identifier"] == "MDCSTAT23801"]
+    dl = [x for x in tasks if x["request_spec"]["kind"] == "delisted"]
     assert len(dl) == 12
-    assert all(x["bld"] == "dbms/MDC/STAT/issue/MDCSTAT23801" for x in dl)
-    assert all(x["menu_id"] == "MDC0202" for x in dl)
+
+    # BLD/menu/defaults are intentionally resolved only by the canonical
+    # request executor, not duplicated in the orchestrator.
+    for row in new + dl:
+        assert set(row) == {
+            "plan_id", "execution_contract_id", "phase", "source_family",
+            "request_spec", "contains_security_identifier", "task_id",
+        }
 
 
 def test_listing_date_master_tasks_are_unique_bounded_and_identifier_free():
@@ -77,39 +79,37 @@ def test_listing_date_master_tasks_are_unique_bounded_and_identifier_free():
         ["2015-06-15", "2015-06-15", "2020-01-02", "2010-01-01", "bad"]
     )
     assert len(tasks) == 2
-    assert {x["request_metadata"]["basDd"] for x in tasks} == {"20150615", "20200102"}
+    assert {x["request_spec"]["params"]["basDd"] for x in tasks} == {"20150615", "20200102"}
     assert all(x["phase"] == "IDENTITY_STANDARD_CODE_BINDING" for x in tasks)
     assert all(x["contains_security_identifier"] is False for x in tasks)
 
 
 def test_per_security_tasks_preserve_standard_code_and_frozen_route_defaults():
     tasks = build_per_security_history_tasks(_episode())
-    halt = [x for x in tasks if x["dataset_identifier"] == "MDCSTAT21301"]
-    investor = [x for x in tasks if x["dataset_identifier"] == "MDCSTAT02303"]
+    halt = [x for x in tasks if x["request_spec"]["kind"] == "trading_halt"]
+    investor = [x for x in tasks if x["request_spec"]["kind"] == "investor_trading_individual_daily"]
 
     assert len(halt) == 6
     assert len(investor) == 12
     assert all(x["contains_security_identifier"] is True for x in tasks)
 
     for row in halt:
-        assert row["request_metadata"]["isuCd"] == "KR7005930003"
-        assert row["request_metadata"]["isuCd2"] == "005930"
-        assert row["bld"] == "dbms/MDC/STAT/issue/MDCSTAT21301"
-        assert row["menu_id"] == "MDC0202"
-        start = pd.Timestamp(row["request_metadata"]["strtDd"])
-        end = pd.Timestamp(row["request_metadata"]["endDd"])
+        assert row["request_spec"]["params"]["isuCd"] == "KR7005930003"
+        assert row["request_spec"]["params"]["isuCd2"] == "005930"
+        assert row["request_spec"]["kind"] == "trading_halt"
+        start = pd.Timestamp(row["request_spec"]["params"]["strtDd"])
+        end = pd.Timestamp(row["request_spec"]["params"]["endDd"])
         assert (end - start).days + 1 <= 730
 
     for row in investor:
-        meta = row["request_metadata"]
+        meta = row["request_spec"]["params"]
         assert meta["isuCd"] == "KR7005930003"
-        assert meta["isuCd2"] == ""
-        assert meta["inqTpCd"] == "2"
-        assert meta["trdVolVal"] == "2"
-        assert meta["askBid"] == "3"
-        assert meta["detailView"] == "1"
-        assert row["bld"] == "dbms/MDC/STAT/standard/MDCSTAT02303"
-        assert row["menu_id"] == "MDC0201020302"
+        assert "isuCd2" not in meta
+        assert "inqTpCd" not in meta
+        assert "trdVolVal" not in meta
+        assert "askBid" not in meta
+        assert "detailView" not in meta
+        assert row["request_spec"]["kind"] == "investor_trading_individual_daily"
 
 
 def test_public_summary_never_emits_security_identifiers_or_authority():
