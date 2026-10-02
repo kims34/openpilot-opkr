@@ -68,7 +68,15 @@ def validate_route_map(data: Mapping[str, Any]) -> dict[str, Any]:
         _require(row.get("mapping_state"), f"{name} mapping_state missing")
         _require(isinstance(row.get("required"), list), f"{name} required fields missing")
     _require(routes["trading_halt"].get("max_period_days") == 730, "trading_halt period limit drift")
-    _require("PROVISIONAL" in routes["cleanup_trading"].get("mapping_state",""), "cleanup route must remain provisional")
+    cleanup = routes["cleanup_trading"]
+    _require(
+        cleanup.get("mapping_state")
+        == "PROJECT_AUTHENTICATED_CURRENT_SNAPSHOT_REACHABLE_SCHEMA_OBSERVED_HISTORICAL_WINDOW_NOT_VERIFIED",
+        "cleanup route snapshot/historical boundary drift",
+    )
+    _require(cleanup.get("required") == ["mktId"], "cleanup request contract drift")
+    _require(cleanup.get("observed_authenticated_request") == {"mktId": "ALL"}, "cleanup authenticated request drift")
+    _require(cleanup.get("historical_date_filter_verified") is False, "cleanup historical-window semantics illegally promoted")
     _require(routes["investor_flow_daily"].get("pit_publication_floor") == "20:00 Asia/Seoul", "investor PIT floor drift")
 
     auth=data.get("authority") or {}
@@ -78,7 +86,10 @@ def validate_route_map(data: Mapping[str, Any]) -> dict[str, Any]:
 
     guardrails=" ".join(str(x) for x in (data.get("guardrails") or []))
     _require("cannot prove KRX authorization" in guardrails, "authorization guardrail missing")
-    _require("Cleanup-trading MDCSTAT23701 remains provisional" in guardrails, "cleanup guardrail missing")
+    _require(
+        "historical strtDd/endDd window semantics are not verified" in guardrails,
+        "cleanup historical-window guardrail missing",
+    )
 
     return {
         "valid": True,
