@@ -7,11 +7,13 @@
   "image_stored_in_repository": false,
   "email_metadata": {
     "subject": "[KRX Data Marketplace] 데이터 이용 문의에 대한 답변의 건",
-    "sender_address": "krxdata@krx.co.kr",
-    "sender_domain": "krx.co.kr",
-    "reply_at": "2026-10-02T14:40:00+09:00",
+    "thread_sender_address": "krxdata@krx.co.kr",
+    "thread_sender_domain": "krx.co.kr",
+    "prior_reply_at": "2026-10-02T14:40:00+09:00",
+    "latest_reply_exact_timestamp": null,
+    "latest_reply_timestamp_not_reprovided": true,
     "recipient_redacted": true,
-    "metadata_source": "USER_PROVIDED_EMAIL_HEADER_TEXT"
+    "metadata_source": "USER_PROVIDED_EMAIL_THREAD_CONTEXT_AND_LATEST_REPLY_TEXT"
   },
   "latest_reply_text": [
     "안녕하십니까.",
@@ -65,5 +67,5 @@
     "sealed_holdout_authorized": false,
     "live_trading_authorized": false
   },
-  "latest_redacted_email_record_sha256": "3fa82170250320e4b406ae343e6a5872ca4945119cd4df4c17115754ddc301c1"
+  "latest_redacted_email_record_sha256": "2aa1c2a08c108d9f71e4b5027fb697e593f2f874268567faa0d62c3ac95c3c39"
 }
