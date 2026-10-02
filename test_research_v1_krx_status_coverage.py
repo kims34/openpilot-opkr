@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from research_v1_krx_official_status import normalise_basic_info
+from research_v1_krx_official_status import KRXOfficialStatusError, normalise_basic_info
 from research_v1_krx_status_coverage import (
     KRXStatusCoverageError,
     audit_status_identity_coverage,
@@ -51,7 +51,7 @@ def test_exact_stable_identity_coverage_is_structural_only():
     assert out["sealed_holdout_authorized"] is False
 
 
-def test_current_basic_info_shape_without_stable_issue_id_cannot_close_gate_c():
+def test_current_basic_info_without_standard_issue_id_fails_before_gate_c():
     raw = pd.DataFrame([
         {
             "ISU_SRT_CD": "005930",
@@ -62,16 +62,12 @@ def test_current_basic_info_shape_without_stable_issue_id_cannot_close_gate_c():
             "LIST_DD": "1975/06/11",
         }
     ])
-    identity = normalise_basic_info(
-        raw,
-        asof_date="2026-09-29",
-        available_at="2026-09-29T20:00:00+09:00",
-    )
-    out = audit_status_identity_coverage(pd.DataFrame([_scope()]), identity)
-    assert out["stable_issue_id_present_in_observed"] is False
-    assert out["exact_key_coverage"] is False
-    assert out["coverage_structurally_complete"] is False
-    assert out["judge_security_status_ready"] is False
+    with pytest.raises(KRXOfficialStatusError, match="standard issue code"):
+        normalise_basic_info(
+            raw,
+            asof_date="2026-09-29",
+            available_at="2026-09-29T20:00:00+09:00",
+        )
 
 
 def test_missing_expected_identity_key_remains_incomplete():
