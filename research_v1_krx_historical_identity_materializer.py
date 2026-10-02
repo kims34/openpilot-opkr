@@ -20,6 +20,7 @@ from research_v1_krx_historical_batch_orchestrator import (
     build_identity_seed_tasks,
     build_listing_date_master_tasks,
     build_per_security_history_tasks,
+    build_status_economics_tasks,
     public_task_summary,
 )
 from research_v1_krx_historical_batch_state import require_phase_complete
@@ -392,6 +393,58 @@ def public_historical_identity_summary(
         "security_identifiers_emitted": False,
         "raw_rows_emitted": False,
         "network_request_attempted": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
+def build_status_economics_tasks_from_private_identity(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Build exact cleanup-price tasks from private delisting evidence.
+
+    No network access is performed. Episodes without an official cleanup
+    interval intentionally generate no MDCSTAT23902 request and remain
+    dependent on separate exact fill/recovery evidence.
+    """
+    seed = load_identity_seed_material(root, git_worktree=git_worktree)
+    episodes = reconstruct_private_historical_episodes(
+        root,
+        git_worktree=git_worktree,
+    )
+    tasks, summary = build_status_economics_tasks(
+        episodes,
+        seed["delisted_history"],
+    )
+    return tasks, summary
+
+
+def public_status_economics_task_summary(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> dict[str, Any]:
+    tasks, event_summary = build_status_economics_tasks_from_private_identity(
+        root,
+        git_worktree=git_worktree,
+    )
+    task_summary = public_task_summary(tasks)
+    return {
+        **event_summary,
+        "task_count": int(task_summary["task_count"]),
+        "task_set_fingerprint_sha256": task_summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "network_request_attempted": False,
+        "exact_status_economics_ready": False,
         "source_gate_c_closed": False,
         "source_gate_d_closed": False,
         "source_gate_e_closed": False,
