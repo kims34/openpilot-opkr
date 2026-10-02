@@ -3,7 +3,7 @@
   "contract_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-CONSENT-v1",
   "created_date": "2026-10-03",
   "stage": "PER_SECURITY_HISTORY",
-  "status": "FROZEN_NOT_YET_USER_AUTHORIZED",
+  "status": "USER_AUTHORIZED_EXECUTION_IN_PROGRESS",
   "prerequisite": {
     "identity_binding_evidence_id": "INDEXALERT-KRX-IDENTITY-BINDING-EXEC-2026-10-03-v1",
     "identity_binding_phase_complete": true,
@@ -23,10 +23,13 @@
   },
   "user_authorization": {
     "exact_user_approval_phrase": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1",
-    "authorized": false,
+    "authorized": true,
     "one_shot": true,
     "earlier_stage_authorization_reusable": false,
-    "reusable": false
+    "reusable": false,
+    "received_date_kst": "2026-10-03",
+    "consumed_for_deployment_id": "bc79d1b5-5fb8-46c7-8067-682e61947014",
+    "source_revision": "9009c48a00394063c813d29219507ee2190ce09e"
   },
   "runtime_gate": {
     "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
@@ -44,12 +47,27 @@
     "later_stage_auto_authorization": false
   },
   "authority": {
-    "per_security_history_execution_authorized": false,
+    "per_security_history_execution_authorized": true,
     "status_economics_execution_authorized": false,
     "expected_scope_network_execution_authorized": false,
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
     "shadow_s1_authorized": false,
+    "genuine_live_authorized": false,
+    "live_trading_authorized": false
+  },
+  "execution": {
+    "deployment_id": "bc79d1b5-5fb8-46c7-8067-682e61947014",
+    "source_revision": "9009c48a00394063c813d29219507ee2190ce09e",
+    "start_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
+    "task_count": 14296,
+    "task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+    "execution_status": "IN_PROGRESS",
+    "later_stage_auto_authorization": false,
+    "status_economics_authorized": false,
+    "expected_scope_network_execution_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
     "genuine_live_authorized": false,
     "live_trading_authorized": false
   }
