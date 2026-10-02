@@ -1,21 +1,23 @@
-# IndexAlert KRX Historical Acquisition Plan v2
+# IndexAlert KRX Historical Acquisition Plan v3
 
 Updated: 2026-10-02 KST  
-Plan ID: `INDEXALERT-KRX-HIST-ACQ-v2`  
-Supersedes: `INDEXALERT-KRX-HIST-ACQ-v1` **before any bulk network execution**  
-Status: **RIGHTS CONFIRMED / STABLE-IDENTITY PLAN FROZEN / BULK NETWORK EXECUTION NOT YET USER-AUTHORIZED**
+Plan ID: `INDEXALERT-KRX-HIST-ACQ-v3`  
+Supersedes: `INDEXALERT-KRX-HIST-ACQ-v2` **before any bulk network execution**  
+Status: **RIGHTS CONFIRMED / STABLE-IDENTITY + CLEANUP-CORRECT PLAN FROZEN / BULK NETWORK EXECUTION NOT YET USER-AUTHORIZED**
 
-## Why v2 supersedes v1
+## Why v3 supersedes v2
 
-v1 could reconstruct listing episodes from current/new/delisted history, but it did not require a historical KRX **standard code `ISU_CD` for every episode**. That is insufficient because the per-security Data Marketplace routes require a stable security identifier.
+v2 correctly made every historical listing episode standard-code exact, but it still treated `MDCSTAT23701` as though historical `strtDd/endDd` windows had been verified. The authenticated tiny probe did **not** demonstrate that behavior: the successful request used `mktId=ALL` as a current/reconciliation snapshot.
 
-v2 therefore fail-closes identity before any bulk status/investor request:
+v3 keeps all v2 stable-identity protections and corrects cleanup history before any bulk execution:
 - securities already active at research start get `ISU_CD` from the exact `2015-06-15` KRX basic-info snapshot;
-- newly listed episodes get `ISU_CD` from a basic-info snapshot whose `basDd` equals the episode's listing date;
-- the `2026-10-01` basic-info snapshot is reconciliation only and can never backfill an unresolved historical episode;
-- inconsistent or missing standard codes fail closed.
+- newly listed episodes get `ISU_CD` from a basic-info snapshot whose `basDd` equals that episode's listing date;
+- the `2026-10-01` basic-info snapshot is reconciliation only and cannot backfill an unresolved historical episode;
+- `MDCSTAT23801` delisted-history rows supply historical cleanup-period start/end fields for delisted episodes;
+- `MDCSTAT23701` is used only once as a current/ongoing cleanup reconciliation snapshot with `mktId=ALL`;
+- historical `MDCSTAT23701` date-window semantics must never be invented.
 
-No v1 bulk request was executed, so v2 replaces it without contaminating evidence.
+No v1/v2 bulk request was executed, so v3 replaces both without contaminating evidence.
 
 ## Required research coverage
 
@@ -73,7 +75,18 @@ Name-only joins are forbidden.
 ## Phase 2 — status history
 
 ### Cleanup trading
-`MDCSTAT23701`, 12 bounded calendar-year windows.
+
+Historical cleanup intervals for delisted episodes are taken from the already acquired `MDCSTAT23801` delisted-history rows using:
+- `정리매매기간_시작일`
+- `정리매매기간_종료일`
+- `폐지일`
+- `폐지사유`
+
+This adds **zero** historical requests beyond the 12 delisted-history windows already in Phase 1.
+
+`MDCSTAT23701` is called **once** with `mktId=ALL` only for current/ongoing cleanup reconciliation. It is not treated as a historical date-window source unless a future separately evidenced route contract proves that behavior.
+
+This historical cleanup reconstruction still does **not** close Gate D: retrieval-time historical facts do not establish the original historical `published_at/available_at`.
 
 ### Trading halt
 `MDCSTAT21301`, per validated episode:
@@ -110,17 +123,19 @@ Fixed identity acquisition:
 - 12 delisted-history windows
 = **26 fixed identity requests**
 
-Dynamic:
+Dynamic / additional:
 - `U_new_listing_dates` listing-date master snapshots
-- 12 cleanup windows
+- 1 current `MDCSTAT23701` cleanup reconciliation snapshot
 - halt episode/chunk intersections
 - investor episode/year intersections
 
+Historical cleanup periods reuse `MDCSTAT23801` and add no extra historical requests.
+
 Frozen formula before delisted-price economics:
-`38 + U_new_listing_dates + halt_episode_chunk_intersections + investor_episode_year_intersections`
+`27 + U_new_listing_dates + halt_episode_chunk_intersections + investor_episode_year_intersections`
 
 Conservative upper form:
-`38 + U_new_listing_dates + 18 × N`
+`27 + U_new_listing_dates + 18 × N`
 
 Neither `N` nor `U` may be guessed.
 
@@ -167,10 +182,10 @@ Admitted normalized rows additionally require:
 Rights are confirmed; **network execution is not**.
 
 Bulk execution requires:
-1. this exact v2 plan;
+1. this exact v3 plan;
 2. valid v3 KRX rights evidence;
 3. configured KRX credentials;
 4. exact user execution consent sentinel  
-   `I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2`.
+   `I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3`.
 
 Until then Gate C/D remain open, feature-performance testing remains blocked, sealed holdout remains blocked and live trading remains blocked.
