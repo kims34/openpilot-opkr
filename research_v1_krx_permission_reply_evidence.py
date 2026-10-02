@@ -22,14 +22,19 @@ def _require(cond: bool, msg: str) -> None:
 
 def validate_permission_reply_evidence(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(isinstance(data, Mapping), "evidence must be an object")
-    _require(data.get("schema_version") == "2", "unsupported schema_version")
+    _require(data.get("schema_version") == "3", "unsupported schema_version")
     _require(
         data.get("evidence_class")
-        == "USER_PROVIDED_KRX_EMAIL_REPLY_AUTOMATION_EXPLICIT_OFFICIAL_DOMAIN_ATTESTED",
+        == "USER_PROVIDED_KRX_EMAIL_REPLY_FULL_HISTORY_HIGH_FREQUENCY_EXPLICIT_OFFICIAL_DOMAIN_ATTESTED",
         "unexpected evidence_class",
     )
-    for key in ("original_screenshot_sha256", "redacted_email_record_sha256"):
+    for key in ("original_screenshot_sha256", "latest_redacted_email_record_sha256"):
         _require(bool(SHA256_RE.fullmatch(str(data.get(key) or ""))), f"{key} invalid")
+    _require(
+        data.get("latest_redacted_email_record_sha256")
+        == "3fa82170250320e4b406ae343e6a5872ca4945119cd4df4c17115754ddc301c1",
+        "latest normalized email-record hash drift",
+    )
     _require(data.get("image_stored_in_repository") is False, "image must not be stored in repository")
 
     meta = data.get("email_metadata") or {}
@@ -42,40 +47,46 @@ def validate_permission_reply_evidence(data: Mapping[str, Any]) -> dict[str, Any
 
     scope = data.get("supported_scope") or {}
     for key in (
-        "personal_user",
-        "noncommercial_internal_research",
-        "low_frequency_querying",
+        "personal_research",
+        "noncommercial_use",
+        "full_historical_period_download",
+        "complete_historical_data_download_and_query",
         "programmatic_querying",
         "automated_querying",
-        "use_available_without_stated_limit_within_visible_scope",
+        "low_frequency_collection",
+        "high_frequency_collection",
     ):
         _require(scope.get(key) is True, f"{key} must remain true")
-    _require(scope.get("separate_approval_procedure_required") is False, "separate approval wording drift")
+    _require(scope.get("separate_prior_approval_required") is False, "approval wording drift")
 
-    limits = data.get("not_authorized_or_not_proven") or {}
+    prohibited = data.get("prohibited_scope") or {}
+    for key in ("external_leakage", "external_sale", "third_party_distribution"):
+        _require(prohibited.get(key) is True, f"{key} prohibition weakened")
+
+    unproven = data.get("still_not_proven_by_permission_text") or {}
     for key in (
-        "bulk_or_high_frequency_collection",
-        "unrestricted_full_historical_download",
-        "redistribution",
-        "commercial_use",
         "exact_bld_schema_equivalence",
-        "full_history_coverage",
-        "pit_lineage",
+        "actual_source_availability_for_every_required_date",
+        "stable_security_mapping_across_all_history",
+        "record_level_pit_lineage",
+        "completeness_of_status_economics",
+        "model_performance_validity",
     ):
-        _require(limits.get(key) is True, f"{key} limit weakened")
+        _require(unproven.get(key) is True, f"{key} evidence boundary weakened")
 
     cls = data.get("project_classification") or {}
     _require(cls.get("issuer_domain_matches_official_krx_domain") is True, "official-domain match lost")
     _require(cls.get("issuer_metadata_user_attested") is True, "user-attested origin lost")
     _require(cls.get("issuer_independently_verified") is False, "origin must not be overstated")
-    _require(cls.get("automated_collection_authorized") is True, "explicit automation permission lost")
+    _require(cls.get("automated_collection_authorized") is True, "automation permission lost")
+    _require(cls.get("high_frequency_collection_authorized") is True, "high-frequency permission lost")
+    _require(cls.get("full_historical_download_rights_authorized") is True, "full-history permission lost")
     _require(cls.get("permission_state") == "PERMITTED_NO_SEPARATE_APPROVAL", "permission-state drift")
-    _require(cls.get("sufficient_for_data_marketplace_tiny_probe_preflight") is True, "tiny-probe evidence readiness lost")
-    _require(cls.get("gate_a_status_ceiling_before_authenticated_probe") == "BLOCKED", "pre-probe Gate A drift")
-    _require(cls.get("gate_a_status_ceiling_after_successful_tiny_probe") == "PARTIAL", "post-probe Gate A ceiling drift")
-    _require(cls.get("gate_f_evidence_strengthened") is True, "Gate F strengthening lost")
+    _require(cls.get("gate_f_status_for_personal_research") == "PASS", "Gate F scope status drift")
+    _require(cls.get("gate_a_status_ceiling_from_permission_alone") == "PARTIAL", "Gate A ceiling drift")
+    _require(cls.get("bulk_historical_acquisition_rights_authorized") is True, "historical acquisition rights lost")
+    _require(cls.get("bulk_historical_network_execution_authorized_by_user") is False, "bulk network execution illegally pre-authorized")
     for key in (
-        "bulk_historical_acquisition_authorized",
         "feature_performance_testing_authorized",
         "sealed_holdout_authorized",
         "live_trading_authorized",
@@ -85,11 +96,14 @@ def validate_permission_reply_evidence(data: Mapping[str, Any]) -> dict[str, Any
     return {
         "valid": True,
         "automated_collection_authorized": True,
+        "high_frequency_collection_authorized": True,
+        "full_historical_download_rights_authorized": True,
+        "bulk_historical_acquisition_rights_authorized": True,
+        "bulk_historical_network_execution_authorized_by_user": False,
         "permission_state": "PERMITTED_NO_SEPARATE_APPROVAL",
-        "sufficient_for_data_marketplace_tiny_probe_preflight": True,
-        "gate_a_status_ceiling_before_authenticated_probe": "BLOCKED",
-        "gate_a_status_ceiling_after_successful_tiny_probe": "PARTIAL",
-        "gate_f_evidence_strengthened": True,
+        "gate_f_status_for_personal_research": "PASS",
+        "gate_a_status_ceiling_from_permission_alone": "PARTIAL",
+        "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
     }
