@@ -120,7 +120,7 @@ def source_gate_audit(*, request_authorized: bool) -> dict:
         "C": "BLOCKED",
         "D": "BLOCKED",
         "E": "PARTIAL",
-        "F": "PARTIAL",
+        "F": "PASS",
     }
     evidence = {
         "A": (
@@ -132,7 +132,7 @@ def source_gate_audit(*, request_authorized: bool) -> dict:
         "C": "The tiny source probe does not reconstruct or independently audit full requested-period common-stock/status coverage.",
         "D": "Record-level historical event_time/published_at/available_at/ingested_at lineage across all required status families is not established.",
         "E": "The client revision, route metadata, schema metadata and fail-closed diagnostics are reproducible, but end-to-end historical acquisition and coverage reproducibility remain open.",
-        "F": "Internal research and external/commercial use are separated by contract, but rights for the final selected historical route remain unverified.",
+        "F": "KRX permission evidence v3 explicitly permits personal/internal research, full-history download/query and low/high-frequency programmatic/automated collection; external leakage, sale and third-party distribution remain prohibited.",
     }
     return audit_source_gates(
         source_family=SOURCE_FAMILY,
