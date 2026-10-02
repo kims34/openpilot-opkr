@@ -1,10 +1,16 @@
-"""Fail-closed validator for STATUS_ECONOMICS consent shell."""
+"""Fail-closed validator for STATUS_ECONOMICS consent lifecycle."""
 from __future__ import annotations
+
 import json
+import re
 from pathlib import Path
 from typing import Any, Mapping
 
 PATH = Path("INDEXALERT_KRX_STATUS_ECONOMICS_CONSENT_CONTRACT.json")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+SHELL = "FROZEN_SHELL_PREPARATION_NOT_COMPLETE_EXECUTION_NOT_AUTHORIZED"
+PREPARED = "PREPARED_SCOPE_FROZEN_EXECUTION_NOT_AUTHORIZED"
 
 
 class KRXStatusEconomicsConsentError(ValueError):
@@ -16,16 +22,22 @@ def _require(cond: bool, msg: str) -> None:
         raise KRXStatusEconomicsConsentError(msg)
 
 
+def _sha(value: Any, field: str) -> str:
+    text = str(value or "").strip().lower()
+    _require(bool(SHA256_RE.fullmatch(text)), f"{field} must be SHA-256")
+    return text
+
+
 def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(isinstance(data, Mapping), "contract must be an object")
     _require(data.get("schema_version") == "1", "schema_version drift")
-    _require(data.get("contract_id") == "INDEXALERT-KRX-STATUS-ECONOMICS-CONSENT-v1", "contract_id drift")
-    _require(data.get("stage") == "STATUS_ECONOMICS", "stage drift")
     _require(
-        data.get("status")
-        == "FROZEN_SHELL_PREPARATION_NOT_COMPLETE_EXECUTION_NOT_AUTHORIZED",
-        "status drift",
+        data.get("contract_id") == "INDEXALERT-KRX-STATUS-ECONOMICS-CONSENT-v1",
+        "contract_id drift",
     )
+    _require(data.get("stage") == "STATUS_ECONOMICS", "stage drift")
+    status = str(data.get("status") or "")
+    _require(status in {SHELL, PREPARED}, "status drift")
 
     pre = data.get("predecessor") or {}
     _require(pre.get("phase") == "PER_SECURITY_HISTORY", "predecessor drift")
@@ -38,7 +50,6 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(pre.get("exact_complete_required") is True, "exact-complete guard lost")
     _require(int(pre.get("failed_task_count_required", -1)) == 0, "failed-count guard drift")
     _require(pre.get("post_run_relock_required") is True, "post-run relock guard lost")
-    _require(pre.get("current_observed_complete") is False, "predecessor completion prematurely asserted")
 
     prep = data.get("preparation_gate") or {}
     _require(
@@ -47,16 +58,84 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "prepare command drift",
     )
     _require(prep.get("network_request_attempted_required") is False, "prepare network guard lost")
-    _require(prep.get("private_task_manifest_relpath") == "task_manifests/status-economics-v3.json", "manifest relpath drift")
-    _require(prep.get("prepared_task_count") is None, "prepared task count prematurely frozen")
-    _require(prep.get("prepared_task_set_fingerprint_sha256") is None, "prepared fingerprint prematurely frozen")
-    _require(prep.get("prepared_private_manifest_metadata_sha256") is None, "prepared manifest hash prematurely frozen")
-    _require(prep.get("exact_status_economics_ready_required") is False, "exact economics readiness guard lost")
-    _require(prep.get("preparation_complete") is False, "preparation prematurely complete")
-    _require(prep.get("execution_scope_frozen") is False, "execution scope prematurely frozen")
+    _require(
+        prep.get("private_task_manifest_relpath")
+        == "task_manifests/status-economics-v3.json",
+        "manifest relpath drift",
+    )
+    _require(
+        prep.get("exact_status_economics_ready_required") is False,
+        "exact economics readiness guard lost",
+    )
+    _require(prep.get("raw_rows_publicly_emitted_required") is False, "raw-row public boundary drift")
+    _require(
+        prep.get("security_identifiers_publicly_emitted_required") is False,
+        "identifier public boundary drift",
+    )
+    _require(prep.get("source_gate_c_closed_required") is False, "source gate C illegally closed")
+    _require(prep.get("source_gate_d_closed_required") is False, "source gate D illegally closed")
+    _require(prep.get("source_gate_e_closed_required") is False, "source gate E illegally closed")
+
+    if status == SHELL:
+        _require(pre.get("current_observed_complete") is False, "predecessor completion prematurely asserted")
+        _require(prep.get("prepared_task_count") is None, "prepared task count prematurely frozen")
+        _require(prep.get("prepared_task_set_fingerprint_sha256") is None, "prepared fingerprint prematurely frozen")
+        _require(
+            prep.get("prepared_private_manifest_metadata_sha256") is None,
+            "prepared manifest hash prematurely frozen",
+        )
+        _require(prep.get("preparation_complete") is False, "preparation prematurely complete")
+        _require(prep.get("execution_scope_frozen") is False, "execution scope prematurely frozen")
+        _require(data.get("preparation_evidence_id") in (None, ""), "preparation evidence prematurely bound")
+        prepared_count = None
+        preparation_complete = False
+        execution_scope_frozen = False
+    else:
+        _require(pre.get("current_observed_complete") is True, "prepared predecessor completion not asserted")
+        _require(
+            pre.get("completion_evidence_id")
+            == "INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1",
+            "prepared predecessor completion evidence drift",
+        )
+        task_count = int(prep.get("prepared_task_count", -1))
+        _require(task_count > 0, "prepared task count must be positive")
+        _sha(
+            prep.get("prepared_task_set_fingerprint_sha256"),
+            "prepared_task_set_fingerprint_sha256",
+        )
+        _sha(
+            prep.get("prepared_private_manifest_metadata_sha256"),
+            "prepared_private_manifest_metadata_sha256",
+        )
+        _require(prep.get("preparation_complete") is True, "prepared state missing completion")
+        _require(prep.get("execution_scope_frozen") is True, "prepared execution scope not frozen")
+        _require(
+            prep.get("network_request_attempted") is False,
+            "prepared status-economics preparation attempted network",
+        )
+        _require(prep.get("raw_rows_emitted") is False, "prepared raw rows emitted")
+        _require(
+            prep.get("security_identifiers_emitted") is False,
+            "prepared security identifiers emitted",
+        )
+        _require(
+            prep.get("exact_status_economics_ready") is False,
+            "prepared exact status economics illegally ready",
+        )
+        _require(
+            data.get("preparation_evidence_id") == "INDEXALERT-KRX-STATUS-ECONOMICS-PREP-v1",
+            "preparation evidence binding drift",
+        )
+        prepared_count = task_count
+        preparation_complete = True
+        execution_scope_frozen = True
 
     user = data.get("user_authorization") or {}
-    _require(user.get("exact_user_approval_phrase") == "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1", "approval phrase drift")
+    _require(
+        user.get("exact_user_approval_phrase")
+        == "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1",
+        "approval phrase drift",
+    )
     _require(user.get("authorized") is False, "stage cannot be pre-authorized")
     _require(user.get("one_shot") is True, "one-shot guard lost")
     _require(user.get("prior_stage_authorization_reusable") is False, "prior-stage approval reuse enabled")
@@ -66,7 +145,10 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(gate.get("both_consents_required") is True, "dual-consent guard lost")
     _require(gate.get("exact_prepared_scope_required") is True, "exact prepared scope guard lost")
     _require(gate.get("stage_consent_env") == "KRX_STATUS_ECONOMICS_CONSENT", "stage consent env drift")
-    _require(gate.get("stage_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1", "stage sentinel drift")
+    _require(
+        gate.get("stage_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1",
+        "stage sentinel drift",
+    )
     _require(
         gate.get("entrypoint")
         == "python research_v1_krx_historical_worker_entrypoint.py --execute-status-economics",
@@ -88,8 +170,10 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
 
     return {
         "valid": True,
-        "preparation_complete": False,
-        "execution_scope_frozen": False,
+        "status": status,
+        "prepared_task_count": prepared_count,
+        "preparation_complete": preparation_complete,
+        "execution_scope_frozen": execution_scope_frozen,
         "authorized": False,
         "prior_stage_authorization_reusable": False,
         "sealed_holdout_authorized": False,
