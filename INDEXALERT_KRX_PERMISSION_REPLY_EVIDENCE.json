@@ -1,10 +1,10 @@
 {
-  "schema_version": "2",
-  "evidence_id": "INDEXALERT-KRX-PERMISSION-REPLY-2026-10-02-v2",
-  "evidence_class": "USER_PROVIDED_KRX_EMAIL_REPLY_AUTOMATION_EXPLICIT_OFFICIAL_DOMAIN_ATTESTED",
+  "schema_version": "3",
+  "evidence_id": "INDEXALERT-KRX-PERMISSION-REPLY-2026-10-02-v3",
+  "evidence_class": "USER_PROVIDED_KRX_EMAIL_REPLY_FULL_HISTORY_HIGH_FREQUENCY_EXPLICIT_OFFICIAL_DOMAIN_ATTESTED",
   "observed_in_conversation_at": "2026-10-02T15:06:00+09:00",
   "original_screenshot_sha256": "1983036114310ea42dd60ad49fc52c19a7378f7f1d3f1c1a65dabc7b4d1cf1e1",
-  "redacted_email_record_sha256": "c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38",
+  "prior_redacted_email_record_sha256": "c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38",
   "image_stored_in_repository": false,
   "email_metadata": {
     "subject": "[KRX Data Marketplace] 데이터 이용 문의에 대한 답변의 건",
@@ -14,43 +14,54 @@
     "recipient_redacted": true,
     "metadata_source": "USER_PROVIDED_EMAIL_HEADER_TEXT"
   },
-  "reply_text": [
+  "latest_reply_text": [
     "안녕하십니까.",
     "KRX Data Marketplace 데이터 이용에 대해 문의해 주셔서 감사합니다.",
-    "문의하신 개인 내부 연구 목적의 데이터 이용과 관련하여 안내해 드립니다.",
-    "개인이 내부 연구 목적(비상업적 용도)으로 사용하는 경우, 프로그램을 통한 조회 및 자동 조회를 포함하여 저빈도 사용에 대해 별도의 승인 절차 없이 모두 제한 없이 이용 가능합니다.",
-    "추가 문의 사항이 있으시면 언제든지 연락해주시기 바랍니다.",
+    "문의하신 데이터 이용 조건 및 권한에 대해 안내해 드립니다.",
+    "개인 연구 목적의 경우, 제3자 배포나 외부 판매 목적이 아니라면 다음과 같은 조건으로 제한 없이 이용 가능합니다.",
+    "전체 과거 기간 데이터 다운로드 가능: 전체 과거 이력 기간에 대한 완전한 데이터 다운로드 및 조회가 가능합니다.",
+    "조회 방식 및 빈도 제한 없음: 프로그램을 통한 자동 조회는 물론, 저빈도 및 고빈도 데이터 수집 등 모든 형태의 조회가 허용됩니다.",
+    "승인 절차 없음: 상기 이용 방식에 대해 별도의 사전 승인이나 절차가 필요하지 않습니다.",
+    "단, 수집하신 데이터의 외부 유출, 판매 및 제3자 배포는 엄격히 금지되오니 이 점 유의하여 이용해 주시기 바랍니다.",
+    "추가 문의 사항이 있으시면 언제든지 연락해 주시기 바랍니다.",
     "감사합니다."
   ],
   "supported_scope": {
-    "personal_user": true,
-    "noncommercial_internal_research": true,
-    "low_frequency_querying": true,
+    "personal_research": true,
+    "noncommercial_use": true,
+    "full_historical_period_download": true,
+    "complete_historical_data_download_and_query": true,
     "programmatic_querying": true,
     "automated_querying": true,
-    "separate_approval_procedure_required": false,
-    "use_available_without_stated_limit_within_visible_scope": true
+    "low_frequency_collection": true,
+    "high_frequency_collection": true,
+    "separate_prior_approval_required": false
   },
-  "not_authorized_or_not_proven": {
-    "bulk_or_high_frequency_collection": true,
-    "unrestricted_full_historical_download": true,
-    "redistribution": true,
-    "commercial_use": true,
+  "prohibited_scope": {
+    "external_leakage": true,
+    "external_sale": true,
+    "third_party_distribution": true
+  },
+  "still_not_proven_by_permission_text": {
     "exact_bld_schema_equivalence": true,
-    "full_history_coverage": true,
-    "pit_lineage": true
+    "actual_source_availability_for_every_required_date": true,
+    "stable_security_mapping_across_all_history": true,
+    "record_level_pit_lineage": true,
+    "completeness_of_status_economics": true,
+    "model_performance_validity": true
   },
   "project_classification": {
     "issuer_domain_matches_official_krx_domain": true,
     "issuer_metadata_user_attested": true,
     "issuer_independently_verified": false,
     "automated_collection_authorized": true,
+    "high_frequency_collection_authorized": true,
+    "full_historical_download_rights_authorized": true,
     "permission_state": "PERMITTED_NO_SEPARATE_APPROVAL",
-    "sufficient_for_data_marketplace_tiny_probe_preflight": true,
-    "gate_a_status_ceiling_before_authenticated_probe": "BLOCKED",
-    "gate_a_status_ceiling_after_successful_tiny_probe": "PARTIAL",
-    "gate_f_evidence_strengthened": true,
-    "bulk_historical_acquisition_authorized": false,
+    "gate_f_status_for_personal_research": "PASS",
+    "gate_a_status_ceiling_from_permission_alone": "PARTIAL",
+    "bulk_historical_acquisition_rights_authorized": true,
+    "bulk_historical_network_execution_authorized_by_user": false,
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
     "live_trading_authorized": false
