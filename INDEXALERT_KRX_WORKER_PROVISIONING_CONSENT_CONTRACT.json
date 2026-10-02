@@ -44,12 +44,26 @@
     "user_must_enter_worker_secret_values_in_railway_secret_ui_if_cross_service_copy_is_unavailable": true
   },
   "authority": {
-    "provisioning_authorized_by_user": false,
-    "worker_service_creation_authorized": false,
-    "dedicated_volume_creation_authorized": false,
+    "provisioning_authorized_by_user": true,
+    "worker_service_creation_authorized": true,
+    "dedicated_volume_creation_authorized": true,
     "worker_secret_configuration_authorized": false,
     "bulk_network_execution_authorized_by_user": false,
     "expected_scope_network_execution_authorized_by_user": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "execution_record": {
+    "authorized_at": "2026-10-02",
+    "provisioning_completed": true,
+    "service_id": "003812ee-102b-42b6-bda4-36925885b428",
+    "volume_id": "61610fae-dc0c-493e-9920-eb3cef4cea86",
+    "corrected_preflight_deployment_id": "d5365809-f146-41d6-b536-942555a20b1d",
+    "corrected_preflight_deployment_status": "SUCCESS",
+    "preflight_mode": "PREFLIGHT_ONLY",
+    "network_request_attempted": false,
+    "historical_acquisition_network_execution_authorized": false,
+    "expected_scope_network_execution_authorized": false,
     "sealed_holdout_authorized": false,
     "live_trading_authorized": false
   }
