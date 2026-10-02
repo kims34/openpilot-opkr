@@ -80,9 +80,13 @@ def build_readiness_report(
         evidence_valid = bool(
             evidence_validation["sufficient_for_tiny_probe_preflight"]
         )
+        automated_collection_authorized = bool(
+            evidence_validation["record"].get("automated_collection_authorized") is True
+        )
         evidence_summary = {
             "configured": True,
             "valid_for_declared_tiny_probe": evidence_valid,
+            "automated_collection_authorized": automated_collection_authorized,
             "reason_codes": list(evidence_validation["reason_codes"]),
             "record_fingerprint_sha256": evidence_validation[
                 "record_fingerprint_sha256"
@@ -93,9 +97,11 @@ def build_readiness_report(
             "approval_state": evidence_validation["record"]["approval_state"],
         }
     except KRXAuthorizationEvidenceError as exc:
+        automated_collection_authorized = False
         evidence_summary = {
             "configured": bool(str(authorization_evidence_json or "").strip()),
             "valid_for_declared_tiny_probe": False,
+            "automated_collection_authorized": False,
             "reason_codes": [type(exc).__name__, str(exc)],
             "record_fingerprint_sha256": None,
             "evidence_reference": None,
@@ -114,11 +120,13 @@ def build_readiness_report(
         environment=safe_environment,
         authorization_evidence_reference=authorization_evidence_reference,
         authorization_evidence_record_validated=evidence_valid,
+        automated_collection_authorized=automated_collection_authorized,
     )
     configured = bool(
         preflight["route_credentials_complete"]
         and preflight["authorization_evidence_reference_present"]
         and evidence_valid
+        and automated_collection_authorized
     )
     public_fp = public_evidence_fingerprint_sha256()
     report: dict[str, Any] = {
