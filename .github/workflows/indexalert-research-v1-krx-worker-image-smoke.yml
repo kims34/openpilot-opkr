@@ -1,0 +1,72 @@
+name: IndexAlert Research v1 KRX Worker Image Smoke
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'Dockerfile.krx-historical-worker'
+      - 'requirements-krx-historical-worker.txt'
+      - 'research_v1_krx_historical_*.py'
+      - 'research_v1_krx_private_store.py'
+      - 'research_v1_krx_acquisition_*.py'
+      - 'INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.json'
+      - 'INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.json'
+      - 'INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.json'
+      - 'INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json'
+      - 'INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json'
+      - '.github/workflows/indexalert-research-v1-krx-worker-image-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  image-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dedicated KRX worker image
+        run: |
+          docker build             --file Dockerfile.krx-historical-worker             --tag indexalert-krx-historical-worker:smoke             .
+
+      - name: Run default container without secrets or execution consent
+        run: |
+          docker run --rm indexalert-krx-historical-worker:smoke > /tmp/worker.out
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          text=Path("/tmp/worker.out").read_text(encoding="utf-8").strip()
+          prefix="INDEXALERT_KRX_HIST_WORKER="
+          assert text.startswith(prefix), text[:500]
+          data=json.loads(text[len(prefix):])
+
+          assert data["mode"] == "PREFLIGHT_ONLY", data
+          assert data["network_request_attempted"] is False, data
+          assert data["raw_rows_emitted"] is False, data
+          assert data["feature_performance_testing_authorized"] is False, data
+          assert data["sealed_holdout_authorized"] is False, data
+          assert data["live_trading_authorized"] is False, data
+
+          pre=data["preflight"]
+          assert pre["historical_acquisition_network_execution_authorized"] is False, pre
+          assert pre["krx_id_present"] is False, pre
+          assert pre["krx_pw_present"] is False, pre
+          assert pre["krx_openapi_auth_key_present"] is False, pre
+          assert pre["explicit_execution_consent_present"] is False, pre
+          assert pre["network_request_attempted"] is False, pre
+
+          identity=data["identity_seed"]
+          assert identity["task_count"] == 27, identity
+
+          safe={
+              "mode":data["mode"],
+              "network_request_attempted":data["network_request_attempted"],
+              "identity_seed_task_count":identity["task_count"],
+              "missing_requirements":pre["missing_requirements"],
+              "sealed_holdout_authorized":data["sealed_holdout_authorized"],
+              "live_trading_authorized":data["live_trading_authorized"],
+          }
+          print(json.dumps(safe, ensure_ascii=False, indent=2))
+          PY
