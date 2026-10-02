@@ -4,6 +4,7 @@ import pytest
 from research_v1_krx_historical_identity import (
     KRXHistoricalIdentityError,
     identity_summary,
+    listing_dates_for_standard_code_binding,
     reconstruct_historical_kospi_episodes,
 )
 
@@ -186,3 +187,33 @@ def test_summary_emits_counts_not_identifiers():
     assert s["all_standard_codes_resolved"] is True
     assert s["raw_identifiers_emitted"] is False
     assert "symbols" not in s
+
+
+def test_listing_dates_for_standard_code_binding_uses_only_in_period_kospi_common_stocks():
+    rows = _new()
+    extra = pd.DataFrame([
+        {
+            "종목코드": "777777",
+            "종목명": "우선주",
+            "시장구분": "유가증권",
+            "증권구분": "주권",
+            "주식종류": "우선주",
+            "상장일": "20210104",
+            "상장폐지일": "",
+        },
+        {
+            "종목코드": "888888",
+            "종목명": "기간밖",
+            "시장구분": "유가증권",
+            "증권구분": "주권",
+            "주식종류": "보통주",
+            "상장일": "20100104",
+            "상장폐지일": "",
+        },
+    ])
+    rows = pd.concat([rows, extra], ignore_index=True)
+    dates = listing_dates_for_standard_code_binding(rows)
+    assert dates == [
+        pd.Timestamp("2016-01-04"),
+        pd.Timestamp("2020-01-02"),
+    ]
