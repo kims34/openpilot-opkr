@@ -44,6 +44,7 @@ class KRXAuthPreflight:
     route_credentials_complete: bool
     authorization_evidence_reference_present: bool
     authorization_evidence_record_validated: bool
+    automated_collection_authorized: bool
     exact_service_mapping_confirmed: bool
     explicit_probe_consent_present: bool
     request_attempt_authorized: bool
@@ -87,6 +88,7 @@ def evaluate_auth_preflight(
     environment: Mapping[str, str | None],
     authorization_evidence_reference: str | None,
     authorization_evidence_record_validated: bool = False,
+    automated_collection_authorized: bool = False,
     exact_service_mapping_confirmed: bool = False,
 ) -> dict:
     """Evaluate whether one declared tiny authenticated request may be attempted.
@@ -142,6 +144,8 @@ def evaluate_auth_preflight(
         missing.append("KRX_AUTH_EVIDENCE_REF")
     if not auth_record_validated:
         missing.append("VALIDATED_KRX_AUTHORIZATION_EVIDENCE_RECORD")
+    if route == DATA_MARKETPLACE_ROUTE and not automated_collection_authorized:
+        missing.append("EXPLICIT_KRX_AUTOMATED_COLLECTION_PERMISSION")
     if route != PURCHASED_PRODUCT_ROUTE and not explicit_consent:
         missing.append("EXPLICIT_TINY_REQUEST_CONSENT")
 
@@ -149,6 +153,7 @@ def evaluate_auth_preflight(
         route_credentials_complete
         and auth_ref_present
         and auth_record_validated
+        and (route != DATA_MARKETPLACE_ROUTE or automated_collection_authorized)
         and explicit_consent
         and (route != OPENAPI_ROUTE or exact_service_mapping_confirmed)
         and route != PURCHASED_PRODUCT_ROUTE
@@ -163,6 +168,7 @@ def evaluate_auth_preflight(
         route_credentials_complete=bool(route_credentials_complete),
         authorization_evidence_reference_present=auth_ref_present,
         authorization_evidence_record_validated=auth_record_validated,
+        automated_collection_authorized=bool(automated_collection_authorized),
         exact_service_mapping_confirmed=bool(exact_service_mapping_confirmed),
         explicit_probe_consent_present=explicit_consent,
         request_attempt_authorized=request_authorized,
@@ -176,7 +182,7 @@ def evaluate_auth_preflight(
     out = asdict(result)
     out["missing_requirements"] = list(result.missing_requirements)
     out["guardrail"] = (
-        "Credentials are not authorization, an opaque reference is not validated evidence, and authorization metadata is not runtime consent. "
+        "Credentials are not authorization, an opaque reference is not validated evidence, and authorization metadata is not runtime consent. For the Data Marketplace web-session route, ordinary account access is insufficient: explicit KRX permission for automated collection must also be present in the validated evidence. "
         "A separately validated structured evidence record plus the exact explicit-consent sentinel are required before one declared tiny request. "
         "Gate A remains at most PARTIAL and all bulk/performance/holdout/promotion/live authorities remain false."
     )
