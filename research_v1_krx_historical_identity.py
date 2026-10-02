@@ -132,26 +132,37 @@ def _validate_master_snapshots(frame: pd.DataFrame) -> pd.DataFrame:
     out["listing_date_official"] = pd.to_datetime(
         out["listing_date_official"], errors="coerce"
     ).dt.normalize()
-    out["symbol"] = _short_code(out["symbol"])
     out["standard_code"] = _text(out["standard_code"]).str.upper()
     out["market_type_official"] = _market(out["market_type_official"])
 
     if out[["decision_date", "listing_date_official"]].isna().any().any():
         raise KRXHistoricalIdentityError("security master has invalid snapshot/listing date")
-    if out["symbol"].eq("").any() or out["symbol"].str.len().ne(6).any():
-        raise KRXHistoricalIdentityError("security master has invalid short code")
-    bad_std = ~out["standard_code"].str.fullmatch(r"[A-Z0-9]{12}", na=False)
-    if bad_std.any():
-        raise KRXHistoricalIdentityError("security master has invalid standard code")
-    if out.duplicated(["decision_date", "symbol"]).any():
-        raise KRXHistoricalIdentityError("duplicate symbol inside security-master snapshot")
 
+    # Filter by official scope before canonicalizing short codes. Non-common
+    # securities can legitimately use alphanumeric short codes; stripping those
+    # letters before scope filtering can create false collisions with common
+    # stocks. Historical KOSPI common-stock identity itself remains numeric.
     out = out[
         out["market_type_official"].eq("KOSPI")
         & out["common_stock_identity_official"].astype(bool)
     ].copy()
     if out.empty:
         raise KRXHistoricalIdentityError("no KOSPI common-stock master rows")
+
+    raw_symbol = _text(out["symbol"]).str.upper()
+    if (~raw_symbol.str.fullmatch(r"[0-9]{1,6}", na=False)).any():
+        raise KRXHistoricalIdentityError(
+            "KOSPI common-stock master has non-numeric short code"
+        )
+    out["symbol"] = _short_code(raw_symbol)
+
+    if out["symbol"].eq("").any() or ~out["symbol"].str.fullmatch(r"[0-9]{6}", na=False).all():
+        raise KRXHistoricalIdentityError("security master has invalid short code")
+    bad_std = ~out["standard_code"].str.fullmatch(r"[A-Z0-9]{12}", na=False)
+    if bad_std.any():
+        raise KRXHistoricalIdentityError("security master has invalid standard code")
+    if out.duplicated(["decision_date", "symbol"]).any():
+        raise KRXHistoricalIdentityError("duplicate symbol inside security-master snapshot")
     return out
 
 
