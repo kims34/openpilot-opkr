@@ -79,7 +79,16 @@
     "execute_status_economics_forbidden_until_user_bulk_approval": true,
     "execute_status_economics_requires_prepared_private_manifest": true,
     "execute_status_economics_requires_completed_per_security_history": true,
-    "execute_status_economics_exact_realized_economics_claim_allowed": false
+    "execute_status_economics_exact_realized_economics_claim_allowed": false,
+    "expected_scope_preflight_command": "python research_v1_krx_expected_scope_worker.py",
+    "expected_scope_preflight_network_request_attempted": false,
+    "execute_expected_scope_command": "python research_v1_krx_expected_scope_worker.py --execute",
+    "execute_expected_scope_forbidden_until_user_expected_scope_approval": true,
+    "execute_expected_scope_requires_distinct_consent_env": "KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT",
+    "execute_expected_scope_requires_distinct_consent_exact_value": "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1",
+    "historical_bulk_consent_does_not_substitute_for_expected_scope_consent": true,
+    "expected_scope_checkpoint_resume_required": true,
+    "expected_scope_calendar_date_count": 4127
   },
   "public_output": {
     "raw_rows_forbidden": true,
@@ -93,6 +102,14 @@
     "bulk_network_execution_authorized_by_user": false,
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
-    "live_trading_authorized": false
+    "live_trading_authorized": false,
+    "expected_scope_network_execution_authorized_by_user": false
+  },
+  "expected_scope_consent": {
+    "env_name": "KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT",
+    "exact_value": "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1",
+    "must_be_absent_during_initial_preflight_deployment": true,
+    "historical_bulk_consent_does_not_substitute": true,
+    "may_be_set_only_after_explicit_user_expected_scope_execution_approval": true
   }
 }
