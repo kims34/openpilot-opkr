@@ -25,11 +25,11 @@ The pinned README states that its live validation observed KRX rejecting unauthe
 
 | Need | BLD | Method | Screen | Current state |
 |---|---|---|---|---|
-| trading halt history | `dbms/MDC/STAT/issue/MDCSTAT21301` | JSON | MDCSTAT213 | pinned-client catalogued; project authentication not yet demonstrated |
-| cleanup trading | `dbms/MDC/STAT/issue/MDCSTAT23701` | JSON direct transport | MDCSTAT237 | **provisional**; not catalogued in pinned client |
+| trading halt history | `dbms/MDC/STAT/issue/MDCSTAT21301` | JSON | MDCSTAT213 | **authenticated tiny-probe reachable; schema observed** (Action `36976085781`) |
+| cleanup trading | `dbms/MDC/STAT/issue/MDCSTAT23701` | JSON direct transport | MDCSTAT237 | **authenticated tiny-probe reachable; schema observed**, but full-contract mapping remains **provisional** (Action `36976085781`) |
 | delisted status | `dbms/MDC/STAT/issue/MDCSTAT23801` | CSV | MDCSTAT238 | pinned-client catalogued; project authentication not yet demonstrated |
 | delisted price history | `dbms/MDC/STAT/issue/MDCSTAT23902` | CSV | MDCSTAT239 | pinned-client catalogued; project authentication not yet demonstrated |
-| per-security investor flow daily trend | `dbms/MDC/STAT/standard/MDCSTAT02303` | CSV | 12009 | pinned-client catalogued; project authentication not yet demonstrated |
+| per-security investor flow daily trend | `dbms/MDC/STAT/standard/MDCSTAT02303` | CSV | 12009 | **authenticated tiny-probe reachable; schema observed** (Action `36976873119`) |
 
 For `MDCSTAT21301`, the pinned client freezes a 730-day request limit and requires an exact security. Long history therefore requires deterministic chunking and exact coverage reconciliation.
 
@@ -37,15 +37,15 @@ For investor flow, the existing KRX public-contract evidence still requires day-
 
 ## A-F impact
 
-This route map strengthens only **candidate transport reproducibility** inside Gate B/E. It does not change project states:
+This route map now contains both pinned candidate transport metadata and the authenticated tiny-probe reachability observations. Tiny-probe success strengthens Gates A/B/E but does not close the historical/PIT/source contract:
 
-- Security/status: A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL.
-- Investor flow: A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL.
+- Security/status: A PARTIAL, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL.
+- Investor flow: A PARTIAL, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL.
 
 No source contract is closed. No performance experiment, sealed holdout, promotion or live trading is authorized.
 
 ## Next admissible step
 
-The next admissible external step is one explicitly consented, metadata-only authenticated Data Marketplace probe under the frozen project preflight. The probe must not persist numeric research history and must produce only reachability/schema/row-count metadata until route authorization evidence is independently admitted.
+The two explicitly consented metadata-only authenticated probes are now complete. The next admissible source work is a separately authorized historical acquisition plan with immutable receipts/batches, exact coverage/security mapping, PIT lineage and source-data admission. Tiny-probe permission must not be stretched into bulk/high-frequency acquisition permission.
 
 If the Data Marketplace route cannot be authorized or cannot provide the required complete history, the separately documented KRX purchase/distribution products remain a fallback path and require their own product-specific rights/ingestion contract.
