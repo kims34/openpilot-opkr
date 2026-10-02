@@ -14,6 +14,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     PER_SECURITY_CONSENT_ENV,
     PER_SECURITY_CONSENT_SENTINEL,
     KRXHistoricalWorkerEntrypointError,
+    diagnose_identity_master_code_shapes,
     execute_identity_seed,
     execute_identity_standard_code_binding,
     execute_per_security_history,
@@ -41,6 +42,51 @@ def _env(tmp_path, *, consent=False):
     if consent:
         out["KRX_HISTORICAL_ACQUISITION_CONSENT"] = CONSENT_SENTINEL
     return out
+
+
+def test_identity_code_shape_diagnostic_is_network_free_without_execution_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+
+    out = diagnose_identity_master_code_shapes(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        summary_loader=lambda *args, **kwargs: {
+            "seed": {"kospi_common_row_count": 2},
+            "binding": {"kospi_common_row_count": 3},
+            "identifiers_emitted": False,
+            "raw_rows_emitted": False,
+            "network_request_attempted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        },
+    )
+    assert out["mode"] == "DIAGNOSE_IDENTITY_MASTER_CODE_SHAPES"
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+
+
+def test_identity_code_shape_diagnostic_rejects_identifier_emission(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="emitted identifiers",
+    ):
+        diagnose_identity_master_code_shapes(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            summary_loader=lambda *args, **kwargs: {
+                "identifiers_emitted": True,
+                "raw_rows_emitted": False,
+                "network_request_attempted": False,
+            },
+        )
 
 
 def test_default_preflight_mode_is_network_free_and_reports_missing_consent(tmp_path):
