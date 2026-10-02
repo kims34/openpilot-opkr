@@ -65,7 +65,11 @@
     "prepare_per_security_history_network_request_attempted": false,
     "prepare_per_security_history_bulk_consent_required": false,
     "prepare_per_security_history_requires_completed_identity_binding": true,
-    "prepare_per_security_history_requires_dedicated_worker_private_volume": true
+    "prepare_per_security_history_requires_dedicated_worker_private_volume": true,
+    "execute_per_security_history_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
+    "execute_per_security_history_forbidden_until_user_bulk_approval": true,
+    "execute_per_security_history_requires_prepared_private_manifest": true,
+    "execute_per_security_history_requires_completed_identity_binding": true
   },
   "public_output": {
     "raw_rows_forbidden": true,
