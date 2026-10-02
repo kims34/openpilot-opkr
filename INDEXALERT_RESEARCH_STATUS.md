@@ -78,8 +78,8 @@ Current states remain:
 - **Security/status:** A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
 - **Investor flow:** A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; `feature_performance_testing_authorized=false`.
 
-Machine-readable public evidence remains version `2026-10-01.v1`, fingerprint:
-`349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`.
+Machine-readable public evidence remains version `2026-10-02.v2`, fingerprint:
+`39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380`.
 
 ## KRX authorization and source-data pipeline
 
