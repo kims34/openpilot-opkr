@@ -1,0 +1,5 @@
+pandas==2.3.3
+numpy==2.5.3
+requests==2.32.3
+python-dotenv==1.2.4
+krx-data-api @ https://github.com/beaten-by-the-market/krx-data-api/archive/e6ebac9b71482db127348d8a08ebc6743aa3b50e.zip
