@@ -493,6 +493,105 @@ def test_public_new_listing_mapping_summary_reports_counts_only(monkeypatch):
     assert "신규보통" not in rendered
 
 
+def test_new_listing_is_excluded_only_when_same_day_official_master_is_noncommon():
+    new = pd.DataFrame([{
+        "종목코드": "123456",
+        "종목명": "신규상장",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20200102",
+        "상장폐지일": "",
+    }])
+    row = _normal_master_row(
+        "2020-01-02",
+        "KR7123450000",
+        "123456",
+        "2020-01-02",
+        "신규상장",
+    )
+    row["common_stock_identity_official"] = False
+    row["security_group_official"] = "증권예탁증권"
+    masters = pd.DataFrame([row])
+
+    out = m._exclude_new_listings_officially_noncommon_on_listing_date(
+        new, masters
+    )
+    assert out.empty
+
+
+def test_missing_same_day_master_is_not_silently_excluded():
+    new = pd.DataFrame([{
+        "종목코드": "123456",
+        "종목명": "신규상장",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20200102",
+        "상장폐지일": "",
+    }])
+    masters = pd.DataFrame([
+        _normal_master_row(
+            "2020-01-03",
+            "KR7123450000",
+            "123456",
+            "2020-01-02",
+            "신규상장",
+        )
+    ])
+
+    out = m._exclude_new_listings_officially_noncommon_on_listing_date(
+        new, masters
+    )
+    assert len(out) == 1
+
+
+def test_private_reconstruction_respects_same_day_official_noncommon_classification(monkeypatch):
+    seed_masters = pd.DataFrame([
+        _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+        _normal_master_row("2026-10-01", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+    ])
+    target = _normal_master_row(
+        "2020-01-02",
+        "KR7123450000",
+        "123456",
+        "2020-01-02",
+        "비보통주",
+    )
+    target["common_stock_identity_official"] = False
+    target["security_group_official"] = "증권예탁증권"
+    unrelated = _normal_master_row(
+        "2020-01-02",
+        "KR7654320000",
+        "654321",
+        "2019-01-01",
+        "기존보통주",
+    )
+    binding = pd.DataFrame([target, unrelated])
+    new = pd.DataFrame([{
+        "종목코드": "123456",
+        "종목명": "비보통주",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20200102",
+        "상장폐지일": "",
+    }])
+    monkeypatch.setattr(m, "load_identity_seed_material", lambda *a, **k: {
+        "security_master_snapshots": seed_masters,
+        "new_listing_history": new,
+        "delisted_history": pd.DataFrame(columns=[
+            "종목코드", "종목명", "시장구분", "증권구분", "주식종류", "상장일", "폐지일"
+        ]),
+        "cleanup_current": pd.DataFrame(),
+    })
+    monkeypatch.setattr(m, "load_identity_binding_master_snapshots", lambda *a, **k: binding)
+
+    out = m.reconstruct_private_historical_episodes("/private")
+    assert set(out["short_code"]) == {"005930"}
+    assert "123456" not in set(out["short_code"])
+
+
 def test_private_identity_reconstruction_combines_seed_and_listing_date_masters(monkeypatch):
     seed_masters = pd.DataFrame([
         _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
