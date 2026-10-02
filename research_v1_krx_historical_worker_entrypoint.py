@@ -47,6 +47,7 @@ from research_v1_krx_historical_identity_materializer import (
     build_identity_binding_tasks_from_private_seed,
     build_per_security_history_tasks_from_private_identity,
     build_status_economics_tasks_from_private_identity,
+    public_identity_master_code_shape_summary,
 )
 from research_v1_krx_historical_request_executor import execute_request_spec
 from research_v1_krx_private_store import (
@@ -653,6 +654,56 @@ def execute_identity_standard_code_binding(
         "phase_status": safe_phase["status"],
         "phase_complete": safe_phase["phase_complete"],
         "phase_completed_task_count": safe_phase["completed_task_count"],
+        "raw_rows_emitted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
+def diagnose_identity_master_code_shapes(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    summary_loader=public_identity_master_code_shape_summary,
+) -> dict[str, Any]:
+    """Network-free aggregate diagnostic for private master short-code shapes."""
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity code-shape diagnostic blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity code-shape diagnostic blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity code-shape diagnostic blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    summary = summary_loader(
+        str(env["KRX_PRIVATE_RAW_DIR"]),
+        git_worktree=worktree,
+    )
+    if summary.get("network_request_attempted") is not False:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity code-shape diagnostic attempted network access"
+        )
+    if summary.get("identifiers_emitted") is not False:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity code-shape diagnostic emitted identifiers"
+        )
+    return {
+        "mode": "DIAGNOSE_IDENTITY_MASTER_CODE_SHAPES",
+        "summary": dict(summary),
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
         "raw_rows_emitted": False,
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
@@ -1350,6 +1401,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     group.add_argument(
+        "--diagnose-identity-master-code-shapes",
+        action="store_true",
+        help=(
+            "Network-free: report only aggregate short-code shape counts from "
+            "completed private identity seed/binding material. Never emits "
+            "security identifiers or raw rows."
+        ),
+    )
+    group.add_argument(
         "--prepare-per-security-history",
         action="store_true",
         help=(
@@ -1396,6 +1456,8 @@ def main(argv: list[str] | None = None) -> int:
         result = prepare_identity_standard_code_binding()
     elif args.execute_identity_standard_code_binding:
         result = execute_identity_standard_code_binding()
+    elif args.diagnose_identity_master_code_shapes:
+        result = diagnose_identity_master_code_shapes()
     elif args.prepare_per_security_history:
         result = prepare_per_security_history()
     elif args.execute_per_security_history:
