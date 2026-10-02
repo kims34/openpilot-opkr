@@ -3,7 +3,7 @@
 Updated: 2026-10-02 KST  
 Contract ID: `INDEXALERT-KRX-IDENTITY-BINDING-CONSENT-v1`  
 Stage: `IDENTITY_STANDARD_CODE_BINDING`  
-Status: **FROZEN — NOT YET USER-AUTHORIZED**
+Status: **FROZEN — USER-AUTHORIZED ONCE; EXECUTION COMPLETE; AUTHORITY CONSUMED**
 
 ## Purpose
 
@@ -30,13 +30,13 @@ Network-free preparation is also complete and frozen:
 - canonical public evidence: `INDEXALERT_KRX_IDENTITY_BINDING_PREPARATION_EVIDENCE.md/.json`
 - network requests during preparation: **0**
 
-## Exact future approval phrase
+## Authorization record
 
-To authorize this stage only, the user must explicitly send:
+The user supplied the exact one-shot approval phrase on 2026-10-03 KST:
 
 `I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1`
 
-Until that exact phrase is supplied, this stage remains unauthorized.
+That authority was consumed by deployment `3501cbb8-a6a6-4972-bf82-4fb8e3fb36f6`, which completed the frozen 145-task stage. It is no longer active and cannot be reused. Canonical execution evidence is `INDEXALERT_KRX_IDENTITY_BINDING_EXECUTION_EVIDENCE.md/.json`.
 
 ## Runtime gate
 
@@ -80,3 +80,16 @@ After a successful one-shot binding run:
 - the binding evidence must record counts/hashes only;
 - no raw KRX row or credential may enter GitHub or public logs;
 - no later stage becomes authorized automatically.
+
+
+## Completed execution record
+
+- exact source revision: `6c152d8f29354d843b16c35be27a86a8a8058908`
+- completed requests: **145/145**
+- resumed: **0**
+- network requests attempted: **145**
+- phase: `COMPLETE`
+- execution batch metadata SHA-256: `d5ca4e7ea45033f6bd6d45e301f1d3041b2e7257836e60d71c442fa73d8013be`
+- raw rows emitted publicly: **false**
+
+Both execution consent values were disabled again and the worker was restored to preflight-only immediately after completion. No later-stage authority was created.
