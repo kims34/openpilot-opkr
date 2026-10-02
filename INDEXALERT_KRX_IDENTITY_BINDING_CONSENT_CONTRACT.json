@@ -39,5 +39,16 @@
     "sealed_holdout_authorized": false,
     "shadow_s1_authorized": false,
     "live_trading_authorized": false
+  },
+  "prepared_task_set": {
+    "preparation_evidence_id": "INDEXALERT-KRX-IDENTITY-BINDING-PREP-2026-10-02-v1",
+    "task_count": 145,
+    "task_count_by_kind": {
+      "security_master": 145
+    },
+    "task_set_fingerprint_sha256": "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9",
+    "private_task_manifest_metadata_sha256": "940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c",
+    "private_task_manifest_relpath": "task_manifests/identity-standard-code-binding-v1.json",
+    "network_request_attempted_during_prepare": false
   }
 }
