@@ -187,3 +187,91 @@ def test_daily_response_date_mismatch_fails_closed(tmp_path):
             evaluation_time=EVAL,
         )
     assert len(calls) == 2
+
+
+def test_same_request_same_payload_reuses_immutable_receipt_and_scope(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    calls = []
+
+    daily = pd.DataFrame([
+        {"BAS_DD":"20260923","ISU_CD":"KR7005930003","ISU_NM":"삼성전자","MKT_NM":"KOSPI"},
+    ])
+    master = pd.DataFrame([
+        {"ISU_CD":"KR7005930003","ISU_SRT_CD":"005930","ISU_NM":"삼성전자","LIST_DD":"19750611","MKT_TP_NM":"KOSPI","SECUGRP_NM":"주권","KIND_STKCERT_TP_NM":"보통주"},
+    ])
+
+    def fetcher(**kwargs):
+        calls.append(kwargs["endpoint"])
+        if kwargs["endpoint"] == DAILY_ENDPOINT:
+            return _result(daily, raw=b'{"OutBlock_1":[{"BAS_DD":"20260923","v":"same"}]}')
+        return _result(master, raw=b'{"OutBlock_1":[{"ISU_CD":"KR7005930003","v":"same"}]}', endpoint="master")
+
+    first = execute_expected_scope_date(
+        requested_date="20260923",
+        environment=_env(tmp_path),
+        git_worktree=str(worktree),
+        fetcher=fetcher,
+        evaluation_time=EVAL,
+    )
+    second = execute_expected_scope_date(
+        requested_date="20260923",
+        environment=_env(tmp_path),
+        git_worktree=str(worktree),
+        fetcher=fetcher,
+        evaluation_time=EVAL,
+    )
+
+    assert len(calls) == 4
+    assert first["private_scope_relpath"] == second["private_scope_relpath"]
+    assert first["private_scope_metadata_sha256"] == second["private_scope_metadata_sha256"]
+    assert len(list((tmp_path / "private" / "expected_scope" / "dates" / "20260923").glob("*.json"))) == 1
+    assert len(list((tmp_path / "private" / "expected_scope" / "receipts" / "20260923" / "stk_bydd_trd").glob("*.json"))) == 1
+    assert len(list((tmp_path / "private" / "expected_scope" / "receipts" / "20260923" / "stk_isu_base_info").glob("*.json"))) == 1
+
+
+def test_same_request_different_payload_fails_reconciliation_without_overwrite(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+
+    daily1 = pd.DataFrame([
+        {"BAS_DD":"20260923","ISU_CD":"KR7005930003","ISU_NM":"삼성전자","MKT_NM":"KOSPI"},
+    ])
+    daily2 = pd.DataFrame([
+        {"BAS_DD":"20260923","ISU_CD":"KR7000660001","ISU_NM":"SK하이닉스","MKT_NM":"KOSPI"},
+    ])
+    master = pd.DataFrame([
+        {"ISU_CD":"KR7005930003","ISU_SRT_CD":"005930","ISU_NM":"삼성전자","LIST_DD":"19750611","MKT_TP_NM":"KOSPI","SECUGRP_NM":"주권","KIND_STKCERT_TP_NM":"보통주"},
+    ])
+
+    phase = {"second": False}
+    def fetcher(**kwargs):
+        if kwargs["endpoint"] == DAILY_ENDPOINT:
+            frame = daily2 if phase["second"] else daily1
+            raw = b'{"OutBlock_1":[{"BAS_DD":"20260923","v":"two"}]}' if phase["second"] else b'{"OutBlock_1":[{"BAS_DD":"20260923","v":"one"}]}'
+            return _result(frame, raw=raw)
+        return _result(master, raw=b'{"OutBlock_1":[{"ISU_CD":"KR7005930003"}]}', endpoint="master")
+
+    execute_expected_scope_date(
+        requested_date="20260923",
+        environment=_env(tmp_path),
+        git_worktree=str(worktree),
+        fetcher=fetcher,
+        evaluation_time=EVAL,
+    )
+    receipt_dir = tmp_path / "private" / "expected_scope" / "receipts" / "20260923" / "stk_bydd_trd"
+    before = sorted(p.name for p in receipt_dir.glob("*.json"))
+    assert len(before) == 1
+
+    phase["second"] = True
+    with pytest.raises(KRXExpectedScopeExecutorError, match="conflicting payload"):
+        execute_expected_scope_date(
+            requested_date="20260923",
+            environment=_env(tmp_path),
+            git_worktree=str(worktree),
+            fetcher=fetcher,
+            evaluation_time=EVAL,
+        )
+
+    after = sorted(p.name for p in receipt_dir.glob("*.json"))
+    assert after == before
