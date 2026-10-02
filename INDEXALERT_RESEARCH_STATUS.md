@@ -75,8 +75,8 @@ Canonical gates:
 Only `PASS` closes a gate. All six passing closes only the source contract for the declared scope; it does not authorize Alpha/Final-Judge promotion, sealed holdout or live trading.
 
 Current states remain:
-- **Security/status:** A BLOCKED, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
-- **Investor flow:** A BLOCKED, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; `feature_performance_testing_authorized=false`.
+- **Security/status:** A PARTIAL, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
+- **Investor flow:** A PARTIAL, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; `feature_performance_testing_authorized=false`.
 
 Machine-readable public evidence remains version `2026-10-02.v2`, fingerprint:
 `39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380`.
@@ -107,7 +107,7 @@ Canonical components include:
 Frozen future source flow:
 `structured authorization-evidence validation -> network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
-Push research-probe workflows remain dry-run only. Separately, production OpenAPI evidence now demonstrates authenticated GET access for the approved `유가증권 종목기본정보` and `유가증권 일별매매정보` services on basis date `20261001` (942 rows each, exact expected schemas; server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`, Smoke Action `36956234911`). Canonical evidence is `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`; `research_v1_krx_openapi_connectivity_evidence.py` fail-closed validates the committed evidence and forbids authority escalation. This does not identify or authorize the exact halt/cleanup/delisting status route and is not investor-flow access, so **Gate A remains BLOCKED for both declared source families**. Full history, stable IDs across the required period, record-level PIT evidence, route-specific authorization provenance for the unresolved products and exact use rights remain external blockers.
+Push research-probe workflows remain dry-run only. Separately, production OpenAPI evidence now demonstrates authenticated GET access for the approved `유가증권 종목기본정보` and `유가증권 일별매매정보` services on basis date `20261001` (942 rows each, exact expected schemas; server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`, Smoke Action `36956234911`). Canonical evidence is `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`; `research_v1_krx_openapi_connectivity_evidence.py` fail-closed validates the committed evidence and forbids authority escalation. This OpenAPI evidence is separate from the later authenticated Data Marketplace tiny probes. Those later probes move Gate A to `PARTIAL` for both declared source families; they still do not close full-history/PIT/source contracts. Full history, stable IDs across the required period, record-level PIT evidence, route-specific authorization provenance for the unresolved products and exact use rights remain external blockers.
 
 Latest authenticated OpenAPI plumbing/schema reference: production Smoke Action `36956234911` at server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5` succeeded and recorded sanitized KRX response metadata plus per-service schema/payload SHA-256 fingerprints. Existing broad source-governance integrity reference remains Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf`; documentation/handoff drift repairs later passed Action `36835918274`.
 
@@ -123,11 +123,15 @@ The Data Marketplace terms boundary remains frozen in `INDEXALERT_KRX_DATA_MARKE
 
 ### Pinned Data Marketplace route map
 
-`INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json` now freezes the exact third-party client candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902`, `MDCSTAT02303` and the still-provisional `MDCSTAT23701`. `research_v1_krx_data_marketplace_route_map.py` rejects route drift and any attempt to self-grant Gate A/B, holdout or live authority. This narrows the technical path but changes no A-F state because the project still lacks an authenticated exact status/investor response and route-specific rights evidence.
+`INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json` now records authenticated tiny-probe reachability for `MDCSTAT21301`, `MDCSTAT23701` and `MDCSTAT02303`. `MDCSTAT23701` remains provisional for the full historical contract. The route-map validator still rejects any attempt to self-grant Gate A/B PASS, holdout or live authority.
 
 ## Authenticated KRX status tiny probe
 
 Action `36976085781` completed successfully under explicit one-run consent. The authenticated status route returned current security identity plus new-listing, delisted-history, trading-halt `MDCSTAT21301` and cleanup-trading `MDCSTAT23701` metadata. Gate A for `KRX_SECURITY_STATUS` is now `PARTIAL` rather than BLOCKED. Gate B remains `PARTIAL`; C/D remain BLOCKED; `judge_security_status_ready=false`. Canonical evidence is `INDEXALERT_KRX_STATUS_TINY_PROBE_EVIDENCE.md/.json`.
+
+## Authenticated KRX investor-flow tiny probe
+
+Action `36976873119` completed successfully under explicit one-run consent. `MDCSTAT02303` returned 3 rows for `005930` over `2026-09-21..2026-09-23` with the observed investor-category schema. Investor-flow Gate A is now `PARTIAL`; Gate B remains `PARTIAL`; Gate C remains `BLOCKED`; Gate D remains `PARTIAL`. Feature-performance testing remains unauthorized. Canonical evidence is `INDEXALERT_KRX_INVESTOR_FLOW_TINY_PROBE_EVIDENCE.md/.json`.
 
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
@@ -266,11 +270,11 @@ This closes server deployment drift, stale-runtime ambiguity, the latest-registr
 
 ## External evidence still missing
 
-Internal code cannot fabricate the still-missing exact KRX status/investor-flow route approvals, full history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment.
+Internal code cannot fabricate the still-missing full-history KRX coverage/PIT/broader-rights evidence, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment.
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** authenticated OpenAPI plumbing is proven for basic security-master/daily-trade services; Data Marketplace BLD candidates are pinned; account credentials and explicit low-frequency automation permission are now configured and network-free readiness is green. The status tiny probe is complete. The next admissible KRX probe is the explicitly consented metadata-only investor-flow tiny probe. Full official history, exact schema/equivalence, stable mapping, PIT lineage and broader/bulk rights remain open.
+1. **KRX authorization/data:** basic-info/daily-trade OpenAPI connectivity and both Data Marketplace tiny probes are complete. Security/status and investor-flow Gate A are now `PARTIAL`. Remaining blockers are full official history, exact all-period schema/equivalence, stable security mapping, record-level PIT lineage, immutable receipts/batches and broader/bulk acquisition rights.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
