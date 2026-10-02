@@ -24,6 +24,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     execute_identity_seed,
     execute_identity_standard_code_binding,
     execute_per_security_history,
+    finalize_per_security_history_metadata,
     load_frozen_identity_binding_tasks,
     prepare_identity_standard_code_binding,
     prepare_per_security_history,
@@ -940,6 +941,148 @@ def test_prepare_status_economics_is_network_free_and_never_exact_fill_ready(tmp
     private_text = manifest.read_text(encoding="utf-8")
     assert "KR7111110000" in private_text
     assert '"exact_status_economics_ready":false' in private_text.replace(" ", "").replace("\n", "")
+
+
+def _complete_per_security_state():
+    return {
+        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+        "execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+        "phase": "PER_SECURITY_HISTORY",
+        "status": "COMPLETE",
+        "expected_task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "completed_task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "failed_task_count": 0,
+        "task_set_fingerprint_sha256": PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+        "phase_complete": True,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
+def _complete_per_security_batch():
+    return {
+        "batch_version": "2026-10-02.per-security-history-v3",
+        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+        "execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+        "phase": "PER_SECURITY_HISTORY",
+        "task_set_fingerprint_sha256": PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+        "task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "completed_task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "resumed_task_count": 296,
+        "network_request_attempt_count": PER_SECURITY_EXPECTED_TASK_COUNT - 296,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
+def test_per_security_completion_metadata_is_network_free_and_public_safe(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    batch = _complete_per_security_batch()
+
+    out = finalize_per_security_history_metadata(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        state_loader=lambda *args, **kwargs: {
+            "value": _complete_per_security_state(),
+            "metadata_sha256": "1" * 64,
+        },
+        batch_loader=lambda *args, **kwargs: {
+            "value": dict(batch),
+            "metadata_sha256": "a" * 64,
+        },
+    )
+    assert out["mode"] == "FINALIZE_PER_SECURITY_HISTORY_METADATA"
+    assert out["status"] == "COMPLETE"
+    assert out["expected_task_count"] == PER_SECURITY_EXPECTED_TASK_COUNT
+    assert out["completed_task_count"] == PER_SECURITY_EXPECTED_TASK_COUNT
+    assert out["failed_task_count"] == 0
+    assert out["resumed_task_count"] == 296
+    assert out["network_request_attempt_count"] == PER_SECURITY_EXPECTED_TASK_COUNT - 296
+    assert out["private_batch_metadata_sha256"] == "a" * 64
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["status_economics_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+
+
+def test_per_security_completion_metadata_rejects_incomplete_phase(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    state = _complete_per_security_state()
+    state["status"] = "IN_PROGRESS"
+    state["phase_complete"] = False
+    state["completed_task_count"] -= 1
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="phase is not COMPLETE",
+    ):
+        finalize_per_security_history_metadata(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            state_loader=lambda *args, **kwargs: {
+                "value": state,
+                "metadata_sha256": "1" * 64,
+            },
+            batch_loader=lambda *args, **kwargs: {
+                "value": _complete_per_security_batch(),
+                "metadata_sha256": "a" * 64,
+            },
+        )
+
+
+def test_per_security_completion_metadata_rejects_batch_accounting_or_authority_drift(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    batch = _complete_per_security_batch()
+    batch["network_request_attempt_count"] -= 1
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="network/resume accounting drift",
+    ):
+        finalize_per_security_history_metadata(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            state_loader=lambda *args, **kwargs: {
+                "value": _complete_per_security_state(),
+                "metadata_sha256": "1" * 64,
+            },
+            batch_loader=lambda *args, **kwargs: {
+                "value": batch,
+                "metadata_sha256": "a" * 64,
+            },
+        )
+
+    batch = _complete_per_security_batch()
+    batch["sealed_holdout_authorized"] = True
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="sealed_holdout_authorized illegally true",
+    ):
+        finalize_per_security_history_metadata(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            state_loader=lambda *args, **kwargs: {
+                "value": _complete_per_security_state(),
+                "metadata_sha256": "1" * 64,
+            },
+            batch_loader=lambda *args, **kwargs: {
+                "value": batch,
+                "metadata_sha256": "a" * 64,
+            },
+        )
 
 
 def test_per_security_status_is_network_free_and_public_safe(tmp_path):
