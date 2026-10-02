@@ -24,6 +24,7 @@ def test_data_marketplace_requires_credentials_validated_evidence_and_explicit_c
         environment=_consented(KRX_ID="id", KRX_PW="pw"),
         authorization_evidence_reference="approval-ref-001",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["request_attempt_authorized"] is True
     assert out["authorization_evidence_record_validated"] is True
@@ -56,6 +57,7 @@ def test_credentials_validated_evidence_without_explicit_consent_remain_dry_run(
         environment={"KRX_ID": "id", "KRX_PW": "pw"},
         authorization_evidence_reference="approval-ref-001",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["request_attempt_authorized"] is False
     assert out["explicit_probe_consent_present"] is False
@@ -78,6 +80,7 @@ def test_only_exact_explicit_consent_sentinel_is_accepted(value):
         },
         authorization_evidence_reference="approval-ref-001",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["request_attempt_authorized"] is False
     assert out["explicit_probe_consent_present"] is False
@@ -91,6 +94,7 @@ def test_data_marketplace_does_not_accept_openapi_key_as_substitute():
         environment=_consented(KRX_OPENAPI_AUTH_KEY="key"),
         authorization_evidence_reference="approval-ref-001",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["request_attempt_authorized"] is False
     assert out["gate_a_status_hint"] == "BLOCKED"
@@ -105,6 +109,7 @@ def test_auth_reference_is_required_even_when_credentials_evidence_and_consent_e
         environment=_consented(KRX_ID="id", KRX_PW="pw"),
         authorization_evidence_reference=None,
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["request_attempt_authorized"] is False
     assert "KRX_AUTH_EVIDENCE_REF" in out["missing_requirements"]
@@ -117,6 +122,7 @@ def test_openapi_requires_key_mapping_validated_evidence_and_explicit_consent():
         environment=_consented(KRX_OPENAPI_AUTH_KEY="key"),
         authorization_evidence_reference="approval-ref-002",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
         exact_service_mapping_confirmed=False,
     )
     assert blocked["request_attempt_authorized"] is False
@@ -128,6 +134,7 @@ def test_openapi_requires_key_mapping_validated_evidence_and_explicit_consent():
         environment=_consented(KRX_OPENAPI_AUTH_KEY="key"),
         authorization_evidence_reference="approval-ref-002",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
         exact_service_mapping_confirmed=True,
     )
     assert allowed["request_attempt_authorized"] is True
@@ -145,6 +152,7 @@ def test_purchased_product_never_infers_access_from_online_credentials():
         ),
         authorization_evidence_reference="contract-ref-003",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["request_attempt_authorized"] is False
     assert "PURCHASED_PRODUCT_ACCESS_VERIFICATION" in out["missing_requirements"]
@@ -168,6 +176,7 @@ def test_secret_like_authorization_reference_is_rejected(reference):
             environment=_consented(KRX_ID="id", KRX_PW="pw"),
             authorization_evidence_reference=reference,
             authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
         )
 
 
@@ -185,6 +194,7 @@ def test_individual_credential_presence_is_reported_without_values():
         },
         authorization_evidence_reference="approval-ref-004",
         authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
     )
     assert out["krx_id_present"] is True
     assert out["krx_pw_present"] is False
@@ -210,3 +220,16 @@ def test_unknown_family_or_route_fails_closed():
             environment={},
             authorization_evidence_reference="ref",
         )
+
+
+def test_data_marketplace_blocks_when_automation_permission_missing():
+    out = evaluate_auth_preflight(
+        source_family="KRX_INVESTOR_FLOW",
+        access_route=DATA_MARKETPLACE_ROUTE,
+        environment=_consented(KRX_ID="id", KRX_PW="pw"),
+        authorization_evidence_reference="approval-ref-automation",
+        authorization_evidence_record_validated=True,
+        automated_collection_authorized=False,
+    )
+    assert out["request_attempt_authorized"] is False
+    assert "EXPLICIT_KRX_AUTOMATED_COLLECTION_PERMISSION" in out["missing_requirements"]
