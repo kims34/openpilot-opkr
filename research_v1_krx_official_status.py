@@ -73,6 +73,17 @@ def _symbol(series: pd.Series) -> pd.Series:
     return x.map(lambda s: s.zfill(6) if s.isdigit() else s)
 
 
+def _standard_code(series: pd.Series) -> pd.Series:
+    x = series.astype(str).str.strip().str.upper()
+    bad = x.eq("") | ~x.str.fullmatch(r"[A-Z0-9]{12}")
+    if bad.any():
+        sample = x[bad].head(10).tolist()
+        raise KRXOfficialStatusError(
+            f"official basic-info snapshot contains invalid standard issue code(s): {sample}"
+        )
+    return x
+
+
 def _date(series: pd.Series) -> pd.Series:
     # KRX exports commonly use YYYY/MM/DD, YYYY-MM-DD or YYYYMMDD.
     s = series.astype(str).str.strip().replace({"": pd.NA, "-": pd.NA, "nan": pd.NA, "None": pd.NA})
@@ -106,6 +117,7 @@ def normalise_basic_info(
     if table is None or table.empty:
         raise KRXOfficialStatusError("official basic-info snapshot is empty")
 
+    standard_code = _standard_code(_pick(table, ["ISU_CD", "표준코드"], "standard issue code"))
     symbol = _symbol(_pick(table, ["ISU_SRT_CD", "단축코드", "종목코드"], "short issue code"))
     issue_name = _pick(table, ["ISU_NM", "한글 종목명", "종목명"], "issue name").astype(str).str.strip()
     market = _pick(table, ["MKT_TP_NM", "시장구분"], "market type").astype(str).str.strip()
@@ -113,14 +125,18 @@ def normalise_basic_info(
     stock_type = _pick(table, ["KIND_STKCERT_TP_NM", "주식종류"], "stock type").astype(str).str.strip()
     list_date = _date(_pick(table, ["LIST_DD", "상장일"], "listing date"))
 
+    if standard_code.duplicated().any():
+        dup = sorted(standard_code[standard_code.duplicated(keep=False)].unique().tolist())[:10]
+        raise KRXOfficialStatusError(f"duplicate standard issue codes in official basic-info snapshot: {dup}")
     if symbol.duplicated().any():
         dup = sorted(symbol[symbol.duplicated(keep=False)].unique().tolist())[:10]
-        raise KRXOfficialStatusError(f"duplicate security codes in official basic-info snapshot: {dup}")
+        raise KRXOfficialStatusError(f"duplicate short issue codes in official basic-info snapshot: {dup}")
     if list_date.isna().any():
         raise KRXOfficialStatusError("official basic-info snapshot contains unparseable listing date")
 
     out = pd.DataFrame({
         "decision_date": pd.Timestamp(asof_date).normalize(),
+        "standard_code": standard_code,
         "symbol": symbol,
         "name": issue_name,
         "market_type_official": market,
