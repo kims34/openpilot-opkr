@@ -60,6 +60,9 @@ CLIENT_REVISION = "krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 PRIVATE_BATCH_REL = "batches/identity-seed-v3.json"
 IDENTITY_BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
 IDENTITY_BINDING_TASK_MANIFEST_REL = "task_manifests/identity-standard-code-binding-v1.json"
+IDENTITY_BINDING_EXPECTED_TASK_COUNT = 145
+IDENTITY_BINDING_EXPECTED_TASK_SET_SHA256 = "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9"
+IDENTITY_BINDING_EXPECTED_MANIFEST_SHA256 = "940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c"
 PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
 PER_SECURITY_BATCH_REL = "batches/per-security-history-v3.json"
 STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
@@ -74,6 +77,31 @@ STATUS_ECONOMICS_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
     pass
+
+
+def _require_frozen_identity_binding_summary(
+    summary: Mapping[str, Any],
+    *,
+    manifest_metadata_sha256: str | None = None,
+) -> None:
+    if int(summary.get("task_count", -1)) != IDENTITY_BINDING_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding frozen task count drift"
+        )
+    if (
+        str(summary.get("task_set_fingerprint_sha256") or "")
+        != IDENTITY_BINDING_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding frozen task-set fingerprint drift"
+        )
+    if (
+        manifest_metadata_sha256 is not None
+        and str(manifest_metadata_sha256) != IDENTITY_BINDING_EXPECTED_MANIFEST_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity binding frozen manifest metadata SHA-256 drift"
+        )
 
 
 def _require_completed_predecessor(
@@ -359,6 +387,8 @@ def prepare_identity_standard_code_binding(
         raise KRXHistoricalWorkerEntrypointError(
             "identity standard-code binding task set is empty"
         )
+    if task_builder is build_identity_binding_tasks_from_private_seed:
+        _require_frozen_identity_binding_summary(summary)
 
     state = initialize_phase_state(
         root=root,
@@ -388,6 +418,11 @@ def prepare_identity_standard_code_binding(
         private_manifest,
         git_worktree=worktree,
     )
+    if task_builder is build_identity_binding_tasks_from_private_seed:
+        _require_frozen_identity_binding_summary(
+            summary,
+            manifest_metadata_sha256=manifest_write["metadata_sha256"],
+        )
 
     return {
         "mode": "PREPARE_IDENTITY_STANDARD_CODE_BINDING",
@@ -419,11 +454,17 @@ def load_frozen_identity_binding_tasks(
     worktree = git_worktree or str(Path.cwd().resolve())
     regenerated = task_builder(root, git_worktree=worktree)
     regenerated_summary = public_task_summary(regenerated)
-    manifest = read_private_json(
+    manifest_read = read_private_json(
         root,
         IDENTITY_BINDING_TASK_MANIFEST_REL,
         git_worktree=worktree,
-    )["value"]
+    )
+    manifest = manifest_read["value"]
+    if task_builder is build_identity_binding_tasks_from_private_seed:
+        _require_frozen_identity_binding_summary(
+            regenerated_summary,
+            manifest_metadata_sha256=manifest_read["metadata_sha256"],
+        )
 
     if manifest.get("plan_id") != PLAN_ID:
         raise KRXHistoricalWorkerEntrypointError(
@@ -498,6 +539,8 @@ def execute_identity_standard_code_binding(
         raise KRXHistoricalWorkerEntrypointError(
             "identity standard-code binding task set is empty"
         )
+    if task_loader is load_frozen_identity_binding_tasks:
+        _require_frozen_identity_binding_summary(task_summary)
 
     initialize_phase_state(
         root=str(env["KRX_PRIVATE_RAW_DIR"]),
