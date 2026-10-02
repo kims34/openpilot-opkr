@@ -2,7 +2,7 @@
 
 Updated: 2026-10-02 23:08 KST  
 Evidence ID: `INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1`  
-Status: **IDENTITY_SEED COMPLETE — FURTHER NETWORK EXECUTION NOT AUTHORIZED**
+Status: **IDENTITY BINDING COMPLETE — FURTHER NETWORK EXECUTION NOT AUTHORIZED**
 
 Railway production now contains the isolated historical worker required by the frozen deployment contract:
 
@@ -77,3 +77,18 @@ It froze exactly **145 `security_master` tasks** from the completed private seed
 - raw rows / identifiers emitted publicly: **false**.
 
 The worker start command was restored to preflight-only immediately after preparation. `KRX_IDENTITY_BINDING_CONSENT` remains absent. Actual binding execution is not authorized.
+
+
+## Identity-binding execution
+
+On 2026-10-03 KST, deployment `3501cbb8-a6a6-4972-bf82-4fb8e3fb36f6` at exact revision `6c152d8f29354d843b16c35be27a86a8a8058908` executed only the frozen `IDENTITY_STANDARD_CODE_BINDING` stage.
+
+- completed: **145/145**
+- resumed: **0**
+- network requests attempted: **145**
+- task-set SHA-256: `b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9`
+- private execution-batch metadata SHA-256: `d5ca4e7ea45033f6bd6d45e301f1d3041b2e7257836e60d71c442fa73d8013be`
+- phase: `COMPLETE`
+- public raw rows / security identifiers: **none**
+
+The one-shot binding consent and lower-level network consent were disabled again immediately after completion. Worker configuration was restored to preflight-only. The next safe internal step is network-free preparation of `PER_SECURITY_HISTORY`; its actual network execution remains separately unauthorized.
