@@ -2,7 +2,7 @@
 
 Updated: 2026-10-02 KST  
 Contract: `INDEXALERT-KRX-WORKER-PROVISIONING-v1`  
-Status: **FROZEN — USER-AUTHORIZED; PROVISIONING NOT YET COMPLETED**
+Status: **FROZEN — USER-AUTHORIZED; PROVISIONING COMPLETED / PREFLIGHT ONLY**
 
 This contract separates Railway infrastructure provisioning from every KRX network-execution consent.
 
@@ -14,7 +14,21 @@ Creating a Railway service and persistent volume may incur Railway usage/storage
 
 ## Authorization record
 
-The exact approval phrase was received on 2026-10-02 KST. This authorizes only the provisioning scope below. The first provisioning attempt did not mutate Railway because the available Railway infrastructure agent returned `Agent usage limit reached`; unsafe fallback deployment paths were not used. The dedicated service and volume therefore remain absent until the authorized provisioning can be executed atomically.
+The exact approval phrase was received on 2026-10-02 KST. This authorizes only the provisioning scope below.
+
+Provisioning completed on 2026-10-02 KST:
+- service `indexalert-krx-historical-worker` / ID `003812ee-102b-42b6-bda4-36925885b428`;
+- dedicated volume `indexalert-krx-historical-data` / ID `61610fae-dc0c-493e-9920-eb3cef4cea86`, mounted at `/data`;
+- source `kims34/openpilot-opkr@index-alert-research-v1`;
+- build `Dockerfile.krx-historical-worker`;
+- start command `python research_v1_krx_historical_worker_entrypoint.py`;
+- restart policy `NEVER`, no cron, no public domain;
+- direct service variables only: `KRX_PRIVATE_RAW_DIR` and `INDEXALERT_KRX_HIST_WORKER_ROLE`;
+- `KRX_HISTORICAL_ACQUISITION_CONSENT`, `KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT`, `KRX_ID`, `KRX_PW`, and `KRX_AUTH_KEY` remained absent.
+
+The corrected preflight deployment `d5365809-f146-41d6-b536-942555a20b1d` completed SUCCESS. Its runtime log reported `mode=PREFLIGHT_ONLY`, `network_request_attempted=false`, `historical_acquisition_network_execution_authorized=false`, `feature_performance_testing_authorized=false`, `sealed_holdout_authorized=false`, and `live_trading_authorized=false`.
+
+An earlier initial deployment built the repository default Dockerfile before the dedicated Dockerfile setting was corrected; it was superseded and removed. No KRX credentials or network-execution consent were present, and no historical KRX network request was attempted.
 
 ## What this approval would allow
 
