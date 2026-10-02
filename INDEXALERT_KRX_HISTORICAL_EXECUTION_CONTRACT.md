@@ -1,7 +1,7 @@
-# IndexAlert KRX Historical Execution Contract v2
+# IndexAlert KRX Historical Execution Contract v3
 
 Updated: 2026-10-02 KST  
-Contract ID: `INDEXALERT-KRX-HIST-EXEC-v2`  
+Contract ID: `INDEXALERT-KRX-HIST-EXEC-v3`  
 Bound acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v3`  
 Status: **IMPLEMENTATION CONTRACT ONLY — BULK NETWORK EXECUTION NOT YET USER-AUTHORIZED**
 
@@ -9,11 +9,11 @@ Status: **IMPLEMENTATION CONTRACT ONLY — BULK NETWORK EXECUTION NOT YET USER-A
 
 This contract governs the future full-history KRX network job. It exists because the repository is public and the KRX permission explicitly prohibits external leakage, sale and third-party distribution.
 
-Rights to acquire history are established, but those rights do not make the network job self-starting.
+Rights to acquire history are established, but those rights do not make the network job self-starting. Existing production `/data` volume does not satisfy this isolation requirement by itself; the bulk job must have its own dedicated worker execution identity.
 
 ## Isolation
 
-Bulk acquisition must run in a dedicated one-shot worker. The production public web process must not run the bulk job.
+Bulk acquisition must run in a dedicated one-shot worker. The exact worker role must be `INDEXALERT_KRX_HIST_WORKER_ROLE=DEDICATED_ONE_SHOT`. If `RAILWAY_SERVICE_NAME` identifies `indexalert-runtime`, `indexalert-backend` or `indexalert-push`, preflight must fail even when credentials, storage and consent are otherwise valid. The production public web process must never run the bulk job.
 
 Before any network request the worker must pass the exact network-free v3 historical-acquisition preflight bound to execution contract v2, including the exact execution sentinel:
 
@@ -27,7 +27,7 @@ Raw KRX response bytes must be written only to a private persistent volume confi
 
 Recommended private root:
 
-`/data/indexalert/krx-historical-v2`
+`/data/indexalert/krx-historical-v3`
 
 Required protections:
 - absolute path;
