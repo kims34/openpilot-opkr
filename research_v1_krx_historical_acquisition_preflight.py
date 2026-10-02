@@ -23,6 +23,10 @@ from research_v1_krx_private_store import (
 PLAN_PATH = Path("INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.json")
 CONSENT_ENV = "KRX_HISTORICAL_ACQUISITION_CONSENT"
 CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3"
+WORKER_ROLE_ENV = "INDEXALERT_KRX_HIST_WORKER_ROLE"
+WORKER_ROLE_VALUE = "DEDICATED_ONE_SHOT"
+RAILWAY_SERVICE_NAME_ENV = "RAILWAY_SERVICE_NAME"
+FORBIDDEN_PUBLIC_SERVICE_NAMES = {"indexalert-runtime", "indexalert-backend", "indexalert-push"}
 
 
 def evaluate_historical_acquisition_preflight(
@@ -41,6 +45,10 @@ def evaluate_historical_acquisition_preflight(
     consent=str(env.get(CONSENT_ENV) or "").strip()
     consent_ok=consent == CONSENT_SENTINEL
     raw_root_text=str(env.get("KRX_PRIVATE_RAW_DIR") or "").strip()
+    worker_role=str(env.get(WORKER_ROLE_ENV) or "").strip()
+    railway_service_name=str(env.get(RAILWAY_SERVICE_NAME_ENV) or "").strip()
+    dedicated_worker_role_ok=worker_role == WORKER_ROLE_VALUE
+    forbidden_public_service=railway_service_name in FORBIDDEN_PUBLIC_SERVICE_NAMES
     raw_root_valid=False
     raw_root_error=None
     if raw_root_text:
@@ -68,6 +76,10 @@ def evaluate_historical_acquisition_preflight(
         missing.append("KRX_PRIVATE_RAW_DIR")
     elif not raw_root_valid:
         missing.append("SAFE_KRX_PRIVATE_RAW_DIR")
+    if not dedicated_worker_role_ok:
+        missing.append("DEDICATED_ONE_SHOT_WORKER_ROLE")
+    if forbidden_public_service:
+        missing.append("DEDICATED_WORKER_SERVICE_ISOLATION")
     if not consent_ok:
         missing.append("EXPLICIT_HISTORICAL_ACQUISITION_EXECUTION_CONSENT")
 
@@ -82,6 +94,11 @@ def evaluate_historical_acquisition_preflight(
         "krx_pw_present":pw_present,
         "krx_openapi_auth_key_present":openapi_key_present,
         "execution_contract_id":execution_contract["contract_id"],
+        "dedicated_worker_role_env":WORKER_ROLE_ENV,
+        "dedicated_worker_role_present":dedicated_worker_role_ok,
+        "railway_service_name":railway_service_name or None,
+        "forbidden_public_service":forbidden_public_service,
+        "dedicated_worker_isolation_ok":bool(dedicated_worker_role_ok and not forbidden_public_service),
         "private_persistent_storage_required":execution_contract["private_persistent_storage_required"],
         "private_raw_dir_configured":bool(raw_root_text),
         "private_raw_dir_valid":raw_root_valid,
