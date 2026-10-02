@@ -150,8 +150,13 @@ def _verify_completed_date(
     git_worktree: str,
 ) -> dict[str, Any]:
     scope_rel = str(completion.get("private_scope_relpath") or "")
-    if scope_rel != f"expected_scope/dates/{requested_date}.json":
+    expected_prefix = f"expected_scope/dates/{requested_date}/"
+    if not scope_rel.startswith(expected_prefix) or not scope_rel.endswith(".json"):
         raise KRXExpectedScopeBatchError("private scope relpath drift")
+    scope_name = Path(scope_rel).name
+    scope_digest = scope_name[:-5]
+    if len(scope_digest) != 64 or any(ch not in "0123456789abcdef" for ch in scope_digest):
+        raise KRXExpectedScopeBatchError("private scope content-address drift")
     wrapped = read_private_json(
         root,
         scope_rel,
