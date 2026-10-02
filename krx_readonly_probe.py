@@ -7,9 +7,11 @@ never returned or logged.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -79,6 +81,17 @@ def _candidate_dates(days: int = 8) -> list[str]:
     return [(today - timedelta(days=i)).strftime("%Y%m%d") for i in range(1, days + 1)]
 
 
+def _canonical_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _safe_result(
     *,
     ok: bool,
@@ -88,6 +101,9 @@ def _safe_result(
     fields: set[str] | None = None,
     schema_ok: bool = False,
     error: str | None = None,
+    observed_at: str | None = None,
+    schema_sha256: str | None = None,
+    payload_sha256: str | None = None,
 ) -> dict[str, Any]:
     return {
         "ok": bool(ok),
@@ -97,6 +113,9 @@ def _safe_result(
         "row_count": int(rows),
         "fields": sorted(fields or set()),
         "schema_ok": bool(schema_ok),
+        "observed_at": observed_at,
+        "response_schema_sha256": schema_sha256,
+        "response_payload_sha256": payload_sha256,
         "error": error,
     }
 
@@ -156,6 +175,9 @@ def _attempt(session: Any, method: str, url: str, key: str, bas_dd: str, expecte
 
     fields = set(rows[0].keys()) if rows and isinstance(rows[0], dict) else set()
     schema_ok = bool(rows) and expected.issubset(fields)
+    observed_at = datetime.now(timezone.utc).isoformat()
+    schema_sha256 = _canonical_sha256(sorted(fields))
+    payload_sha256 = _canonical_sha256(payload)
     return _safe_result(
         ok=bool(rows) and schema_ok,
         method=method,
@@ -163,6 +185,9 @@ def _attempt(session: Any, method: str, url: str, key: str, bas_dd: str, expecte
         rows=len(rows),
         fields=fields,
         schema_ok=schema_ok,
+        observed_at=observed_at,
+        schema_sha256=schema_sha256,
+        payload_sha256=payload_sha256,
         error=None if rows and schema_ok else ("empty_rows" if not rows else "schema_mismatch"),
     )
 
@@ -198,6 +223,7 @@ def run_probe(*, session: Any | None = None, candidate_dates: list[str] | None =
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
         "basDd": None,
+        "probe_observed_at": None,
         "endpoints": {},
     }
     if not key:
@@ -220,7 +246,7 @@ def run_probe(*, session: Any | None = None, candidate_dates: list[str] | None =
             )
         last = current
         if all(row.get("ok") for row in current.values()):
-            base.update({"ok": True, "basDd": bas_dd, "endpoints": current})
+            base.update({"ok": True, "basDd": bas_dd, "probe_observed_at": datetime.now(timezone.utc).isoformat(), "endpoints": current})
             return base
 
         # Authentication rejection is date-independent; fail closed immediately.
@@ -228,7 +254,7 @@ def run_probe(*, session: Any | None = None, candidate_dates: list[str] | None =
         if 401 in statuses or 403 in statuses:
             break
 
-    base.update({"endpoints": last, "error": "no_verified_business_date"})
+    base.update({"probe_observed_at": datetime.now(timezone.utc).isoformat(), "endpoints": last, "error": "no_verified_business_date"})
     return base
 
 
