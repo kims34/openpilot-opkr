@@ -136,22 +136,56 @@ def test_non_common_alphanumeric_master_code_is_filtered_before_short_code_norma
     assert "KR7000088999" not in set(out["standard_code"])
 
 
-def test_common_stock_alphanumeric_master_code_fails_closed():
-    masters = _masters()
-    bad = _master_row(
-        "2015-06-15",
-        "KR7000088000",
-        "00088K",
-        "2000-01-03",
-        "잘못된보통주",
-        common=True,
-    )
-    masters = pd.concat([masters, pd.DataFrame([bad])], ignore_index=True)
+def test_common_stock_alphanumeric_master_code_is_preserved():
+    masters = pd.concat([
+        _masters(),
+        pd.DataFrame([
+            _master_row(
+                "2015-06-15",
+                "KR7000088000",
+                "00A88K",
+                "2000-01-03",
+                "알파보통주",
+                common=True,
+            ),
+            _master_row(
+                "2026-10-01",
+                "KR7000088000",
+                "00A88K",
+                "2000-01-03",
+                "알파보통주",
+                common=True,
+            ),
+        ]),
+    ], ignore_index=True)
 
-    with pytest.raises(
-        KRXHistoricalIdentityError,
-        match="KOSPI common-stock master has non-numeric short code",
-    ):
+    out = reconstruct_historical_kospi_episodes(
+        security_master_snapshots=masters,
+        new_listing=_new(),
+        delisted=_delisted(),
+    )
+    row = out[out["short_code"].eq("00A88K")].iloc[0]
+    assert row["standard_code"] == "KR7000088000"
+    assert row["source_start_master"]
+    assert row["source_end_master_reconciled"]
+
+
+def test_malformed_common_stock_short_code_still_fails_closed():
+    masters = pd.concat([
+        _masters(),
+        pd.DataFrame([
+            _master_row(
+                "2015-06-15",
+                "KR7000088000",
+                "A005930",
+                "2000-01-03",
+                "잘못된7자리코드",
+                common=True,
+            )
+        ]),
+    ], ignore_index=True)
+
+    with pytest.raises(KRXHistoricalIdentityError, match="invalid short code"):
         reconstruct_historical_kospi_episodes(
             security_master_snapshots=masters,
             new_listing=_new(),
