@@ -107,9 +107,9 @@ Canonical components include:
 Frozen future source flow:
 `structured authorization-evidence validation -> network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
-Push workflows remain dry-run only. No authenticated KRX request has yet been demonstrated; **Gate A remains BLOCKED**. Real route credentials, genuine approval evidence, full history, stable IDs, record-level PIT evidence and exact use rights remain external blockers.
+Push research-probe workflows remain dry-run only. Separately, production OpenAPI evidence now demonstrates authenticated GET access for the approved `유가증권 종목기본정보` and `유가증권 일별매매정보` services on basis date `20261001` (942 rows each, exact expected schemas; server revision `62cb089131ca519815434616dd7f217315fbe346`, Smoke Action `36952309738`). Canonical evidence is `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`. This does not identify or authorize the exact halt/cleanup/delisting status route and is not investor-flow access, so **Gate A remains BLOCKED for both declared source families**. Full history, stable IDs across the required period, record-level PIT evidence, route-specific authorization provenance for the unresolved products and exact use rights remain external blockers.
 
-Latest source-governance reference: KRX integrity Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission. Documentation/handoff drift repairs later passed Action `36835918274`.
+Latest authenticated OpenAPI plumbing/schema reference: production Smoke Action `36952309738` at server revision `62cb089131ca519815434616dd7f217315fbe346` succeeded and recorded the sanitized KRX response metadata. Existing broad source-governance integrity reference remains Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf`; documentation/handoff drift repairs later passed Action `36835918274`.
 
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
@@ -242,17 +242,17 @@ The timing-sensitive smoke did **not** itself capture a complete public response
 
 ## Operational deployment evidence state
 
-Railway `indexalert-runtime` is aligned to exact server revision `d8523810b1c2c092a9ffc8f6245586e3bb719645` through deployment `4cde730b-2aca-49c2-9950-f895897fe642` (SUCCESS). Server Tests Action `36874615526` and rerun v32 Build Contract Smoke Action `36874615527` succeeded on the exact production revision. The successful smoke observed the real v4.7-47 same-device/same-build receipt contract in `CONFIRMED` state.
+Railway `indexalert-runtime` is now aligned to server revision `62cb089131ca519815434616dd7f217315fbe346` through deployment `3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681` (SUCCESS). Production Smoke Action `36952309738` succeeded on that exact runtime revision and included the sanitized KRX connectivity/schema proof. The original physical handset event remains the earlier v4.7-47 `/register -> /push-self-test -> /push-ack` evidence; the newer deployment must not be misdescribed as a new handset event.
 
 This closes server deployment drift, stale-runtime ambiguity, the latest-registration ordering gap, the v4.7 display-only registration compatibility gap, the Physical E2E blocker, the mover-provenance observability gap and the public startup FX-basis leakage path. It does not close the execution evidence blocker, KRX blockers, sealed holdout, promotion, or live-order authority. Real-account ordering remains disabled.
 
 ## External evidence still missing
 
-Internal code cannot fabricate approved KRX source access/history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment.
+Internal code cannot fabricate the still-missing exact KRX status/investor-flow route approvals, full history/PIT/use rights, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment.
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** approved route/product, credentials/structured approval evidence, authenticated source proof and full official history.
+1. **KRX authorization/data:** authenticated OpenAPI plumbing is now proven for basic security-master/daily-trade services, but exact approved status-event and investor-flow route/products, route-specific structured authorization provenance, full official history, stable mapping and PIT/use-rights evidence remain open.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
