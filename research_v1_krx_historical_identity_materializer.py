@@ -334,6 +334,104 @@ def load_identity_binding_master_snapshots(
     return pd.concat(masters, ignore_index=True)
 
 
+def _merge_master_snapshots_fail_closed(
+    seed_master: pd.DataFrame,
+    binding_master: pd.DataFrame,
+) -> pd.DataFrame:
+    """Merge seed/binding snapshots without weakening duplicate checks.
+
+    The seed already contains frozen start/end snapshots. If a listing-date
+    binding request lands on the same decision date, the same symbol may appear
+    once in each source. That overlap is allowed only when the identity fields
+    agree exactly; otherwise the merge fails closed. Duplicate keys inside one
+    source remain an error.
+    """
+    key_cols = ["decision_date", "symbol"]
+    identity_cols = [
+        "standard_code",
+        "listing_date_official",
+        "market_type_official",
+        "common_stock_identity_official",
+    ]
+    optional_identity_cols = ["security_group_official", "stock_type_official"]
+
+    seed = seed_master.copy()
+    binding = binding_master.copy()
+    for label, frame in (("seed", seed), ("binding", binding)):
+        missing = set(key_cols + identity_cols) - set(frame.columns)
+        _require(not missing, f"{label} master missing merge columns: {sorted(missing)}")
+        _require(
+            not frame.duplicated(key_cols).any(),
+            f"duplicate symbol inside {label} security-master snapshot",
+        )
+
+    seed["decision_date"] = pd.to_datetime(
+        seed["decision_date"], errors="coerce"
+    ).dt.normalize()
+    binding["decision_date"] = pd.to_datetime(
+        binding["decision_date"], errors="coerce"
+    ).dt.normalize()
+    seed["listing_date_official"] = pd.to_datetime(
+        seed["listing_date_official"], errors="coerce"
+    ).dt.normalize()
+    binding["listing_date_official"] = pd.to_datetime(
+        binding["listing_date_official"], errors="coerce"
+    ).dt.normalize()
+    _require(
+        not seed[["decision_date", "listing_date_official"]].isna().any().any(),
+        "seed master has invalid merge date",
+    )
+    _require(
+        not binding[["decision_date", "listing_date_official"]].isna().any().any(),
+        "binding master has invalid merge date",
+    )
+
+    seed_indexed = seed.set_index(key_cols, drop=False)
+    binding_indexed = binding.set_index(key_cols, drop=False)
+    overlap = seed_indexed.index.intersection(binding_indexed.index)
+
+    compare_cols = identity_cols + [
+        col
+        for col in optional_identity_cols
+        if col in seed.columns and col in binding.columns
+    ]
+    for key in overlap:
+        left = seed_indexed.loc[key]
+        right = binding_indexed.loc[key]
+        # Duplicate keys in either input are rejected above, so loc must be a row.
+        for col in compare_cols:
+            lv = left[col]
+            rv = right[col]
+            if pd.isna(lv) and pd.isna(rv):
+                continue
+            if col == "common_stock_identity_official":
+                same = bool(lv) == bool(rv)
+            elif col == "listing_date_official":
+                same = pd.Timestamp(lv) == pd.Timestamp(rv)
+            else:
+                same = str(lv) == str(rv)
+            _require(
+                same,
+                f"seed/binding security-master overlap conflict: {col}",
+            )
+
+    overlap_set = set(overlap.tolist())
+    keep_binding = [
+        (row.decision_date, row.symbol) not in overlap_set
+        for row in binding.itertuples(index=False)
+    ]
+    merged = pd.concat(
+        [seed, binding.loc[keep_binding].copy()],
+        ignore_index=True,
+        sort=False,
+    )
+    _require(
+        not merged.duplicated(key_cols).any(),
+        "duplicate symbol after seed/binding security-master reconciliation",
+    )
+    return merged
+
+
 def reconstruct_private_historical_episodes(
     root: str,
     *,
@@ -345,9 +443,9 @@ def reconstruct_private_historical_episodes(
         root,
         git_worktree=git_worktree,
     )
-    masters = pd.concat(
-        [seed["security_master_snapshots"], binding],
-        ignore_index=True,
+    masters = _merge_master_snapshots_fail_closed(
+        seed["security_master_snapshots"],
+        binding,
     )
     return reconstruct_historical_kospi_episodes(
         security_master_snapshots=masters,
