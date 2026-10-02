@@ -75,8 +75,8 @@ Canonical gates:
 Only `PASS` closes a gate. All six passing closes only the source contract for the declared scope; it does not authorize Alpha/Final-Judge promotion, sealed holdout or live trading.
 
 Current states remain:
-- **Security/status:** A PARTIAL, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PARTIAL; `judge_security_status_ready=false`.
-- **Investor flow:** A PARTIAL, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PARTIAL; `feature_performance_testing_authorized=false`.
+- **Security/status:** A PARTIAL, B PARTIAL, C BLOCKED, D BLOCKED, E PARTIAL, F PASS (personal/internal research scope only); `judge_security_status_ready=false`.
+- **Investor flow:** A PARTIAL, B PARTIAL, C BLOCKED, D PARTIAL, E PARTIAL, F PASS (personal/internal research scope only); `feature_performance_testing_authorized=false`.
 
 Machine-readable public evidence remains version `2026-10-02.v2`, fingerprint:
 `39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380`.
@@ -113,7 +113,7 @@ Latest authenticated OpenAPI plumbing/schema reference: production Smoke Action 
 
 ## KRX low-frequency internal-research reply evidence
 
-The user supplied the KRX email reply plus header metadata. The sender was given as `krxdata@krx.co.kr`, reply time `2026-10-02T14:40:00+09:00`, and the body explicitly states that personal, non-commercial/internal-research users may perform low-frequency **programmatic and automated querying** without a separate approval procedure. Recipient identity is redacted. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; the redacted normalized record SHA-256 is `c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38`. The project now sets `automated_collection_authorized=true` only for that stated low-frequency scope.
+The latest KRX permission evidence v3 states that personal research may use complete full-historical-period download/query plus programmatic/automated low- and high-frequency collection without a separate approval procedure, while external leakage, sale and third-party distribution are prohibited. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; latest reply provenance is bound by redacted normalized SHA-256 `2aa1c2a08c108d9f71e4b5027fb697e593f2f874268567faa0d62c3ac95c3c39`. The exact timestamp of the latest v3 reply was not re-provided and is intentionally left unknown. Gate F is now PASS for the declared personal/internal-research scope.
 
 ## Data Marketplace automation-permission boundary
 
@@ -132,6 +132,10 @@ Action `36976085781` completed successfully under explicit one-run consent. The 
 ## Authenticated KRX investor-flow tiny probe
 
 Action `36976873119` completed successfully under explicit one-run consent. `MDCSTAT02303` returned 3 rows for `005930` over `2026-09-21..2026-09-23` with the observed investor-category schema. Investor-flow Gate A is now `PARTIAL`; Gate B remains `PARTIAL`; Gate C remains `BLOCKED`; Gate D remains `PARTIAL`. Feature-performance testing remains unauthorized. Canonical evidence is `INDEXALERT_KRX_INVESTOR_FLOW_TINY_PROBE_EVIDENCE.md/.json`.
+
+## Frozen KRX historical acquisition plan
+
+`INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.md/.json` freezes the primary required source window `2015-06-15..2026-10-01` for KOSPI, preserving the existing long-history research protocol rather than silently expanding model evaluation. The plan defines identity reconstruction, 730-day halt chunks, calendar-year investor-flow chunks, PIT lineage, receipts/batches, private raw-data handling and bounded concurrency. KRX rights are confirmed, but actual bulk network execution remains separately gated by `research_v1_krx_historical_acquisition_preflight.py` and an exact user execution-consent sentinel.
 
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
@@ -274,7 +278,7 @@ Internal code cannot fabricate the still-missing full-history KRX coverage/PIT/b
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** basic-info/daily-trade OpenAPI connectivity and both Data Marketplace tiny probes are complete. Security/status and investor-flow Gate A are now `PARTIAL`. Remaining blockers are full official history, exact all-period schema/equivalence, stable security mapping, record-level PIT lineage, immutable receipts/batches and broader/bulk acquisition rights.
+1. **KRX authorization/data:** basic-info/daily-trade OpenAPI connectivity and both Data Marketplace tiny probes are complete. KRX v3 permission now establishes full-history/high-frequency acquisition rights for personal research, so Gate F is PASS for that scope. Security/status and investor-flow Gate A remain `PARTIAL`. Remaining blockers are actual full-history technical coverage, exact all-period schema/equivalence, stable security mapping, record-level PIT lineage and immutable receipts/batches.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
