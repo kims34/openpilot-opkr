@@ -1,0 +1,43 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-IDENTITY-BINDING-PREP-2026-10-02-v1",
+  "observed_at": "2026-10-02T15:00:58.612087885Z",
+  "stage": "IDENTITY_STANDARD_CODE_BINDING",
+  "status": "PREPARED_NETWORK_EXECUTION_NOT_AUTHORIZED",
+  "railway": {
+    "service_name": "indexalert-krx-historical-worker",
+    "deployment_id": "6d0081a8-933b-4e2e-bd83-4753d2a75799",
+    "source_revision": "ab09e9a0aabf5bcaba53372b6f48b34796715e5d",
+    "dockerfile": "Dockerfile.krx-historical-worker",
+    "mode": "PREPARE_IDENTITY_STANDARD_CODE_BINDING"
+  },
+  "preparation": {
+    "task_count": 145,
+    "task_count_by_kind": {
+      "security_master": 145
+    },
+    "task_set_fingerprint_sha256": "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9",
+    "private_task_manifest_metadata_sha256": "940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c",
+    "private_task_manifest_relpath": "task_manifests/identity-standard-code-binding-v1.json",
+    "phase_status": "PENDING",
+    "phase_complete": false,
+    "network_request_attempted": false,
+    "security_identifiers_emitted": false,
+    "raw_rows_emitted": false
+  },
+  "authority": {
+    "stage_specific_user_authorization_received": false,
+    "prior_identity_seed_authorization_reusable": false,
+    "expected_scope_network_execution_authorized": false,
+    "per_security_history_execution_authorized": false,
+    "status_economics_execution_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "post_prepare_lock": {
+    "start_command_restored_to_preflight_only": true,
+    "bulk_execution_sentinel_active": false,
+    "binding_stage_sentinel_active": false
+  }
+}
