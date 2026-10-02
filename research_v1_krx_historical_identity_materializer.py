@@ -361,10 +361,6 @@ def _merge_master_snapshots_fail_closed(
     for label, frame in (("seed", seed), ("binding", binding)):
         missing = set(key_cols + identity_cols) - set(frame.columns)
         _require(not missing, f"{label} master missing merge columns: {sorted(missing)}")
-        _require(
-            not frame.duplicated(key_cols).any(),
-            f"duplicate symbol inside {label} security-master snapshot",
-        )
 
     seed["decision_date"] = pd.to_datetime(
         seed["decision_date"], errors="coerce"
@@ -393,6 +389,11 @@ def _merge_master_snapshots_fail_closed(
         not binding[["decision_date", "listing_date_official"]].isna().any().any(),
         "binding master has invalid merge date",
     )
+    for label, frame in (("seed", seed), ("binding", binding)):
+        _require(
+            not frame.duplicated(key_cols).any(),
+            f"duplicate symbol inside {label} security-master snapshot",
+        )
 
     seed_indexed = seed.set_index(key_cols, drop=False)
     binding_indexed = binding.set_index(key_cols, drop=False)
