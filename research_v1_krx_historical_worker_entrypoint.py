@@ -2,8 +2,9 @@
 
 Default behavior is network-free preflight only.
 
-Actual network execution is intentionally limited to the first two frozen
-identity stages and requires ALL of:
+Actual network execution is limited to explicitly implemented frozen stages
+(identity seed, identity binding and prepared per-security history) and requires
+ALL of:
 - --execute-identity-seed OR --execute-identity-standard-code-binding
 - exact v3 bulk-acquisition consent sentinel in the environment
 - dedicated worker role
@@ -44,13 +45,14 @@ from research_v1_krx_historical_identity_materializer import (
     build_per_security_history_tasks_from_private_identity,
 )
 from research_v1_krx_historical_request_executor import execute_request_spec
-from research_v1_krx_private_store import write_private_json
+from research_v1_krx_private_store import read_private_json, write_private_json
 
 
 CLIENT_REVISION = "krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 PRIVATE_BATCH_REL = "batches/identity-seed-v3.json"
 IDENTITY_BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
 PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
+PER_SECURITY_BATCH_REL = "batches/per-security-history-v3.json"
 
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
@@ -505,6 +507,224 @@ def prepare_per_security_history(
     }
 
 
+def load_frozen_per_security_history_tasks(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+    task_builder=build_per_security_history_tasks_from_private_identity,
+) -> list[dict[str, Any]]:
+    """Load and verify the prepared private PER_SECURITY_HISTORY task set."""
+    worktree = git_worktree or str(Path.cwd().resolve())
+    regenerated = task_builder(root, git_worktree=worktree)
+    regenerated_summary = public_task_summary(regenerated)
+    manifest = read_private_json(
+        root,
+        PER_SECURITY_TASK_MANIFEST_REL,
+        git_worktree=worktree,
+    )["value"]
+
+    if manifest.get("plan_id") != PLAN_ID:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security task manifest plan drift"
+        )
+    if manifest.get("execution_contract_id") != EXECUTION_CONTRACT_ID:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security task manifest execution contract drift"
+        )
+    if manifest.get("phase") != "PER_SECURITY_HISTORY":
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security task manifest phase drift"
+        )
+    if int(manifest.get("task_count", -1)) != len(regenerated):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security task manifest count drift"
+        )
+    if (
+        manifest.get("task_set_fingerprint_sha256")
+        != regenerated_summary["task_set_fingerprint_sha256"]
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security task manifest fingerprint drift"
+        )
+
+    frozen = list(manifest.get("tasks") or [])
+    if len(frozen) != len(regenerated):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security private task rows missing"
+        )
+    frozen_ids = [str(row.get("task_id") or "") for row in frozen]
+    regenerated_ids = [str(row.get("task_id") or "") for row in regenerated]
+    if frozen_ids != regenerated_ids:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security private task ordering/content drift"
+        )
+
+    # Re-initialize only to verify that the persisted phase state is bound to
+    # exactly this frozen task set. Existing state with any drift fails closed.
+    initialize_phase_state(
+        root=root,
+        phase="PER_SECURITY_HISTORY",
+        tasks=frozen,
+        git_worktree=worktree,
+    )
+    return frozen
+
+
+def execute_per_security_history(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    executor=execute_request_spec,
+    task_loader=load_frozen_per_security_history_tasks,
+    evaluation_time: datetime | None = None,
+) -> dict[str, Any]:
+    """Execute only the already-prepared PER_SECURITY_HISTORY task set.
+
+    This is a bulk network stage. It always re-runs the full historical
+    acquisition preflight, including exact user bulk-consent sentinel, dedicated
+    worker isolation, private storage and credential presence.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["historical_acquisition_network_execution_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "historical acquisition preflight blocked: "
+            + ",".join(preflight["missing_requirements"])
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+    tasks = task_loader(root, git_worktree=worktree)
+    summary = public_task_summary(tasks)
+    if summary["task_count"] <= 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security history frozen task set is empty"
+        )
+
+    completed = []
+    resumed = 0
+    network_attempt_count = 0
+    now = evaluation_time or datetime.now(timezone.utc)
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise KRXHistoricalWorkerEntrypointError(
+            "evaluation_time must be timezone-aware"
+        )
+
+    for ordinal, task in enumerate(tasks, start=1):
+        result = executor(
+            spec=task["request_spec"],
+            environment=env,
+            git_worktree=worktree,
+            client_revision=CLIENT_REVISION,
+            evaluation_time=now,
+        )
+        if not result.get("completed"):
+            raise KRXHistoricalWorkerEntrypointError(
+                f"per-security history task {ordinal} did not complete"
+            )
+        if result.get("resumed"):
+            resumed += 1
+        if result.get("network_request_attempted"):
+            network_attempt_count += 1
+        record_task_completion(
+            root=root,
+            phase="PER_SECURITY_HISTORY",
+            task_id=task["task_id"],
+            worker_result=result,
+            git_worktree=worktree,
+        )
+        completed.append(
+            {
+                "ordinal": ordinal,
+                "task_id": task["task_id"],
+                "request_metadata_sha256": result["request_metadata_sha256"],
+                "raw_object_sha256": result["raw_object_sha256"],
+                "raw_bytes_size": int(result["raw_bytes_size"]),
+                "response_rows": int(result["response_rows"]),
+                "retrieved_at": result["retrieved_at"],
+                "response_schema_sha256": result["response_schema_sha256"],
+                "response_payload_sha256": result["response_payload_sha256"],
+                "receipt_fingerprint_sha256": result[
+                    "receipt_fingerprint_sha256"
+                ],
+                "resumed": bool(result.get("resumed")),
+            }
+        )
+
+    final_phase_state = require_phase_complete(
+        root=root,
+        phase="PER_SECURITY_HISTORY",
+        git_worktree=worktree,
+    )
+    safe_phase = public_phase_summary(final_phase_state)
+    if (
+        safe_phase["completed_task_count"] != len(tasks)
+        or not safe_phase["phase_complete"]
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security history phase did not reach exact COMPLETE state"
+        )
+
+    private_batch = {
+        "batch_version": "2026-10-02.per-security-history-v3",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "phase": "PER_SECURITY_HISTORY",
+        "task_set_fingerprint_sha256": summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "task_count": len(tasks),
+        "completed_task_count": len(completed),
+        "resumed_task_count": resumed,
+        "network_request_attempt_count": network_attempt_count,
+        "phase_state_fingerprint_sha256": safe_phase[
+            "task_set_fingerprint_sha256"
+        ],
+        "tasks": completed,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+    batch_write = write_private_json(
+        root,
+        PER_SECURITY_BATCH_REL,
+        private_batch,
+        git_worktree=worktree,
+    )
+
+    return {
+        "mode": "EXECUTE_PER_SECURITY_HISTORY",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "task_count": len(tasks),
+        "completed_task_count": len(completed),
+        "resumed_task_count": resumed,
+        "network_request_attempt_count": network_attempt_count,
+        "task_set_fingerprint_sha256": summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "private_batch_metadata_sha256": batch_write["metadata_sha256"],
+        "private_batch_relpath": PER_SECURITY_BATCH_REL,
+        "phase_status": safe_phase["status"],
+        "phase_complete": safe_phase["phase_complete"],
+        "phase_completed_task_count": safe_phase["completed_task_count"],
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="IndexAlert KRX historical acquisition dedicated worker"
@@ -536,6 +756,15 @@ def _parser() -> argparse.ArgumentParser:
             "PER_SECURITY_HISTORY task set."
         ),
     )
+    group.add_argument(
+        "--execute-per-security-history",
+        action="store_true",
+        help=(
+            "Bulk network stage: execute only the already-prepared immutable "
+            "PER_SECURITY_HISTORY task set. Requires exact historical bulk "
+            "execution consent and every frozen worker preflight gate."
+        ),
+    )
     return parser
 
 
@@ -547,6 +776,8 @@ def main(argv: list[str] | None = None) -> int:
         result = execute_identity_standard_code_binding()
     elif args.prepare_per_security_history:
         result = prepare_per_security_history()
+    elif args.execute_per_security_history:
+        result = execute_per_security_history()
     else:
         result = preflight_only()
     print("INDEXALERT_KRX_HIST_WORKER=" + json.dumps(result, ensure_ascii=False))
