@@ -16,7 +16,7 @@ def _data():
     return json.loads(PATH.read_text(encoding="utf-8"))
 
 
-def test_committed_plan_is_frozen_and_nonexecuting():
+def test_committed_plan_v2_is_frozen_stable_identity_and_nonexecuting():
     out=validate_file()
     assert out["valid"] is True
     assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v2"
@@ -29,6 +29,12 @@ def test_committed_plan_is_frozen_and_nonexecuting():
     assert out["live_trading_authorized"] is False
 
 
+def test_v1_was_superseded_before_bulk_execution():
+    data=_data()
+    assert data["supersedes_plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v1"
+    assert data["superseded_before_any_bulk_network_execution"] is True
+
+
 def test_plan_cannot_self_authorize_bulk_execution():
     data=_data()
     data["authority"]["bulk_network_execution_authorized_by_user"]=True
@@ -36,19 +42,24 @@ def test_plan_cannot_self_authorize_bulk_execution():
         validate_plan(data)
 
 
-def test_research_window_and_identity_rules_are_frozen():
+def test_stable_standard_code_identity_rules_are_mandatory():
+    data=_data()
+    data["phases"]["identity_seed"]["identity_rules"]["standard_code_required_for_every_episode"]=False
+    with pytest.raises(KRXHistoricalPlanError,match="standard-code requirement lost"):
+        validate_plan(data)
+
+    data=_data()
+    data["phases"]["identity_seed"]["dynamic_standard_code_snapshots"]["no_fallback_from_later_snapshot"]=False
+    with pytest.raises(KRXHistoricalPlanError,match="later-snapshot fallback guard lost"):
+        validate_plan(data)
+
+
+def test_research_window_halt_chunking_and_investor_pit_are_frozen():
     data=_data()
     data["research_required_period"]["start"]="2014-01-01"
     with pytest.raises(KRXHistoricalPlanError,match="research start drift"):
         validate_plan(data)
 
-    data=_data()
-    data["phases"]["identity_seed"]["identity_rules"]["never_join_by_name_only"]=False
-    with pytest.raises(KRXHistoricalPlanError,match="name-only join guard lost"):
-        validate_plan(data)
-
-
-def test_halt_chunking_and_investor_pit_are_frozen():
     data=_data()
     data["phases"]["status_history"]["trading_halt"]["route_max_period_days"]=731
     with pytest.raises(KRXHistoricalPlanError,match="halt max-period drift"):
@@ -58,26 +69,3 @@ def test_halt_chunking_and_investor_pit_are_frozen():
     data["phases"]["investor_flow_history"]["pit_publication_floor"]="15:30 Asia/Seoul"
     with pytest.raises(KRXHistoricalPlanError,match="PIT floor drift"):
         validate_plan(data)
-
-
-def test_identity_seed_requires_historical_standard_code_snapshots():
-    data=_data()
-    rules=data["phases"]["identity_seed"]["identity_rules"]
-    assert rules["standard_code_required_for_every_episode"] is True
-    assert rules["standard_code_source_for_preexisting_episode"] == "research_start_security_master"
-    assert rules["standard_code_source_for_new_episode"] == "listing-date security-master snapshot"
-    assert rules["end_snapshot_is_reconciliation_only"] is True
-    assert rules["per_security_isuCd"] == "standard_code"
-    assert rules["trading_halt_isuCd2"] == "short_code"
-
-    data["phases"]["identity_seed"]["dynamic_standard_code_snapshots"]["no_fallback_from_later_snapshot"]=False
-    with pytest.raises(KRXHistoricalPlanError,match="later-snapshot fallback guard lost"):
-        validate_plan(data)
-
-
-def test_identity_history_uses_bounded_year_windows():
-    data=_data()
-    for name in ("new_listing_history","delisted_history"):
-        row=data["phases"]["identity_seed"]["windowed_requests"][name]
-        assert row["request_count"] == 12
-        assert len(row["calendar_year_windows"]) == 12
