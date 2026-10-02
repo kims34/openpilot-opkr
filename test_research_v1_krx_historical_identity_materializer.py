@@ -240,7 +240,7 @@ def test_master_snapshot_overlap_conflict_fails_closed():
         m._merge_master_snapshots_fail_closed(seed, binding)
 
 
-def test_duplicate_key_after_short_code_normalization_still_fails_closed():
+def test_duplicate_key_after_short_code_normalization_dedupes_when_identity_matches():
     seed = pd.DataFrame([
         _normal_master_row(
             "2026-10-01",
@@ -259,14 +259,12 @@ def test_duplicate_key_after_short_code_normalization_still_fails_closed():
     ])
     binding = pd.DataFrame(columns=seed.columns)
 
-    with pytest.raises(
-        m.KRXHistoricalIdentityMaterializerError,
-        match="duplicate symbol inside seed security-master snapshot",
-    ):
-        m._merge_master_snapshots_fail_closed(seed, binding)
+    out = m._merge_master_snapshots_fail_closed(seed, binding)
+    assert len(out) == 1
+    assert out.iloc[0]["symbol"] == "005930"
 
 
-def test_duplicate_key_inside_one_master_source_still_fails_closed():
+def test_identity_equivalent_duplicate_rows_inside_one_source_are_deduped():
     row = _normal_master_row(
         "2026-10-01",
         "KR7005930003",
@@ -277,9 +275,32 @@ def test_duplicate_key_inside_one_master_source_still_fails_closed():
     seed = pd.DataFrame([row, row])
     binding = pd.DataFrame(columns=seed.columns)
 
+    out = m._merge_master_snapshots_fail_closed(seed, binding)
+    assert len(out) == 1
+
+
+def test_conflicting_duplicate_rows_inside_one_source_fail_closed():
+    seed = pd.DataFrame([
+        _normal_master_row(
+            "2026-10-01",
+            "KR7005930003",
+            "005930",
+            "1975-06-11",
+            "삼성전자",
+        ),
+        _normal_master_row(
+            "2026-10-01",
+            "KR7005939999",
+            "005930",
+            "1975-06-11",
+            "삼성전자",
+        ),
+    ])
+    binding = pd.DataFrame(columns=seed.columns)
+
     with pytest.raises(
         m.KRXHistoricalIdentityMaterializerError,
-        match="duplicate symbol inside seed security-master snapshot",
+        match="seed duplicate identity conflict: standard_code",
     ):
         m._merge_master_snapshots_fail_closed(seed, binding)
 
