@@ -26,6 +26,7 @@ def _evidence_json(*, reference=REF, state="APPROVED"):
             "intended_use_scope": "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION",
             "approval_state": state,
             "scope_statement": "Non-secret approval metadata for the declared tiny probe.",
+            "automated_collection_authorized": True,
             "evidence_document_sha256": "b" * 64,
             "captured_at": "2026-09-30T12:00:00+00:00",
             "valid_from": "2026-09-30T00:00:00+00:00",
