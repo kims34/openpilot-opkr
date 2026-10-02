@@ -15,6 +15,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     PER_SECURITY_CONSENT_SENTINEL,
     KRXHistoricalWorkerEntrypointError,
     diagnose_identity_master_code_shapes,
+    diagnose_new_listing_master_mapping,
     execute_identity_seed,
     execute_identity_standard_code_binding,
     execute_per_security_history,
@@ -84,6 +85,64 @@ def test_identity_code_shape_diagnostic_rejects_identifier_emission(tmp_path):
             summary_loader=lambda *args, **kwargs: {
                 "identifiers_emitted": True,
                 "raw_rows_emitted": False,
+                "network_request_attempted": False,
+            },
+        )
+
+
+def test_new_listing_mapping_diagnostic_is_network_free_without_execution_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+
+    out = diagnose_new_listing_master_mapping(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        summary_loader=lambda *args, **kwargs: {
+            "new_listing_episode_count": 10,
+            "exact_same_day_symbol_unique_count": 9,
+            "exact_same_day_symbol_missing_count": 1,
+            "exact_same_day_symbol_multiple_count": 0,
+            "identifiers_emitted": False,
+            "names_emitted": False,
+            "raw_rows_emitted": False,
+            "network_request_attempted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        },
+    )
+    assert out["mode"] == "DIAGNOSE_NEW_LISTING_MASTER_MAPPING"
+    assert out["summary"]["exact_same_day_symbol_missing_count"] == 1
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["names_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+
+
+def test_new_listing_mapping_diagnostic_rejects_identifier_or_name_emission(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+
+    with pytest.raises(KRXHistoricalWorkerEntrypointError, match="emitted identifiers"):
+        diagnose_new_listing_master_mapping(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            summary_loader=lambda *args, **kwargs: {
+                "identifiers_emitted": True,
+                "names_emitted": False,
+                "network_request_attempted": False,
+            },
+        )
+
+    with pytest.raises(KRXHistoricalWorkerEntrypointError, match="emitted names"):
+        diagnose_new_listing_master_mapping(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            summary_loader=lambda *args, **kwargs: {
+                "identifiers_emitted": False,
+                "names_emitted": True,
                 "network_request_attempted": False,
             },
         )
