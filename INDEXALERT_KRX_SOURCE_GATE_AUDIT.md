@@ -34,7 +34,7 @@ Overall: **OPEN — NOT ALL A-F PASS**
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_status_coverage.py` can exact-audit caller-attested `(snapshot_date, symbol, isu_cd)` scope, but no authorized full-period scope/history with stable full issue identity has been supplied. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | Status adapters require availability lineage, but complete historical event/publication/availability/ingestion evidence across all required status families is absent. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. Production Action `36956234911` freezes exact-revision OpenAPI response fingerprints, while `research_v1_krx_data_marketplace_route_map.py` fail-closed validates the pinned candidate BLD map. Neither is a full authenticated historical acquisition receipt/batch chain, so Gate E remains `PARTIAL`. |
-| Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | The 2026-10-02 KRX reply identifies the sender as `krxdata@krx.co.kr` in user-provided email-header metadata and explicitly states that low-frequency **programmatic and automated querying** is permitted for personal non-commercial/internal research without a separate approval procedure. This materially strengthens intended-use rights. Gate F remains `PARTIAL` because bulk/high-frequency collection, redistribution/commercial use, exact BLD-specific rights and full-history acquisition rights are not established. |
+| Gate F — `INTENDED_USE_RIGHTS` | `PASS` | KRX permission evidence v3 explicitly permits personal research use, complete full-historical-period download/query, programmatic/automated querying, and both low- and high-frequency collection without a separate approval procedure. It explicitly forbids external leakage, sale and third-party distribution. For the declared personal/internal-research scope, Gate F is PASS. This PASS does not apply to redistribution, sale, third-party delivery or a future commercial service. |
 
 Current verdict: `judge_security_status_ready=false`.
 
@@ -51,7 +51,7 @@ Overall: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_investor_flow_coverage.py` exact-compares caller-attested `(event_date, symbol, isu_cd)` scope to validated observed keys and never invents dates/universe/zeros. No authorized full-period scope/history exists yet. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `PARTIAL` | `research_v1_krx_investor_flow_lineage.py` enforces timezone-aware chronology, day-D publication floor >=20:00 KST, current public-contract fingerprint, one source contract and decision-time availability. No real full historical dataset has passed it. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Probe/public evidence, structured authorization-evidence validation, network-free readiness, push-safe workflow isolation, immutable acquisition receipts, batch provenance, PIT and exact coverage validators, and `research_v1_krx_source_data_admission.py` are fail-closed. Bulk authenticated historical retrieval and real-data admission evidence remain unavailable. |
-| Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | The KRX reply explicitly covers low-frequency programmatic/automated querying for personal non-commercial/internal research without a separate approval procedure, so the automation-permission prerequisite is satisfied for the stated scope. Gate F remains `PARTIAL` because exact `MDCSTAT02303`/BLD-specific rights, bulk/full-history acquisition rights, redistribution and commercial use are not established. |
+| Gate F — `INTENDED_USE_RIGHTS` | `PASS` | KRX permission evidence v3 explicitly covers complete full-history download/query and unrestricted low/high-frequency programmatic/automated collection for personal research, while expressly prohibiting external leakage, sale and third-party distribution. For the declared internal-research investor-flow scope, Gate F is PASS. Commercial/redistribution use remains outside scope. |
 
 Current verdict: investor-flow feature-performance experiments remain blocked.
 
@@ -101,13 +101,13 @@ Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`.
 
 The current KRX homepage terms make ordinary membership/account access insufficient for automated collection. The subsequent 2026-10-02 KRX reply explicitly permits low-frequency programmatic/automated querying for the stated personal, non-commercial/internal-research scope. Structured permission records validate for both source families. Network-free Action `36973737546` established readiness; authenticated status Action `36976085781` and investor-flow Action `36976873119` subsequently succeeded under separate explicit one-run consent.
 
-### 5.4 User-provided low-frequency internal-research permission reply
+### 5.4 User-provided full-history/high-frequency personal-research permission reply
 
 Canonical record: `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; fail-closed validator: `research_v1_krx_permission_reply_evidence.py`.
 
 The original screenshot is fingerprinted but not stored in the repository. The user subsequently supplied the email subject, sender `krxdata@krx.co.kr`, reply time `2026-10-02T14:40:00+09:00`, and the full reply text explicitly including `프로그램을 통한 조회 및 자동 조회`. Recipient identity is intentionally redacted. The redacted normalized email-record SHA-256 is `c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38`.
 
-This allows `automated_collection_authorized=true` for the stated low-frequency personal/non-commercial/internal-research scope and makes the permission-evidence layer eligible for a tiny authenticated probe. It does not authorize bulk history or make Gate A PASS.
+This now establishes `automated_collection_authorized=true`, `high_frequency_collection_authorized=true` and `full_historical_download_rights_authorized=true` for the declared personal/non-commercial/internal-research scope. It also explicitly prohibits external leakage, sale and third-party distribution. Gate F is PASS for that scope. Rights evidence does not make Gate A/B/C/D/E PASS and does not authorize performance testing, holdout or live trading.
 
 ### 5.5 Authenticated status tiny probe
 
@@ -195,7 +195,7 @@ Therefore no authorization/readiness/infrastructure-only success can skip the Re
 - complete historical status/investor-flow data;
 - independently attested full expected scope/stable security mapping;
 - record-level historical PIT timestamps/availability;
-- exact rights for the selected route/use scope;
+- exact personal/internal-research rights are now established by KRX permission v3; any future external/commercial/redistribution scope requires separate rights evidence;
 - actual execution/recovery economics where status events affect tradability/liquidation.
 
 The presence of structured-evidence validators, readiness, preflight, workflow consent controls, receipts, batches, validators and admission code does not change A-F states by itself.
