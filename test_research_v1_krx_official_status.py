@@ -20,6 +20,7 @@ from research_v1_krx_official_status import (
 def _basic():
     return pd.DataFrame([
         {
+            "ISU_CD": "KR7005930003",
             "ISU_SRT_CD": "005930",
             "ISU_NM": "삼성전자",
             "MKT_TP_NM": "KOSPI",
@@ -28,6 +29,7 @@ def _basic():
             "LIST_DD": "1975/06/11",
         },
         {
+            "ISU_CD": "KR7005931001",
             "ISU_SRT_CD": "005935",
             "ISU_NM": "삼성전자우",
             "MKT_TP_NM": "KOSPI",
@@ -94,6 +96,7 @@ def test_basic_info_uses_official_stock_type_not_symbol_name_heuristic():
         asof_date="2026-09-29",
         available_at="2026-09-29 20:00:00+09:00",
     ).set_index("symbol")
+    assert x.loc["005930", "standard_code"] == "KR7005930003"
     assert bool(x.loc["005930", "common_stock_identity_official"])
     assert not bool(x.loc["005935", "common_stock_identity_official"])
     assert bool(x["security_scope_identity_validated"].all())
@@ -186,3 +189,24 @@ def test_structural_coverage_never_claims_judge_ready_by_itself():
     assert out["identity_snapshot_end"] == "2026-09-29"
     assert out["identity_span_covers_requested_period"] is False
     assert out["identity_history_gap"] is True
+
+
+def test_basic_info_requires_standard_code():
+    bad = _basic().drop(columns=["ISU_CD"])
+    with pytest.raises(KRXOfficialStatusError, match="standard issue code"):
+        normalise_basic_info(
+            bad,
+            asof_date="2026-09-29",
+            available_at="2026-09-29 20:00:00+09:00",
+        )
+
+
+def test_basic_info_rejects_invalid_standard_code():
+    bad = _basic()
+    bad.loc[0, "ISU_CD"] = "005930"
+    with pytest.raises(KRXOfficialStatusError, match="invalid standard issue code"):
+        normalise_basic_info(
+            bad,
+            asof_date="2026-09-29",
+            available_at="2026-09-29 20:00:00+09:00",
+        )
