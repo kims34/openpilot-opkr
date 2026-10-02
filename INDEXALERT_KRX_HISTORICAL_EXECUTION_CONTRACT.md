@@ -15,7 +15,7 @@ Rights to acquire history are established, but those rights do not make the netw
 
 Bulk acquisition must run in a dedicated one-shot worker. The exact worker role must be `INDEXALERT_KRX_HIST_WORKER_ROLE=DEDICATED_ONE_SHOT`. If `RAILWAY_SERVICE_NAME` identifies `indexalert-runtime`, `indexalert-backend` or `indexalert-push`, preflight must fail even when credentials, storage and consent are otherwise valid. The production public web process must never run the bulk job.
 
-Before any network request the worker must pass the exact network-free v3 historical-acquisition preflight bound to execution contract v2, including the exact execution sentinel:
+Before any network request the worker must pass the exact network-free v3 historical-acquisition preflight bound to execution contract v3, including the exact execution sentinel:
 
 `I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3`
 
