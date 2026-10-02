@@ -41,10 +41,15 @@ def test_route_or_commit_drift_is_rejected():
         validate_route_map(data)
 
 
-def test_cleanup_route_cannot_silently_be_promoted():
+def test_cleanup_route_cannot_invent_historical_window_semantics():
     data = _data()
-    data["routes"]["cleanup_trading"]["mapping_state"] = "APPROVED"
-    with pytest.raises(KRXRouteMapError, match="cleanup route must remain provisional"):
+    data["routes"]["cleanup_trading"]["historical_date_filter_verified"] = True
+    with pytest.raises(KRXRouteMapError, match="historical-window semantics illegally promoted"):
+        validate_route_map(data)
+
+    data = _data()
+    data["routes"]["cleanup_trading"]["required"] = ["strtDd", "endDd"]
+    with pytest.raises(KRXRouteMapError, match="cleanup request contract drift"):
         validate_route_map(data)
 
 
