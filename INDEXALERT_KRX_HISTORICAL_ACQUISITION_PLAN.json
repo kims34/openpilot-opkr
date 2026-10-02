@@ -1,0 +1,195 @@
+{
+  "schema_version": "1",
+  "plan_id": "INDEXALERT-KRX-HIST-ACQ-v1",
+  "frozen_date": "2026-10-02",
+  "network_execution_authorized": false,
+  "research_required_period": {
+    "start": "2015-06-15",
+    "end": "2026-10-01",
+    "market": "KOSPI",
+    "rationale": "Matches the frozen long-history research protocol start; acquiring earlier source history must not silently change the model research/evaluation window."
+  },
+  "rights": {
+    "permission_evidence_id": "INDEXALERT-KRX-PERMISSION-REPLY-2026-10-02-v3",
+    "full_historical_download_rights_authorized": true,
+    "high_frequency_collection_authorized": true,
+    "automated_collection_authorized": true,
+    "redistribution_authorized": false,
+    "external_sale_authorized": false,
+    "external_leakage_authorized": false
+  },
+  "privacy_and_storage": {
+    "raw_krx_rows_private_research_only": true,
+    "raw_rows_must_not_be_committed_to_git": true,
+    "raw_rows_must_not_be_uploaded_as_public_actions_artifacts": true,
+    "actions_logs_may_emit_metadata_only": true,
+    "every_raw_object_requires_sha256": true,
+    "every_request_requires_receipt": true,
+    "every_batch_requires_manifest": true
+  },
+  "phases": {
+    "identity_seed": {
+      "description": "Reconstruct historical KOSPI listing episodes before any per-security status/investor collection.",
+      "requests": [
+        {
+          "name": "current_listed_identity",
+          "bld": "dbms/MDC/STAT/standard/MDCSTAT01901",
+          "method": "json",
+          "request_count": "1",
+          "purpose": "current standard/short-code mapping only"
+        },
+        {
+          "name": "new_listing_history",
+          "bld": "dbms/MDC/STAT/issue/MDCSTAT20001",
+          "method": "csv",
+          "date_range": [
+            "2015-06-15",
+            "2026-10-01"
+          ],
+          "request_count": "1",
+          "purpose": "listing episodes; pinned client CSV route has no declared period ceiling"
+        },
+        {
+          "name": "delisted_history",
+          "bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
+          "method": "csv",
+          "date_range": [
+            "2015-06-15",
+            "2026-10-01"
+          ],
+          "request_count": "1",
+          "purpose": "delisted episodes and cleanup periods"
+        }
+      ],
+      "identity_rules": {
+        "market_filter": "KOSPI only",
+        "never_join_by_name_only": true,
+        "episode_key": "market|short_code|listing_date",
+        "current_standard_code_may_enrich_current_episode": true,
+        "overlapping_same_short_code_episodes_fail_closed": true,
+        "missing_listing_date_for_historical_episode_fail_closed": true
+      }
+    },
+    "status_history": {
+      "cleanup_trading": {
+        "bld": "dbms/MDC/STAT/issue/MDCSTAT23701",
+        "method": "json",
+        "scope": "all market then filter KOSPI",
+        "project_chunking": "calendar-year bounded windows",
+        "expected_calendar_windows": 12,
+        "route_limit_status": "not formally frozen; one-year project chunks chosen for bounded reproducibility"
+      },
+      "trading_halt": {
+        "bld": "dbms/MDC/STAT/issue/MDCSTAT21301",
+        "method": "json",
+        "scope": "per historical security episode",
+        "route_max_period_days": 730,
+        "fixed_calendar_chunks": [
+          [
+            "2015-06-15",
+            "2017-06-13"
+          ],
+          [
+            "2017-06-14",
+            "2019-06-13"
+          ],
+          [
+            "2019-06-14",
+            "2021-06-12"
+          ],
+          [
+            "2021-06-13",
+            "2023-06-12"
+          ],
+          [
+            "2023-06-13",
+            "2025-06-11"
+          ],
+          [
+            "2025-06-12",
+            "2026-10-01"
+          ]
+        ],
+        "request_formula": "sum over security episodes of intersecting 730-day chunks; never query outside the episode lifetime"
+      },
+      "delisted_price_economics": {
+        "bld": "dbms/MDC/STAT/issue/MDCSTAT23902",
+        "method": "csv",
+        "scope": "delisted KOSPI episodes only",
+        "execution_phase": "after delisted/cleanup events are known",
+        "request_formula": "one bounded event-window request per affected delisted episode unless route behavior requires smaller deterministic chunks"
+      }
+    },
+    "investor_flow_history": {
+      "bld": "dbms/MDC/STAT/standard/MDCSTAT02303",
+      "method": "csv",
+      "scope": "per historical KOSPI security episode",
+      "project_chunking": "calendar-year bounded windows intersected with listing episode",
+      "expected_calendar_windows_if_active_full_period": 12,
+      "route_max_period_days": "not established; project uses <= one-calendar-year windows instead of assuming an undocumented maximum",
+      "pit_publication_floor": "20:00 Asia/Seoul",
+      "request_formula": "sum over security episodes of intersecting calendar-year chunks",
+      "decision_rule": "day-D final investor-flow values can enter only a later decision after the publication floor"
+    },
+    "lineage_and_admission": {
+      "request_receipt_fields": [
+        "source_family",
+        "access_route",
+        "bld",
+        "method",
+        "request_params_sha256",
+        "response_payload_sha256",
+        "response_schema_sha256",
+        "retrieved_at",
+        "http_status_or_transport_status",
+        "row_count",
+        "batch_id"
+      ],
+      "normalized_lineage_fields": [
+        "event_time",
+        "published_at",
+        "available_at",
+        "ingested_at",
+        "historical_security_episode_id",
+        "source_batch_id",
+        "source_object_sha256"
+      ],
+      "fail_closed_conditions": [
+        "unresolved security episode",
+        "overlapping identity episodes",
+        "missing request receipt",
+        "missing response hash",
+        "row outside declared request window",
+        "available_at after consuming decision timestamp",
+        "unreconciled duplicate source rows",
+        "missing expected trading sessions where the source contract requires a row"
+      ]
+    }
+  },
+  "request_count_formula": {
+    "identity_seed_fixed_requests": 3,
+    "cleanup_year_windows": 12,
+    "trading_halt_max_chunks_per_full_period_episode": 6,
+    "investor_flow_max_year_chunks_per_full_period_episode": 12,
+    "total_before_delisted_price": "15 + 18*N_active_full_period_equivalent, reduced by episode-window intersections",
+    "note": "N is not guessed; it must be produced by the identity-seed phase."
+  },
+  "operational_safety": {
+    "default_concurrency": 4,
+    "max_concurrency_without_new_plan_version": 8,
+    "retry_429_5xx_with_exponential_backoff": true,
+    "no_retry_on_auth_or_schema_failure": true,
+    "checkpoint_after_each_request": true,
+    "resume_from_receipts_only": true,
+    "never_delete_prior_raw_object_on_retry": true
+  },
+  "authority": {
+    "rights_to_acquire": true,
+    "bulk_network_execution_authorized_by_user": false,
+    "source_gate_c_closed": false,
+    "source_gate_d_closed": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  }
+}
