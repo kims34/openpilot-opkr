@@ -39,11 +39,12 @@ def _resolved(path: str | os.PathLike[str]) -> Path:
     return p.resolve()
 
 
-def validate_private_root(
+def validate_private_root_path(
     root: str | os.PathLike[str],
     *,
     git_worktree: str | os.PathLike[str] | None = None,
 ) -> Path:
+    """Validate a candidate private root without creating or modifying it."""
     p = _resolved(root)
 
     parts = {part.lower() for part in p.parts}
@@ -58,7 +59,15 @@ def validate_private_root(
             pass
         else:
             raise KRXPrivateStoreError("private raw root must be outside the git worktree")
+    return p
 
+
+def validate_private_root(
+    root: str | os.PathLike[str],
+    *,
+    git_worktree: str | os.PathLike[str] | None = None,
+) -> Path:
+    p = validate_private_root_path(root, git_worktree=git_worktree)
     p.mkdir(parents=True, exist_ok=True)
     os.chmod(p, 0o700)
     return p
