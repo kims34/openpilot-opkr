@@ -161,5 +161,13 @@ def test_canonical_source_docs_freeze_structured_authorization_evidence_boundary
         )
 
     assert "opaque approval reference is not validated evidence" in contract
-    assert "Gate A remains BLOCKED" in status
-    assert "Gate A remains BLOCKED" in handoff
+    # Authenticated, explicitly-consented tiny probes now establish route
+    # reachability for both declared Data Marketplace source families.  This
+    # may raise Gate A only to PARTIAL; full-history/source-contract closure
+    # remains separate and Gate A must never be inferred PASS from a tiny probe.
+    assert "**Security/status:** A PARTIAL" in status
+    assert "**Investor flow:** A PARTIAL" in status
+    assert "Security/status: A PARTIAL" in handoff
+    assert "Investor flow: A PARTIAL" in handoff
+    assert "Gate A" in status and "PARTIAL" in status
+    assert "Gate A" in handoff and "PARTIAL" in handoff
