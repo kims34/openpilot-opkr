@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import unittest
@@ -37,6 +38,17 @@ class FakeSession:
 
 def row_for(expected):
     return {name: "x" for name in expected}
+
+
+def canonical_sha256(value):
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 class KrxReadonlyProbeTests(unittest.TestCase):
@@ -77,6 +89,24 @@ class KrxReadonlyProbeTests(unittest.TestCase):
         self.assertFalse(out["sealed_holdout_authorized"])
         self.assertFalse(out["live_trading_authorized"])
         self.assertNotIn(secret, json.dumps(out))
+        self.assertIsInstance(out["probe_observed_at"], str)
+        self.assertTrue(out["probe_observed_at"].endswith("+00:00"))
+
+        for name, spec in krx.ENDPOINTS.items():
+            row = out["endpoints"][name]
+            expected_payload = {"OutBlock_1": [row_for(spec["expected_fields"])]}
+            self.assertEqual(
+                row["response_schema_sha256"],
+                canonical_sha256(sorted(spec["expected_fields"])),
+            )
+            self.assertEqual(
+                row["response_payload_sha256"],
+                canonical_sha256(expected_payload),
+            )
+            self.assertIsInstance(row["observed_at"], str)
+            self.assertTrue(row["observed_at"].endswith("+00:00"))
+            self.assertEqual(len(row["response_schema_sha256"]), 64)
+            self.assertEqual(len(row["response_payload_sha256"]), 64)
 
         self.assertEqual(len(session.calls), 2)
         for method, _, kwargs in session.calls:
