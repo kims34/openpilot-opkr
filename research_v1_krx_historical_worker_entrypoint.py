@@ -2,18 +2,18 @@
 
 Default behavior is network-free preflight only.
 
-Actual network execution is intentionally limited to the first frozen stage
-(IDENTITY_SEED) and requires ALL of:
-- --execute-identity-seed
+Actual network execution is intentionally limited to the first two frozen
+identity stages and requires ALL of:
+- --execute-identity-seed OR --execute-identity-standard-code-binding
 - exact v3 bulk-acquisition consent sentinel in the environment
 - dedicated worker role
 - non-public Railway service identity
 - safe private persistent raw directory
 - KRX_ID / KRX_PW / KRX_AUTH_KEY
 
-Later phases are not executable from this entrypoint yet. Identity reconstruction
-and exact listing-date master binding must complete before per-security history
-can be scheduled.
+Per-security history and later phases are not executable from this entrypoint
+yet. Identity seed and exact listing-date master binding must complete before
+historical episodes can be reconstructed and per-security history scheduled.
 """
 from __future__ import annotations
 
@@ -39,12 +39,16 @@ from research_v1_krx_historical_batch_state import (
     record_task_completion,
     require_phase_complete,
 )
+from research_v1_krx_historical_identity_materializer import (
+    build_identity_binding_tasks_from_private_seed,
+)
 from research_v1_krx_historical_request_executor import execute_request_spec
 from research_v1_krx_private_store import write_private_json
 
 
 CLIENT_REVISION = "krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 PRIVATE_BATCH_REL = "batches/identity-seed-v3.json"
+IDENTITY_BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
 
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
@@ -251,16 +255,175 @@ def execute_identity_seed(
     }
 
 
+def execute_identity_standard_code_binding(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    executor=execute_request_spec,
+    task_builder=build_identity_binding_tasks_from_private_seed,
+    evaluation_time: datetime | None = None,
+) -> dict[str, Any]:
+    """Execute exact listing-date security-master requests after seed completion."""
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["historical_acquisition_network_execution_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "historical acquisition preflight blocked: "
+            + ",".join(preflight["missing_requirements"])
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    tasks = task_builder(
+        str(env["KRX_PRIVATE_RAW_DIR"]),
+        git_worktree=worktree,
+    )
+    task_summary = public_task_summary(tasks)
+    if task_summary["task_count"] <= 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity standard-code binding task set is empty"
+        )
+
+    initialize_phase_state(
+        root=str(env["KRX_PRIVATE_RAW_DIR"]),
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        tasks=tasks,
+        git_worktree=worktree,
+    )
+
+    completed = []
+    resumed = 0
+    network_attempt_count = 0
+    now = evaluation_time or datetime.now(timezone.utc)
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise KRXHistoricalWorkerEntrypointError(
+            "evaluation_time must be timezone-aware"
+        )
+
+    for ordinal, task in enumerate(tasks, start=1):
+        result = executor(
+            spec=task["request_spec"],
+            environment=env,
+            git_worktree=worktree,
+            client_revision=CLIENT_REVISION,
+            evaluation_time=now,
+        )
+        if not result.get("completed"):
+            raise KRXHistoricalWorkerEntrypointError(
+                f"identity binding task {ordinal} did not complete"
+            )
+        if result.get("resumed"):
+            resumed += 1
+        if result.get("network_request_attempted"):
+            network_attempt_count += 1
+        record_task_completion(
+            root=str(env["KRX_PRIVATE_RAW_DIR"]),
+            phase="IDENTITY_STANDARD_CODE_BINDING",
+            task_id=task["task_id"],
+            worker_result=result,
+            git_worktree=worktree,
+        )
+        completed.append(
+            {
+                "ordinal": ordinal,
+                "task_id": task["task_id"],
+                "request_metadata_sha256": result["request_metadata_sha256"],
+                "raw_object_sha256": result["raw_object_sha256"],
+                "raw_bytes_size": int(result["raw_bytes_size"]),
+                "response_rows": int(result["response_rows"]),
+                "retrieved_at": result["retrieved_at"],
+                "response_schema_sha256": result["response_schema_sha256"],
+                "response_payload_sha256": result["response_payload_sha256"],
+                "receipt_fingerprint_sha256": result[
+                    "receipt_fingerprint_sha256"
+                ],
+                "resumed": bool(result.get("resumed")),
+            }
+        )
+
+    final_phase_state = require_phase_complete(
+        root=str(env["KRX_PRIVATE_RAW_DIR"]),
+        phase="IDENTITY_STANDARD_CODE_BINDING",
+        git_worktree=worktree,
+    )
+    safe_phase = public_phase_summary(final_phase_state)
+    if safe_phase["completed_task_count"] != len(tasks) or not safe_phase["phase_complete"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity standard-code binding phase did not reach exact COMPLETE state"
+        )
+
+    private_batch = {
+        "batch_version": "2026-10-02.identity-standard-code-binding-v3",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "phase": "IDENTITY_STANDARD_CODE_BINDING",
+        "task_set_fingerprint_sha256": task_summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "task_count": len(tasks),
+        "completed_task_count": len(completed),
+        "resumed_task_count": resumed,
+        "network_request_attempt_count": network_attempt_count,
+        "phase_state_fingerprint_sha256": safe_phase[
+            "task_set_fingerprint_sha256"
+        ],
+        "tasks": completed,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+    batch_write = write_private_json(
+        str(env["KRX_PRIVATE_RAW_DIR"]),
+        IDENTITY_BINDING_BATCH_REL,
+        private_batch,
+        git_worktree=worktree,
+    )
+
+    return {
+        "mode": "EXECUTE_IDENTITY_STANDARD_CODE_BINDING",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "task_count": len(tasks),
+        "completed_task_count": len(completed),
+        "resumed_task_count": resumed,
+        "network_request_attempt_count": network_attempt_count,
+        "task_set_fingerprint_sha256": task_summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "private_batch_metadata_sha256": batch_write["metadata_sha256"],
+        "private_batch_relpath": IDENTITY_BINDING_BATCH_REL,
+        "phase_status": safe_phase["status"],
+        "phase_complete": safe_phase["phase_complete"],
+        "phase_completed_task_count": safe_phase["completed_task_count"],
+        "raw_rows_emitted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="IndexAlert KRX historical acquisition dedicated worker"
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--execute-identity-seed",
         action="store_true",
         help=(
-            "Execute the fixed 27-request identity-seed stage. Without this "
-            "flag the command is network-free preflight only."
+            "Execute the fixed 27-request identity-seed stage. Without an "
+            "execute flag the command is network-free preflight only."
+        ),
+    )
+    group.add_argument(
+        "--execute-identity-standard-code-binding",
+        action="store_true",
+        help=(
+            "After IDENTITY_SEED is complete, execute one exact security-master "
+            "snapshot request per KOSPI common-stock listing date derived from "
+            "the private seed history."
         ),
     )
     return parser
@@ -270,6 +433,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.execute_identity_seed:
         result = execute_identity_seed()
+    elif args.execute_identity_standard_code_binding:
+        result = execute_identity_standard_code_binding()
     else:
         result = preflight_only()
     print("INDEXALERT_KRX_HIST_WORKER=" + json.dumps(result, ensure_ascii=False))
