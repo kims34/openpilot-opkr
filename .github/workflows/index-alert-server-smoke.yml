@@ -234,7 +234,7 @@ jobs:
               assert isinstance(row.get('shadow_validation'), dict), (key,row)
               assert isinstance(row.get('milestone_60'), dict), (key,row)
               assert row['milestone_60'].get('threshold') in (60, None), (key,row['milestone_60'])
-          print(json.dumps({'runtime_revision': status.get('runtime_revision'), 'status': by_id, 'push_health': push_health, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
+          print(json.dumps({'runtime_revision': status.get('runtime_revision'), 'krx': krx, 'status': by_id, 'push_health': push_health, 'movers': movers.get('sections')}, ensure_ascii=False, indent=2))
           PY
               validation_rc=$?
               set -e
