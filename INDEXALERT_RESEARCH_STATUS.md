@@ -111,6 +111,10 @@ Push research-probe workflows remain dry-run only. Separately, production OpenAP
 
 Latest authenticated OpenAPI plumbing/schema reference: production Smoke Action `36956234911` at server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5` succeeded and recorded sanitized KRX response metadata plus per-service schema/payload SHA-256 fingerprints. Existing broad source-governance integrity reference remains Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf`; documentation/handoff drift repairs later passed Action `36835918274`.
 
+### Pinned Data Marketplace route map
+
+`INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json` now freezes the exact third-party client candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902`, `MDCSTAT02303` and the still-provisional `MDCSTAT23701`. `research_v1_krx_data_marketplace_route_map.py` rejects route drift and any attempt to self-grant Gate A/B, holdout or live authority. This narrows the technical path but changes no A-F state because the project still lacks an authenticated exact status/investor response and route-specific rights evidence.
+
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
 Final Judge requires exact halt/delisting economics. Structural status-event consistency or daily price history is not sufficient.
@@ -252,7 +256,7 @@ Internal code cannot fabricate the still-missing exact KRX status/investor-flow 
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** authenticated OpenAPI plumbing is now proven for basic security-master/daily-trade services, but exact approved status-event and investor-flow route/products, route-specific structured authorization provenance, full official history, stable mapping and PIT/use-rights evidence remain open.
+1. **KRX authorization/data:** authenticated OpenAPI plumbing is proven for basic security-master/daily-trade services and the Data Marketplace BLD candidates are now pinned/fail-closed. The next unresolved step is authenticated exact status-event/investor-flow route proof with route-specific structured authorization evidence, followed by full official history, stable mapping and PIT/use-rights evidence.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
