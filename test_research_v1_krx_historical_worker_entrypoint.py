@@ -29,6 +29,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     prepare_per_security_history,
     prepare_status_economics,
     preflight_only,
+    status_per_security_history,
 )
 from research_v1_krx_private_store import write_raw_object
 
@@ -939,3 +940,62 @@ def test_prepare_status_economics_is_network_free_and_never_exact_fill_ready(tmp
     private_text = manifest.read_text(encoding="utf-8")
     assert "KR7111110000" in private_text
     assert '"exact_status_economics_ready":false' in private_text.replace(" ", "").replace("\n", "")
+
+
+def test_per_security_status_is_network_free_and_public_safe(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    state = {
+        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+        "execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+        "phase": "PER_SECURITY_HISTORY",
+        "status": "IN_PROGRESS",
+        "expected_task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "completed_task_count": 1583,
+        "failed_task_count": 0,
+        "task_set_fingerprint_sha256": PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+        "phase_complete": False,
+    }
+
+    out = status_per_security_history(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        state_loader=lambda *args, **kwargs: {"value": dict(state)},
+    )
+    assert out["mode"] == "STATUS_PER_SECURITY_HISTORY"
+    assert out["summary"]["expected_task_count"] == PER_SECURITY_EXPECTED_TASK_COUNT
+    assert out["summary"]["completed_task_count"] == 1583
+    assert out["summary"]["failed_task_count"] == 0
+    assert out["summary"]["phase_complete"] is False
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["feature_performance_testing_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+
+
+def test_per_security_status_rejects_frozen_scope_drift(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    state = {
+        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+        "execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+        "phase": "PER_SECURITY_HISTORY",
+        "status": "IN_PROGRESS",
+        "expected_task_count": PER_SECURITY_EXPECTED_TASK_COUNT - 1,
+        "completed_task_count": 0,
+        "failed_task_count": 0,
+        "task_set_fingerprint_sha256": PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+        "phase_complete": False,
+    }
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="expected task count drift",
+    ):
+        status_per_security_history(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            state_loader=lambda *args, **kwargs: {"value": dict(state)},
+        )
