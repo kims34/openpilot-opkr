@@ -137,6 +137,25 @@ Action `36976873119` completed successfully under explicit one-run consent. `MDC
 
 `INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.md/.json` freezes the primary required source window `2015-06-15..2026-10-01` for KOSPI, preserving the existing long-history research protocol rather than silently expanding model evaluation. The plan defines identity reconstruction, 730-day halt chunks, calendar-year investor-flow chunks, PIT lineage, receipts/batches, private raw-data handling and bounded concurrency. KRX rights are confirmed, but actual bulk network execution remains separately gated by `research_v1_krx_historical_acquisition_preflight.py` and an exact user execution-consent sentinel.
 
+## KRX historical worker implementation readiness
+
+Internal implementation for the future private full-history job is now materially complete through the first executable stage:
+
+- acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v3`;
+- execution contract: `INDEXALERT-KRX-HIST-EXEC-v3`;
+- exact historical identity/standard-code reconstruction and request planner;
+- raw-preserving Data Marketplace/OpenAPI fetch adapters;
+- content-addressed private raw store, receipt/manifest/checkpoint and verified resume;
+- canonical one-request executor;
+- staged batch orchestrator;
+- fail-closed private phase state;
+- preflight-first one-shot worker entrypoint;
+- dedicated worker Dockerfile and deployment contract `INDEXALERT-KRX-HIST-WORKER-DEPLOY-v1`.
+
+Latest integrated KRX integrity reference for the worker deployment boundary: Action `36997637052` at research revision `190d914e14190077d55b14de6f2637bf1abf5d90` succeeded.
+
+No bulk KRX network job has started. The public `indexalert-runtime` service is explicitly forbidden from running it. Before the first 27-request `IDENTITY_SEED` stage can execute, the project still requires a separate dedicated Railway worker, its own private persistent `/data` volume, worker-only KRX secrets, and a distinct explicit user bulk-execution consent. Initial worker deployment must remain preflight-only with the bulk consent environment variable absent.
+
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
 Final Judge requires exact halt/delisting economics. Structural status-event consistency or daily price history is not sufficient.
@@ -278,7 +297,7 @@ Internal code cannot fabricate the still-missing actual full-history KRX coverag
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** basic-info/daily-trade OpenAPI connectivity and both Data Marketplace tiny probes are complete. KRX v3 permission now establishes full-history/high-frequency acquisition rights for personal research, so Gate F is PASS for that scope. Security/status and investor-flow Gate A remain `PARTIAL`. Remaining blockers are actual full-history technical coverage, exact all-period schema/equivalence, stable security mapping, record-level PIT lineage and immutable receipts/batches.
+1. **KRX authorization/data:** basic-info/daily-trade OpenAPI connectivity, both Data Marketplace tiny probes, personal-research full-history/high-frequency rights, and the internal private historical-acquisition implementation are complete through a preflight-only dedicated-worker image. Gate F is PASS for the declared scope; Gate A remains PARTIAL. The next external step is provisioning a dedicated private Railway worker/volume and worker secrets, followed only after separate explicit bulk-execution consent by the 27-request identity seed. Full-history coverage, exact all-period schema/equivalence, stable security mapping, PIT lineage and immutable real acquisition receipts/batches remain open.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
