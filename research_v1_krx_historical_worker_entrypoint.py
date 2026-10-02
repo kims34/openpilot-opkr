@@ -43,6 +43,7 @@ from research_v1_krx_historical_batch_state import (
 from research_v1_krx_historical_identity_materializer import (
     build_identity_binding_tasks_from_private_seed,
     build_per_security_history_tasks_from_private_identity,
+    build_status_economics_tasks_from_private_identity,
 )
 from research_v1_krx_historical_request_executor import execute_request_spec
 from research_v1_krx_private_store import read_private_json, write_private_json
@@ -53,6 +54,7 @@ PRIVATE_BATCH_REL = "batches/identity-seed-v3.json"
 IDENTITY_BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
 PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
 PER_SECURITY_BATCH_REL = "batches/per-security-history-v3.json"
+STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
 
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
@@ -507,6 +509,113 @@ def prepare_per_security_history(
     }
 
 
+def prepare_status_economics(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    task_builder=build_status_economics_tasks_from_private_identity,
+) -> dict[str, Any]:
+    """Freeze KRX delisted-price context tasks without network access.
+
+    This phase never claims exact realized fill/recovery economics. It prepares
+    only official MDCSTAT23902 cleanup-window price context for episodes that
+    actually have an official cleanup interval.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics preparation blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics preparation blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics preparation blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+    tasks, event_summary = task_builder(root, git_worktree=worktree)
+    summary = public_task_summary(tasks)
+    if summary["task_count"] <= 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics price-context task set is empty; "
+            "exact status economics remains open"
+        )
+
+    state = initialize_phase_state(
+        root=root,
+        phase="STATUS_ECONOMICS",
+        tasks=tasks,
+        git_worktree=worktree,
+    )
+    safe_phase = public_phase_summary(state)
+
+    private_manifest = {
+        "manifest_version": "2026-10-02.status-economics-v3",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "phase": "STATUS_ECONOMICS",
+        "task_count": len(tasks),
+        "task_set_fingerprint_sha256": summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "event_summary": dict(event_summary),
+        "tasks": tasks,
+        "network_request_attempted": False,
+        "exact_status_economics_ready": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+    manifest_write = write_private_json(
+        root,
+        STATUS_ECONOMICS_TASK_MANIFEST_REL,
+        private_manifest,
+        git_worktree=worktree,
+    )
+
+    return {
+        "mode": "PREPARE_STATUS_ECONOMICS",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "task_count": int(summary["task_count"]),
+        "delisted_episode_count": int(event_summary["delisted_episode_count"]),
+        "cleanup_price_task_count": int(event_summary["cleanup_price_task_count"]),
+        "delisted_without_cleanup_interval_count": int(
+            event_summary["delisted_without_cleanup_interval_count"]
+        ),
+        "task_set_fingerprint_sha256": summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "private_task_manifest_metadata_sha256": manifest_write[
+            "metadata_sha256"
+        ],
+        "private_task_manifest_relpath": STATUS_ECONOMICS_TASK_MANIFEST_REL,
+        "phase_status": safe_phase["status"],
+        "phase_complete": safe_phase["phase_complete"],
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "exact_status_economics_ready": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def load_frozen_per_security_history_tasks(
     root: str,
     *,
@@ -765,6 +874,15 @@ def _parser() -> argparse.ArgumentParser:
             "execution consent and every frozen worker preflight gate."
         ),
     )
+    group.add_argument(
+        "--prepare-status-economics",
+        action="store_true",
+        help=(
+            "Network-free: after PER_SECURITY_HISTORY is complete, freeze "
+            "official cleanup-window MDCSTAT23902 price-context tasks. This "
+            "never claims exact realized fill/recovery economics."
+        ),
+    )
     return parser
 
 
@@ -778,6 +896,8 @@ def main(argv: list[str] | None = None) -> int:
         result = prepare_per_security_history()
     elif args.execute_per_security_history:
         result = execute_per_security_history()
+    elif args.prepare_status_economics:
+        result = prepare_status_economics()
     else:
         result = preflight_only()
     print("INDEXALERT_KRX_HIST_WORKER=" + json.dumps(result, ensure_ascii=False))
