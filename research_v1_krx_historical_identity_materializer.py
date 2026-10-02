@@ -658,9 +658,28 @@ def public_new_listing_master_mapping_summary(
         "missing_new_symbol_alphanumeric_6_count": 0,
         "same_day_listing_date_candidate_numeric_6_count": 0,
         "same_day_listing_date_candidate_alphanumeric_6_count": 0,
+        "missing_with_symbol_in_other_master_snapshot_count": 0,
+        "missing_with_symbol_in_later_master_snapshot_count": 0,
+        "missing_with_symbol_in_earlier_master_snapshot_count": 0,
+        "missing_with_symbol_in_research_end_master_count": 0,
+        "missing_with_consistent_later_standard_code_count": 0,
+        "missing_with_later_master_within_7d_count": 0,
+        "missing_with_later_master_after_7d_count": 0,
+        "new_listing_standard_code_column_present": False,
+        "missing_with_valid_history_standard_code_count": 0,
     }
 
     master_names_available = "name" in masters.columns
+    history_standard_col = next(
+        (
+            col
+            for col in ("ISU_CD", "표준코드", "표준종목코드", "standard_code")
+            if col in seed["new_listing_history"].columns
+        ),
+        None,
+    )
+    counts["new_listing_standard_code_column_present"] = history_standard_col is not None
+    raw_history = seed["new_listing_history"].copy()
     for row in new.itertuples(index=False):
         same_day = masters[
             masters["decision_date"].eq(row.listing_date)
@@ -711,6 +730,51 @@ def public_new_listing_master_mapping_summary(
                 counts["missing_with_same_day_name_candidate_count"] += 1
                 if len(same_name) == 1:
                     counts["missing_with_unique_same_day_name_candidate_count"] += 1
+
+        other_symbol = masters[
+            masters["symbol"].eq(row.short_code)
+            & ~masters["decision_date"].eq(row.listing_date)
+        ].copy()
+        if not other_symbol.empty:
+            counts["missing_with_symbol_in_other_master_snapshot_count"] += 1
+            later = other_symbol[other_symbol["decision_date"].gt(row.listing_date)].copy()
+            earlier = other_symbol[other_symbol["decision_date"].lt(row.listing_date)].copy()
+            if not later.empty:
+                counts["missing_with_symbol_in_later_master_snapshot_count"] += 1
+                if later["standard_code"].astype("string").nunique(dropna=False) == 1:
+                    counts["missing_with_consistent_later_standard_code_count"] += 1
+                min_gap = int(
+                    (later["decision_date"].min() - row.listing_date).days
+                )
+                if min_gap <= 7:
+                    counts["missing_with_later_master_within_7d_count"] += 1
+                else:
+                    counts["missing_with_later_master_after_7d_count"] += 1
+            if not earlier.empty:
+                counts["missing_with_symbol_in_earlier_master_snapshot_count"] += 1
+
+        end_hit = masters[
+            masters["decision_date"].eq(PLAN_END)
+            & masters["symbol"].eq(row.short_code)
+        ]
+        if not end_hit.empty:
+            counts["missing_with_symbol_in_research_end_master_count"] += 1
+
+        if history_standard_col is not None:
+            raw_code = str(row.short_code).strip().upper()
+            history_codes = raw_history.copy()
+            if "종목코드" in history_codes.columns:
+                hist_short = _short_code(history_codes["종목코드"])
+                hit = history_codes[hist_short.eq(raw_code)]
+                if not hit.empty:
+                    values = (
+                        hit[history_standard_col]
+                        .astype("string")
+                        .str.strip()
+                        .str.upper()
+                    )
+                    if values.str.fullmatch(r"[A-Z0-9]{12}", na=False).any():
+                        counts["missing_with_valid_history_standard_code_count"] += 1
 
     _require(
         counts["exact_same_day_symbol_unique_count"]
