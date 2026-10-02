@@ -48,6 +48,20 @@ def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
     assert data["start_contract"]["prepare_per_security_history_bulk_consent_required"] is False
     assert data["start_contract"]["prepare_per_security_history_requires_completed_identity_binding"] is True
     assert data["start_contract"]["prepare_per_security_history_requires_dedicated_worker_private_volume"] is True
+    assert data["start_contract"]["prepare_status_economics_command"].endswith(
+        "--prepare-status-economics"
+    )
+    assert data["start_contract"]["prepare_status_economics_network_request_attempted"] is False
+    assert data["start_contract"]["prepare_status_economics_bulk_consent_required"] is False
+    assert data["start_contract"]["prepare_status_economics_requires_completed_per_security_history"] is True
+    assert data["start_contract"]["prepare_status_economics_exact_realized_economics_claim_allowed"] is False
+    assert data["start_contract"]["execute_status_economics_command"].endswith(
+        "--execute-status-economics"
+    )
+    assert data["start_contract"]["execute_status_economics_forbidden_until_user_bulk_approval"] is True
+    assert data["start_contract"]["execute_status_economics_requires_prepared_private_manifest"] is True
+    assert data["start_contract"]["execute_status_economics_requires_completed_per_security_history"] is True
+    assert data["start_contract"]["execute_status_economics_exact_realized_economics_claim_allowed"] is False
     assert data["start_contract"]["execute_per_security_history_command"].endswith(
         "--execute-per-security-history"
     )
