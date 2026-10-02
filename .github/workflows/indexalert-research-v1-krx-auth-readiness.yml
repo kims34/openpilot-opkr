@@ -41,6 +41,15 @@ jobs:
           KRX_READINESS_SOURCE_FAMILY: ${{ inputs.source_family }}
           KRX_EXPLICIT_PROBE_CONSENT: ''
         run: |
+          if [ -z "${KRX_AUTH_EVIDENCE_JSON}" ]; then
+            if [ "${KRX_READINESS_SOURCE_FAMILY}" = "KRX_SECURITY_STATUS" ]; then
+              EVIDENCE_FILE="INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json"
+            else
+              EVIDENCE_FILE="INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json"
+            fi
+            export KRX_AUTH_EVIDENCE_JSON="$(cat "${EVIDENCE_FILE}")"
+            export KRX_AUTH_EVIDENCE_REF="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["evidence_reference"])' "${EVIDENCE_FILE}")"
+          fi
           python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_authorization_evidence.py research_v1_krx_public_evidence.py research_v1_krx_auth_readiness.py
           python research_v1_krx_auth_readiness.py
           cat research_results/krx_auth_readiness/summary.json
