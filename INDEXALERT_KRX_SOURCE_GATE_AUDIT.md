@@ -81,7 +81,7 @@ Production server revision `62cb089131ca519815434616dd7f217315fbe346`, Railway d
 - `유가증권 종목기본정보` / `stk_isu_base_info`: HTTP 200, JSON parsed, 942 rows, exact expected schema, schema SHA-256 `11b766977e67ed2f4665a4752a80d18ab76c086d89cf0f853e2642e5575a54e5`, payload SHA-256 `cc64d8b8e9c028ee48a59928195998dfafbfd797587c9f3c1406002a4212792d`.
 - `유가증권 일별매매정보` / `stk_bydd_trd`: HTTP 200, JSON parsed, 942 rows, exact expected schema, schema SHA-256 `5d68cce946a3c9361e7d662351f4896518cad40a3804fd262f577ad29d1d56f3`, payload SHA-256 `b5ff8d6894a1956aaf963aa9bad853eff1c3ee465f50f3ab611f7098ca0f93d3`.
 
-This supersedes the older generic statement that no authenticated KRX request had been demonstrated. It does **not** demonstrate an authenticated halt/cleanup/delisting route or investor-flow route, does not establish full history/PIT/use rights, and grants no performance, holdout, promotion or live authority.
+This supersedes the older generic statement that no authenticated KRX OpenAPI request had been demonstrated. **This OpenAPI evidence by itself** does not establish the later Data Marketplace status/investor routes, full history or PIT lineage. Those route-reachability questions were subsequently advanced by Actions `36976085781` and `36976873119`, while use rights were separately established by KRX permission evidence v3. None of these facts grants performance, holdout, promotion or live authority.
 
 ### 5.2 Pinned Data Marketplace route map
 
