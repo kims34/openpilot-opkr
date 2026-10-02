@@ -3,7 +3,7 @@
 Updated: 2026-10-02 KST  
 Branch: `index-alert-research-v1`  
 Evidence ID: `INDEXALERT-KRX-DATA-MARKETPLACE-TERMS-2026-10-02-v1`  
-Status: **TERMS REQUIRE EXPLICIT PERMISSION; SEPARATE LOW-FREQUENCY KRX PERMISSION EVIDENCE NOW EXISTS**
+Status: **TERMS REQUIRE EXPLICIT PERMISSION; SEPARATE KRX v3 FULL-HISTORY/HIGH-FREQUENCY PERSONAL-RESEARCH PERMISSION NOW EXISTS**
 
 Official source:
 `https://data.krx.co.kr/contents/MDC/INFO/informationController/MDCINFO003.cmd`
@@ -29,12 +29,12 @@ This restriction does not convert the separately approved KRX OpenAPI services i
 
 ## Frozen authority state
 
-This terms audit by itself never authorizes a request. Separate `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json` now supplies explicit low-frequency programmatic/automated-query permission for the personal non-commercial/internal-research scope. After structured evidence and network-free readiness, the remaining prerequisite for a tiny authenticated probe is exact per-run consent.
+This terms audit by itself never authorizes a request. Separate `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json` now supplies explicit complete full-history download/query plus low/high-frequency programmatic/automated collection rights for the personal non-commercial/internal-research scope, while explicitly prohibiting external leakage, sale and third-party distribution. After structured evidence and network-free readiness, the remaining prerequisite for a tiny authenticated probe is exact per-run consent.
 
 The terms audit alone keeps:
 
 - Data Marketplace authenticated probe: **not authorized by this terms record alone**
-- bulk historical acquisition: **not authorized**
+- bulk historical acquisition rights: **authorized only by the separate v3 permission record for the declared personal-research scope; this terms record alone does not authorize execution**
 - investor-flow feature performance testing: **not authorized**
 - sealed holdout: **not authorized**
 - live trading: **not authorized**
