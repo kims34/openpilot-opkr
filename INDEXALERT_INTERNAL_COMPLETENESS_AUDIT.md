@@ -7,7 +7,7 @@ Branch: `index-alert-research-v1`
 
 Internal-only audit. No KRX approval/data, genuine LIVE evidence, sealed holdout, or real-account ordering is fabricated or consumed.
 
-Reviewed boundaries: continuous research/preregistration, research orchestrator, successor-Core staging, promotion evidence, automation-capital control, Kiwoom offline normalization/reconciliation, execution evidence/sufficiency, relevant CI and authority documents.
+Reviewed boundaries: continuous research/preregistration, research orchestrator, successor-Core staging, promotion evidence, KRX daily-panel staging/source admission, automation-capital control, Kiwoom offline normalization/reconciliation, execution evidence/sufficiency, relevant CI and authority documents.
 
 ## Findings
 
@@ -25,6 +25,21 @@ Final fail-closed fix:
 - live-order and sealed-holdout authority remain false.
 
 A future promotion adapter must verify immutable, provenance-bound outputs from the authoritative source, execution, holdout, Shadow S1 and Fresh Confirmation S2 auditors. Caller booleans, labels, filenames, hashes, self-authored manifests and status strings are not evidence admission.
+
+### IC-002 — legacy KRX daily-panel builder self-labeled Judge eligibility — FIXED FAIL-CLOSED
+
+The older `research_v1_krx.py` staging builder defaulted `BuildStats.judge_eligible=true` and labeled rows `KRX via authenticated pykrx`. That was too strong: successful date-specific OHLCV retrieval does not establish the frozen KRX A-F source contract, authenticated/approved route admission, complete history, PIT lineage, status-event coverage or exact status economics.
+
+Fail-closed fix:
+- `judge_eligible=false` is now the immutable default from this builder;
+- `source_governance_admission_required=true`;
+- `sealed_holdout_authorized=false`;
+- `live_trading_authorized=false`;
+- the transport label no longer claims authenticated source admission;
+- source failure text no longer calls this a "Judge-grade path";
+- CI statically rejects restoration of the old authority-bearing labels/defaults.
+
+This does not invalidate date-specific panel staging as engineering infrastructure. It prevents staging success from being interpreted as Final-Judge/source admission.
 
 ### Order-path audit
 
@@ -47,3 +62,4 @@ This audit does not close KRX A-F external evidence, exact affected-position sta
 - caller-supplied successor confirmation is structural diagnostic input only
 - `promotion_eligible=false` until independent gate admission is implemented and verified
 - automatic Core mutation remains unauthorized
+- legacy KRX daily-panel retrieval cannot self-grant Judge/source admission
