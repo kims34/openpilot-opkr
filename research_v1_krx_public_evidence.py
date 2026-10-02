@@ -12,8 +12,8 @@ import json
 from typing import Any
 
 
-PUBLIC_EVIDENCE_VERSION = "2026-10-01.v1"
-PUBLIC_EVIDENCE_AUDIT_DATE = "2026-10-01"
+PUBLIC_EVIDENCE_VERSION = "2026-10-02.v2"
+PUBLIC_EVIDENCE_AUDIT_DATE = "2026-10-02"
 
 OPENAPI_ACCESS_MODEL = {
     "authentication_key_required": True,
@@ -49,7 +49,50 @@ OPENAPI_MISSING_DATA_NOTICE = {
     "official_home_url": "https://openapi.krx.co.kr/contents/OPP/MAIN/main/index.cmd",
 }
 
+OPENAPI_PUBLIC_SERVICE_CATALOG = {
+    "audit_date": "2026-10-02",
+    "official_service_list_url": "https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd",
+    "data_target_period_note": "2010년 이후 데이터",
+    "public_stock_service_names": [
+        "유가증권 일별매매정보",
+        "코스닥 일별매매정보",
+        "코넥스 일별매매정보",
+        "신주인수권증권 일별매매정보",
+        "신주인수권증서 일별매매정보",
+        "유가증권 종목기본정보",
+        "코스닥 종목기본정보",
+        "코넥스 종목기본정보",
+    ],
+    "status_or_delisting_service_publicly_listed": False,
+    "investor_flow_service_publicly_listed": False,
+    "catalog_search_terms_not_present": [
+        "거래정지",
+        "정리매매",
+        "상장폐지",
+        "투자자",
+    ],
+    "inference_rule": (
+        "The current official public OpenAPI service catalog does not list the "
+        "status/delisting or investor-flow services required by IndexAlert. "
+        "This is catalog evidence only and must not be upgraded into proof that "
+        "no KRX route/product exists; Data Marketplace screens and purchased/"
+        "distributed products remain distinct possible routes."
+    ),
+}
+
 PUBLIC_SCREEN_CONTRACTS = {
+    "MDCSTAT213": {
+        "name": "매매거래정지 내역(개별종목)",
+        "fields_verified": [
+            "종목코드",
+            "종목명",
+            "시장구분",
+            "정지일",
+            "재개일",
+        ],
+        "price_context": "displayed price information is based on the trading day immediately before suspension",
+        "official_url": "https://data.krx.co.kr/contents/MDC/STAT/issue/MDCSTAT213.jsp",
+    },
     "MDCSTAT237": {
         "name": "정리매매종목 현황",
         "fields_verified": [
@@ -137,6 +180,7 @@ def public_evidence_manifest() -> dict[str, Any]:
         "openapi_access_model": OPENAPI_ACCESS_MODEL,
         "openapi_terms": OPENAPI_TERMS,
         "openapi_missing_data_notice": OPENAPI_MISSING_DATA_NOTICE,
+        "openapi_public_service_catalog": OPENAPI_PUBLIC_SERVICE_CATALOG,
         "public_screen_contracts": PUBLIC_SCREEN_CONTRACTS,
         "exact_mapping_state": EXACT_MAPPING_STATE,
         "promotion_boundary": {
