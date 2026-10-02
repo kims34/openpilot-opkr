@@ -667,6 +667,9 @@ def public_new_listing_master_mapping_summary(
         "missing_with_later_master_after_7d_count": 0,
         "new_listing_standard_code_column_present": False,
         "missing_with_valid_history_standard_code_count": 0,
+        "delisted_standard_code_column_present": False,
+        "missing_with_exact_delisted_episode_count": 0,
+        "missing_with_valid_delisted_standard_code_count": 0,
     }
 
     master_names_available = "name" in masters.columns
@@ -680,6 +683,31 @@ def public_new_listing_master_mapping_summary(
     )
     counts["new_listing_standard_code_column_present"] = history_standard_col is not None
     raw_history = seed["new_listing_history"].copy()
+    raw_delisted = seed["delisted_history"].copy()
+    delisted_standard_col = next(
+        (
+            col
+            for col in ("ISU_CD", "표준코드", "표준종목코드", "standard_code")
+            if col in raw_delisted.columns
+        ),
+        None,
+    )
+    counts["delisted_standard_code_column_present"] = delisted_standard_col is not None
+    delisted_short = (
+        _short_code(raw_delisted["종목코드"])
+        if "종목코드" in raw_delisted.columns
+        else pd.Series("", index=raw_delisted.index, dtype="string")
+    )
+    delisted_listing = (
+        pd.to_datetime(
+            raw_delisted["상장일"].astype("string").str.replace(r"[^0-9]", "", regex=True),
+            format="%Y%m%d",
+            errors="coerce",
+        ).dt.normalize()
+        if "상장일" in raw_delisted.columns
+        else pd.Series(pd.NaT, index=raw_delisted.index)
+    )
+
     for row in new.itertuples(index=False):
         same_day = masters[
             masters["decision_date"].eq(row.listing_date)
@@ -775,6 +803,23 @@ def public_new_listing_master_mapping_summary(
                     )
                     if values.str.fullmatch(r"[A-Z0-9]{12}", na=False).any():
                         counts["missing_with_valid_history_standard_code_count"] += 1
+
+        raw_code = str(row.short_code).strip().upper()
+        delisted_hit = raw_delisted[
+            delisted_short.eq(raw_code)
+            & delisted_listing.eq(row.listing_date)
+        ]
+        if not delisted_hit.empty:
+            counts["missing_with_exact_delisted_episode_count"] += 1
+            if delisted_standard_col is not None:
+                values = (
+                    delisted_hit[delisted_standard_col]
+                    .astype("string")
+                    .str.strip()
+                    .str.upper()
+                )
+                if values.str.fullmatch(r"[A-Z0-9]{12}", na=False).any():
+                    counts["missing_with_valid_delisted_standard_code_count"] += 1
 
     _require(
         counts["exact_same_day_symbol_unique_count"]
