@@ -636,6 +636,22 @@ def public_new_listing_master_mapping_summary(
         root,
         git_worktree=git_worktree,
     )
+    raw_masters = pd.concat(
+        [seed["security_master_snapshots"].copy(), binding.copy()],
+        ignore_index=True,
+        sort=False,
+    )
+    raw_masters["decision_date"] = pd.to_datetime(
+        raw_masters["decision_date"], errors="coerce"
+    ).dt.normalize()
+    raw_masters["listing_date_official"] = pd.to_datetime(
+        raw_masters["listing_date_official"], errors="coerce"
+    ).dt.normalize()
+    raw_masters["symbol"] = _short_code(raw_masters["symbol"])
+    raw_masters["market_type_official"] = _market(
+        raw_masters["market_type_official"]
+    )
+
     masters = _merge_master_snapshots_fail_closed(
         seed["security_master_snapshots"],
         binding,
@@ -670,6 +686,11 @@ def public_new_listing_master_mapping_summary(
         "delisted_standard_code_column_present": False,
         "missing_with_exact_delisted_episode_count": 0,
         "missing_with_valid_delisted_standard_code_count": 0,
+        "missing_with_raw_same_day_symbol_count": 0,
+        "missing_with_raw_same_day_symbol_kospi_count": 0,
+        "missing_with_raw_same_day_symbol_common_count": 0,
+        "missing_with_raw_same_day_symbol_noncommon_count": 0,
+        "missing_with_raw_same_day_symbol_listing_date_match_count": 0,
     }
 
     master_names_available = "name" in masters.columns
@@ -721,6 +742,23 @@ def public_new_listing_master_mapping_summary(
             continue
 
         counts["exact_same_day_symbol_missing_count"] += 1
+
+        raw_same = raw_masters[
+            raw_masters["decision_date"].eq(row.listing_date)
+            & raw_masters["symbol"].eq(row.short_code)
+        ].copy()
+        if not raw_same.empty:
+            counts["missing_with_raw_same_day_symbol_count"] += 1
+            if raw_same["market_type_official"].eq("KOSPI").any():
+                counts["missing_with_raw_same_day_symbol_kospi_count"] += 1
+            common_mask = raw_same["common_stock_identity_official"].astype(bool)
+            if common_mask.any():
+                counts["missing_with_raw_same_day_symbol_common_count"] += 1
+            if (~common_mask).any():
+                counts["missing_with_raw_same_day_symbol_noncommon_count"] += 1
+            if raw_same["listing_date_official"].eq(row.listing_date).any():
+                counts["missing_with_raw_same_day_symbol_listing_date_match_count"] += 1
+
         short = str(row.short_code).strip().upper()
         if short.isdigit() and len(short) == 6:
             counts["missing_new_symbol_numeric_6_count"] += 1
