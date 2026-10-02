@@ -41,6 +41,17 @@ Fail-closed fix:
 
 This does not invalidate date-specific panel staging as engineering infrastructure. It prevents staging success from being interpreted as Final-Judge/source admission.
 
+### IC-003 — Data Marketplace account access could be mistaken for automation permission — FIXED FAIL-CLOSED
+
+The official KRX Data Marketplace homepage terms prohibit unauthorized automated collection. Existing source-governance code already required credentials, structured authorization evidence and explicit per-run consent, but did not separately encode the legal/terms distinction between ordinary member login and permission for automated collection.
+
+Fail-closed fix:
+- `research_v1_krx_authorization_evidence.py` requires explicit `automated_collection_authorized=true` for the Data Marketplace web-session route;
+- `research_v1_krx_auth_preflight.py` independently requires `EXPLICIT_KRX_AUTOMATED_COLLECTION_PERMISSION`;
+- readiness/probe code propagates that permission signal rather than inferring it from credentials;
+- the official terms constraint is frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json` and validated in CI;
+- confirmed `KRX_ID/KRX_PW` presence therefore does not authorize any automated KRX web-session request.
+
 ### Order-path audit
 
 No Kiwoom network/auth/order-submission implementation is present in the reviewed native execution module; it is offline normalization/reconciliation only and hard-codes project LIVE admission/provenance false. Automation control validates broker-neutral intents/capital ceilings and does not submit orders. No internal evidence was found that authorizes real-account ordering.
