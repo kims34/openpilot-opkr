@@ -292,6 +292,141 @@ def status_per_security_history(
     }
 
 
+def finalize_per_security_history_metadata(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    state_loader=read_private_json,
+    batch_loader=read_private_json,
+) -> dict[str, Any]:
+    """Return public-safe completion metadata only after exact phase COMPLETE.
+
+    Strictly network-free and read-only. It never emits private task rows,
+    request parameters, security identifiers, credentials or raw response data.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+
+    state_read = state_loader(
+        root,
+        "batch_state/PER_SECURITY_HISTORY.json",
+        git_worktree=worktree,
+    )
+    safe = public_phase_summary(state_read["value"])
+    if safe.get("phase") != "PER_SECURITY_HISTORY":
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization phase drift"
+        )
+    if safe.get("status") != "COMPLETE" or safe.get("phase_complete") is not True:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization blocked: phase is not COMPLETE"
+        )
+    if int(safe.get("expected_task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization expected task count drift"
+        )
+    if int(safe.get("completed_task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization completed task count drift"
+        )
+    if int(safe.get("failed_task_count", -1)) != 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization has failed tasks"
+        )
+    if (
+        str(safe.get("task_set_fingerprint_sha256") or "")
+        != PER_SECURITY_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security finalization task-set fingerprint drift"
+        )
+
+    batch_read = batch_loader(
+        root,
+        PER_SECURITY_BATCH_REL,
+        git_worktree=worktree,
+    )
+    batch = batch_read["value"]
+    if batch.get("phase") != "PER_SECURITY_HISTORY":
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security batch phase drift"
+        )
+    if int(batch.get("task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security batch task count drift"
+        )
+    if int(batch.get("completed_task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security batch completion count drift"
+        )
+    resumed = int(batch.get("resumed_task_count", -1))
+    network = int(batch.get("network_request_attempt_count", -1))
+    if resumed < 0 or network < 0 or resumed + network != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security batch network/resume accounting drift"
+        )
+    if (
+        str(batch.get("task_set_fingerprint_sha256") or "")
+        != PER_SECURITY_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security batch task-set fingerprint drift"
+        )
+    for key in (
+        "source_gate_c_closed",
+        "source_gate_d_closed",
+        "source_gate_e_closed",
+        "feature_performance_testing_authorized",
+        "sealed_holdout_authorized",
+        "live_trading_authorized",
+    ):
+        if batch.get(key) is not False:
+            raise KRXHistoricalWorkerEntrypointError(
+                f"per-security batch {key} illegally true"
+            )
+
+    return {
+        "mode": "FINALIZE_PER_SECURITY_HISTORY_METADATA",
+        "phase": "PER_SECURITY_HISTORY",
+        "status": "COMPLETE",
+        "expected_task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "completed_task_count": PER_SECURITY_EXPECTED_TASK_COUNT,
+        "failed_task_count": 0,
+        "resumed_task_count": resumed,
+        "network_request_attempt_count": network,
+        "task_set_fingerprint_sha256": PER_SECURITY_EXPECTED_TASK_SET_SHA256,
+        "private_batch_metadata_sha256": batch_read["metadata_sha256"],
+        "private_batch_relpath": PER_SECURITY_BATCH_REL,
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "status_economics_authorized": False,
+        "expected_scope_network_execution_authorized": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "genuine_live_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def execute_identity_seed(
     *,
     environment: Mapping[str, str] | None = None,
@@ -1658,6 +1793,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     group.add_argument(
+        "--finalize-per-security-history-metadata",
+        action="store_true",
+        help=(
+            "Network-free/read-only: only after exact PER_SECURITY_HISTORY "
+            "completion, return public-safe aggregate completion/batch metadata. "
+            "Never emits task rows, identifiers, credentials or raw KRX data."
+        ),
+    )
+    group.add_argument(
         "--prepare-per-security-history",
         action="store_true",
         help=(
@@ -1712,6 +1856,8 @@ def main(argv: list[str] | None = None) -> int:
         result = diagnose_delisted_start_master_mapping()
     elif args.status_per_security_history:
         result = status_per_security_history()
+    elif args.finalize_per_security_history_metadata:
+        result = finalize_per_security_history_metadata()
     elif args.prepare_per_security_history:
         result = prepare_per_security_history()
     elif args.execute_per_security_history:
