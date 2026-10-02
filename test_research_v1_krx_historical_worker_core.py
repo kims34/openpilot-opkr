@@ -8,6 +8,7 @@ from research_v1_krx_historical_acquisition_preflight import CONSENT_SENTINEL
 from research_v1_krx_historical_worker_core import (
     FetchResult,
     KRXHistoricalWorkerError,
+    OPENAPI_ROUTE,
     execute_private_request,
 )
 
@@ -197,6 +198,75 @@ def test_worker_rejects_unsupported_family_before_fetch(tmp_path):
             dataset_identifier="UNKNOWN",
             request_metadata={"x": "1"},
             client_revision="offline-test",
+            fetcher=lambda _: _fake_result(network=False),
+            evaluation_time=EVAL,
+        )
+
+
+def test_worker_supports_only_approved_openapi_security_master_identity(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    calls = []
+
+    def fetcher(request):
+        calls.append(dict(request))
+        return FetchResult(
+            raw_bytes=b'{"OutBlock_1":[{"ISU_CD":"KR7005930003","ISU_SRT_CD":"005930"}]}',
+            response_frame=pd.DataFrame(
+                {
+                    "ISU_CD": ["KR7005930003"],
+                    "ISU_SRT_CD": ["005930"],
+                    "LIST_DD": ["19750611"],
+                }
+            ),
+            retrieved_at="2026-10-02T18:40:00+09:00",
+            transport_status="FAKE_OPENAPI_OK",
+            network_request_attempted=False,
+        )
+
+    out = execute_private_request(
+        environment=_env(tmp_path),
+        git_worktree=str(worktree),
+        source_family="KRX_SECURITY_STATUS",
+        dataset_identifier="stk_isu_base_info",
+        access_route=OPENAPI_ROUTE,
+        request_metadata={"basDd": "20150615"},
+        client_revision="offline-openapi-test",
+        fetcher=fetcher,
+        evaluation_time=EVAL,
+    )
+    assert len(calls) == 1
+    assert out["completed"] is True
+    assert out["resumed"] is False
+    assert out["network_request_attempted"] is False
+    assert out["response_rows"] == 1
+
+    with pytest.raises(KRXHistoricalWorkerError, match="permits only stk_isu_base_info"):
+        execute_private_request(
+            environment=_env(tmp_path),
+            git_worktree=str(worktree),
+            source_family="KRX_SECURITY_STATUS",
+            dataset_identifier="stk_bydd_trd",
+            access_route=OPENAPI_ROUTE,
+            request_metadata={"basDd": "20150615"},
+            client_revision="offline-openapi-test",
+            fetcher=fetcher,
+            evaluation_time=EVAL,
+        )
+
+
+def test_worker_rejects_openapi_identity_route_for_investor_family(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    with pytest.raises(KRXHistoricalWorkerError, match="restricted to KRX_SECURITY_STATUS"):
+        execute_private_request(
+            environment=_env(tmp_path),
+            git_worktree=str(worktree),
+            source_family="KRX_INVESTOR_FLOW",
+            dataset_identifier="stk_isu_base_info",
+            access_route=OPENAPI_ROUTE,
+            request_metadata={"basDd": "20150615"},
+            client_revision="offline-openapi-test",
             fetcher=lambda _: _fake_result(network=False),
             evaluation_time=EVAL,
         )
