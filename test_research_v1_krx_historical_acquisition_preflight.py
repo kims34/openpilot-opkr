@@ -12,7 +12,7 @@ def _safe_root(tmp_path: Path) -> str:
 
 def test_bulk_preflight_blocks_without_storage_and_exact_execution_consent(tmp_path):
     out=evaluate_historical_acquisition_preflight(
-        environment={"KRX_ID":"present","KRX_PW":"present"},
+        environment={"KRX_ID":"present","KRX_PW":"present","KRX_AUTH_KEY":"present"},
         git_worktree=(tmp_path / "repo").resolve(),
     )
     assert out["rights_authorized"] is True
@@ -36,6 +36,7 @@ def test_bulk_preflight_becomes_ready_only_for_safe_storage_and_exact_sentinel(t
         environment={
             "KRX_ID":"present",
             "KRX_PW":"present",
+            "KRX_AUTH_KEY":"present",
             "KRX_PRIVATE_RAW_DIR":_safe_root(tmp_path),
             "KRX_HISTORICAL_ACQUISITION_CONSENT":CONSENT_SENTINEL,
         },
@@ -56,6 +57,7 @@ def test_bulk_preflight_rejects_near_miss_consent(tmp_path):
         environment={
             "KRX_ID":"present",
             "KRX_PW":"present",
+            "KRX_AUTH_KEY":"present",
             "KRX_PRIVATE_RAW_DIR":_safe_root(tmp_path),
             "KRX_HISTORICAL_ACQUISITION_CONSENT":"yes",
         },
@@ -72,6 +74,7 @@ def test_bulk_preflight_rejects_raw_root_inside_git_worktree(tmp_path):
         environment={
             "KRX_ID":"present",
             "KRX_PW":"present",
+            "KRX_AUTH_KEY":"present",
             "KRX_PRIVATE_RAW_DIR":str((worktree / "raw").resolve()),
             "KRX_HISTORICAL_ACQUISITION_CONSENT":CONSENT_SENTINEL,
         },
@@ -90,6 +93,7 @@ def test_bulk_preflight_rejects_public_static_raw_root(tmp_path):
         environment={
             "KRX_ID":"present",
             "KRX_PW":"present",
+            "KRX_AUTH_KEY":"present",
             "KRX_PRIVATE_RAW_DIR":str((tmp_path / "public" / "krx").resolve()),
             "KRX_HISTORICAL_ACQUISITION_CONSENT":CONSENT_SENTINEL,
         },
@@ -98,3 +102,20 @@ def test_bulk_preflight_rejects_public_static_raw_root(tmp_path):
     assert out["private_raw_dir_valid"] is False
     assert "SAFE_KRX_PRIVATE_RAW_DIR" in out["missing_requirements"]
     assert "public/static" in out["private_raw_dir_error"]
+
+
+def test_bulk_preflight_requires_openapi_key_for_identity_seed(tmp_path):
+    worktree=(tmp_path / "repo").resolve()
+    worktree.mkdir()
+    out=evaluate_historical_acquisition_preflight(
+        environment={
+            "KRX_ID":"present",
+            "KRX_PW":"present",
+            "KRX_PRIVATE_RAW_DIR":_safe_root(tmp_path),
+            "KRX_HISTORICAL_ACQUISITION_CONSENT":CONSENT_SENTINEL,
+        },
+        git_worktree=worktree,
+    )
+    assert out["krx_openapi_auth_key_present"] is False
+    assert "KRX_AUTH_KEY" in out["missing_requirements"]
+    assert out["historical_acquisition_network_execution_authorized"] is False
