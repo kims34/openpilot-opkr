@@ -1,13 +1,15 @@
 {
-  "schema_version": "1",
-  "plan_id": "INDEXALERT-KRX-HIST-ACQ-v1",
+  "schema_version": "2",
+  "plan_id": "INDEXALERT-KRX-HIST-ACQ-v2",
+  "supersedes_plan_id": "INDEXALERT-KRX-HIST-ACQ-v1",
+  "superseded_before_any_bulk_network_execution": true,
   "frozen_date": "2026-10-02",
   "network_execution_authorized": false,
   "research_required_period": {
     "start": "2015-06-15",
     "end": "2026-10-01",
     "market": "KOSPI",
-    "rationale": "Matches the frozen long-history research protocol start; acquiring earlier source history must not silently change the model research/evaluation window."
+    "rationale": "Matches the frozen long-history research protocol start; earlier KRX rights do not change the frozen research/evaluation window."
   },
   "rights": {
     "permission_evidence_id": "INDEXALERT-KRX-PERMISSION-REPLY-2026-10-02-v3",
@@ -29,45 +31,164 @@
   },
   "phases": {
     "identity_seed": {
-      "description": "Reconstruct historical KOSPI listing episodes before any per-security status/investor collection.",
-      "requests": [
+      "description": "Reconstruct every historical KOSPI listing episode with a stable KRX standard code before any per-security status/investor request.",
+      "fixed_requests": [
         {
-          "name": "current_listed_identity",
-          "bld": "dbms/MDC/STAT/standard/MDCSTAT01901",
-          "method": "json",
-          "request_count": "1",
-          "purpose": "current standard/short-code mapping only"
+          "name": "research_start_security_master",
+          "route": "KRX_OPENAPI_STK_ISU_BASE_INFO",
+          "endpoint": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+          "method": "GET",
+          "basDd": "20150615",
+          "request_count": 1,
+          "purpose": "Capture standard-code/short-code/listing-date mapping for securities already active at research start."
         },
         {
-          "name": "new_listing_history",
-          "bld": "dbms/MDC/STAT/issue/MDCSTAT20001",
-          "method": "csv",
-          "date_range": [
-            "2015-06-15",
-            "2026-10-01"
-          ],
-          "request_count": "1",
-          "purpose": "listing episodes; pinned client CSV route has no declared period ceiling"
-        },
-        {
-          "name": "delisted_history",
-          "bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
-          "method": "csv",
-          "date_range": [
-            "2015-06-15",
-            "2026-10-01"
-          ],
-          "request_count": "1",
-          "purpose": "delisted episodes and cleanup periods"
+          "name": "research_end_security_master",
+          "route": "KRX_OPENAPI_STK_ISU_BASE_INFO",
+          "endpoint": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+          "method": "GET",
+          "basDd": "20261001",
+          "request_count": 1,
+          "purpose": "End-date reconciliation only; must not invent missing historical episodes."
         }
       ],
+      "windowed_requests": {
+        "new_listing_history": {
+          "bld": "dbms/MDC/STAT/issue/MDCSTAT20001",
+          "method": "csv",
+          "calendar_year_windows": [
+            [
+              "2015-06-15",
+              "2015-12-31"
+            ],
+            [
+              "2016-01-01",
+              "2016-12-31"
+            ],
+            [
+              "2017-01-01",
+              "2017-12-31"
+            ],
+            [
+              "2018-01-01",
+              "2018-12-31"
+            ],
+            [
+              "2019-01-01",
+              "2019-12-31"
+            ],
+            [
+              "2020-01-01",
+              "2020-12-31"
+            ],
+            [
+              "2021-01-01",
+              "2021-12-31"
+            ],
+            [
+              "2022-01-01",
+              "2022-12-31"
+            ],
+            [
+              "2023-01-01",
+              "2023-12-31"
+            ],
+            [
+              "2024-01-01",
+              "2024-12-31"
+            ],
+            [
+              "2025-01-01",
+              "2025-12-31"
+            ],
+            [
+              "2026-01-01",
+              "2026-10-01"
+            ]
+          ],
+          "request_count": 12,
+          "purpose": "Discover listing episodes without assuming an undocumented full-window transport limit."
+        },
+        "delisted_history": {
+          "bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
+          "method": "csv",
+          "calendar_year_windows": [
+            [
+              "2015-06-15",
+              "2015-12-31"
+            ],
+            [
+              "2016-01-01",
+              "2016-12-31"
+            ],
+            [
+              "2017-01-01",
+              "2017-12-31"
+            ],
+            [
+              "2018-01-01",
+              "2018-12-31"
+            ],
+            [
+              "2019-01-01",
+              "2019-12-31"
+            ],
+            [
+              "2020-01-01",
+              "2020-12-31"
+            ],
+            [
+              "2021-01-01",
+              "2021-12-31"
+            ],
+            [
+              "2022-01-01",
+              "2022-12-31"
+            ],
+            [
+              "2023-01-01",
+              "2023-12-31"
+            ],
+            [
+              "2024-01-01",
+              "2024-12-31"
+            ],
+            [
+              "2025-01-01",
+              "2025-12-31"
+            ],
+            [
+              "2026-01-01",
+              "2026-10-01"
+            ]
+          ],
+          "request_count": 12,
+          "purpose": "Attach actual delisting dates/reasons and cleanup periods to listing episodes."
+        }
+      },
+      "dynamic_standard_code_snapshots": {
+        "route": "KRX_OPENAPI_STK_ISU_BASE_INFO",
+        "method": "GET",
+        "rule": "After new-listing history is acquired, request one basic-info snapshot per unique listing date inside the research period.",
+        "request_count_formula": "U_new_listing_dates",
+        "mapping_rule": "For a newly listed episode, ISU_CD and ISU_SRT_CD must come from the basic-info snapshot whose basDd equals that episode's listing date.",
+        "no_fallback_from_later_snapshot": true
+      },
       "identity_rules": {
         "market_filter": "KOSPI only",
+        "common_stock_filter": "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주",
         "never_join_by_name_only": true,
         "episode_key": "market|short_code|listing_date",
-        "current_standard_code_may_enrich_current_episode": true,
+        "standard_code_required_for_every_episode": true,
+        "standard_code_source_for_preexisting_episode": "research_start_security_master",
+        "standard_code_source_for_new_episode": "listing-date security-master snapshot",
+        "end_snapshot_is_reconciliation_only": true,
         "overlapping_same_short_code_episodes_fail_closed": true,
-        "missing_listing_date_for_historical_episode_fail_closed": true
+        "missing_listing_date_fail_closed": true,
+        "unresolved_standard_code_fail_closed": true,
+        "inconsistent_standard_code_across_snapshots_fail_closed": true,
+        "per_security_isuCd": "standard_code",
+        "trading_halt_isuCd2": "short_code"
       }
     },
     "status_history": {
@@ -75,14 +196,63 @@
         "bld": "dbms/MDC/STAT/issue/MDCSTAT23701",
         "method": "json",
         "scope": "all market then filter KOSPI",
-        "project_chunking": "calendar-year bounded windows",
-        "expected_calendar_windows": 12,
-        "route_limit_status": "not formally frozen; one-year project chunks chosen for bounded reproducibility"
+        "calendar_year_windows": [
+          [
+            "2015-06-15",
+            "2015-12-31"
+          ],
+          [
+            "2016-01-01",
+            "2016-12-31"
+          ],
+          [
+            "2017-01-01",
+            "2017-12-31"
+          ],
+          [
+            "2018-01-01",
+            "2018-12-31"
+          ],
+          [
+            "2019-01-01",
+            "2019-12-31"
+          ],
+          [
+            "2020-01-01",
+            "2020-12-31"
+          ],
+          [
+            "2021-01-01",
+            "2021-12-31"
+          ],
+          [
+            "2022-01-01",
+            "2022-12-31"
+          ],
+          [
+            "2023-01-01",
+            "2023-12-31"
+          ],
+          [
+            "2024-01-01",
+            "2024-12-31"
+          ],
+          [
+            "2025-01-01",
+            "2025-12-31"
+          ],
+          [
+            "2026-01-01",
+            "2026-10-01"
+          ]
+        ],
+        "request_count": 12,
+        "route_limit_status": "not formally frozen; one-calendar-year project windows avoid assuming an undocumented maximum"
       },
       "trading_halt": {
         "bld": "dbms/MDC/STAT/issue/MDCSTAT21301",
         "method": "json",
-        "scope": "per historical security episode",
+        "scope": "per validated historical security episode",
         "route_max_period_days": 730,
         "fixed_calendar_chunks": [
           [
@@ -110,32 +280,80 @@
             "2026-10-01"
           ]
         ],
-        "request_formula": "sum over security episodes of intersecting 730-day chunks; never query outside the episode lifetime"
+        "request_formula": "sum over validated episodes of intersecting 730-day chunks; isuCd=standard_code and isuCd2=short_code; never query outside episode lifetime"
       },
       "delisted_price_economics": {
         "bld": "dbms/MDC/STAT/issue/MDCSTAT23902",
         "method": "csv",
         "scope": "delisted KOSPI episodes only",
-        "execution_phase": "after delisted/cleanup events are known",
-        "request_formula": "one bounded event-window request per affected delisted episode unless route behavior requires smaller deterministic chunks"
+        "execution_phase": "after delisted/cleanup events are known and identity episode is resolved",
+        "request_formula": "one bounded event-window request per affected delisted episode unless observed route behavior requires a new preregistered chunking rule"
       }
     },
     "investor_flow_history": {
       "bld": "dbms/MDC/STAT/standard/MDCSTAT02303",
       "method": "csv",
-      "scope": "per historical KOSPI security episode",
-      "project_chunking": "calendar-year bounded windows intersected with listing episode",
-      "expected_calendar_windows_if_active_full_period": 12,
-      "route_max_period_days": "not established; project uses <= one-calendar-year windows instead of assuming an undocumented maximum",
+      "scope": "per validated historical KOSPI security episode",
+      "calendar_year_windows": [
+        [
+          "2015-06-15",
+          "2015-12-31"
+        ],
+        [
+          "2016-01-01",
+          "2016-12-31"
+        ],
+        [
+          "2017-01-01",
+          "2017-12-31"
+        ],
+        [
+          "2018-01-01",
+          "2018-12-31"
+        ],
+        [
+          "2019-01-01",
+          "2019-12-31"
+        ],
+        [
+          "2020-01-01",
+          "2020-12-31"
+        ],
+        [
+          "2021-01-01",
+          "2021-12-31"
+        ],
+        [
+          "2022-01-01",
+          "2022-12-31"
+        ],
+        [
+          "2023-01-01",
+          "2023-12-31"
+        ],
+        [
+          "2024-01-01",
+          "2024-12-31"
+        ],
+        [
+          "2025-01-01",
+          "2025-12-31"
+        ],
+        [
+          "2026-01-01",
+          "2026-10-01"
+        ]
+      ],
+      "route_max_period_days": "not established; project uses one-calendar-year windows rather than inventing an undocumented maximum",
       "pit_publication_floor": "20:00 Asia/Seoul",
-      "request_formula": "sum over security episodes of intersecting calendar-year chunks",
+      "request_formula": "sum over validated episodes of intersecting calendar-year chunks; isuCd=standard_code",
       "decision_rule": "day-D final investor-flow values can enter only a later decision after the publication floor"
     },
     "lineage_and_admission": {
       "request_receipt_fields": [
         "source_family",
         "access_route",
-        "bld",
+        "bld_or_endpoint",
         "method",
         "request_params_sha256",
         "response_payload_sha256",
@@ -151,12 +369,16 @@
         "available_at",
         "ingested_at",
         "historical_security_episode_id",
+        "standard_code",
+        "short_code",
         "source_batch_id",
         "source_object_sha256"
       ],
       "fail_closed_conditions": [
         "unresolved security episode",
+        "unresolved standard code",
         "overlapping identity episodes",
+        "inconsistent standard code across snapshots",
         "missing request receipt",
         "missing response hash",
         "row outside declared request window",
@@ -167,12 +389,14 @@
     }
   },
   "request_count_formula": {
-    "identity_seed_fixed_requests": 3,
+    "fixed_identity_requests": 26,
+    "dynamic_listing_date_master_requests": "U_new_listing_dates",
     "cleanup_year_windows": 12,
     "trading_halt_max_chunks_per_full_period_episode": 6,
     "investor_flow_max_year_chunks_per_full_period_episode": 12,
-    "total_before_delisted_price": "15 + 18*N_active_full_period_equivalent, reduced by episode-window intersections",
-    "note": "N is not guessed; it must be produced by the identity-seed phase."
+    "total_before_delisted_price": "38 + U_new_listing_dates + halt_episode_chunk_intersections + investor_episode_year_intersections",
+    "conservative_upper_form_if_all_N_episodes_span_full_period": "38 + U_new_listing_dates + 18*N",
+    "note": "N and U must come from acquired identity-seed evidence; neither may be guessed."
   },
   "operational_safety": {
     "default_concurrency": 4,
