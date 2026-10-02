@@ -24,6 +24,7 @@ def _record(**overrides):
         "intended_use_scope": SCOPE,
         "approval_state": "APPROVED",
         "scope_statement": "Non-secret approval metadata for the declared tiny Data Marketplace source probe.",
+        "automated_collection_authorized": True,
         "evidence_document_sha256": "a" * 64,
         "captured_at": "2026-09-30T12:00:00+00:00",
         "valid_from": "2026-09-30T00:00:00+00:00",
@@ -142,3 +143,15 @@ def test_json_parser_rejects_missing_or_non_object_and_accepts_valid_record():
         expected_reference="krx-approval-ref-2026-001",
     )
     assert out["sufficient_for_tiny_probe_preflight"] is True
+
+
+def test_data_marketplace_requires_explicit_automation_permission():
+    missing = _record()
+    missing.pop("automated_collection_authorized")
+    out = _validate(missing)
+    assert out["sufficient_for_tiny_probe_preflight"] is False
+    assert "AUTOMATED_COLLECTION_NOT_EXPLICITLY_AUTHORIZED" in out["reason_codes"]
+
+    denied = _validate(_record(automated_collection_authorized=False))
+    assert denied["sufficient_for_tiny_probe_preflight"] is False
+    assert "AUTOMATED_COLLECTION_NOT_EXPLICITLY_AUTHORIZED" in denied["reason_codes"]
