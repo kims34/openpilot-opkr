@@ -28,7 +28,7 @@ def test_committed_per_security_consent_is_authorized_in_progress():
 def test_per_security_consent_rejects_authorization_loss_or_reuse():
     data = _data()
     data["user_authorization"]["authorized"] = False
-    with pytest.raises(KRXPerSecurityConsentError, match="authorization record lost"):
+    with pytest.raises(KRXPerSecurityConsentError, match="authorized execution record lost"):
         validate_contract(data)
 
     data = _data()
