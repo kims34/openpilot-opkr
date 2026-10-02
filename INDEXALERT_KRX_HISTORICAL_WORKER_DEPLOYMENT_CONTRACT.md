@@ -104,3 +104,20 @@ This deployment contract does not authorize:
 - live trading.
 
 Those remain separate actions.
+
+
+## Network-free phase progress status
+
+The worker may read the already-persisted private phase state with:
+
+`python research_v1_krx_historical_worker_entrypoint.py --status-per-security-history`
+
+This command is **read-only and network-free**. It does not require bulk execution
+consent and may expose only public-safe aggregate metadata: expected/completed/
+failed counts, phase status/completion and the frozen task-set fingerprint.
+Task IDs, security identifiers, credentials, raw KRX rows and response bytes
+remain forbidden.
+
+The status command is fail-closed to the frozen `PER_SECURITY_HISTORY` scope:
+exact expected count **14,296** and task-set SHA-256
+`fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38`.
