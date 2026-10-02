@@ -14,6 +14,7 @@ from research_v1_krx_historical_worker_entrypoint import (
     execute_identity_standard_code_binding,
     execute_per_security_history,
     prepare_per_security_history,
+    prepare_status_economics,
     preflight_only,
 )
 from research_v1_krx_private_store import write_raw_object
@@ -511,3 +512,113 @@ def test_load_frozen_per_security_tasks_rejects_manifest_drift(tmp_path):
             git_worktree=str(worktree),
             task_builder=lambda *args, **kwargs: [_per_security_task()],
         )
+
+
+def _complete_per_security_predecessor(tmp_path, worktree):
+    _complete_binding_predecessor(tmp_path, worktree)
+    root = (tmp_path / "private").resolve()
+    task = _per_security_task()
+    initialize_phase_state(
+        root=str(root),
+        phase="PER_SECURITY_HISTORY",
+        tasks=[task],
+        git_worktree=str(worktree),
+    )
+    raw = write_raw_object(root, b"per-security-predecessor", git_worktree=str(worktree))
+    record_task_completion(
+        root=str(root),
+        phase="PER_SECURITY_HISTORY",
+        task_id=task["task_id"],
+        worker_result={
+            "completed": True,
+            "request_metadata_sha256": "a" * 64,
+            "raw_object_sha256": raw["raw_object_sha256"],
+            "raw_bytes_size": raw["raw_bytes_size"],
+            "response_rows": 1,
+            "response_schema_sha256": "b" * 64,
+            "response_payload_sha256": "c" * 64,
+            "receipt_fingerprint_sha256": "d" * 64,
+            "raw_rows_emitted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        },
+        git_worktree=str(worktree),
+    )
+
+
+def _status_economics_task():
+    return {
+        "phase": "STATUS_ECONOMICS",
+        "task_id": "1" * 64,
+        "source_family": "KRX_SECURITY_STATUS",
+        "request_spec": {
+            "kind": "delisted_stock_price",
+            "params": {
+                "isuCd": "KR7111110000",
+                "strtDd": "20240610",
+                "endDd": "20240618",
+            },
+        },
+        "contains_security_identifier": True,
+    }
+
+
+def _status_economics_builder(*args, **kwargs):
+    return (
+        [_status_economics_task()],
+        {
+            "delisted_episode_count": 2,
+            "cleanup_price_task_count": 1,
+            "delisted_without_cleanup_interval_count": 1,
+        },
+    )
+
+
+def test_prepare_status_economics_requires_completed_per_security_history(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_binding_predecessor(tmp_path, worktree)
+
+    with pytest.raises(Exception, match="prior phase PER_SECURITY_HISTORY"):
+        prepare_status_economics(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            task_builder=_status_economics_builder,
+        )
+
+
+def test_prepare_status_economics_is_network_free_and_never_exact_fill_ready(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_per_security_predecessor(tmp_path, worktree)
+
+    out = prepare_status_economics(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=_status_economics_builder,
+    )
+    assert out["mode"] == "PREPARE_STATUS_ECONOMICS"
+    assert out["task_count"] == 1
+    assert out["delisted_episode_count"] == 2
+    assert out["cleanup_price_task_count"] == 1
+    assert out["delisted_without_cleanup_interval_count"] == 1
+    assert out["phase_status"] == "PENDING"
+    assert out["phase_complete"] is False
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["exact_status_economics_ready"] is False
+    assert out["source_gate_c_closed"] is False
+    assert out["source_gate_d_closed"] is False
+    assert out["source_gate_e_closed"] is False
+    assert out["feature_performance_testing_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+    assert "KR7111110000" not in str(out)
+
+    manifest = tmp_path / "private" / out["private_task_manifest_relpath"]
+    assert manifest.is_file()
+    private_text = manifest.read_text(encoding="utf-8")
+    assert "KR7111110000" in private_text
+    assert '"exact_status_economics_ready":false' in private_text.replace(" ", "").replace("\n", "")
