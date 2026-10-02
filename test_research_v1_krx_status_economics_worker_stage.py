@@ -8,6 +8,8 @@ from research_v1_krx_historical_batch_state import (
     record_task_completion,
 )
 from research_v1_krx_historical_worker_entrypoint import (
+    STATUS_ECONOMICS_CONSENT_ENV,
+    STATUS_ECONOMICS_CONSENT_SENTINEL,
     KRXHistoricalWorkerEntrypointError,
     execute_status_economics,
     load_frozen_status_economics_tasks,
@@ -32,6 +34,12 @@ def _env(tmp_path, *, consent=False):
         env["KRX_HISTORICAL_ACQUISITION_CONSENT"] = (
             "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3"
         )
+    return env
+
+
+def _status_env(tmp_path):
+    env = _env(tmp_path, consent=True)
+    env[STATUS_ECONOMICS_CONSENT_ENV] = STATUS_ECONOMICS_CONSENT_SENTINEL
     return env
 
 
@@ -171,6 +179,33 @@ def test_execute_status_economics_blocks_without_bulk_consent(tmp_path):
     assert calls == []
 
 
+def test_execute_status_economics_rejects_reused_bulk_consent_without_stage_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_predecessors(tmp_path, worktree)
+    prepare_status_economics(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=_builder,
+    )
+    calls = []
+    loaders = []
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="EXPLICIT_STATUS_ECONOMICS_CONSENT",
+    ):
+        execute_status_economics(
+            environment=_env(tmp_path, consent=True),
+            git_worktree=str(worktree),
+            executor=lambda **kwargs: calls.append(kwargs),
+            task_loader=lambda *args, **kwargs: loaders.append(True) or [_status_task()],
+            evaluation_time=EVAL,
+        )
+    assert calls == []
+    assert loaders == []
+
+
 def test_execute_status_economics_completes_context_only_with_consent(tmp_path):
     worktree = (tmp_path / "repo").resolve()
     worktree.mkdir()
@@ -194,7 +229,7 @@ def test_execute_status_economics_completes_context_only_with_consent(tmp_path):
         }
 
     out = execute_status_economics(
-        environment=_env(tmp_path, consent=True),
+        environment=_status_env(tmp_path),
         git_worktree=str(worktree),
         executor=executor,
         task_loader=lambda *args, **kwargs: [_status_task()],
