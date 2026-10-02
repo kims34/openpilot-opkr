@@ -88,6 +88,28 @@ def _normal_history(frame: pd.DataFrame, *, delisted: bool) -> pd.DataFrame:
     return out
 
 
+def listing_dates_for_standard_code_binding(
+    new_listing: pd.DataFrame,
+    *,
+    plan_start: pd.Timestamp = PLAN_START,
+    plan_end: pd.Timestamp = PLAN_END,
+) -> list[pd.Timestamp]:
+    """Return exact KOSPI common-stock listing dates that require master snapshots.
+
+    This is the only allowed source for dynamic listing-date master requests.
+    Dates are derived from the authenticated new-listing history, never guessed
+    from names, current constituents, or a later security-master snapshot.
+    """
+    new = _normal_history(new_listing, delisted=False)
+    new = new[
+        new["listing_date"].between(plan_start, plan_end, inclusive="both")
+    ].copy()
+    dates = sorted({pd.Timestamp(v).normalize() for v in new["listing_date"]})
+    if any(d < plan_start or d > plan_end for d in dates):
+        raise KRXHistoricalIdentityError("listing-date binding request outside frozen plan")
+    return dates
+
+
 def _validate_master_snapshots(frame: pd.DataFrame) -> pd.DataFrame:
     required = {
         "decision_date",
