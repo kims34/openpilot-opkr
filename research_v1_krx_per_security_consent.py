@@ -27,7 +27,7 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "contract_id drift",
     )
     _require(data.get("stage") == "PER_SECURITY_HISTORY", "stage drift")
-    _require(data.get("status") == "FROZEN_NOT_YET_USER_AUTHORIZED", "status drift")
+    _require(data.get("status") == "USER_AUTHORIZED_EXECUTION_IN_PROGRESS", "status drift")
 
     pre = data.get("prerequisite") or {}
     _require(pre.get("identity_binding_phase_complete") is True, "identity binding prerequisite lost")
@@ -63,7 +63,18 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         == "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1",
         "approval phrase drift",
     )
-    _require(user.get("authorized") is False, "stage cannot be pre-authorized")
+    _require(user.get("authorized") is True, "authorized execution record lost")
+    _require(user.get("received_date_kst") == "2026-10-03", "authorization date drift")
+    _require(
+        user.get("consumed_for_deployment_id")
+        == "bc79d1b5-5fb8-46c7-8067-682e61947014",
+        "authorized deployment drift",
+    )
+    _require(
+        user.get("source_revision")
+        == "9009c48a00394063c813d29219507ee2190ce09e",
+        "authorized source revision drift",
+    )
     _require(user.get("one_shot") is True, "one-shot guard lost")
     _require(user.get("earlier_stage_authorization_reusable") is False, "earlier approval reuse illegally enabled")
     _require(user.get("reusable") is False, "approval reuse illegally enabled")
@@ -79,6 +90,38 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "entrypoint drift",
     )
 
+    execution = data.get("execution") or {}
+    _require(
+        execution.get("deployment_id") == "bc79d1b5-5fb8-46c7-8067-682e61947014",
+        "execution deployment drift",
+    )
+    _require(
+        execution.get("source_revision") == "9009c48a00394063c813d29219507ee2190ce09e",
+        "execution source revision drift",
+    )
+    _require(
+        execution.get("start_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
+        "execution start command drift",
+    )
+    _require(int(execution.get("task_count", -1)) == 14296, "execution task count drift")
+    _require(
+        execution.get("task_set_fingerprint_sha256")
+        == "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+        "execution task-set fingerprint drift",
+    )
+    _require(execution.get("execution_status") == "IN_PROGRESS", "execution status drift")
+    for key in (
+        "later_stage_auto_authorization",
+        "status_economics_authorized",
+        "expected_scope_network_execution_authorized",
+        "feature_performance_testing_authorized",
+        "sealed_holdout_authorized",
+        "genuine_live_authorized",
+        "live_trading_authorized",
+    ):
+        _require(execution.get(key) is False, f"execution {key} illegally true")
+
     lock = data.get("post_run_lock") or {}
     for key in (
         "disable_bulk_consent_again",
@@ -90,8 +133,11 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(lock.get("later_stage_auto_authorization") is False, "later-stage auto authority enabled")
 
     authority = data.get("authority") or {}
+    _require(
+        authority.get("per_security_history_execution_authorized") is True,
+        "per-security execution authority record lost",
+    )
     for key in (
-        "per_security_history_execution_authorized",
         "status_economics_execution_authorized",
         "expected_scope_network_execution_authorized",
         "feature_performance_testing_authorized",
@@ -105,7 +151,7 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "valid": True,
         "task_count": 14296,
-        "authorized": False,
+        "authorized": True,
         "one_shot": True,
         "later_stage_auto_authorization": False,
     }
