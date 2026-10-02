@@ -47,6 +47,35 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     seed_sha = str(prereq.get("identity_seed_private_batch_metadata_sha256") or "")
     _require(bool(SHA256_RE.fullmatch(seed_sha)), "seed batch SHA-256 invalid")
 
+    prepared = data.get("prepared_task_set") or {}
+    _require(
+        prepared.get("preparation_evidence_id")
+        == "INDEXALERT-KRX-IDENTITY-BINDING-PREP-2026-10-02-v1",
+        "preparation evidence binding drift",
+    )
+    _require(int(prepared.get("task_count", -1)) == 145, "prepared binding task count drift")
+    _require(
+        prepared.get("task_count_by_kind") == {"security_master": 145},
+        "prepared binding task-kind drift",
+    )
+    for field in (
+        "task_set_fingerprint_sha256",
+        "private_task_manifest_metadata_sha256",
+    ):
+        _require(
+            bool(SHA256_RE.fullmatch(str(prepared.get(field) or ""))),
+            f"{field} must be SHA-256",
+        )
+    _require(
+        prepared.get("private_task_manifest_relpath")
+        == "task_manifests/identity-standard-code-binding-v1.json",
+        "prepared binding manifest relpath drift",
+    )
+    _require(
+        prepared.get("network_request_attempted_during_prepare") is False,
+        "binding preparation illegally attempted network",
+    )
+
     user = data.get("user_authorization") or {}
     _require(
         user.get("exact_user_approval_phrase")
