@@ -1,4 +1,4 @@
-"""Fail-closed validator for the frozen KRX historical acquisition plan v2."""
+"""Fail-closed validator for the frozen KRX historical acquisition plan v3."""
 from __future__ import annotations
 
 import hashlib
@@ -24,10 +24,10 @@ def canonical_sha256(value: Any) -> str:
 
 
 def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
-    _require(data.get("schema_version") == "2", "schema_version drift")
-    _require(data.get("plan_id") == "INDEXALERT-KRX-HIST-ACQ-v2", "plan_id drift")
-    _require(data.get("supersedes_plan_id") == "INDEXALERT-KRX-HIST-ACQ-v1", "superseded plan drift")
-    _require(data.get("superseded_before_any_bulk_network_execution") is True, "v1 supersession timing drift")
+    _require(data.get("schema_version") == "3", "schema_version drift")
+    _require(data.get("plan_id") == "INDEXALERT-KRX-HIST-ACQ-v3", "plan_id drift")
+    _require(data.get("supersedes_plan_id") == "INDEXALERT-KRX-HIST-ACQ-v2", "superseded plan drift")
+    _require(data.get("superseded_before_any_bulk_network_execution") is True, "v2 supersession timing drift")
     _require(data.get("network_execution_authorized") is False, "plan must not self-authorize execution")
 
     period=data.get("research_required_period") or {}
@@ -89,7 +89,26 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
 
     status=phases.get("status_history") or {}
     cleanup=status.get("cleanup_trading") or {}
-    _require(cleanup.get("request_count") == 12, "cleanup request-count drift")
+    historical_cleanup=cleanup.get("historical_cleanup_periods") or {}
+    _require(
+        historical_cleanup.get("source_bld") == "dbms/MDC/STAT/issue/MDCSTAT23801",
+        "historical cleanup source drift",
+    )
+    _require(historical_cleanup.get("additional_request_count") == 0, "historical cleanup request-count drift")
+    _require(
+        historical_cleanup.get("source_request_phase")
+        == "identity_seed.windowed_requests.delisted_history",
+        "historical cleanup reuse contract drift",
+    )
+    _require(
+        "Gate D remains open" in str(historical_cleanup.get("pit_caveat") or ""),
+        "historical cleanup PIT guard lost",
+    )
+    current_cleanup=cleanup.get("current_cleanup_reconciliation") or {}
+    _require(current_cleanup.get("bld") == "dbms/MDC/STAT/issue/MDCSTAT23701", "current cleanup BLD drift")
+    _require(current_cleanup.get("request_params") == {"mktId":"ALL"}, "current cleanup request params drift")
+    _require(current_cleanup.get("request_count") == 1, "current cleanup request-count drift")
+    _require(current_cleanup.get("historical_date_filter_verified") is False, "cleanup historical-window semantics illegally promoted")
     halt=status.get("trading_halt") or {}
     _require(halt.get("bld") == "dbms/MDC/STAT/issue/MDCSTAT21301", "halt BLD drift")
     _require(halt.get("route_max_period_days") == 730, "halt max-period drift")
@@ -107,7 +126,12 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
     counts=data.get("request_count_formula") or {}
     _require(counts.get("fixed_identity_requests") == 26, "fixed identity request-count drift")
     _require(counts.get("dynamic_listing_date_master_requests") == "U_new_listing_dates", "dynamic request formula drift")
-    _require(counts.get("cleanup_year_windows") == 12, "cleanup year count drift")
+    _require(counts.get("current_cleanup_reconciliation_requests") == 1, "current cleanup count drift")
+    _require(
+        counts.get("total_before_delisted_price")
+        == "27 + U_new_listing_dates + halt_episode_chunk_intersections + investor_episode_year_intersections",
+        "request-count formula drift",
+    )
 
     privacy=data.get("privacy_and_storage") or {}
     for key in (
@@ -141,7 +165,7 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
 
     return {
         "valid":True,
-        "plan_id":"INDEXALERT-KRX-HIST-ACQ-v2",
+        "plan_id":"INDEXALERT-KRX-HIST-ACQ-v3",
         "plan_fingerprint_sha256":canonical_sha256(data),
         "rights_to_acquire":True,
         "network_execution_authorized":False,
