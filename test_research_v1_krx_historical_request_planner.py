@@ -56,8 +56,8 @@ def test_public_summary_contains_counts_not_identifiers():
     assert s["request_count"] == 23
     assert s["fixed_identity_seed_requests"] == 26
     assert s["dynamic_listing_date_master_requests"] == 1
-    assert s["fixed_cleanup_year_requests"] == 12
-    assert s["total_planned_before_delisted_price"] == 62
+    assert s["current_cleanup_reconciliation_requests"] == 1
+    assert s["total_planned_before_delisted_price"] == 51
     assert s["identifiers_emitted"] is False
     raw=str(s)
     assert "005930" not in raw
