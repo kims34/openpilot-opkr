@@ -160,6 +160,29 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         is True,
         "identity-binding approval guard lost",
     )
+    _require(
+        start.get("prepare_per_security_history_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --prepare-per-security-history",
+        "per-security preparation command drift",
+    )
+    _require(
+        start.get("prepare_per_security_history_network_request_attempted") is False,
+        "per-security preparation must remain network-free",
+    )
+    _require(
+        start.get("prepare_per_security_history_bulk_consent_required") is False,
+        "network-free preparation must not require bulk consent",
+    )
+    _require(
+        start.get("prepare_per_security_history_requires_completed_identity_binding")
+        is True,
+        "per-security preparation predecessor guard lost",
+    )
+    _require(
+        start.get("prepare_per_security_history_requires_dedicated_worker_private_volume")
+        is True,
+        "per-security preparation private-worker guard lost",
+    )
 
     authority = data.get("authority") or {}
     for key in (
