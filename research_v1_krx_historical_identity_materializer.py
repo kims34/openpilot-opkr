@@ -241,10 +241,20 @@ def _public_master_code_shape_counts(frame: pd.DataFrame) -> dict[str, Any]:
     counts["six_alnum_other"] = int(six_alnum.sum())
     counts["other"] = int((~covered & ~six_alnum).sum())
 
+    # Diagnostic only: reproduce the superseded destructive digit-strip
+    # transform so we can quantify how many collisions it *would* have caused.
+    # Do not use the production _short_code() here because that now preserves
+    # official six-character alphanumeric KRX codes.
+    old_digit_stripped = raw.str.replace(r"[^0-9]", "", regex=True)
+    old_digit_stripped = old_digit_stripped.where(
+        old_digit_stripped.str.len() <= 6,
+        old_digit_stripped.str[-6:],
+    ).str.zfill(6)
+
     probe = pd.DataFrame({
         "decision_date": pd.to_datetime(scoped["decision_date"], errors="coerce").dt.normalize(),
         "raw_symbol": raw,
-        "old_digit_stripped_symbol": _short_code(raw),
+        "old_digit_stripped_symbol": old_digit_stripped,
         "standard_code": scoped["standard_code"].astype("string").str.strip().str.upper(),
     })
     group = probe.groupby(
