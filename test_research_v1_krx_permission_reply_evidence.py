@@ -75,3 +75,14 @@ def test_user_attested_origin_must_not_be_upgraded_to_independently_verified():
     data["project_classification"]["issuer_independently_verified"] = True
     with pytest.raises(KRXPermissionReplyEvidenceError, match="origin must not be overstated"):
         validate_permission_reply_evidence(data)
+
+
+def test_human_permission_doc_tracks_v3_hash_and_unknown_latest_timestamp():
+    text = Path("INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md").read_text(encoding="utf-8")
+    assert "INDEXALERT-KRX-PERMISSION-REPLY-2026-10-02-v3" in text
+    assert "7361065e06599f947216233fc84e97126b1675de5af41068114cf6ef9577e304" in text
+    assert "latest v3 reply exact timestamp: **not re-provided / intentionally unknown**" in text
+    assert "complete full-historical-period download and query" in text
+    assert "high-frequency collection" in text
+    assert "Gate F intended-use rights may now be treated as **PASS**" in text
+    assert "c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38" not in text
