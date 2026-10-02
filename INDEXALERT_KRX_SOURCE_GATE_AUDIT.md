@@ -29,8 +29,8 @@ Overall: **OPEN — NOT ALL A-F PASS**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Data Marketplace credentials are configured and the 2026-10-02 KRX email reply explicitly permits low-frequency programmatic/automated querying for personal non-commercial/internal research without a separate approval procedure. The committed status authorization record validates, and network-free Action `36973737546` reports manual-probe readiness with only `EXPLICIT_TINY_REQUEST_CONSENT` missing. No authenticated status-event request has yet been demonstrated, so Gate A remains `BLOCKED` until that tiny probe succeeds; even then the ceiling is `PARTIAL`, not PASS. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Exact live schemas are verified for `유가증권 종목기본정보` and `유가증권 일별매매정보`. `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json` additionally freezes the project's pinned-client candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902` and `MDCSTAT02303`; `MDCSTAT23701` remains explicitly provisional direct transport. These mappings are reproducible candidates, not KRX-authenticated project evidence, so exact approved historical transport/schema equivalence for halt/cleanup/delisting status and the stable full issue-ID contract for Final Judge remain unfrozen. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `PARTIAL` | Explicitly consented authenticated status probe Action `36976085781` succeeded. `MDCSTAT21301` trading-halt and `MDCSTAT23701` cleanup-trading candidates were live reachable, along with current identity, new-listing history and delisted-history samples. This closes the prior authenticated-reachability blocker but not the full historical product/access contract, so Gate A is `PARTIAL`, not PASS. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Authenticated Action `36976085781` live-validated the exact returned schemas for `MDCSTAT21301` and `MDCSTAT23701`, and also returned new-listing/delisted-history samples. This materially strengthens the status schema map. Gate B remains `PARTIAL` because the complete historical family, exact all-period security mapping and remaining status-route equivalence are not yet closed. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_status_coverage.py` can exact-audit caller-attested `(snapshot_date, symbol, isu_cd)` scope, but no authorized full-period scope/history with stable full issue identity has been supplied. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | Status adapters require availability lineage, but complete historical event/publication/availability/ingestion evidence across all required status families is absent. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. Production Action `36956234911` freezes exact-revision OpenAPI response fingerprints, while `research_v1_krx_data_marketplace_route_map.py` fail-closed validates the pinned candidate BLD map. Neither is a full authenticated historical acquisition receipt/batch chain, so Gate E remains `PARTIAL`. |
@@ -108,6 +108,19 @@ Canonical record: `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; fail-clos
 The original screenshot is fingerprinted but not stored in the repository. The user subsequently supplied the email subject, sender `krxdata@krx.co.kr`, reply time `2026-10-02T14:40:00+09:00`, and the full reply text explicitly including `프로그램을 통한 조회 및 자동 조회`. Recipient identity is intentionally redacted. The redacted normalized email-record SHA-256 is `c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38`.
 
 This allows `automated_collection_authorized=true` for the stated low-frequency personal/non-commercial/internal-research scope and makes the permission-evidence layer eligible for a tiny authenticated probe. It does not authorize bulk history or make Gate A PASS.
+
+### 5.5 Authenticated status tiny probe
+
+Canonical record: `INDEXALERT_KRX_STATUS_TINY_PROBE_EVIDENCE.md/.json`.
+
+Action `36976085781` / job `110740113447` executed the explicitly consented authenticated `KRX_SECURITY_STATUS` tiny probe. Observed safe metadata included:
+- current listed identity: 2,873 rows;
+- new-listing history sample: 148 rows;
+- delisted-history sample: 154 rows;
+- `MDCSTAT21301` trading halt: reachable, 1 row;
+- `MDCSTAT23701` cleanup trading: reachable, 10 rows.
+
+`candidate_blds_live_validated=true`; `authenticated_request_attempted=true`; numeric market data was not persisted. Gate A is now `PARTIAL`, Gate B remains `PARTIAL`, Gates C/D remain `BLOCKED`, and Judge/holdout/live authority remain false.
 
 ## 6. Authorization, readiness and workflow evidence
 
