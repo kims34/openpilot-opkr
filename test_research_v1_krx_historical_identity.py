@@ -104,6 +104,61 @@ def test_reconstructs_stable_kospi_common_stock_episodes():
     assert delisted["coverage_end"] == pd.Timestamp("2022-12-30")
 
 
+def test_non_common_alphanumeric_master_code_is_filtered_before_short_code_normalization():
+    masters = pd.concat([
+        _masters(),
+        pd.DataFrame([
+            _master_row(
+                "2015-06-15",
+                "KR7000088999",
+                "00088K",
+                "2000-01-03",
+                "알파우선주",
+                common=False,
+            ),
+            _master_row(
+                "2026-10-01",
+                "KR7000088999",
+                "00088K",
+                "2000-01-03",
+                "알파우선주",
+                common=False,
+            ),
+        ]),
+    ], ignore_index=True)
+
+    out = reconstruct_historical_kospi_episodes(
+        security_master_snapshots=masters,
+        new_listing=_new(),
+        delisted=_delisted(),
+    )
+    assert set(out["short_code"]) == {"005930", "123456", "222222"}
+    assert "KR7000088999" not in set(out["standard_code"])
+
+
+def test_common_stock_alphanumeric_master_code_fails_closed():
+    masters = _masters()
+    bad = _master_row(
+        "2015-06-15",
+        "KR7000088000",
+        "00088K",
+        "2000-01-03",
+        "잘못된보통주",
+        common=True,
+    )
+    masters = pd.concat([masters, pd.DataFrame([bad])], ignore_index=True)
+
+    with pytest.raises(
+        KRXHistoricalIdentityError,
+        match="KOSPI common-stock master has non-numeric short code",
+    ):
+        reconstruct_historical_kospi_episodes(
+            security_master_snapshots=masters,
+            new_listing=_new(),
+            delisted=_delisted(),
+        )
+
+
 def test_new_listing_requires_exact_same_day_standard_code_snapshot():
     masters = _masters()
     masters = masters[
