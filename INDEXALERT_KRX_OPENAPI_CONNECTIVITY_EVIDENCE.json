@@ -1,0 +1,87 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-OPENAPI-CONNECTIVITY-2026-10-02-v1",
+  "evidence_class": "AUTHENTICATED_CONNECTIVITY_AND_SCHEMA_ONLY",
+  "observed_at_kst_date": "2026-10-02",
+  "production_server_commit": "62cb089131ca519815434616dd7f217315fbe346",
+  "railway_deployment_id": "3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681",
+  "github_action_run_id": 36952309738,
+  "github_action_job_id": 110667696519,
+  "request_date": "20261001",
+  "authentication": {
+    "route": "KRX_OPENAPI",
+    "header_name": "AUTH_KEY",
+    "secret_value_recorded": false,
+    "production_environment_secret_present": true
+  },
+  "services": {
+    "security_master": {
+      "krx_service_name": "유가증권 종목기본정보",
+      "endpoint": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+      "method": "GET",
+      "http_status": 200,
+      "json_parsed": true,
+      "row_count": 942,
+      "schema_ok": true,
+      "fields": [
+        "ISU_ABBRV",
+        "ISU_CD",
+        "ISU_ENG_NM",
+        "ISU_NM",
+        "ISU_SRT_CD",
+        "KIND_STKCERT_TP_NM",
+        "LIST_DD",
+        "LIST_SHRS",
+        "MKT_TP_NM",
+        "PARVAL",
+        "SECT_TP_NM",
+        "SECUGRP_NM"
+      ]
+    },
+    "daily_trade": {
+      "krx_service_name": "유가증권 일별매매정보",
+      "endpoint": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+      "method": "GET",
+      "http_status": 200,
+      "json_parsed": true,
+      "row_count": 942,
+      "schema_ok": true,
+      "fields": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CMPPREVDD_PRC",
+        "FLUC_RT",
+        "ISU_CD",
+        "ISU_NM",
+        "LIST_SHRS",
+        "MKTCAP",
+        "MKT_NM",
+        "SECT_TP_NM",
+        "TDD_CLSPRC",
+        "TDD_HGPRC",
+        "TDD_LWPRC",
+        "TDD_OPNPRC"
+      ]
+    }
+  },
+  "authority": {
+    "krx_source_contract_closed": false,
+    "judge_security_status_ready": false,
+    "investor_flow_feature_testing_authorized": false,
+    "alpha_or_final_judge_promotion_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "not_proven": [
+    "complete historical coverage",
+    "record-level point-in-time availability lineage",
+    "trading-halt history",
+    "cleanup-trading history",
+    "actual delisting history",
+    "exact delisting or forced-liquidation economics",
+    "investor-by-security flow access",
+    "research-grade immutable acquisition receipts for full history",
+    "intended-use rights beyond the separately audited OpenAPI terms and exact approved service scope"
+  ]
+}
