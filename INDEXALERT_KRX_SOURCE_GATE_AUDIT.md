@@ -46,8 +46,8 @@ Overall: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | `KRX_ID`/`KRX_PW` are present, the investor-flow structured authorization record validates, the KRX reply explicitly permits low-frequency programmatic/automated querying for the declared internal-research scope, and Action `36973737546` shows configuration ready for a manual authenticated probe. Only `EXPLICIT_TINY_REQUEST_CONSENT` remains before the request. No authenticated investor-flow request has yet been demonstrated, so Gate A remains `BLOCKED`; successful tiny reachability can raise it only to `PARTIAL`. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Official stock investor-trading screen family is known. The pinned-client route map now freezes `MDCSTAT02303` / screen 12009 daily trend with required security/date inputs and the 20:00 publication floor, but the project has not yet demonstrated an authenticated KRX response or exact approved historical route equivalence. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `PARTIAL` | Explicitly consented authenticated investor-flow probe Action `36976873119` succeeded against `MDCSTAT02303`, returning 3 rows for `005930` over `2026-09-21..2026-09-23`. Authenticated reachability is now demonstrated; the full historical access contract remains open, so Gate A is `PARTIAL`, not PASS. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Authenticated Action `36976873119` live-validated `MDCSTAT02303` and observed the daily columns `일자, 금융투자, 보험, 투신, 사모, 은행, 기타금융, 연기금 등, 기타법인, 개인, 외국인, 기타외국인, 전체`. Exact full-history service/schema equivalence remains open. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_investor_flow_coverage.py` exact-compares caller-attested `(event_date, symbol, isu_cd)` scope to validated observed keys and never invents dates/universe/zeros. No authorized full-period scope/history exists yet. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `PARTIAL` | `research_v1_krx_investor_flow_lineage.py` enforces timezone-aware chronology, day-D publication floor >=20:00 KST, current public-contract fingerprint, one source contract and decision-time availability. No real full historical dataset has passed it. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Probe/public evidence, structured authorization-evidence validation, network-free readiness, push-safe workflow isolation, immutable acquisition receipts, batch provenance, PIT and exact coverage validators, and `research_v1_krx_source_data_admission.py` are fail-closed. Bulk authenticated historical retrieval and real-data admission evidence remain unavailable. |
@@ -99,7 +99,7 @@ The project-pinned `beaten-by-the-market/krx-data-api` commit `e6ebac9b71482db12
 
 Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`.
 
-The current KRX homepage terms make ordinary membership/account access insufficient for automated collection. The subsequent 2026-10-02 KRX reply explicitly permits low-frequency programmatic/automated querying for the stated personal, non-commercial/internal-research scope. Structured permission records now validate for both source families. Network-free Action `36973737546` confirms credentials + permission evidence are ready, with only `EXPLICIT_TINY_REQUEST_CONSENT` remaining. No authenticated Data Marketplace request was attempted.
+The current KRX homepage terms make ordinary membership/account access insufficient for automated collection. The subsequent 2026-10-02 KRX reply explicitly permits low-frequency programmatic/automated querying for the stated personal, non-commercial/internal-research scope. Structured permission records validate for both source families. Network-free Action `36973737546` established readiness; authenticated status Action `36976085781` and investor-flow Action `36976873119` subsequently succeeded under separate explicit one-run consent.
 
 ### 5.4 User-provided low-frequency internal-research permission reply
 
@@ -122,6 +122,14 @@ Action `36976085781` / job `110740113447` executed the explicitly consented auth
 
 `candidate_blds_live_validated=true`; `authenticated_request_attempted=true`; numeric market data was not persisted. Gate A is now `PARTIAL`, Gate B remains `PARTIAL`, Gates C/D remain `BLOCKED`, and Judge/holdout/live authority remain false.
 
+### 5.6 Authenticated investor-flow tiny probe
+
+Canonical record: `INDEXALERT_KRX_INVESTOR_FLOW_TINY_PROBE_EVIDENCE.md/.json`.
+
+Action `36976873119` / job `110742487933` executed the explicitly consented authenticated `KRX_INVESTOR_FLOW` tiny probe. `MDCSTAT02303` returned 3 rows for security `005930`, window `2026-09-21..2026-09-23`, with the expected investor-category columns. Numeric market data was not persisted.
+
+Investor-flow Gate A is now `PARTIAL`; Gate B remains `PARTIAL`; Gate C remains `BLOCKED`; Gate D remains `PARTIAL`; feature-performance/holdout/live authority remain false.
+
 ## 6. Authorization, readiness and workflow evidence
 
 The production OpenAPI probe is a separate operational path from the Data Marketplace source-probe workflows below. It successfully demonstrated the two exact approved OpenAPI services recorded in `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md`; it must not be re-labeled as status-event or investor-flow acquisition evidence.
@@ -131,7 +139,7 @@ Current Data Marketplace request boundary:
 - credentials alone do not authorize a request;
 - credentials + opaque approval reference still do not authorize a request;
 - `research_v1_krx_authorization_evidence.py` must validate a structured non-secret record matching the exact family/route/use-scope/reference;
-- only `APPROVED` active evidence with a KRX issuer and valid evidence-document SHA-256 can be sufficient for tiny-probe preflight metadata;
+- `APPROVED` or `PERMITTED_NO_SEPARATE_APPROVAL` active evidence with a KRX issuer, explicit automation permission where required, and valid evidence-document SHA-256 can be sufficient for tiny-probe preflight metadata;
 - even valid structured evidence caps Gate-A evidence at `PARTIAL` and grants no bulk/performance/holdout/promotion/live authority;
 - the exact sentinel `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST` is additionally required;
 - generic values such as `true`, `1` or `yes` are rejected;
@@ -182,9 +190,8 @@ Therefore no authorization/readiness/infrastructure-only success can skip the Re
 
 ## 8. External evidence still missing
 
-- approved/authenticated exact historical **status-event and investor-flow** route/product (basic security-master/daily-trade OpenAPI connectivity is now proven separately);
-- one explicitly consented metadata-only authenticated tiny probe for each still-unresolved status/investor route; structured authorization records and network-free readiness are now present;
-- exact authenticated route/schema evidence from those probes;
+- complete approved/attested **historical** status-event and investor-flow acquisition contract beyond the now-completed tiny probes;
+- immutable full-history acquisition receipts/batches and exact authenticated route/schema equivalence across the required period;
 - complete historical status/investor-flow data;
 - independently attested full expected scope/stable security mapping;
 - record-level historical PIT timestamps/availability;
