@@ -708,7 +708,7 @@ def test_private_reconstruction_excludes_prestart_issue_proven_noncommon_at_star
     monkeypatch.setattr(
         m,
         "load_identity_binding_master_snapshots",
-        lambda *a, **k: pd.DataFrame(columns=seed_masters.columns),
+        lambda *a, **k: _non_overlapping_binding(),
     )
 
     out = m.reconstruct_private_historical_episodes("/private")
