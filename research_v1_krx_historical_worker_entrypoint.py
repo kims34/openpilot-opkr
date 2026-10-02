@@ -37,6 +37,7 @@ from research_v1_krx_historical_batch_orchestrator import (
     public_task_summary,
 )
 from research_v1_krx_historical_batch_state import (
+    KRXHistoricalBatchStateError,
     initialize_phase_state,
     public_phase_summary,
     record_task_completion,
@@ -48,7 +49,11 @@ from research_v1_krx_historical_identity_materializer import (
     build_status_economics_tasks_from_private_identity,
 )
 from research_v1_krx_historical_request_executor import execute_request_spec
-from research_v1_krx_private_store import read_private_json, write_private_json
+from research_v1_krx_private_store import (
+    KRXPrivateStoreError,
+    read_private_json,
+    write_private_json,
+)
 
 
 CLIENT_REVISION = "krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
@@ -65,6 +70,24 @@ IDENTITY_BINDING_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
     pass
+
+
+def _require_completed_predecessor(
+    *,
+    root: str,
+    phase: str,
+    git_worktree: str,
+) -> dict[str, Any]:
+    try:
+        return require_phase_complete(
+            root=root,
+            phase=phase,
+            git_worktree=git_worktree,
+        )
+    except (KRXPrivateStoreError, KRXHistoricalBatchStateError) as exc:
+        raise KRXHistoricalWorkerEntrypointError(
+            f"prior phase {phase} is not complete"
+        ) from exc
 
 
 def _require_identity_binding_stage_consent(environment: Mapping[str, str]) -> None:
@@ -307,7 +330,7 @@ def prepare_identity_standard_code_binding(
 
     worktree = git_worktree or str(Path.cwd().resolve())
     root = str(env["KRX_PRIVATE_RAW_DIR"])
-    require_phase_complete(
+    _require_completed_predecessor(
         root=root,
         phase="IDENTITY_SEED",
         git_worktree=worktree,
@@ -446,7 +469,7 @@ def execute_identity_standard_code_binding(
 
     worktree = git_worktree or str(Path.cwd().resolve())
     root = str(env["KRX_PRIVATE_RAW_DIR"])
-    require_phase_complete(
+    _require_completed_predecessor(
         root=root,
         phase="IDENTITY_SEED",
         git_worktree=worktree,
