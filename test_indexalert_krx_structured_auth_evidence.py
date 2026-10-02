@@ -6,9 +6,9 @@ from research_v1_krx_auth_preflight import DATA_MARKETPLACE_ROUTE
 from research_v1_krx_authorization_evidence import validate_authorization_evidence
 
 
-REF = "KRX_EMAIL_REPLY_2026-10-02_1440KST_C50A76BB"
-DOC_SHA = "c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38"
-EVAL = datetime(2026, 10, 2, 6, 30, tzinfo=timezone.utc)
+REF = "KRX_EMAIL_THREAD_PERMISSION_2026-10-02_V3_7361065E"
+DOC_SHA = "7361065e06599f947216233fc84e97126b1675de5af41068114cf6ef9577e304"
+EVAL = datetime(2026, 10, 2, 8, 30, tzinfo=timezone.utc)
 
 CASES = [
     (
