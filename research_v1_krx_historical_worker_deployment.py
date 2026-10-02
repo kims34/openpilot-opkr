@@ -203,6 +203,29 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         is True,
         "per-security predecessor guard lost",
     )
+    _require(
+        start.get("prepare_status_economics_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --prepare-status-economics",
+        "status-economics preparation command drift",
+    )
+    _require(
+        start.get("prepare_status_economics_network_request_attempted") is False,
+        "status-economics preparation must remain network-free",
+    )
+    _require(
+        start.get("prepare_status_economics_bulk_consent_required") is False,
+        "network-free status-economics preparation must not require bulk consent",
+    )
+    _require(
+        start.get("prepare_status_economics_requires_completed_per_security_history")
+        is True,
+        "status-economics predecessor guard lost",
+    )
+    _require(
+        start.get("prepare_status_economics_exact_realized_economics_claim_allowed")
+        is False,
+        "KRX price context must never claim exact realized economics",
+    )
 
     authority = data.get("authority") or {}
     for key in (
