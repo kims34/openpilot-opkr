@@ -51,7 +51,7 @@ Even all six PASS closes only the declared source contract; it does not authoriz
 Public-evidence fingerprint remains `39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380` (`2026-10-02.v2`).
 
 Authorization boundary:
-`route credentials -> validated structured non-secret authorization evidence -> exact per-run tiny-request consent`.
+`route credentials -> validated structured non-secret authorization evidence -> explicit KRX automation permission where Data Marketplace web-session automation is used -> exact per-run tiny-request consent`.
 
 Canonical validator: `research_v1_krx_authorization_evidence.py`. Canonical structured-evidence variable is `KRX_AUTH_EVIDENCE_JSON`; canonical explicit-consent variable is `KRX_EXPLICIT_PROBE_CONSENT`. The approval reference alone is not validated evidence. Network-free readiness always clears consent and performs no KRX request. Push research-probe workflows are dry-run only. Production OpenAPI now has authenticated proof for the two separately enabled basic-info/daily-trade services (`20261001`, 942 rows each, exact schema plus response fingerprints; Action `36956234911`), but no authenticated exact status-event or investor-flow route has been demonstrated. **Gate A remains BLOCKED for those declared source families**.
 
@@ -62,7 +62,7 @@ Source-data admission only permits experiment-registry review; performance testi
 
 Latest broad KRX source-governance reference: Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf` succeeded with structured authorization provenance through source-data admission. Final documentation-drift repair Action `36835918274` succeeded at research branch state before the later Android/server handoff update.
 
-External KRX blockers remain: exact approved/authenticated status-event and investor-flow route/products, route-specific structured authorization provenance, full official history/stable IDs, independently attested expected scope, record-level PIT lineage and exact use rights. The basic-info/daily-trade OpenAPI proof is recorded in `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`; the candidate Data Marketplace BLDs are frozen separately in `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json`. Both are fail-closed validated and neither grants source closure.
+External KRX blockers remain: exact approved/authenticated status-event and investor-flow route/products, route-specific structured authorization provenance, **explicit KRX permission for any automated Data Marketplace collection**, full official history/stable IDs, independently attested expected scope, record-level PIT lineage and exact use rights. The basic-info/daily-trade OpenAPI proof is recorded in `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`; candidate Data Marketplace BLDs are frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json`; the automation restriction is frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`. All are fail-closed validated and none grants source closure.
 
 ## 3. Exact KRX status economics — internal auditor DONE, real evidence BLOCKED
 
@@ -224,7 +224,7 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 
 1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
 2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure. Legacy `research_v1_krx.py` is now explicitly staging-only: `judge_eligible=false`, source-governance admission required, sealed-holdout/live authority false.
-3. EXTERNAL KRX AUTH/DATA BLOCKER — basic-info/daily-trade OpenAPI authentication is proven and status/investor BLD candidates are pinned; project-authenticated exact status-event/investor-flow route proof plus full history/stable IDs/PIT/use rights remain unresolved.
+3. EXTERNAL KRX AUTH/DATA BLOCKER — basic-info/daily-trade OpenAPI authentication is proven and status/investor BLD candidates are pinned. Data Marketplace ID/PW presence is confirmed, but the homepage terms block unauthorized automated collection; explicit KRX automation permission or a separately authorized route is required before authenticated status/investor acquisition.
 4. DONE — internal exact status-economics auditor; EXTERNAL EVIDENCE BLOCKER remains for real fill/recovery data.
 5. DONE — execution schema hardening: LIVE structural presence is no longer mislabeled as empirical sufficiency.
 6. DONE — frozen project execution-sufficiency protocol v1, SHA-256-bound machine-readable criteria, metric evaluator, provenance fail-closed hardening and Actions coverage; EMPIRICAL EXECUTION BLOCKER remains because genuine staged LIVE evidence and broker-native provenance admission do not exist.
