@@ -592,6 +592,130 @@ def test_private_reconstruction_respects_same_day_official_noncommon_classificat
     assert "123456" not in set(out["short_code"])
 
 
+def test_prestart_delisted_is_excluded_only_when_start_master_proves_noncommon():
+    delisted = pd.DataFrame([{
+        "종목코드": "950010",
+        "종목명": "과거비보통",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20071126",
+        "폐지일": "20200102",
+    }])
+    row = _normal_master_row(
+        "2015-06-15",
+        "KR7950010000",
+        "950010",
+        "2007-11-26",
+        "과거비보통",
+    )
+    row["common_stock_identity_official"] = False
+    row["security_group_official"] = "증권예탁증권"
+    start = pd.DataFrame([row])
+
+    out = m._exclude_prestart_delisted_officially_noncommon_at_start(
+        delisted, start
+    )
+    assert out.empty
+
+
+def test_prestart_delisted_missing_from_start_master_is_not_silently_excluded():
+    delisted = pd.DataFrame([{
+        "종목코드": "950010",
+        "종목명": "과거종목",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20071126",
+        "폐지일": "20200102",
+    }])
+    start = pd.DataFrame([
+        _normal_master_row(
+            "2015-06-15",
+            "KR7005930003",
+            "005930",
+            "1975-06-11",
+            "삼성전자",
+        )
+    ])
+
+    out = m._exclude_prestart_delisted_officially_noncommon_at_start(
+        delisted, start
+    )
+    assert len(out) == 1
+
+
+def test_prestart_delisted_listing_date_mismatch_is_not_silently_excluded():
+    delisted = pd.DataFrame([{
+        "종목코드": "950010",
+        "종목명": "과거종목",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20071126",
+        "폐지일": "20200102",
+    }])
+    row = _normal_master_row(
+        "2015-06-15",
+        "KR7950010000",
+        "950010",
+        "2007-11-27",
+        "과거비보통",
+    )
+    row["common_stock_identity_official"] = False
+    start = pd.DataFrame([row])
+
+    out = m._exclude_prestart_delisted_officially_noncommon_at_start(
+        delisted, start
+    )
+    assert len(out) == 1
+
+
+def test_private_reconstruction_excludes_prestart_issue_proven_noncommon_at_start(monkeypatch):
+    seed_masters = pd.DataFrame([
+        _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+        _normal_master_row("2026-10-01", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+    ])
+    excluded = _normal_master_row(
+        "2015-06-15",
+        "KR7950010000",
+        "950010",
+        "2007-11-26",
+        "과거비보통",
+    )
+    excluded["common_stock_identity_official"] = False
+    excluded["security_group_official"] = "증권예탁증권"
+    seed_masters = pd.concat([seed_masters, pd.DataFrame([excluded])], ignore_index=True)
+
+    delisted = pd.DataFrame([{
+        "종목코드": "950010",
+        "종목명": "과거비보통",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20071126",
+        "폐지일": "20200102",
+    }])
+
+    monkeypatch.setattr(m, "load_identity_seed_material", lambda *a, **k: {
+        "security_master_snapshots": seed_masters,
+        "new_listing_history": pd.DataFrame(columns=[
+            "종목코드", "종목명", "시장구분", "증권구분", "주식종류", "상장일", "상장폐지일"
+        ]),
+        "delisted_history": delisted,
+        "cleanup_current": pd.DataFrame(),
+    })
+    monkeypatch.setattr(
+        m,
+        "load_identity_binding_master_snapshots",
+        lambda *a, **k: pd.DataFrame(columns=seed_masters.columns),
+    )
+
+    out = m.reconstruct_private_historical_episodes("/private")
+    assert set(out["short_code"]) == {"005930"}
+    assert "950010" not in set(out["short_code"])
+
+
 def test_private_identity_reconstruction_combines_seed_and_listing_date_masters(monkeypatch):
     seed_masters = pd.DataFrame([
         _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
