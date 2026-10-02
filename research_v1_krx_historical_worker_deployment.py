@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 CONTRACT_PATH = Path("INDEXALERT_KRX_HISTORICAL_WORKER_DEPLOYMENT_CONTRACT.json")
 DOCKERFILE_PATH = Path("Dockerfile.krx-historical-worker")
+REQUIREMENTS_PATH = Path("requirements-krx-historical-worker.txt")
 
 
 class KRXHistoricalWorkerDeploymentError(ValueError):
@@ -172,13 +173,35 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_worker_requirements(text: str) -> dict[str, Any]:
+    lines = [line.strip() for line in str(text).splitlines() if line.strip()]
+    rendered = "\n".join(lines)
+    pinned = (
+        "krx-data-api @ https://github.com/beaten-by-the-market/krx-data-api/"
+        "archive/e6ebac9b71482db127348d8a08ebc6743aa3b50e.zip"
+    )
+    _require(pinned in rendered, "pinned KRX client missing from requirements")
+    _require(
+        rendered.count("krx-data-api") == 1,
+        "requirements must contain exactly one krx-data-api pin",
+    )
+    return {
+        "valid": True,
+        "pinned_client": True,
+        "pinned_client_commit": "e6ebac9b71482db127348d8a08ebc6743aa3b50e",
+    }
+
+
 def validate_worker_dockerfile(text: str) -> dict[str, Any]:
     lines = [line.strip() for line in str(text).splitlines() if line.strip()]
     rendered = "\n".join(lines)
     _require(
-        "krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
-        in rendered,
-        "pinned KRX client missing from Dockerfile",
+        "COPY requirements-krx-historical-worker.txt ./" in rendered,
+        "worker requirements file must be copied into image",
+    )
+    _require(
+        "pip install -r requirements-krx-historical-worker.txt" in rendered,
+        "worker requirements file must be installed",
     )
     _require(
         'CMD ["python", "research_v1_krx_historical_worker_entrypoint.py"]'
@@ -205,7 +228,7 @@ def validate_worker_dockerfile(text: str) -> dict[str, Any]:
     return {
         "valid": True,
         "default_mode": "PREFLIGHT_ONLY",
-        "pinned_client": True,
+        "requirements_installed": True,
         "public_port_exposed": False,
         "bulk_execute_in_default_cmd": False,
     }
@@ -215,6 +238,9 @@ def validate_files() -> dict[str, Any]:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     return {
         "contract": validate_deployment_contract(contract),
+        "requirements": validate_worker_requirements(
+            REQUIREMENTS_PATH.read_text(encoding="utf-8")
+        ),
         "dockerfile": validate_worker_dockerfile(
             DOCKERFILE_PATH.read_text(encoding="utf-8")
         ),
