@@ -41,6 +41,7 @@ from research_v1_krx_historical_batch_state import (
 )
 from research_v1_krx_historical_identity_materializer import (
     build_identity_binding_tasks_from_private_seed,
+    build_per_security_history_tasks_from_private_identity,
 )
 from research_v1_krx_historical_request_executor import execute_request_spec
 from research_v1_krx_private_store import write_private_json
@@ -49,6 +50,7 @@ from research_v1_krx_private_store import write_private_json
 CLIENT_REVISION = "krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 PRIVATE_BATCH_REL = "batches/identity-seed-v3.json"
 IDENTITY_BINDING_BATCH_REL = "batches/identity-standard-code-binding-v3.json"
+PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
 
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
@@ -404,6 +406,105 @@ def execute_identity_standard_code_binding(
     }
 
 
+def prepare_per_security_history(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    task_builder=build_per_security_history_tasks_from_private_identity,
+) -> dict[str, Any]:
+    """Freeze PER_SECURITY_HISTORY task set without performing network access.
+
+    This preparation step requires the dedicated worker/private-storage boundary
+    and a completed identity-binding predecessor, but deliberately does not
+    require the bulk network consent sentinel because it cannot issue a request.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security preparation blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security preparation blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security preparation blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+    tasks = task_builder(root, git_worktree=worktree)
+    summary = public_task_summary(tasks)
+    if summary["task_count"] <= 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security history task set is empty"
+        )
+
+    state = initialize_phase_state(
+        root=root,
+        phase="PER_SECURITY_HISTORY",
+        tasks=tasks,
+        git_worktree=worktree,
+    )
+    safe_phase = public_phase_summary(state)
+
+    private_manifest = {
+        "manifest_version": "2026-10-02.per-security-history-v3",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "phase": "PER_SECURITY_HISTORY",
+        "task_count": len(tasks),
+        "task_set_fingerprint_sha256": summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "tasks": tasks,
+        "network_request_attempted": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+    manifest_write = write_private_json(
+        root,
+        PER_SECURITY_TASK_MANIFEST_REL,
+        private_manifest,
+        git_worktree=worktree,
+    )
+
+    return {
+        "mode": "PREPARE_PER_SECURITY_HISTORY",
+        "plan_id": PLAN_ID,
+        "execution_contract_id": EXECUTION_CONTRACT_ID,
+        "task_count": int(summary["task_count"]),
+        "task_count_by_kind": dict(summary["task_count_by_kind"]),
+        "task_set_fingerprint_sha256": summary[
+            "task_set_fingerprint_sha256"
+        ],
+        "private_task_manifest_metadata_sha256": manifest_write[
+            "metadata_sha256"
+        ],
+        "private_task_manifest_relpath": PER_SECURITY_TASK_MANIFEST_REL,
+        "phase_status": safe_phase["status"],
+        "phase_complete": safe_phase["phase_complete"],
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="IndexAlert KRX historical acquisition dedicated worker"
@@ -426,6 +527,15 @@ def _parser() -> argparse.ArgumentParser:
             "the private seed history."
         ),
     )
+    group.add_argument(
+        "--prepare-per-security-history",
+        action="store_true",
+        help=(
+            "Network-free: after identity binding is complete, reconstruct "
+            "historical episodes and freeze the exact private halt/investor "
+            "PER_SECURITY_HISTORY task set."
+        ),
+    )
     return parser
 
 
@@ -435,6 +545,8 @@ def main(argv: list[str] | None = None) -> int:
         result = execute_identity_seed()
     elif args.execute_identity_standard_code_binding:
         result = execute_identity_standard_code_binding()
+    elif args.prepare_per_security_history:
+        result = prepare_per_security_history()
     else:
         result = preflight_only()
     print("INDEXALERT_KRX_HIST_WORKER=" + json.dumps(result, ensure_ascii=False))
