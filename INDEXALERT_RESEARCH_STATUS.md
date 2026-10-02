@@ -107,7 +107,7 @@ Canonical components include:
 Frozen future source flow:
 `structured authorization-evidence validation -> network-free auth readiness -> explicit manual request consent -> authorization preflight -> tiny authenticated probe/acquisition -> immutable receipt -> consistent batch -> PIT lineage -> exact expected-scope coverage -> A-F audit -> source-data admission -> separate experiment-registry/preregistration review`.
 
-Push research-probe workflows remain dry-run only. Separately, production OpenAPI evidence now demonstrates authenticated GET access for the approved `유가증권 종목기본정보` and `유가증권 일별매매정보` services on basis date `20261001` (942 rows each, exact expected schemas; server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`, Smoke Action `36956234911`). Canonical evidence is `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`; `research_v1_krx_openapi_connectivity_evidence.py` fail-closed validates the committed evidence and forbids authority escalation. This OpenAPI evidence is separate from the later authenticated Data Marketplace tiny probes. Those later probes move Gate A to `PARTIAL` for both declared source families; they still do not close full-history/PIT/source contracts. Full history, stable IDs across the required period, record-level PIT evidence, route-specific authorization provenance for the unresolved products and exact use rights remain external blockers.
+Push research-probe workflows remain dry-run only. Separately, production OpenAPI evidence now demonstrates authenticated GET access for the approved `유가증권 종목기본정보` and `유가증권 일별매매정보` services on basis date `20261001` (942 rows each, exact expected schemas; server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`, Smoke Action `36956234911`). Canonical evidence is `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md/.json`; `research_v1_krx_openapi_connectivity_evidence.py` fail-closed validates the committed evidence and forbids authority escalation. This OpenAPI evidence is separate from the later authenticated Data Marketplace tiny probes. Those probes move Gate A to `PARTIAL` for both declared source families; they still do not close full-history/PIT/source contracts. KRX permission evidence v3 now closes Gate F for the declared personal/internal-research scope. Remaining source blockers are actual full-history technical coverage, stable IDs across the required period, exact all-period route/schema equivalence, record-level PIT lineage and immutable acquisition provenance.
 
 Latest authenticated OpenAPI plumbing/schema reference: production Smoke Action `36956234911` at server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5` succeeded and recorded sanitized KRX response metadata plus per-service schema/payload SHA-256 fingerprints. Existing broad source-governance integrity reference remains Action `36817784717` at `bc5792640e0ba611f50f459f8c3b17c108cdd4bf`; documentation/handoff drift repairs later passed Action `36835918274`.
 
@@ -117,7 +117,7 @@ The latest KRX permission evidence v3 states that personal research may use comp
 
 ## Data Marketplace automation-permission boundary
 
-The Data Marketplace terms boundary remains frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`: credentials alone never authorize automation. That permission prerequisite is now satisfied by the KRX reply evidence and the committed structured source-family records. Network-free Action `36973737546` confirms, for both security/status and investor flow, credentials present, authorization evidence valid, `automated_collection_authorized=true`, and `configuration_ready_for_manual_authenticated_probe=true`. No network request was attempted; the only remaining pre-request requirement is `EXPLICIT_TINY_REQUEST_CONSENT`.
+The Data Marketplace terms boundary remains frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`: credentials alone never authorize automation. KRX permission v3 now establishes full-history/high-frequency rights for personal research. Network-free Action `36973737546` established tiny-probe readiness; the separately consented status Action `36976085781` and investor-flow Action `36976873119` subsequently completed successfully. A new, broader full-history network job is governed by the separate historical-acquisition plan/consent gate.
 
 `research_v1_krx_authorization_evidence.py` now treats a Data Marketplace record without `automated_collection_authorized=true` as insufficient, and `research_v1_krx_auth_preflight.py` independently enforces the same requirement.
 
@@ -274,7 +274,7 @@ This closes server deployment drift, stale-runtime ambiguity, the latest-registr
 
 ## External evidence still missing
 
-Internal code cannot fabricate the still-missing full-history KRX coverage/PIT/broader-rights evidence, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment.
+Internal code cannot fabricate the still-missing actual full-history KRX coverage/PIT/provenance evidence, real complete affected-position status economics, genuine staged LIVE execution observations or a later independent execution-sufficiency assessment. Personal-research acquisition rights themselves are now evidenced by KRX permission v3.
 
 ## Remaining blockers
 
