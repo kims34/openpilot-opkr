@@ -127,3 +127,30 @@ Network-free preparation completed on 2026-10-03 KST and is now part of this exe
 - preparation network requests: **0**
 
 `PER_SECURITY_HISTORY` execution must match this exact frozen scope and still requires both the v3 historical-network sentinel and the separate stage-specific approval `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1`. No later stage is authorized by this preparation.
+
+
+## STATUS_ECONOMICS preparation lifecycle
+
+`STATUS_ECONOMICS` remains a separately protected later network stage.
+
+Before `PER_SECURITY_HISTORY` is complete and re-locked, the execution contract must remain in a **preparation shell**:
+- `preparation_complete=false`;
+- no prepared task count;
+- no prepared task-set SHA-256;
+- no prepared private-manifest metadata SHA-256;
+- no preparation evidence binding;
+- `currently_authorized=false`;
+- `exact_status_economics_claim_allowed=false`.
+
+Only after canonical `PER_SECURITY_HISTORY` completion evidence proves exact **14,296/14,296**, failed=0, frozen fingerprint match and post-run relock may the worker run the network-free `--prepare-status-economics` command.
+
+A successful preparation may transition this contract only to **prepared scope frozen / execution not authorized**, and must then bind:
+- canonical preparation evidence ID `INDEXALERT-KRX-STATUS-ECONOMICS-PREP-v1`;
+- predecessor completion evidence ID `INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1`;
+- positive exact prepared task count;
+- exact task-set SHA-256;
+- exact private task-manifest metadata SHA-256;
+- private manifest `task_manifests/status-economics-v3.json`;
+- preparation network requests = **0**.
+
+Even after those values are frozen, execution remains blocked until the user separately supplies `I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1`. Preparation cannot authorize exact fill/recovery economics, expected-scope network execution, feature-performance testing, sealed holdout, Shadow S1, genuine LIVE or real-account ordering.
