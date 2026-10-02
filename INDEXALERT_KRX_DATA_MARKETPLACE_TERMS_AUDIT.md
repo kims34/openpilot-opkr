@@ -3,7 +3,7 @@
 Updated: 2026-10-02 KST  
 Branch: `index-alert-research-v1`  
 Evidence ID: `INDEXALERT-KRX-DATA-MARKETPLACE-TERMS-2026-10-02-v1`  
-Status: **AUTOMATED WEB-SESSION COLLECTION BLOCKED WITHOUT EXPLICIT KRX PERMISSION**
+Status: **TERMS REQUIRE EXPLICIT PERMISSION; SEPARATE LOW-FREQUENCY KRX PERMISSION EVIDENCE NOW EXISTS**
 
 Official source:
 `https://data.krx.co.kr/contents/MDC/INFO/informationController/MDCINFO003.cmd`
@@ -29,9 +29,11 @@ This restriction does not convert the separately approved KRX OpenAPI services i
 
 ## Frozen authority state
 
-Until explicit KRX automation permission is evidenced:
+This terms audit by itself never authorizes a request. Separate `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json` now supplies explicit low-frequency programmatic/automated-query permission for the personal non-commercial/internal-research scope. After structured evidence and network-free readiness, the remaining prerequisite for a tiny authenticated probe is exact per-run consent.
 
-- Data Marketplace authenticated probe: **not authorized**
+The terms audit alone keeps:
+
+- Data Marketplace authenticated probe: **not authorized by this terms record alone**
 - bulk historical acquisition: **not authorized**
 - investor-flow feature performance testing: **not authorized**
 - sealed holdout: **not authorized**
