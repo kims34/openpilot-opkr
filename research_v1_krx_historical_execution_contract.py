@@ -20,9 +20,11 @@ def _require(cond: bool, msg: str) -> None:
 
 def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(isinstance(data, Mapping), "execution contract must be an object")
-    _require(data.get("schema_version") == "1", "schema_version drift")
-    _require(data.get("contract_id") == "INDEXALERT-KRX-HIST-EXEC-v1", "contract_id drift")
-    _require(data.get("acquisition_plan_id") == "INDEXALERT-KRX-HIST-ACQ-v2", "plan binding drift")
+    _require(data.get("schema_version") == "2", "schema_version drift")
+    _require(data.get("contract_id") == "INDEXALERT-KRX-HIST-EXEC-v2", "contract_id drift")
+    _require(data.get("acquisition_plan_id") == "INDEXALERT-KRX-HIST-ACQ-v3", "plan binding drift")
+    _require(data.get("supersedes_contract_id") == "INDEXALERT-KRX-HIST-EXEC-v1", "superseded contract drift")
+    _require(data.get("superseded_before_any_bulk_network_execution") is True, "execution-contract supersession timing drift")
     _require(data.get("execution_authorized") is False, "contract must not self-authorize execution")
 
     repo = data.get("repository_context") or {}
@@ -36,7 +38,7 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(iso.get("concurrent_public_web_serving_from_raw_root_forbidden") is True, "raw web-serving guard lost")
     _require(iso.get("network_execution_requires_exact_plan_preflight") is True, "preflight requirement lost")
     _require(
-        iso.get("exact_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2",
+        iso.get("exact_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
         "bulk consent sentinel drift",
     )
 
@@ -61,6 +63,22 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         storage.get("object_relpath_template")
         == "objects/sha256/{first2}/{sha256}.bin",
         "object path template drift",
+    )
+
+    correction = data.get("source_contract_correction") or {}
+    _require(
+        correction.get("historical_cleanup_source")
+        == "MDCSTAT23801 delisted-history cleanup-period fields",
+        "historical cleanup source correction drift",
+    )
+    _require(
+        correction.get("current_cleanup_reconciliation_source")
+        == "MDCSTAT23701 mktId=ALL snapshot",
+        "current cleanup reconciliation source drift",
+    )
+    _require(
+        correction.get("mdcstat237_historical_date_window_assumption_forbidden") is True,
+        "MDCSTAT237 historical-window prohibition lost",
     )
 
     capture = data.get("source_capture") or {}
@@ -121,8 +139,8 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
 
     return {
         "valid": True,
-        "contract_id": "INDEXALERT-KRX-HIST-EXEC-v1",
-        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v2",
+        "contract_id": "INDEXALERT-KRX-HIST-EXEC-v2",
+        "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
         "rights_to_acquire": True,
         "bulk_network_execution_authorized_by_user": False,
         "private_persistent_storage_required": True,
