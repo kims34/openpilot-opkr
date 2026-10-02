@@ -99,6 +99,7 @@ jobs:
           assert krx.get('sealed_holdout_authorized') is False, krx
           assert krx.get('live_trading_authorized') is False, krx
           assert isinstance(krx.get('basDd'), str) and len(krx['basDd']) == 8, krx
+          assert isinstance(krx.get('probe_observed_at'), str) and krx['probe_observed_at'], krx
           expected_krx_fields={
               'security_master': {'ISU_CD','ISU_SRT_CD','ISU_NM','ISU_ABBRV','ISU_ENG_NM','LIST_DD','MKT_TP_NM','SECUGRP_NM','SECT_TP_NM','KIND_STKCERT_TP_NM','PARVAL','LIST_SHRS'},
               'daily_trade': {'BAS_DD','ISU_CD','ISU_NM','MKT_NM','SECT_TP_NM','TDD_CLSPRC','CMPPREVDD_PRC','FLUC_RT','TDD_OPNPRC','TDD_HGPRC','TDD_LWPRC','ACC_TRDVOL','ACC_TRDVAL','MKTCAP','LIST_SHRS'},
@@ -111,6 +112,10 @@ jobs:
               assert row.get('method') in ('GET','POST'), (name,row,krx)
               assert isinstance(row.get('row_count'), int) and row['row_count'] > 0, (name,row,krx)
               assert required.issubset(set(row.get('fields') or [])), (name,row,krx)
+              assert isinstance(row.get('observed_at'), str) and row['observed_at'], (name,row,krx)
+              for key in ('response_schema_sha256','response_payload_sha256'):
+                  value=str(row.get(key) or '')
+                  assert len(value) == 64 and all(ch in '0123456789abcdef' for ch in value), (name,key,row,krx)
           assert isinstance(push_health.get('registered_devices'), int), push_health
           assert isinstance(push_health.get('pending_deliveries'), int), push_health
           assert isinstance(push_health.get('sent_deliveries'), int), push_health
