@@ -1,6 +1,6 @@
 # IndexAlert KRX Source Access Contract
 
-Updated: 2026-10-01 KST  
+Updated: 2026-10-02 KST  
 Branch: `index-alert-research-v1`  
 Status: **SOURCE / LICENSING CONTRACT — NO ALPHA CLAIM**
 
@@ -203,6 +203,16 @@ Frozen mapping rules:
 - absence from public search/index results is not proof a service does not exist;
 - if an exact official service is later verified, implement it as a separate adapter with explicit service ID, schema, approval state, coverage and PIT contract.
 
+### Verified OpenAPI production connectivity — 2026-10-02
+
+Canonical operational evidence: `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md` / `.json`.
+
+Production server revision `62cb089131ca519815434616dd7f217315fbe346` and Smoke Action `36952309738` demonstrated authenticated, secret-redacted KRX OpenAPI GET access for basis date `20261001` to the two separately enabled services:
+- `유가증권 종목기본정보` / `stk_isu_base_info` — HTTP 200, 942 rows, expected schema verified;
+- `유가증권 일별매매정보` / `stk_bydd_trd` — HTTP 200, 942 rows, expected schema verified.
+
+This is exact-service connectivity/schema evidence. It is **not** an approved mapping for MDCSTAT213/237/238/239, is not investor-by-security flow, is not a complete historical acquisition, and does not satisfy Gates C/D/F. The declared security/status Gate A remains blocked until the exact official status-event route is approved and evidenced under the canonical route-specific authorization contract. Investor-flow Gate A remains blocked independently.
+
 ## 7. Licensing / product boundary
 
 The current Korean KRX OpenAPI terms are effective from **2025-12-26** and include controls that:
@@ -256,16 +266,17 @@ Readiness reports, authorization-evidence records, receipts, batches, validators
 ## 10. Current action state
 
 The current source strategy is:
-1. keep Data Marketplace probes explicitly labeled as that route;
-2. configure route-specific credentials, opaque approval reference and structured non-secret approval evidence only through secure secret/variable management;
-3. validate structured authorization evidence with `research_v1_krx_authorization_evidence.py`;
-4. run the **network-free auth readiness** workflow first after credentials/approval evidence are configured or changed;
-5. require exact per-run consent before a tiny authenticated request;
-6. keep push-triggered probe runs dry-run only and never inject KRX secrets/evidence JSON on push;
-7. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
-8. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
-9. create immutable acquisition receipts and consistent batch manifests for any future real history;
-10. require PIT/coverage/source-data admission before research-registry review;
-11. do not run investor-flow performance research merely because readiness, probe, receipt, batch or admission infrastructure exists;
-12. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
-13. never store KRX IDs/passwords/authentication keys in source, artifacts or logs.
+1. preserve the verified basic-info/daily-trade OpenAPI evidence as exact-service plumbing only; do not substitute it for status-event or investor-flow data;
+2. keep Data Marketplace probes explicitly labeled as that route;
+3. configure route-specific credentials, opaque approval reference and structured non-secret approval evidence only through secure secret/variable management;
+4. validate structured authorization evidence with `research_v1_krx_authorization_evidence.py`;
+5. run the **network-free auth readiness** workflow first after credentials/approval evidence are configured or changed;
+6. require exact per-run consent before a tiny authenticated request under the canonical research probe contract;
+7. keep push-triggered probe runs dry-run only and never inject KRX secrets/evidence JSON on push;
+8. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
+9. investigate purchased/distributed KRX products if public OpenAPI does not supply the exact required historical contract;
+10. create immutable acquisition receipts and consistent batch manifests for any future real history;
+11. require PIT/coverage/source-data admission before research-registry review;
+12. do not run investor-flow performance research merely because readiness, probe, receipt, batch or admission infrastructure exists;
+13. keep `INDEXALERT_KRX_SOURCE_GATE_AUDIT.md` current whenever material source evidence changes;
+14. never store KRX IDs/passwords/authentication keys in source, artifacts or logs.
