@@ -117,15 +117,15 @@ def metadata_only_summary(episodes: pd.DataFrame, requests: pd.DataFrame) -> dic
         errors="coerce",
     ).dropna().dt.normalize().nunique()
     fixed_identity = 26
-    fixed_cleanup = 12
+    current_cleanup_reconciliation = 1
     return {
         "episode_count":int(len(episodes)),
         "request_count":int(len(requests)),
         "request_count_by_dataset":{str(k):int(v) for k,v in sorted(by_dataset.items())},
         "fixed_identity_seed_requests":fixed_identity,
         "dynamic_listing_date_master_requests":int(listing_dates),
-        "fixed_cleanup_year_requests":fixed_cleanup,
-        "total_planned_before_delisted_price":int(len(requests)+fixed_identity+fixed_cleanup+listing_dates),
+        "current_cleanup_reconciliation_requests":current_cleanup_reconciliation,
+        "total_planned_before_delisted_price":int(len(requests)+fixed_identity+current_cleanup_reconciliation+listing_dates),
         "identifiers_emitted":False,
         "plan_start":PLAN_START.date().isoformat(),
         "plan_end":PLAN_END.date().isoformat(),
