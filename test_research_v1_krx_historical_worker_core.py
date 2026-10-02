@@ -22,6 +22,7 @@ def _env(tmp_path: Path, *, consent: bool = True) -> dict[str, str]:
         "KRX_PW": "present",
         "KRX_AUTH_KEY": "present",
         "KRX_PRIVATE_RAW_DIR": str((tmp_path / "private-krx").resolve()),
+        "INDEXALERT_KRX_HIST_WORKER_ROLE": "DEDICATED_ONE_SHOT",
     }
     if consent:
         out["KRX_HISTORICAL_ACQUISITION_CONSENT"] = CONSENT_SENTINEL
@@ -270,3 +271,28 @@ def test_worker_rejects_openapi_identity_route_for_investor_family(tmp_path):
             fetcher=lambda _: _fake_result(network=False),
             evaluation_time=EVAL,
         )
+
+
+def test_worker_rejects_public_runtime_service_before_fetch(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    env["RAILWAY_SERVICE_NAME"] = "indexalert-runtime"
+    calls = []
+
+    def fetcher(_):
+        calls.append(1)
+        return _fake_result(network=True)
+
+    with pytest.raises(KRXHistoricalWorkerError, match="preflight blocked"):
+        execute_private_request(
+            environment=env,
+            git_worktree=str(worktree),
+            source_family="KRX_INVESTOR_FLOW",
+            dataset_identifier="MDCSTAT02303",
+            request_metadata=_request(),
+            client_revision="offline-test",
+            fetcher=fetcher,
+            evaluation_time=EVAL,
+        )
+    assert calls == []
