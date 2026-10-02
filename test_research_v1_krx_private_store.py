@@ -6,6 +6,7 @@ import pytest
 from research_v1_krx_private_store import (
     KRXPrivateStoreError,
     validate_private_root,
+    read_raw_object,
     verify_raw_object,
     write_private_json,
     write_raw_object,
@@ -96,3 +97,20 @@ def test_private_json_rejects_path_escape(tmp_path):
     root = (tmp_path / "private").resolve()
     with pytest.raises(KRXPrivateStoreError, match="relpath is unsafe"):
         write_private_json(root, "../escape.json", {"x": 1})
+
+
+def test_read_raw_object_returns_only_verified_bytes(tmp_path):
+    root = (tmp_path / "private-read").resolve()
+    payload = b"private-raw"
+    out = write_raw_object(root, payload)
+    assert read_raw_object(
+        root,
+        out["raw_object_sha256"],
+        expected_size=len(payload),
+    ) == payload
+
+    target = root / out["object_relpath"]
+    target.write_bytes(b"changed")
+    target.chmod(0o600)
+    with pytest.raises(KRXPrivateStoreError, match="checksum mismatch"):
+        read_raw_object(root, out["raw_object_sha256"])
