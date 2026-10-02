@@ -20,10 +20,10 @@ def _require(cond: bool, msg: str) -> None:
 
 def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(isinstance(data, Mapping), "execution contract must be an object")
-    _require(data.get("schema_version") == "2", "schema_version drift")
-    _require(data.get("contract_id") == "INDEXALERT-KRX-HIST-EXEC-v2", "contract_id drift")
+    _require(data.get("schema_version") == "3", "schema_version drift")
+    _require(data.get("contract_id") == "INDEXALERT-KRX-HIST-EXEC-v3", "contract_id drift")
     _require(data.get("acquisition_plan_id") == "INDEXALERT-KRX-HIST-ACQ-v3", "plan binding drift")
-    _require(data.get("supersedes_contract_id") == "INDEXALERT-KRX-HIST-EXEC-v1", "superseded contract drift")
+    _require(data.get("supersedes_contract_id") == "INDEXALERT-KRX-HIST-EXEC-v2", "superseded contract drift")
     _require(data.get("superseded_before_any_bulk_network_execution") is True, "execution-contract supersession timing drift")
     _require(data.get("execution_authorized") is False, "contract must not self-authorize execution")
 
@@ -40,6 +40,27 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(
         iso.get("exact_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
         "bulk consent sentinel drift",
+    )
+    _require(
+        iso.get("dedicated_worker_role_env") == "INDEXALERT_KRX_HIST_WORKER_ROLE",
+        "dedicated worker role env drift",
+    )
+    _require(
+        iso.get("dedicated_worker_role_value") == "DEDICATED_ONE_SHOT",
+        "dedicated worker role value drift",
+    )
+    _require(
+        iso.get("railway_service_name_env") == "RAILWAY_SERVICE_NAME",
+        "Railway service-name env drift",
+    )
+    _require(
+        set(iso.get("forbidden_public_service_names") or [])
+        == {"indexalert-runtime", "indexalert-backend", "indexalert-push"},
+        "forbidden public service names drift",
+    )
+    _require(
+        iso.get("forbidden_public_service_bulk_execution") is True,
+        "public-service bulk-execution prohibition lost",
     )
 
     storage = data.get("private_storage") or {}
@@ -59,6 +80,7 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(storage.get("raw_root_env") == "KRX_PRIVATE_RAW_DIR", "raw-root env drift")
     _require(storage.get("directory_mode_octal") == "0700", "directory mode drift")
     _require(storage.get("file_mode_octal") == "0600", "file mode drift")
+    _require(storage.get("recommended_mount_root") == "/data/indexalert/krx-historical-v3", "recommended mount root drift")
     _require(
         storage.get("object_relpath_template")
         == "objects/sha256/{first2}/{sha256}.bin",
@@ -139,7 +161,7 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
 
     return {
         "valid": True,
-        "contract_id": "INDEXALERT-KRX-HIST-EXEC-v2",
+        "contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
         "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
         "rights_to_acquire": True,
         "bulk_network_execution_authorized_by_user": False,
