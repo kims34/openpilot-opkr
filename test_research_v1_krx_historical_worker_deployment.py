@@ -184,3 +184,35 @@ def test_worker_image_must_package_expected_scope_contract_but_not_execute_it_by
     bad = text + "\nENV KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT=forbidden\n"
     with pytest.raises(KRXHistoricalWorkerDeploymentError, match="forbidden"):
         validate_worker_dockerfile(bad)
+
+
+def test_per_security_status_command_is_network_free_and_frozen():
+    data = _data()
+    start = data["start_contract"]
+    assert start["status_per_security_history_command"].endswith(
+        "--status-per-security-history"
+    )
+    assert start["status_per_security_history_network_request_attempted"] is False
+    assert start["status_per_security_history_bulk_consent_required"] is False
+    assert start["status_per_security_history_metadata_only"] is True
+    assert start["status_per_security_history_expected_task_count"] == 14296
+    assert (
+        start["status_per_security_history_task_set_fingerprint_sha256"]
+        == "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38"
+    )
+
+    data = _data()
+    data["start_contract"]["status_per_security_history_network_request_attempted"] = True
+    with pytest.raises(
+        KRXHistoricalWorkerDeploymentError,
+        match="status must remain network-free",
+    ):
+        validate_deployment_contract(data)
+
+    data = _data()
+    data["start_contract"]["status_per_security_history_metadata_only"] = False
+    with pytest.raises(
+        KRXHistoricalWorkerDeploymentError,
+        match="metadata-only guard lost",
+    ):
+        validate_deployment_contract(data)
