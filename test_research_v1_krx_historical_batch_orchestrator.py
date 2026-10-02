@@ -202,6 +202,33 @@ def test_status_economics_tasks_use_only_exact_cleanup_intervals():
     }
 
 
+def test_status_economics_matches_alphanumeric_short_code_without_digit_stripping():
+    episodes = pd.DataFrame([
+        {
+            "episode_key": "KOSPI|00A88K|2020-01-02",
+            "short_code": "00A88K",
+            "standard_code": "KR7000088000",
+            "listing_date": pd.Timestamp("2020-01-02"),
+            "delisting_date": pd.Timestamp("2024-06-20"),
+            "source_delisted": True,
+        }
+    ])
+    history = pd.DataFrame([
+        {
+            "종목코드": "00A88K",
+            "상장일": "20200102",
+            "폐지일": "20240620",
+            "정리매매기간_시작일": "20240610",
+            "정리매매기간_종료일": "20240618",
+        }
+    ])
+
+    tasks, summary = build_status_economics_tasks(episodes, history)
+    assert len(tasks) == 1
+    assert tasks[0]["request_spec"]["params"]["isuCd"] == "KR7000088000"
+    assert summary["cleanup_price_task_count"] == 1
+
+
 def test_status_economics_partial_cleanup_interval_fails_closed():
     history = _delisted_history_for_economics()
     history.loc[0, "정리매매기간_종료일"] = ""
