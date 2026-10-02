@@ -42,7 +42,7 @@ def test_bulk_preflight_becomes_ready_only_for_safe_storage_and_exact_sentinel(t
         },
         git_worktree=worktree,
     )
-    assert out["execution_contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v1"
+    assert out["execution_contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v2"
     assert out["private_raw_dir_configured"] is True
     assert out["private_raw_dir_valid"] is True
     assert out["historical_acquisition_network_execution_authorized"] is True
