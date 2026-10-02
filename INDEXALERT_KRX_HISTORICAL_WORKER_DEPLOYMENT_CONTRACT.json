@@ -88,7 +88,13 @@
     "execute_expected_scope_requires_distinct_consent_exact_value": "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1",
     "historical_bulk_consent_does_not_substitute_for_expected_scope_consent": true,
     "expected_scope_checkpoint_resume_required": true,
-    "expected_scope_calendar_date_count": 4127
+    "expected_scope_calendar_date_count": 4127,
+    "status_per_security_history_command": "python research_v1_krx_historical_worker_entrypoint.py --status-per-security-history",
+    "status_per_security_history_network_request_attempted": false,
+    "status_per_security_history_bulk_consent_required": false,
+    "status_per_security_history_metadata_only": true,
+    "status_per_security_history_expected_task_count": 14296,
+    "status_per_security_history_task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38"
   },
   "public_output": {
     "raw_rows_forbidden": true,
