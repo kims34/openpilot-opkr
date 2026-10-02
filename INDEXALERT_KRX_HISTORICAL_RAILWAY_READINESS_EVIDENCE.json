@@ -2,7 +2,7 @@
   "schema_version": "1",
   "evidence_id": "INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1",
   "evidence_class": "RAILWAY_PREFLIGHT_PROVISIONING_EVIDENCE",
-  "observed_at": "2026-10-02T22:33:00+09:00",
+  "observed_at": "2026-10-02T22:47:00+09:00",
   "project": {
     "name": "IndexAlert",
     "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
@@ -64,7 +64,7 @@
       "restart_policy": "NEVER",
       "dockerfile": "Dockerfile.krx-historical-worker",
       "start_command": "python research_v1_krx_historical_worker_entrypoint.py",
-      "corrected_preflight_deployment_id": "d5365809-f146-41d6-b536-942555a20b1d",
+      "corrected_preflight_deployment_id": "02b5697c-b959-45b5-9ef5-600c05efcf32",
       "corrected_preflight_deployment_status": "SUCCESS"
     }
   ],
@@ -82,11 +82,15 @@
     "worker_secret_configuration_authorized": false,
     "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "Configure worker-only KRX secrets. The 27-request IDENTITY_SEED remains separately bulk-execution-consent gated.",
-  "worker_only_secrets_configured": false,
+  "next_external_action": "Obtain explicit bulk-execution consent sentinel I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3 before the 27-request IDENTITY_SEED. Do not authorize expected-scope execution, sealed holdout, or live trading.",
+  "worker_only_secrets_configured": true,
   "preflight_infrastructure_ready": true,
   "runtime_preflight": {
     "mode": "PREFLIGHT_ONLY",
+    "krx_id_present": true,
+    "krx_pw_present": true,
+    "krx_openapi_auth_key_present": true,
+    "explicit_execution_consent_present": false,
     "network_request_attempted": false,
     "historical_acquisition_network_execution_authorized": false,
     "feature_performance_testing_authorized": false,
@@ -98,5 +102,11 @@
     "status": "REMOVED",
     "issue": "built repository default Dockerfile before dedicated Dockerfile setting was corrected",
     "historical_krx_network_request_attempted": false
+  },
+  "variable_correction": {
+    "incorrect_name_seen": "KRW_PW",
+    "corrected_name": "KRX_PW",
+    "corrected": true,
+    "unsafe_auto_redeploy_network_request_attempted": false
   }
 }
