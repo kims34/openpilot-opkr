@@ -89,6 +89,40 @@ def validate_execution_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(per_security.get("currently_authorized") is False, "per-security stage cannot be pre-authorized")
     _require(per_security.get("prior_stage_authorization_reusable") is False, "per-security prior-stage reuse illegally allowed")
     _require(per_security.get("later_stage_auto_authorization") is False, "per-security later-stage auto authority illegally enabled")
+    _require(
+        per_security.get("preparation_evidence_id")
+        == "INDEXALERT-KRX-PER-SECURITY-HISTORY-PREP-2026-10-03-v1",
+        "per-security preparation evidence binding drift",
+    )
+    _require(int(per_security.get("prepared_task_count", -1)) == 14296, "per-security prepared task count drift")
+    _require(
+        per_security.get("prepared_task_count_by_kind")
+        == {
+            "investor_trading_individual_daily": 9485,
+            "trading_halt": 4811,
+        },
+        "per-security prepared task-kind counts drift",
+    )
+    _require(
+        per_security.get("prepared_task_set_fingerprint_sha256")
+        == "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+        "per-security prepared task-set drift",
+    )
+    _require(
+        per_security.get("prepared_private_task_manifest_metadata_sha256")
+        == "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116",
+        "per-security prepared manifest hash drift",
+    )
+    _require(
+        per_security.get("prepared_private_task_manifest_relpath")
+        == "task_manifests/per-security-history-v3.json",
+        "per-security prepared manifest relpath drift",
+    )
+    _require(
+        per_security.get("network_request_attempted_during_prepare") is False,
+        "per-security preparation illegally attempted network",
+    )
+    _require(per_security.get("exact_prepared_scope_required") is True, "per-security exact prepared scope guard lost")
 
     status_economics = stage_auth.get("status_economics") or {}
     _require(status_economics.get("predecessor_phase") == "PER_SECURITY_HISTORY", "status-economics predecessor drift")
