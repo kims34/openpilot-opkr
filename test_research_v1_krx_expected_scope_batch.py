@@ -111,11 +111,8 @@ def test_expected_scope_batch_resume_fails_closed_after_raw_tamper(tmp_path):
         max_new_dates=1,
     )
     root = tmp_path / "private"
-    scope = json.loads(
-        (root / "expected_scope/dates/20150615.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    scope_path = next((root / "expected_scope" / "dates" / "20150615").glob("*.json"))
+    scope = json.loads(scope_path.read_text(encoding="utf-8"))
     receipt = json.loads(
         (root / scope["daily_receipt_relpath"]).read_text(encoding="utf-8")
     )
@@ -152,3 +149,30 @@ def test_expected_scope_batch_task_set_is_frozen_even_when_paused(tmp_path):
     assert out["source_gate_d_closed"] is False
     assert out["source_gate_e_closed"] is False
     assert out["feature_performance_testing_authorized"] is False
+
+
+def test_expected_scope_batch_resume_rejects_scope_path_drift(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    execute_expected_scope_batch(
+        environment=_env(tmp_path),
+        git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]),
+        evaluation_time=EVAL,
+        max_new_dates=1,
+    )
+    root = tmp_path / "private"
+    state_path = root / "expected_scope" / "batch_state-v1.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state["completed"]["20150615"]["private_scope_relpath"] = "expected_scope/dates/20150615.json"
+    state_path.write_text(json.dumps(state, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    state_path.chmod(0o600)
+
+    with pytest.raises(KRXExpectedScopeBatchError, match="private scope relpath drift"):
+        execute_expected_scope_batch(
+            environment=_env(tmp_path),
+            git_worktree=str(worktree),
+            fetcher=_empty_fetcher([]),
+            evaluation_time=EVAL,
+            max_new_dates=0,
+        )
