@@ -125,6 +125,10 @@ The Data Marketplace terms boundary remains frozen in `INDEXALERT_KRX_DATA_MARKE
 
 `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md/.json` now freezes the exact third-party client candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902`, `MDCSTAT02303` and the still-provisional `MDCSTAT23701`. `research_v1_krx_data_marketplace_route_map.py` rejects route drift and any attempt to self-grant Gate A/B, holdout or live authority. This narrows the technical path but changes no A-F state because the project still lacks an authenticated exact status/investor response and route-specific rights evidence.
 
+## Authenticated KRX status tiny probe
+
+Action `36976085781` completed successfully under explicit one-run consent. The authenticated status route returned current security identity plus new-listing, delisted-history, trading-halt `MDCSTAT21301` and cleanup-trading `MDCSTAT23701` metadata. Gate A for `KRX_SECURITY_STATUS` is now `PARTIAL` rather than BLOCKED. Gate B remains `PARTIAL`; C/D remain BLOCKED; `judge_security_status_ready=false`. Canonical evidence is `INDEXALERT_KRX_STATUS_TINY_PROBE_EVIDENCE.md/.json`.
+
 ## Exact KRX status economics — internal audit implemented, real evidence missing
 
 Final Judge requires exact halt/delisting economics. Structural status-event consistency or daily price history is not sufficient.
@@ -266,7 +270,7 @@ Internal code cannot fabricate the still-missing exact KRX status/investor-flow 
 
 ## Remaining blockers
 
-1. **KRX authorization/data:** authenticated OpenAPI plumbing is proven for basic security-master/daily-trade services; Data Marketplace BLD candidates are pinned; account credentials and explicit low-frequency automation permission are now configured and network-free readiness is green. The next admissible step is one explicitly consented metadata-only authenticated tiny probe for the status route and investor-flow route. Full official history, exact schema/equivalence, stable mapping, PIT lineage and broader/bulk rights remain open.
+1. **KRX authorization/data:** authenticated OpenAPI plumbing is proven for basic security-master/daily-trade services; Data Marketplace BLD candidates are pinned; account credentials and explicit low-frequency automation permission are now configured and network-free readiness is green. The status tiny probe is complete. The next admissible KRX probe is the explicitly consented metadata-only investor-flow tiny probe. Full official history, exact schema/equivalence, stable mapping, PIT lineage and broader/bulk rights remain open.
 2. **Security/status economics:** real complete affected-position fill/recovery economics must pass the exact audit; the internal auditor alone does not close the blocker.
 3. **Investor flow:** real full official history must pass provenance, PIT, coverage, A-F and source-data admission; then separate preregistration before any feature-performance experiment.
 4. **Execution:** genuine staged LIVE observations, frozen numerical sufficiency assessment and independent broker-native provenance admission for the exact evidence bundle. Structurally valid or self-labelled LIVE rows alone do not close this blocker.
