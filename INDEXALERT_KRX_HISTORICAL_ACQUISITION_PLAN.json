@@ -1,7 +1,7 @@
 {
-  "schema_version": "2",
-  "plan_id": "INDEXALERT-KRX-HIST-ACQ-v2",
-  "supersedes_plan_id": "INDEXALERT-KRX-HIST-ACQ-v1",
+  "schema_version": "3",
+  "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+  "supersedes_plan_id": "INDEXALERT-KRX-HIST-ACQ-v2",
   "superseded_before_any_bulk_network_execution": true,
   "frozen_date": "2026-10-02",
   "network_execution_authorized": false,
@@ -193,61 +193,33 @@
     },
     "status_history": {
       "cleanup_trading": {
-        "bld": "dbms/MDC/STAT/issue/MDCSTAT23701",
-        "method": "json",
-        "scope": "all market then filter KOSPI",
-        "calendar_year_windows": [
-          [
-            "2015-06-15",
-            "2015-12-31"
+        "historical_cleanup_periods": {
+          "source_bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
+          "source_request_phase": "identity_seed.windowed_requests.delisted_history",
+          "additional_request_count": 0,
+          "fields": [
+            "정리매매기간_시작일",
+            "정리매매기간_종료일",
+            "폐지일",
+            "폐지사유",
+            "종목코드",
+            "시장구분",
+            "증권구분"
           ],
-          [
-            "2016-01-01",
-            "2016-12-31"
-          ],
-          [
-            "2017-01-01",
-            "2017-12-31"
-          ],
-          [
-            "2018-01-01",
-            "2018-12-31"
-          ],
-          [
-            "2019-01-01",
-            "2019-12-31"
-          ],
-          [
-            "2020-01-01",
-            "2020-12-31"
-          ],
-          [
-            "2021-01-01",
-            "2021-12-31"
-          ],
-          [
-            "2022-01-01",
-            "2022-12-31"
-          ],
-          [
-            "2023-01-01",
-            "2023-12-31"
-          ],
-          [
-            "2024-01-01",
-            "2024-12-31"
-          ],
-          [
-            "2025-01-01",
-            "2025-12-31"
-          ],
-          [
-            "2026-01-01",
-            "2026-10-01"
-          ]
-        ],
-        "request_count": 12,
-        "route_limit_status": "not formally frozen; one-calendar-year project windows avoid assuming an undocumented maximum"
+          "rule": "Use cleanup intervals from authenticated delisted-history rows for historical delisted episodes; do not invent MDCSTAT23701 historical date-window semantics.",
+          "actual_delisting_date_from": "폐지일",
+          "pit_caveat": "Retrieval-time historical facts do not establish historical published_at/available_at; Gate D remains open until separate PIT evidence is admitted."
+        },
+        "current_cleanup_reconciliation": {
+          "bld": "dbms/MDC/STAT/issue/MDCSTAT23701",
+          "method": "json",
+          "request_params": {
+            "mktId": "ALL"
+          },
+          "request_count": 1,
+          "historical_date_filter_verified": false,
+          "purpose": "Current/ongoing cleanup-trading reconciliation only; never treated as a historical window source."
+        }
       },
       "trading_halt": {
         "bld": "dbms/MDC/STAT/issue/MDCSTAT21301",
@@ -391,12 +363,12 @@
   "request_count_formula": {
     "fixed_identity_requests": 26,
     "dynamic_listing_date_master_requests": "U_new_listing_dates",
-    "cleanup_year_windows": 12,
     "trading_halt_max_chunks_per_full_period_episode": 6,
     "investor_flow_max_year_chunks_per_full_period_episode": 12,
-    "total_before_delisted_price": "38 + U_new_listing_dates + halt_episode_chunk_intersections + investor_episode_year_intersections",
-    "conservative_upper_form_if_all_N_episodes_span_full_period": "38 + U_new_listing_dates + 18*N",
-    "note": "N and U must come from acquired identity-seed evidence; neither may be guessed."
+    "total_before_delisted_price": "27 + U_new_listing_dates + halt_episode_chunk_intersections + investor_episode_year_intersections",
+    "conservative_upper_form_if_all_N_episodes_span_full_period": "27 + U_new_listing_dates + 18*N",
+    "note": "N and U must come from acquired identity-seed evidence; neither may be guessed. Historical cleanup intervals reuse MDCSTAT23801 identity-seed responses and add no historical requests; MDCSTAT23701 contributes one current reconciliation snapshot.",
+    "current_cleanup_reconciliation_requests": 1
   },
   "operational_safety": {
     "default_concurrency": 4,
@@ -415,5 +387,6 @@
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
     "live_trading_authorized": false
-  }
+  },
+  "correction_reason": "MDCSTAT23701 was authenticated only as a current snapshot using mktId=ALL; historical strtDd/endDd window semantics were not verified. Historical cleanup intervals are already present in MDCSTAT23801 delisted-history rows."
 }
