@@ -129,6 +129,34 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "explicit user bulk approval requirement lost",
     )
 
+    expected_consent = data.get("expected_scope_consent") or {}
+    _require(
+        expected_consent.get("env_name") == "KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT",
+        "expected-scope consent env drift",
+    )
+    _require(
+        expected_consent.get("exact_value")
+        == "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1",
+        "expected-scope consent sentinel drift",
+    )
+    _require(
+        expected_consent.get("must_be_absent_during_initial_preflight_deployment")
+        is True,
+        "initial expected-scope consent absence requirement lost",
+    )
+    _require(
+        expected_consent.get("historical_bulk_consent_does_not_substitute")
+        is True,
+        "bulk/expected-scope consent separation lost",
+    )
+    _require(
+        expected_consent.get(
+            "may_be_set_only_after_explicit_user_expected_scope_execution_approval"
+        )
+        is True,
+        "explicit expected-scope user approval requirement lost",
+    )
+
     start = data.get("start_contract") or {}
     _require(
         start.get("default_command")
@@ -251,12 +279,55 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         is False,
         "status-economics execution must not claim exact realized economics",
     )
+    _require(
+        start.get("expected_scope_preflight_command")
+        == "python research_v1_krx_expected_scope_worker.py",
+        "expected-scope preflight command drift",
+    )
+    _require(
+        start.get("expected_scope_preflight_network_request_attempted") is False,
+        "expected-scope preflight must remain network-free",
+    )
+    _require(
+        start.get("execute_expected_scope_command")
+        == "python research_v1_krx_expected_scope_worker.py --execute",
+        "expected-scope execute command drift",
+    )
+    _require(
+        start.get("execute_expected_scope_forbidden_until_user_expected_scope_approval")
+        is True,
+        "expected-scope approval guard lost",
+    )
+    _require(
+        start.get("execute_expected_scope_requires_distinct_consent_env")
+        == "KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT",
+        "expected-scope distinct consent env drift",
+    )
+    _require(
+        start.get("execute_expected_scope_requires_distinct_consent_exact_value")
+        == "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1",
+        "expected-scope distinct consent sentinel drift",
+    )
+    _require(
+        start.get("historical_bulk_consent_does_not_substitute_for_expected_scope_consent")
+        is True,
+        "historical bulk consent substitution guard lost",
+    )
+    _require(
+        start.get("expected_scope_checkpoint_resume_required") is True,
+        "expected-scope checkpoint/resume guard lost",
+    )
+    _require(
+        start.get("expected_scope_calendar_date_count") == 4127,
+        "expected-scope date-count drift",
+    )
 
     authority = data.get("authority") or {}
     for key in (
         "service_creation_authorized",
         "volume_creation_or_attachment_authorized",
         "bulk_network_execution_authorized_by_user",
+        "expected_scope_network_execution_authorized_by_user",
         "feature_performance_testing_authorized",
         "sealed_holdout_authorized",
         "live_trading_authorized",
@@ -271,6 +342,7 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "service_creation_authorized": False,
         "volume_creation_or_attachment_authorized": False,
         "bulk_network_execution_authorized_by_user": False,
+        "expected_scope_network_execution_authorized_by_user": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
     }
@@ -308,6 +380,10 @@ def validate_worker_dockerfile(text: str) -> dict[str, Any]:
         "worker requirements file must be installed",
     )
     _require(
+        "COPY INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_CONTRACT.json ./" in rendered,
+        "expected-scope contract must be copied into worker image",
+    )
+    _require(
         'CMD ["python", "research_v1_krx_historical_worker_entrypoint.py"]'
         in rendered,
         "Dockerfile must default to preflight-only entrypoint",
@@ -324,6 +400,7 @@ def validate_worker_dockerfile(text: str) -> dict[str, Any]:
         "ENV KRX_PW=",
         "ENV KRX_AUTH_KEY=",
         "ENV KRX_HISTORICAL_ACQUISITION_CONSENT=",
+        "ENV KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT=",
         "ARG KRX_ID",
         "ARG KRX_PW",
         "ARG KRX_AUTH_KEY",
@@ -335,6 +412,8 @@ def validate_worker_dockerfile(text: str) -> dict[str, Any]:
         "requirements_installed": True,
         "public_port_exposed": False,
         "bulk_execute_in_default_cmd": False,
+        "expected_scope_contract_packaged": True,
+        "expected_scope_execute_in_default_cmd": False,
     }
 
 
