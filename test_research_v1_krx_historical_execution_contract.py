@@ -123,3 +123,24 @@ def test_dedicated_worker_guards_cannot_be_weakened():
     data["execution_isolation"]["forbidden_public_service_bulk_execution"] = False
     with pytest.raises(KRXHistoricalExecutionContractError, match="prohibition lost"):
         validate_execution_contract(data)
+
+
+def test_identity_binding_stage_authority_is_separate_and_fail_closed():
+    data = _data()
+    stage = data["stage_specific_authority"]["identity_standard_code_binding"]
+    assert stage["network_free_prepare_required"] is True
+    assert stage["private_task_manifest_required"] is True
+    assert stage["both_consents_required"] is True
+    assert stage["currently_authorized"] is False
+    assert stage["prior_identity_seed_authorization_reusable"] is False
+    assert stage["later_stage_auto_authorization"] is False
+
+    data = _data()
+    data["stage_specific_authority"]["identity_standard_code_binding"]["both_consents_required"] = False
+    with pytest.raises(KRXHistoricalExecutionContractError, match="dual-consent guard lost"):
+        validate_execution_contract(data)
+
+    data = _data()
+    data["stage_specific_authority"]["identity_standard_code_binding"]["currently_authorized"] = True
+    with pytest.raises(KRXHistoricalExecutionContractError, match="cannot be pre-authorized"):
+        validate_execution_contract(data)
