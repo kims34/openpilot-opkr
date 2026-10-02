@@ -207,9 +207,9 @@ Frozen mapping rules:
 
 Canonical operational evidence: `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md` / `.json`.
 
-Production server revision `62cb089131ca519815434616dd7f217315fbe346` and Smoke Action `36952309738` demonstrated authenticated, secret-redacted KRX OpenAPI GET access for basis date `20261001` to the two separately enabled services:
-- `유가증권 종목기본정보` / `stk_isu_base_info` — HTTP 200, 942 rows, expected schema verified;
-- `유가증권 일별매매정보` / `stk_bydd_trd` — HTTP 200, 942 rows, expected schema verified.
+Production server revision `4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5` and Smoke Action `36956234911` demonstrated authenticated, secret-redacted KRX OpenAPI GET access for basis date `20261001` to the two separately enabled services:
+- `유가증권 종목기본정보` / `stk_isu_base_info` — HTTP 200, 942 rows, expected schema verified, response schema/payload SHA-256 frozen;
+- `유가증권 일별매매정보` / `stk_bydd_trd` — HTTP 200, 942 rows, expected schema verified, response schema/payload SHA-256 frozen.
 
 This is exact-service connectivity/schema evidence. It is **not** an approved mapping for MDCSTAT213/237/238/239, is not investor-by-security flow, is not a complete historical acquisition, and does not satisfy Gates C/D/F. The declared security/status Gate A remains blocked until the exact official status-event route is approved and evidenced under the canonical route-specific authorization contract. Investor-flow Gate A remains blocked independently.
 
