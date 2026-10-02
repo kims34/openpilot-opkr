@@ -37,6 +37,7 @@ def evaluate_historical_acquisition_preflight(
 
     id_present=bool(str(env.get("KRX_ID") or "").strip())
     pw_present=bool(str(env.get("KRX_PW") or "").strip())
+    openapi_key_present=bool(str(env.get("KRX_AUTH_KEY") or "").strip())
     consent=str(env.get(CONSENT_ENV) or "").strip()
     consent_ok=consent == CONSENT_SENTINEL
     raw_root_text=str(env.get("KRX_PRIVATE_RAW_DIR") or "").strip()
@@ -57,6 +58,8 @@ def evaluate_historical_acquisition_preflight(
         missing.append("KRX_ID")
     if not pw_present:
         missing.append("KRX_PW")
+    if not openapi_key_present:
+        missing.append("KRX_AUTH_KEY")
     if not rights["rights_authorized"]:
         missing.append("KRX_FULL_HISTORY_RIGHTS")
     if not execution_contract["private_persistent_storage_required"]:
@@ -77,6 +80,7 @@ def evaluate_historical_acquisition_preflight(
         "full_historical_download_rights_authorized":rights["full_historical_download_rights_authorized"],
         "krx_id_present":id_present,
         "krx_pw_present":pw_present,
+        "krx_openapi_auth_key_present":openapi_key_present,
         "execution_contract_id":execution_contract["contract_id"],
         "private_persistent_storage_required":execution_contract["private_persistent_storage_required"],
         "private_raw_dir_configured":bool(raw_root_text),
