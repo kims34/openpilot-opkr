@@ -316,6 +316,99 @@ def public_identity_master_code_shape_summary(
     }
 
 
+def public_delisted_start_master_mapping_summary(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> dict[str, Any]:
+    """Aggregate pre-start delisted episode mapping against the start master.
+
+    This is network-free and emits counts only. It distinguishes a true missing
+    identity from an episode that is outside the frozen common-stock universe
+    according to the authoritative research-start security master.
+    """
+    seed = load_identity_seed_material(root, git_worktree=git_worktree)
+    masters = seed["security_master_snapshots"].copy()
+    masters["decision_date"] = pd.to_datetime(
+        masters["decision_date"], errors="coerce"
+    ).dt.normalize()
+    masters["listing_date_official"] = pd.to_datetime(
+        masters["listing_date_official"], errors="coerce"
+    ).dt.normalize()
+    masters["symbol"] = _short_code(masters["symbol"])
+    masters["market_type_official"] = _market(masters["market_type_official"])
+
+    start_raw = masters[masters["decision_date"].eq(PLAN_START)].copy()
+    _require(not start_raw.empty, "research-start master is empty")
+
+    dl = _normal_history(seed["delisted_history"], delisted=True)
+    dl = dl[
+        dl["listing_date"].lt(PLAN_START)
+        & dl["delisting_date"].notna()
+        & dl["delisting_date"].ge(PLAN_START)
+        & dl["delisting_date"].le(PLAN_END)
+    ].copy()
+
+    counts = {
+        "prestart_delisted_episode_count": int(len(dl)),
+        "represented_by_common_start_master_count": 0,
+        "missing_from_common_start_master_count": 0,
+        "missing_with_raw_start_symbol_count": 0,
+        "missing_with_raw_start_symbol_kospi_count": 0,
+        "missing_with_raw_start_symbol_common_count": 0,
+        "missing_with_raw_start_symbol_noncommon_count": 0,
+        "missing_with_raw_start_symbol_listing_date_match_count": 0,
+        "missing_with_raw_start_symbol_unique_count": 0,
+    }
+
+    common_start = start_raw[
+        start_raw["market_type_official"].eq("KOSPI")
+        & start_raw["common_stock_identity_official"].astype(bool)
+    ].copy()
+
+    for row in dl.itertuples(index=False):
+        exact_common = common_start[
+            common_start["symbol"].eq(row.short_code)
+            & common_start["listing_date_official"].eq(row.listing_date)
+        ]
+        if len(exact_common) == 1:
+            counts["represented_by_common_start_master_count"] += 1
+            continue
+
+        counts["missing_from_common_start_master_count"] += 1
+        raw_same = start_raw[start_raw["symbol"].eq(row.short_code)].copy()
+        if not raw_same.empty:
+            counts["missing_with_raw_start_symbol_count"] += 1
+            if len(raw_same) == 1:
+                counts["missing_with_raw_start_symbol_unique_count"] += 1
+            if raw_same["market_type_official"].eq("KOSPI").any():
+                counts["missing_with_raw_start_symbol_kospi_count"] += 1
+            common_mask = raw_same["common_stock_identity_official"].astype(bool)
+            if common_mask.any():
+                counts["missing_with_raw_start_symbol_common_count"] += 1
+            if (~common_mask).any():
+                counts["missing_with_raw_start_symbol_noncommon_count"] += 1
+            if raw_same["listing_date_official"].eq(row.listing_date).any():
+                counts["missing_with_raw_start_symbol_listing_date_match_count"] += 1
+
+    _require(
+        counts["represented_by_common_start_master_count"]
+        + counts["missing_from_common_start_master_count"]
+        == counts["prestart_delisted_episode_count"],
+        "delisted/start-master diagnostic count drift",
+    )
+    return {
+        **counts,
+        "identifiers_emitted": False,
+        "names_emitted": False,
+        "raw_rows_emitted": False,
+        "network_request_attempted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def build_identity_binding_tasks_from_private_seed(
     root: str,
     *,
