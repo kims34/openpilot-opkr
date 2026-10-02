@@ -33,6 +33,12 @@ from research_v1_krx_historical_batch_orchestrator import (
     build_identity_seed_tasks,
     public_task_summary,
 )
+from research_v1_krx_historical_batch_state import (
+    initialize_phase_state,
+    public_phase_summary,
+    record_task_completion,
+    require_phase_complete,
+)
 from research_v1_krx_historical_request_executor import execute_request_spec
 from research_v1_krx_private_store import write_private_json
 
@@ -125,6 +131,13 @@ def execute_identity_seed(
             "identity seed task count must remain exactly 27"
         )
 
+    phase_state = initialize_phase_state(
+        root=str(env["KRX_PRIVATE_RAW_DIR"]),
+        phase="IDENTITY_SEED",
+        tasks=tasks,
+        git_worktree=(git_worktree or str(Path.cwd().resolve())),
+    )
+
     completed = []
     resumed = 0
     network_attempt_count = 0
@@ -151,6 +164,13 @@ def execute_identity_seed(
             resumed += 1
         if result.get("network_request_attempted"):
             network_attempt_count += 1
+        phase_state = record_task_completion(
+            root=str(env["KRX_PRIVATE_RAW_DIR"]),
+            phase="IDENTITY_SEED",
+            task_id=task["task_id"],
+            worker_result=result,
+            git_worktree=worktree,
+        )
         completed.append(
             {
                 "ordinal": ordinal,
@@ -168,6 +188,17 @@ def execute_identity_seed(
             }
         )
 
+    final_phase_state = require_phase_complete(
+        root=str(env["KRX_PRIVATE_RAW_DIR"]),
+        phase="IDENTITY_SEED",
+        git_worktree=worktree,
+    )
+    safe_phase = public_phase_summary(final_phase_state)
+    if safe_phase["completed_task_count"] != 27 or not safe_phase["phase_complete"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "identity seed phase did not reach exact COMPLETE state"
+        )
+
     raw_root = str(env.get("KRX_PRIVATE_RAW_DIR") or "").strip()
     private_batch = {
         "batch_version": "2026-10-02.identity-seed-v3",
@@ -181,6 +212,9 @@ def execute_identity_seed(
         "completed_task_count": len(completed),
         "resumed_task_count": resumed,
         "network_request_attempt_count": network_attempt_count,
+        "phase_state_fingerprint_sha256": safe_phase[
+            "task_set_fingerprint_sha256"
+        ],
         "tasks": completed,
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
@@ -206,6 +240,9 @@ def execute_identity_seed(
         ],
         "private_batch_metadata_sha256": batch_write["metadata_sha256"],
         "private_batch_relpath": PRIVATE_BATCH_REL,
+        "phase_status": safe_phase["status"],
+        "phase_complete": safe_phase["phase_complete"],
+        "phase_completed_task_count": safe_phase["completed_task_count"],
         "raw_rows_emitted": False,
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
