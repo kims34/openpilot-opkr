@@ -317,6 +317,55 @@ def test_conflicting_duplicate_rows_inside_one_source_fail_closed():
         m._merge_master_snapshots_fail_closed(seed, binding)
 
 
+def test_public_master_code_shape_diagnostic_reports_counts_not_identifiers():
+    numeric = _normal_master_row(
+        "2026-10-01",
+        "KR7005930003",
+        "005930",
+        "1975-06-11",
+        "숫자보통",
+    )
+    prefixed = _normal_master_row(
+        "2026-10-01",
+        "KR7005939999",
+        "A005930",
+        "2026-01-02",
+        "접두문자보통",
+    )
+    suffix = _normal_master_row(
+        "2026-10-01",
+        "KR7123459999",
+        "12345K",
+        "2026-01-02",
+        "접미문자보통",
+    )
+    excluded = _normal_master_row(
+        "2026-10-01",
+        "KR7000088999",
+        "00088K",
+        "2000-01-03",
+        "비보통",
+    )
+    excluded["common_stock_identity_official"] = False
+    excluded["stock_type_official"] = "우선주"
+
+    out = m._public_master_code_shape_counts(
+        pd.DataFrame([numeric, prefixed, suffix, excluded])
+    )
+    assert out["kospi_common_row_count"] == 3
+    assert out["raw_symbol_shape_counts"]["numeric_6"] == 1
+    assert out["raw_symbol_shape_counts"]["prefix_letter_plus_6_digits"] == 1
+    assert out["raw_symbol_shape_counts"]["five_digits_plus_suffix_letter"] == 1
+    assert out["old_digit_strip_collision_row_count"] == 2
+    assert out["old_digit_strip_conflicting_standard_code_group_count"] == 1
+    assert out["identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["network_request_attempted"] is False
+    assert "005930" not in str(out)
+    assert "A005930" not in str(out)
+    assert "12345K" not in str(out)
+
+
 def test_non_common_alphanumeric_short_code_is_filtered_before_canonicalization():
     common = _normal_master_row(
         "2026-10-01",
