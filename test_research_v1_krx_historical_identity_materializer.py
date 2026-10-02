@@ -155,3 +155,131 @@ def test_completed_seed_material_reassembles_exact_2_12_12_1_shape(monkeypatch):
     assert len(out["new_listing_history"]) == 12
     assert len(out["delisted_history"]) == 12
     assert len(out["cleanup_current"]) == 1
+
+
+def _normal_master_row(snapshot, standard, symbol, listing, name):
+    return {
+        "decision_date": pd.Timestamp(snapshot),
+        "standard_code": standard,
+        "symbol": symbol,
+        "name": name,
+        "market_type_official": "KOSPI",
+        "security_group_official": "주권",
+        "stock_type_official": "보통주",
+        "listing_date_official": pd.Timestamp(listing),
+        "common_stock_identity_official": True,
+    }
+
+
+def test_private_identity_reconstruction_combines_seed_and_listing_date_masters(monkeypatch):
+    seed_masters = pd.DataFrame([
+        _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+        _normal_master_row("2026-10-01", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+        _normal_master_row("2026-10-01", "KR7123450000", "123456", "2020-01-02", "신규보통"),
+    ])
+    binding = pd.DataFrame([
+        _normal_master_row("2020-01-02", "KR7123450000", "123456", "2020-01-02", "신규보통"),
+    ])
+    new = pd.DataFrame([
+        {
+            "종목코드": "123456",
+            "종목명": "신규보통",
+            "시장구분": "유가증권",
+            "증권구분": "주권",
+            "주식종류": "보통주",
+            "상장일": "20200102",
+            "상장폐지일": "",
+        }
+    ])
+    delisted = pd.DataFrame(columns=[
+        "종목코드", "종목명", "시장구분", "증권구분", "주식종류", "상장일", "폐지일"
+    ])
+    monkeypatch.setattr(
+        m,
+        "load_identity_seed_material",
+        lambda *a, **k: {
+            "security_master_snapshots": seed_masters,
+            "new_listing_history": new,
+            "delisted_history": delisted,
+            "cleanup_current": pd.DataFrame(),
+        },
+    )
+    monkeypatch.setattr(
+        m,
+        "load_identity_binding_master_snapshots",
+        lambda *a, **k: binding,
+    )
+
+    out = m.reconstruct_private_historical_episodes("/private")
+    assert set(out["short_code"]) == {"005930", "123456"}
+    assert out["standard_code"].str.fullmatch(r"[A-Z0-9]{12}").all()
+    newer = out[out["short_code"].eq("123456")].iloc[0]
+    assert newer["listing_date"] == pd.Timestamp("2020-01-02")
+    assert newer["source_new_listing"]
+    assert newer["source_end_master_reconciled"]
+
+
+def test_per_security_private_plan_uses_reconstructed_episode_lifetimes(monkeypatch):
+    episodes = pd.DataFrame([
+        {
+            "episode_key": "KOSPI|005930|1975-06-11",
+            "market": "KOSPI",
+            "short_code": "005930",
+            "standard_code": "KR7005930003",
+            "name": "삼성전자",
+            "listing_date": pd.Timestamp("1975-06-11"),
+            "delisting_date": pd.NaT,
+            "coverage_start": pd.Timestamp("2015-06-15"),
+            "coverage_end": pd.Timestamp("2026-10-01"),
+            "source_start_master": True,
+            "source_new_listing": False,
+            "source_delisted": False,
+            "source_end_master_reconciled": True,
+        }
+    ])
+    monkeypatch.setattr(
+        m,
+        "reconstruct_private_historical_episodes",
+        lambda *a, **k: episodes,
+    )
+    tasks = m.build_per_security_history_tasks_from_private_identity("/private")
+    kinds = [row["request_spec"]["kind"] for row in tasks]
+    assert kinds.count("trading_halt") == 6
+    assert kinds.count("investor_trading_individual_daily") == 12
+    assert len(tasks) == 18
+
+
+def test_public_historical_identity_summary_never_emits_security_identifiers(monkeypatch):
+    episodes = pd.DataFrame([
+        {
+            "episode_key": "KOSPI|005930|1975-06-11",
+            "market": "KOSPI",
+            "short_code": "005930",
+            "standard_code": "KR7005930003",
+            "name": "삼성전자",
+            "listing_date": pd.Timestamp("1975-06-11"),
+            "delisting_date": pd.NaT,
+            "coverage_start": pd.Timestamp("2015-06-15"),
+            "coverage_end": pd.Timestamp("2026-10-01"),
+            "source_start_master": True,
+            "source_new_listing": False,
+            "source_delisted": False,
+            "source_end_master_reconciled": True,
+        }
+    ])
+    monkeypatch.setattr(
+        m,
+        "reconstruct_private_historical_episodes",
+        lambda *a, **k: episodes,
+    )
+    out = m.public_historical_identity_summary("/private")
+    assert out["episode_count"] == 1
+    assert out["per_security_request_count"] == 18
+    assert len(out["per_security_task_set_fingerprint_sha256"]) == 64
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["source_gate_c_closed"] is False
+    assert out["source_gate_d_closed"] is False
+    assert out["source_gate_e_closed"] is False
+    assert "005930" not in str(out)
+    assert "KR7005930003" not in str(out)
