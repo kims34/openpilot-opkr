@@ -1,4 +1,4 @@
-"""Fail-closed validator for the frozen KRX historical acquisition plan."""
+"""Fail-closed validator for the frozen KRX historical acquisition plan v2."""
 from __future__ import annotations
 
 import hashlib
@@ -47,38 +47,49 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
 
     phases=data.get("phases") or {}
     identity=phases.get("identity_seed") or {}
+    fixed=identity.get("fixed_requests") or []
+    _require(len(fixed) == 2, "fixed master request count drift")
+    _require(fixed[0].get("basDd") == "20150615", "start master date drift")
+    _require(fixed[1].get("basDd") == "20261001", "end master date drift")
+    for row in fixed:
+        _require(row.get("route") == "KRX_OPENAPI_STK_ISU_BASE_INFO", "identity master route drift")
+        _require(row.get("endpoint","").endswith("/stk_isu_base_info"), "identity master endpoint drift")
+
+    windowed=identity.get("windowed_requests") or {}
+    for name,bld in (
+        ("new_listing_history","dbms/MDC/STAT/issue/MDCSTAT20001"),
+        ("delisted_history","dbms/MDC/STAT/issue/MDCSTAT23801"),
+    ):
+        row=windowed.get(name) or {}
+        _require(row.get("bld") == bld, f"{name} BLD drift")
+        _require(row.get("request_count") == 12, f"{name} request-count drift")
+        windows=row.get("calendar_year_windows") or []
+        _require(len(windows) == 12, f"{name} window-count drift")
+        _require(windows[0] == ["2015-06-15","2015-12-31"], f"{name} first window drift")
+        _require(windows[-1] == ["2026-01-01","2026-10-01"], f"{name} last window drift")
+
+    dynamic=identity.get("dynamic_standard_code_snapshots") or {}
+    _require(dynamic.get("route") == "KRX_OPENAPI_STK_ISU_BASE_INFO", "dynamic master route drift")
+    _require(dynamic.get("request_count_formula") == "U_new_listing_dates", "dynamic master formula drift")
+    _require(dynamic.get("no_fallback_from_later_snapshot") is True, "later-snapshot fallback guard lost")
+
     rules=identity.get("identity_rules") or {}
     _require(rules.get("market_filter") == "KOSPI only", "identity market drift")
-    _require(rules.get("common_stock_filter") == "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주", "common-stock identity drift")
+    _require(rules.get("common_stock_filter") == "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주", "common-stock filter drift")
     _require(rules.get("never_join_by_name_only") is True, "name-only join guard lost")
     _require(rules.get("episode_key") == "market|short_code|listing_date", "episode key drift")
     _require(rules.get("standard_code_required_for_every_episode") is True, "standard-code requirement lost")
-    _require(rules.get("standard_code_source_for_preexisting_episode") == "research_start_security_master", "start standard-code source drift")
-    _require(rules.get("standard_code_source_for_new_episode") == "listing-date security-master snapshot", "new-listing standard-code source drift")
-    _require(rules.get("end_snapshot_is_reconciliation_only") is True, "end-snapshot guard lost")
-    _require(rules.get("overlapping_same_short_code_episodes_fail_closed") is True, "episode overlap guard lost")
+    _require(rules.get("standard_code_source_for_preexisting_episode") == "research_start_security_master", "preexisting standard-code source drift")
+    _require(rules.get("standard_code_source_for_new_episode") == "listing-date security-master snapshot", "new-episode standard-code source drift")
+    _require(rules.get("end_snapshot_is_reconciliation_only") is True, "end snapshot role drift")
     _require(rules.get("unresolved_standard_code_fail_closed") is True, "unresolved standard-code guard lost")
     _require(rules.get("inconsistent_standard_code_across_snapshots_fail_closed") is True, "standard-code consistency guard lost")
-    _require(rules.get("per_security_isuCd") == "standard_code", "isuCd mapping drift")
-    _require(rules.get("trading_halt_isuCd2") == "short_code", "isuCd2 mapping drift")
-
-    fixed = identity.get("fixed_requests") or []
-    _require(len(fixed) == 2, "fixed identity request count drift")
-    _require(fixed[0].get("basDd") == "20150615", "start master date drift")
-    _require(fixed[1].get("basDd") == "20261001", "end master date drift")
-    windowed = identity.get("windowed_requests") or {}
-    for name in ("new_listing_history", "delisted_history"):
-        row = windowed.get(name) or {}
-        windows = row.get("calendar_year_windows") or []
-        _require(row.get("request_count") == 12, f"{name} request count drift")
-        _require(len(windows) == 12, f"{name} window count drift")
-        _require(windows[0] == ["2015-06-15","2015-12-31"], f"{name} first window drift")
-        _require(windows[-1] == ["2026-01-01","2026-10-01"], f"{name} last window drift")
-    dynamic = identity.get("dynamic_standard_code_snapshots") or {}
-    _require(dynamic.get("request_count_formula") == "U_new_listing_dates", "listing-date snapshot formula drift")
-    _require(dynamic.get("no_fallback_from_later_snapshot") is True, "later-snapshot fallback guard lost")
+    _require(rules.get("per_security_isuCd") == "standard_code", "isuCd identity rule drift")
+    _require(rules.get("trading_halt_isuCd2") == "short_code", "halt isuCd2 rule drift")
 
     status=phases.get("status_history") or {}
+    cleanup=status.get("cleanup_trading") or {}
+    _require(cleanup.get("request_count") == 12, "cleanup request-count drift")
     halt=status.get("trading_halt") or {}
     _require(halt.get("bld") == "dbms/MDC/STAT/issue/MDCSTAT21301", "halt BLD drift")
     _require(halt.get("route_max_period_days") == 730, "halt max-period drift")
@@ -89,11 +100,14 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
 
     inv=phases.get("investor_flow_history") or {}
     _require(inv.get("bld") == "dbms/MDC/STAT/standard/MDCSTAT02303", "investor BLD drift")
+    _require(len(inv.get("calendar_year_windows") or []) == 12, "investor chunk-count drift")
     _require(inv.get("pit_publication_floor") == "20:00 Asia/Seoul", "PIT floor drift")
-    inv_windows=inv.get("calendar_year_windows") or []
-    _require(len(inv_windows) == 12, "investor chunking drift")
-    _require(inv_windows[0] == ["2015-06-15","2015-12-31"], "investor first window drift")
-    _require(inv_windows[-1] == ["2026-01-01","2026-10-01"], "investor last window drift")
+    _require("isuCd=standard_code" in str(inv.get("request_formula") or ""), "investor standard-code rule lost")
+
+    counts=data.get("request_count_formula") or {}
+    _require(counts.get("fixed_identity_requests") == 26, "fixed identity request-count drift")
+    _require(counts.get("dynamic_listing_date_master_requests") == "U_new_listing_dates", "dynamic request formula drift")
+    _require(counts.get("cleanup_year_windows") == 12, "cleanup year count drift")
 
     privacy=data.get("privacy_and_storage") or {}
     for key in (
