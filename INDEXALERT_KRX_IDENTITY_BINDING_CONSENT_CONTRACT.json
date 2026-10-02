@@ -3,7 +3,7 @@
   "contract_id": "INDEXALERT-KRX-IDENTITY-BINDING-CONSENT-v1",
   "created_date": "2026-10-02",
   "stage": "IDENTITY_STANDARD_CODE_BINDING",
-  "status": "FROZEN_NOT_YET_USER_AUTHORIZED",
+  "status": "FROZEN_USER_AUTHORIZED_ONCE_EXECUTION_COMPLETE_AUTHORITY_CONSUMED",
   "prerequisite": {
     "identity_seed_evidence_id": "INDEXALERT-KRX-HIST-IDENTITY-SEED-2026-10-02-v1",
     "identity_seed_phase_complete": true,
@@ -14,7 +14,10 @@
     "exact_user_approval_phrase": "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1",
     "authorized": false,
     "one_shot": true,
-    "prior_identity_seed_authorization_reusable": false
+    "prior_identity_seed_authorization_reusable": false,
+    "authorization_received_date": "2026-10-03",
+    "consumed": true,
+    "reusable": false
   },
   "runtime_gate": {
     "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
@@ -50,5 +53,19 @@
     "private_task_manifest_metadata_sha256": "940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c",
     "private_task_manifest_relpath": "task_manifests/identity-standard-code-binding-v1.json",
     "network_request_attempted_during_prepare": false
+  },
+  "completed_execution": {
+    "evidence_id": "INDEXALERT-KRX-IDENTITY-BINDING-EXEC-2026-10-03-v1",
+    "deployment_id": "3501cbb8-a6a6-4972-bf82-4fb8e3fb36f6",
+    "source_revision": "6c152d8f29354d843b16c35be27a86a8a8058908",
+    "task_count": 145,
+    "completed_task_count": 145,
+    "resumed_task_count": 0,
+    "network_request_attempt_count": 145,
+    "task_set_fingerprint_sha256": "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9",
+    "private_batch_metadata_sha256": "d5ca4e7ea45033f6bd6d45e301f1d3041b2e7257836e60d71c442fa73d8013be",
+    "phase_status": "COMPLETE",
+    "phase_complete": true,
+    "raw_rows_emitted": false
   }
 }
