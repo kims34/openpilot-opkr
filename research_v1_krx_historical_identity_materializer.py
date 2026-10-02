@@ -29,6 +29,7 @@ from research_v1_krx_historical_fetchers import (
     parse_openapi_raw,
 )
 from research_v1_krx_historical_identity import (
+    _market,
     _short_code,
     identity_summary,
     listing_dates_for_standard_code_binding,
@@ -410,13 +411,32 @@ def _merge_master_snapshots_fail_closed(
     binding["listing_date_official"] = pd.to_datetime(
         binding["listing_date_official"], errors="coerce"
     ).dt.normalize()
-    # Use the exact same short-code canonicalization as the core identity
-    # validator before duplicate/overlap checks. This prevents representation
-    # differences such as 5930 vs 005930 from surviving until the core layer.
-    seed["symbol"] = _short_code(seed["symbol"])
-    binding["symbol"] = _short_code(binding["symbol"])
     seed["standard_code"] = seed["standard_code"].astype("string").str.strip().str.upper()
     binding["standard_code"] = binding["standard_code"].astype("string").str.strip().str.upper()
+    seed["market_type_official"] = _market(seed["market_type_official"])
+    binding["market_type_official"] = _market(binding["market_type_official"])
+
+    # Match the core identity contract: discard non-KOSPI/non-common rows before
+    # short-code canonicalization. Alphanumeric codes can occur outside the
+    # common-stock scope and must never be digit-stripped into a false collision.
+    seed = seed[
+        seed["market_type_official"].eq("KOSPI")
+        & seed["common_stock_identity_official"].astype(bool)
+    ].copy()
+    binding = binding[
+        binding["market_type_official"].eq("KOSPI")
+        & binding["common_stock_identity_official"].astype(bool)
+    ].copy()
+    _require(not seed.empty, "seed master has no KOSPI common-stock rows")
+    _require(not binding.empty, "binding master has no KOSPI common-stock rows")
+
+    for label, frame in (("seed", seed), ("binding", binding)):
+        raw_symbol = frame["symbol"].astype("string").str.strip().str.upper()
+        _require(
+            raw_symbol.str.fullmatch(r"[0-9]{1,6}", na=False).all(),
+            f"{label} KOSPI common-stock master has non-numeric short code",
+        )
+        frame["symbol"] = _short_code(raw_symbol)
     _require(
         not seed[["decision_date", "listing_date_official"]].isna().any().any(),
         "seed master has invalid merge date",
