@@ -225,6 +225,50 @@ def test_master_snapshot_overlap_normalizes_equivalent_short_code_representation
     assert out.iloc[0]["symbol"] == "005930"
 
 
+def test_common_stock_alphanumeric_code_survives_private_master_merge():
+    seed = pd.DataFrame([
+        _normal_master_row(
+            "2015-06-15",
+            "KR7000088000",
+            "00A88K",
+            "2000-01-03",
+            "알파보통주",
+        )
+    ])
+    binding = pd.DataFrame([
+        _normal_master_row(
+            "2026-10-01",
+            "KR7000088000",
+            "00A88K",
+            "2000-01-03",
+            "알파보통주",
+        )
+    ])
+
+    out = m._merge_master_snapshots_fail_closed(seed, binding)
+    assert set(out["symbol"]) == {"00A88K"}
+    assert set(out["standard_code"]) == {"KR7000088000"}
+
+
+def test_malformed_seven_character_common_code_fails_private_master_merge():
+    seed = pd.DataFrame([
+        _normal_master_row(
+            "2015-06-15",
+            "KR7000088000",
+            "A005930",
+            "2000-01-03",
+            "잘못된코드",
+        )
+    ])
+    binding = _non_overlapping_binding()
+
+    with pytest.raises(
+        m.KRXHistoricalIdentityMaterializerError,
+        match="seed KOSPI common-stock master has invalid short code",
+    ):
+        m._merge_master_snapshots_fail_closed(seed, binding)
+
+
 def test_master_snapshot_overlap_conflict_fails_closed():
     seed = pd.DataFrame([
         _normal_master_row(
