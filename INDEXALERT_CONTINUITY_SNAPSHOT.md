@@ -48,7 +48,7 @@ Current states:
 
 Even all six PASS closes only the declared source contract; it does not authorize promotion, sealed holdout or live trading.
 
-Public-evidence fingerprint remains `349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b` (`2026-10-01.v1`).
+Public-evidence fingerprint remains `39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380` (`2026-10-02.v2`).
 
 Authorization boundary:
 `route credentials -> validated structured non-secret authorization evidence -> exact per-run tiny-request consent`.
