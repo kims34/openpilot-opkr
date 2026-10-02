@@ -452,6 +452,47 @@ def test_common_stock_alphanumeric_short_code_is_preserved_in_private_merge():
     assert "KR7000088000" in set(out["standard_code"])
 
 
+def test_public_new_listing_mapping_summary_reports_counts_only(monkeypatch):
+    seed_masters = pd.DataFrame([
+        _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+        _normal_master_row("2026-10-01", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
+    ])
+    binding = pd.DataFrame([
+        _normal_master_row("2020-01-02", "KR7000088000", "00A88K", "2020-01-02", "신규보통"),
+    ])
+    new = pd.DataFrame([{
+        "종목코드": "123456",
+        "종목명": "신규보통",
+        "시장구분": "유가증권",
+        "증권구분": "주권",
+        "주식종류": "보통주",
+        "상장일": "20200102",
+        "상장폐지일": "",
+    }])
+    monkeypatch.setattr(m, "load_identity_seed_material", lambda *a, **k: {
+        "security_master_snapshots": seed_masters,
+        "new_listing_history": new,
+        "delisted_history": pd.DataFrame(),
+        "cleanup_current": pd.DataFrame(),
+    })
+    monkeypatch.setattr(m, "load_identity_binding_master_snapshots", lambda *a, **k: binding)
+
+    out = m.public_new_listing_master_mapping_summary("/private")
+    assert out["new_listing_episode_count"] == 1
+    assert out["exact_same_day_symbol_unique_count"] == 0
+    assert out["exact_same_day_symbol_missing_count"] == 1
+    assert out["missing_with_unique_same_day_listing_date_candidate_count"] == 1
+    assert out["missing_with_unique_same_day_name_candidate_count"] == 1
+    assert out["same_day_listing_date_candidate_alphanumeric_6_count"] == 1
+    assert out["identifiers_emitted"] is False
+    assert out["names_emitted"] is False
+    assert out["network_request_attempted"] is False
+    rendered = str(out)
+    assert "123456" not in rendered
+    assert "00A88K" not in rendered
+    assert "신규보통" not in rendered
+
+
 def test_private_identity_reconstruction_combines_seed_and_listing_date_masters(monkeypatch):
     seed_masters = pd.DataFrame([
         _normal_master_row("2015-06-15", "KR7005930003", "005930", "1975-06-11", "삼성전자"),
