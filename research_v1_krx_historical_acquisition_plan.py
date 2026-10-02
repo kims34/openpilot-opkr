@@ -24,8 +24,10 @@ def canonical_sha256(value: Any) -> str:
 
 
 def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
-    _require(data.get("schema_version") == "1", "schema_version drift")
-    _require(data.get("plan_id") == "INDEXALERT-KRX-HIST-ACQ-v1", "plan_id drift")
+    _require(data.get("schema_version") == "2", "schema_version drift")
+    _require(data.get("plan_id") == "INDEXALERT-KRX-HIST-ACQ-v2", "plan_id drift")
+    _require(data.get("supersedes_plan_id") == "INDEXALERT-KRX-HIST-ACQ-v1", "superseded plan drift")
+    _require(data.get("superseded_before_any_bulk_network_execution") is True, "v1 supersession timing drift")
     _require(data.get("network_execution_authorized") is False, "plan must not self-authorize execution")
 
     period=data.get("research_required_period") or {}
@@ -47,9 +49,34 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
     identity=phases.get("identity_seed") or {}
     rules=identity.get("identity_rules") or {}
     _require(rules.get("market_filter") == "KOSPI only", "identity market drift")
+    _require(rules.get("common_stock_filter") == "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주", "common-stock identity drift")
     _require(rules.get("never_join_by_name_only") is True, "name-only join guard lost")
     _require(rules.get("episode_key") == "market|short_code|listing_date", "episode key drift")
+    _require(rules.get("standard_code_required_for_every_episode") is True, "standard-code requirement lost")
+    _require(rules.get("standard_code_source_for_preexisting_episode") == "research_start_security_master", "start standard-code source drift")
+    _require(rules.get("standard_code_source_for_new_episode") == "listing-date security-master snapshot", "new-listing standard-code source drift")
+    _require(rules.get("end_snapshot_is_reconciliation_only") is True, "end-snapshot guard lost")
     _require(rules.get("overlapping_same_short_code_episodes_fail_closed") is True, "episode overlap guard lost")
+    _require(rules.get("unresolved_standard_code_fail_closed") is True, "unresolved standard-code guard lost")
+    _require(rules.get("inconsistent_standard_code_across_snapshots_fail_closed") is True, "standard-code consistency guard lost")
+    _require(rules.get("per_security_isuCd") == "standard_code", "isuCd mapping drift")
+    _require(rules.get("trading_halt_isuCd2") == "short_code", "isuCd2 mapping drift")
+
+    fixed = identity.get("fixed_requests") or []
+    _require(len(fixed) == 2, "fixed identity request count drift")
+    _require(fixed[0].get("basDd") == "20150615", "start master date drift")
+    _require(fixed[1].get("basDd") == "20261001", "end master date drift")
+    windowed = identity.get("windowed_requests") or {}
+    for name in ("new_listing_history", "delisted_history"):
+        row = windowed.get(name) or {}
+        windows = row.get("calendar_year_windows") or []
+        _require(row.get("request_count") == 12, f"{name} request count drift")
+        _require(len(windows) == 12, f"{name} window count drift")
+        _require(windows[0] == ["2015-06-15","2015-12-31"], f"{name} first window drift")
+        _require(windows[-1] == ["2026-01-01","2026-10-01"], f"{name} last window drift")
+    dynamic = identity.get("dynamic_standard_code_snapshots") or {}
+    _require(dynamic.get("request_count_formula") == "U_new_listing_dates", "listing-date snapshot formula drift")
+    _require(dynamic.get("no_fallback_from_later_snapshot") is True, "later-snapshot fallback guard lost")
 
     status=phases.get("status_history") or {}
     halt=status.get("trading_halt") or {}
@@ -63,7 +90,10 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
     inv=phases.get("investor_flow_history") or {}
     _require(inv.get("bld") == "dbms/MDC/STAT/standard/MDCSTAT02303", "investor BLD drift")
     _require(inv.get("pit_publication_floor") == "20:00 Asia/Seoul", "PIT floor drift")
-    _require(inv.get("expected_calendar_windows_if_active_full_period") == 12, "investor chunking drift")
+    inv_windows=inv.get("calendar_year_windows") or []
+    _require(len(inv_windows) == 12, "investor chunking drift")
+    _require(inv_windows[0] == ["2015-06-15","2015-12-31"], "investor first window drift")
+    _require(inv_windows[-1] == ["2026-01-01","2026-10-01"], "investor last window drift")
 
     privacy=data.get("privacy_and_storage") or {}
     for key in (
@@ -97,7 +127,7 @@ def validate_plan(data: Mapping[str, Any]) -> dict[str, Any]:
 
     return {
         "valid":True,
-        "plan_id":"INDEXALERT-KRX-HIST-ACQ-v1",
+        "plan_id":"INDEXALERT-KRX-HIST-ACQ-v2",
         "plan_fingerprint_sha256":canonical_sha256(data),
         "rights_to_acquire":True,
         "network_execution_authorized":False,
