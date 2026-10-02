@@ -32,7 +32,7 @@ _REQUIRED_FIELDS = {
     "evidence_document_sha256",
     "captured_at",
 }
-_OPTIONAL_FIELDS = {"valid_from", "valid_until"}
+_OPTIONAL_FIELDS = {"valid_from", "valid_until", "automated_collection_authorized"}
 _ALLOWED_FIELDS = _REQUIRED_FIELDS | _OPTIONAL_FIELDS
 _SECRET_MARKERS = (
     "password=", "passwd=", "pwd=", "token=", "cookie=", "secret=",
@@ -127,6 +127,11 @@ def validate_authorization_evidence(
     use_scope = _nonempty(evidence["intended_use_scope"], "intended_use_scope", max_len=200)
     approval_state = _nonempty(evidence["approval_state"], "approval_state", max_len=30).upper()
     scope_statement = _nonempty(evidence["scope_statement"], "scope_statement", max_len=1000)
+    automated_collection_authorized = evidence.get("automated_collection_authorized")
+    if automated_collection_authorized not in (None, True, False):
+        raise KRXAuthorizationEvidenceError(
+            "automated_collection_authorized must be boolean when provided"
+        )
     document_sha = _nonempty(
         evidence["evidence_document_sha256"], "evidence_document_sha256", max_len=64
     ).lower()
@@ -172,6 +177,9 @@ def validate_authorization_evidence(
         reasons.append("EVIDENCE_REFERENCE_MISMATCH")
     if approval_state != "APPROVED":
         reasons.append(f"APPROVAL_STATE_{approval_state}")
+    if route == "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION":
+        if automated_collection_authorized is not True:
+            reasons.append("AUTOMATED_COLLECTION_NOT_EXPLICITLY_AUTHORIZED")
     if valid_from and now < valid_from:
         reasons.append("NOT_YET_VALID")
     if valid_until and now > valid_until:
@@ -187,6 +195,10 @@ def validate_authorization_evidence(
         "intended_use_scope": use_scope,
         "approval_state": approval_state,
         "scope_statement": scope_statement,
+        "automated_collection_authorized": (
+            None if automated_collection_authorized is None
+            else bool(automated_collection_authorized)
+        ),
         "evidence_document_sha256": document_sha,
         "captured_at": captured_at.isoformat(),
         "valid_from": None if valid_from is None else valid_from.isoformat(),
@@ -204,7 +216,7 @@ def validate_authorization_evidence(
         "alpha_or_final_judge_promotion_authorized": False,
         "live_trading_authorized": False,
         "guardrail": (
-            "A valid authorization-evidence record is only structured metadata for one tiny probe. "
+            "A valid authorization-evidence record is only structured metadata for one tiny probe. For the Data Marketplace web-session route, the evidence must explicitly state that automated collection is authorized; account credentials or ordinary site membership are insufficient. "
             "It cannot make Gate A PASS and cannot substitute for coverage, PIT, licensing, Alpha, holdout or live evidence."
         ),
     }
