@@ -78,6 +78,30 @@ def test_standard_code_is_required_for_per_security_requests():
         build_private_request_plan(eps)
 
 
+def test_private_request_plan_preserves_six_character_alphanumeric_short_code():
+    eps = _episodes().iloc[[0]].copy()
+    eps.loc[eps.index[0], "episode_key"] = "KOSPI|00A88K|1975-06-11"
+    eps.loc[eps.index[0], "short_code"] = "00A88K"
+    eps.loc[eps.index[0], "standard_code"] = "KR7000088000"
+
+    req = build_private_request_plan(eps)
+    halt = req[req["dataset"].eq("trading_halt")]
+    investor = req[req["dataset"].eq("investor_flow_daily")]
+
+    assert not halt.empty
+    assert not investor.empty
+    assert halt["isuCd2"].eq("00A88K").all()
+    assert halt["isuCd"].eq("KR7000088000").all()
+    assert investor["isuCd"].eq("KR7000088000").all()
+
+
+def test_private_request_plan_rejects_non_six_character_short_code():
+    eps = _episodes().iloc[[0]].copy()
+    eps.loc[eps.index[0], "short_code"] = "A005930"
+    with pytest.raises(KRXHistoricalRequestPlanError, match="invalid short code"):
+        build_private_request_plan(eps)
+
+
 def test_private_requests_bind_standard_and_short_codes():
     req=build_private_request_plan(_episodes())
     halt=req[req["dataset"].eq("trading_halt")].iloc[0]
