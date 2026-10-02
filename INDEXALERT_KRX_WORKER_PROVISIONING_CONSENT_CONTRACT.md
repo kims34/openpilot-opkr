@@ -2,7 +2,7 @@
 
 Updated: 2026-10-02 KST  
 Contract: `INDEXALERT-KRX-WORKER-PROVISIONING-v1`  
-Status: **FROZEN — NOT YET USER-AUTHORIZED**
+Status: **FROZEN — USER-AUTHORIZED; PROVISIONING NOT YET COMPLETED**
 
 This contract separates Railway infrastructure provisioning from every KRX network-execution consent.
 
@@ -11,6 +11,10 @@ Exact approval phrase:
 `I_AUTHORIZE_INDEXALERT_KRX_WORKER_PROVISIONING_v1`
 
 Creating a Railway service and persistent volume may incur Railway usage/storage charges.
+
+## Authorization record
+
+The exact approval phrase was received on 2026-10-02 KST. This authorizes only the provisioning scope below. The first provisioning attempt did not mutate Railway because the available Railway infrastructure agent returned `Agent usage limit reached`; unsafe fallback deployment paths were not used. The dedicated service and volume therefore remain absent until the authorized provisioning can be executed atomically.
 
 ## What this approval would allow
 
