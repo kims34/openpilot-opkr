@@ -223,7 +223,7 @@ Real-account ordering remains disabled. Structurally valid LIVE rows, broker con
 ## 9. Explicit unfinished-work registry
 
 1. DONE — H5/H10 CPCV, Uncertainty Audit, Policy Calibration, negative dispositions.
-2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure.
+2. DONE — internal KRX A-F/source authorization/readiness/provenance/PIT/coverage/admission infrastructure. Legacy `research_v1_krx.py` is now explicitly staging-only: `judge_eligible=false`, source-governance admission required, sealed-holdout/live authority false.
 3. EXTERNAL KRX AUTH/DATA BLOCKER — basic-info/daily-trade OpenAPI authentication is proven; exact status-event/investor-flow routes plus full history/stable IDs/PIT/use rights remain unresolved.
 4. DONE — internal exact status-economics auditor; EXTERNAL EVIDENCE BLOCKER remains for real fill/recovery data.
 5. DONE — execution schema hardening: LIVE structural presence is no longer mislabeled as empirical sufficiency.
@@ -276,4 +276,4 @@ Continuous post-Core research is enabled as an isolated Research Lab. Every eval
 
 ## 14. Internal completeness audit
 
-Internal audit hardened successor promotion: `automatic_code_update_eligible` is only an eligibility signal; `automatic_code_update_allowed=false` and `promotion_authority_verified=false` remain fail-closed until a future independent canonical promotion-authority mechanism exists. No real-order or sealed-holdout authority was introduced.
+Internal audit hardened successor promotion: represented confirmation conditions cannot self-grant `promotion_eligible`; `automatic_code_update_eligible=false`, `automatic_code_update_allowed=false` and `promotion_authority_verified=false` remain fail-closed until a future independent canonical promotion-authority mechanism exists. The same audit now also hardens legacy KRX daily-panel staging so retrieval cannot self-grant Judge eligibility. No real-order or sealed-holdout authority was introduced.
