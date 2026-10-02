@@ -171,6 +171,18 @@ def _normal_master_row(snapshot, standard, symbol, listing, name):
     }
 
 
+def _non_overlapping_binding():
+    return pd.DataFrame([
+        _normal_master_row(
+            "2025-01-02",
+            "KR7999990000",
+            "999999",
+            "2025-01-02",
+            "별도보통",
+        )
+    ])
+
+
 def test_master_snapshot_overlap_is_deduped_only_when_identity_matches():
     seed = pd.DataFrame([
         _normal_master_row(
@@ -257,10 +269,10 @@ def test_duplicate_key_after_short_code_normalization_dedupes_when_identity_matc
             "삼성전자",
         ),
     ])
-    binding = pd.DataFrame(columns=seed.columns)
+    binding = _non_overlapping_binding()
 
     out = m._merge_master_snapshots_fail_closed(seed, binding)
-    assert len(out) == 1
+    assert len(out) == 2
     assert out.iloc[0]["symbol"] == "005930"
 
 
@@ -273,10 +285,10 @@ def test_identity_equivalent_duplicate_rows_inside_one_source_are_deduped():
         "삼성전자",
     )
     seed = pd.DataFrame([row, row])
-    binding = pd.DataFrame(columns=seed.columns)
+    binding = _non_overlapping_binding()
 
     out = m._merge_master_snapshots_fail_closed(seed, binding)
-    assert len(out) == 1
+    assert len(out) == 2
 
 
 def test_conflicting_duplicate_rows_inside_one_source_fail_closed():
@@ -296,13 +308,57 @@ def test_conflicting_duplicate_rows_inside_one_source_fail_closed():
             "삼성전자",
         ),
     ])
-    binding = pd.DataFrame(columns=seed.columns)
+    binding = _non_overlapping_binding()
 
     with pytest.raises(
         m.KRXHistoricalIdentityMaterializerError,
         match="seed duplicate identity conflict: standard_code",
     ):
         m._merge_master_snapshots_fail_closed(seed, binding)
+
+
+def test_non_common_alphanumeric_short_code_is_filtered_before_canonicalization():
+    common = _normal_master_row(
+        "2026-10-01",
+        "KR7000088000",
+        "000088",
+        "2000-01-03",
+        "보통주",
+    )
+    preferred = _normal_master_row(
+        "2026-10-01",
+        "KR7000088999",
+        "00088K",
+        "2000-01-03",
+        "우선주",
+    )
+    preferred["stock_type_official"] = "신형우선주"
+    preferred["common_stock_identity_official"] = False
+
+    out = m._merge_master_snapshots_fail_closed(
+        pd.DataFrame([common, preferred]),
+        _non_overlapping_binding(),
+    )
+    assert set(out["symbol"]) == {"000088", "999999"}
+    assert "KR7000088999" not in set(out["standard_code"])
+
+
+def test_common_stock_alphanumeric_short_code_fails_closed():
+    common_bad = _normal_master_row(
+        "2026-10-01",
+        "KR7000088000",
+        "00088K",
+        "2000-01-03",
+        "잘못된보통주",
+    )
+    with pytest.raises(
+        m.KRXHistoricalIdentityMaterializerError,
+        match="seed KOSPI common-stock master has non-numeric short code",
+    ):
+        m._merge_master_snapshots_fail_closed(
+            pd.DataFrame([common_bad]),
+            _non_overlapping_binding(),
+        )
 
 
 def test_private_identity_reconstruction_combines_seed_and_listing_date_masters(monkeypatch):
