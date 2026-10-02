@@ -189,6 +189,9 @@ def _resume_if_complete(
         "receipt_fingerprint_sha256": receipt_fp,
         "raw_rows_emitted": False,
         "network_request_attempted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
     }
 
 
