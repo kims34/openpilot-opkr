@@ -2,7 +2,7 @@
 
 Updated: 2026-10-02 KST  
 Branch: `index-alert-research-v1`  
-Evidence ID: `INDEXALERT-KRX-OPENAPI-CONNECTIVITY-2026-10-02-v1`  
+Evidence ID: `INDEXALERT-KRX-OPENAPI-CONNECTIVITY-2026-10-02-v2`  
 Status: **AUTHENTICATED CONNECTIVITY / SCHEMA EVIDENCE ONLY — NO SOURCE-CLOSURE, ALPHA, HOLDOUT OR LIVE AUTHORITY**
 
 ## 1. Scope
@@ -19,18 +19,18 @@ The user-side KRX My Page showed both services as `승인` on 2026-10-02. The sc
 ## 2. Reproducible production evidence
 
 Exact production server revision:
-`62cb089131ca519815434616dd7f217315fbe346`
+`4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`
 
 Railway deployment:
-`3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681` — SUCCESS
+`2ae60f51-720c-463f-96cb-c9ef98fc449b` — SUCCESS
 
 GitHub production smoke:
-- run `36952309738` — SUCCESS
-- job `110667696519`
-- audited `runtime_revision=62cb089131ca519815434616dd7f217315fbe346`
+- run `36956234911` — SUCCESS
+- job `110679680755`
+- audited `runtime_revision=4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5`
 - KRX request basis date `20261001`
 
-The smoke consumes only the sanitized cached `/krx-health` result. The KRX startup probe itself reads `KRX_AUTH_KEY` from the production environment and never emits the secret.
+The smoke consumes only the sanitized cached `/krx-health` result. The KRX startup probe itself reads `KRX_AUTH_KEY` from the production environment and never emits the secret. Evidence v2 additionally freezes per-service retrieval timestamps plus SHA-256 fingerprints of the observed schema and complete parsed JSON response, without storing or exposing the response rows in the repository.
 
 ## 3. Exact observed OpenAPI results
 
@@ -42,6 +42,9 @@ The smoke consumes only the sanitized cached `/krx-health` result. The KRX start
 - JSON parsed: `true`
 - `OutBlock_1` rows: `942`
 - Schema match: `true`
+- Observed at: `2026-10-02T02:37:36.973562+00:00`
+- Response schema SHA-256: `11b766977e67ed2f4665a4752a80d18ab76c086d89cf0f853e2642e5575a54e5`
+- Response payload SHA-256: `cc64d8b8e9c028ee48a59928195998dfafbfd797587c9f3c1406002a4212792d`
 - Observed fields:
   `ISU_ABBRV, ISU_CD, ISU_ENG_NM, ISU_NM, ISU_SRT_CD, KIND_STKCERT_TP_NM, LIST_DD, LIST_SHRS, MKT_TP_NM, PARVAL, SECT_TP_NM, SECUGRP_NM`
 
@@ -53,6 +56,9 @@ The smoke consumes only the sanitized cached `/krx-health` result. The KRX start
 - JSON parsed: `true`
 - `OutBlock_1` rows: `942`
 - Schema match: `true`
+- Observed at: `2026-10-02T02:37:39.653451+00:00`
+- Response schema SHA-256: `5d68cce946a3c9361e7d662351f4896518cad40a3804fd262f577ad29d1d56f3`
+- Response payload SHA-256: `b5ff8d6894a1956aaf963aa9bad853eff1c3ee465f50f3ab611f7098ca0f93d3`
 - Observed fields:
   `ACC_TRDVAL, ACC_TRDVOL, BAS_DD, CMPPREVDD_PRC, FLUC_RT, ISU_CD, ISU_NM, LIST_SHRS, MKTCAP, MKT_NM, SECT_TP_NM, TDD_CLSPRC, TDD_HGPRC, TDD_LWPRC, TDD_OPNPRC`
 
@@ -67,7 +73,8 @@ This evidence establishes, for the exact observed services and date only:
 3. both exact service endpoints responded with HTTP 200 and parseable JSON;
 4. both responses contained non-empty `OutBlock_1` data;
 5. the observed fields matched the uploaded KRX development specifications;
-6. stable security identifiers `ISU_CD` and `ISU_SRT_CD` are present in the basic-information response, while `ISU_CD` is present in the daily-trade response.
+6. the exact observed response schema and payload are bound by SHA-256 fingerprints for later integrity comparison;
+7. stable security identifiers `ISU_CD` and `ISU_SRT_CD` are present in the basic-information response, while `ISU_CD` is present in the daily-trade response.
 
 This is stronger than credential-presence or dry-run evidence, but it is still only connectivity/schema evidence.
 
