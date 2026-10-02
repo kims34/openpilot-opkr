@@ -1,6 +1,6 @@
 # IndexAlert KRX Historical Railway Readiness Evidence
 
-Updated: 2026-10-02 22:33 KST  
+Updated: 2026-10-02 22:47 KST  
 Evidence ID: `INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1`  
 Status: **PREFLIGHT PROVISIONING COMPLETE — BULK EXECUTION NOT AUTHORIZED**
 
@@ -24,18 +24,22 @@ The production runtime's existing volume `f96f985a-8aba-41ef-88df-f76999c4ff0c` 
 Direct worker variables present:
 - `KRX_PRIVATE_RAW_DIR`
 - `INDEXALERT_KRX_HIST_WORKER_ROLE`
-
-Still absent:
 - `KRX_ID`
 - `KRX_PW`
 - `KRX_AUTH_KEY`
+
+Still absent:
 - `KRX_HISTORICAL_ACQUISITION_CONSENT`
 - `KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT`
 
-Corrected preflight deployment `d5365809-f146-41d6-b536-942555a20b1d` completed SUCCESS from branch commit `0d407fa9fc92bcf5b594967a35783e99681fb98d`.
+After the user corrected the password variable name from `KRW_PW` to `KRX_PW`, Railway auto-redeployed once with the repository default image and failed to find the worker entrypoint. No KRX network request was attempted. A manual redeploy under the frozen worker config then produced corrected deployment `02b5697c-b959-45b5-9ef5-600c05efcf32`, which completed SUCCESS using `Dockerfile.krx-historical-worker`.
 
-Runtime preflight evidence reported:
+Runtime preflight evidence from deployment `02b5697c-b959-45b5-9ef5-600c05efcf32` reported:
 - `mode=PREFLIGHT_ONLY`
+- `krx_id_present=true`
+- `krx_pw_present=true`
+- `krx_openapi_auth_key_present=true`
+- `explicit_execution_consent_present=false`
 - `network_request_attempted=false`
 - `historical_acquisition_network_execution_authorized=false`
 - `feature_performance_testing_authorized=false`
@@ -48,7 +52,7 @@ Current verdict:
 - dedicated worker service exists: **true**
 - dedicated worker volume exists: **true**
 - preflight infrastructure ready: **true**
-- worker secrets configured: **false**
+- worker secrets configured: **true**
 - infrastructure ready for bulk execution: **false**
 - bulk historical network execution authorized: **false**
 - expected-scope network execution authorized: **false**
@@ -56,4 +60,4 @@ Current verdict:
 - sealed holdout authorized: **false**
 - live trading authorized: **false**
 
-The next external step is worker-secret configuration. The 27-request `IDENTITY_SEED` may run only after those secrets are present **and** the separate frozen bulk-execution consent is explicitly granted.
+The worker-secret prerequisite is now satisfied. The next protected step is the separate frozen bulk-execution consent. The 27-request `IDENTITY_SEED` must not run until the exact execution sentinel `I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3` is explicitly supplied.
