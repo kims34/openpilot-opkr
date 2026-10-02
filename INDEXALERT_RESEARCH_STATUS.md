@@ -113,7 +113,7 @@ Latest authenticated OpenAPI plumbing/schema reference: production Smoke Action 
 
 ## KRX low-frequency internal-research reply evidence
 
-The latest KRX permission evidence v3 states that personal research may use complete full-historical-period download/query plus programmatic/automated low- and high-frequency collection without a separate approval procedure, while external leakage, sale and third-party distribution are prohibited. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; latest reply provenance is bound by redacted normalized SHA-256 `2aa1c2a08c108d9f71e4b5027fb697e593f2f874268567faa0d62c3ac95c3c39`. The exact timestamp of the latest v3 reply was not re-provided and is intentionally left unknown. Gate F is now PASS for the declared personal/internal-research scope.
+The latest KRX permission evidence v3 states that personal research may use complete full-historical-period download/query plus programmatic/automated low- and high-frequency collection without a separate approval procedure, while external leakage, sale and third-party distribution are prohibited. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; latest reply provenance is bound by redacted normalized SHA-256 `7361065e06599f947216233fc84e97126b1675de5af41068114cf6ef9577e304`. The exact timestamp of the latest v3 reply was not re-provided and is intentionally left unknown. Gate F is now PASS for the declared personal/internal-research scope.
 
 ## Data Marketplace automation-permission boundary
 
