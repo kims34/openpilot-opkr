@@ -1,0 +1,84 @@
+name: IndexAlert Research v1 KRX Status Source Probe
+
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_status_source_probe.py'
+      - 'research_v1_krx_auth_preflight.py'
+      - 'research_v1_krx_authorization_evidence.py'
+      - 'research_v1_krx_source_gates.py'
+      - 'research_v1_krx_public_evidence.py'
+      - '.github/workflows/indexalert-research-v1-krx-status-source-probe.yml'
+  workflow_dispatch:
+    inputs:
+      allow_authenticated_request:
+        description: 'Explicitly allow the tiny authenticated Data Marketplace probe for this run'
+        required: true
+        default: false
+        type: boolean
+      authorization_evidence_reference:
+        description: 'Optional override; leave blank to use the committed source-family authorization evidence'
+        required: false
+        type: string
+      authorization_evidence_json:
+        description: 'Optional override; leave blank to use the committed source-family authorization evidence'
+        required: false
+        type: string
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install pinned KRX source client
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 requests==2.32.3 python-dotenv
+          pip install 'git+https://github.com/beaten-by-the-market/krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e'
+      - name: Run push-safe dry-run status diagnostic
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.allow_authenticated_request != true }}
+        env:
+          KRX_ID: ''
+          KRX_PW: ''
+          KRX_OPENAPI_AUTH_KEY: ''
+          KRX_AUTH_EVIDENCE_REF: ''
+          KRX_AUTH_EVIDENCE_JSON: ''
+          KRX_EXPLICIT_PROBE_CONSENT: ''
+        run: |
+          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_authorization_evidence.py research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_status_source_probe.py
+          python research_v1_krx_status_source_probe.py
+          cat research_results/krx_status_source_probe/summary.json
+      - name: Run explicitly consented authenticated status probe
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_authenticated_request == true }}
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+          KRX_OPENAPI_AUTH_KEY: ''
+          KRX_AUTH_EVIDENCE_REF: ${{ inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF }}
+          KRX_AUTH_EVIDENCE_JSON: ${{ inputs.authorization_evidence_json || vars.KRX_AUTH_EVIDENCE_JSON }}
+          KRX_EXPLICIT_PROBE_CONSENT: 'ALLOW_TINY_AUTHENTICATED_REQUEST'
+        run: |
+          if [ -z "${KRX_AUTH_EVIDENCE_JSON}" ]; then
+            EVIDENCE_FILE="INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json"
+            export KRX_AUTH_EVIDENCE_JSON="$(cat "${EVIDENCE_FILE}")"
+            export KRX_AUTH_EVIDENCE_REF="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["evidence_reference"])' "${EVIDENCE_FILE}")"
+          fi
+          python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_authorization_evidence.py research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_status_source_probe.py
+          python research_v1_krx_status_source_probe.py
+          cat research_results/krx_status_source_probe/summary.json
+      - name: Upload metadata-only source result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-research-v1-krx-status-source-probe
+          path: research_results/krx_status_source_probe/summary.json
+          if-no-files-found: warn
+          retention-days: 14
