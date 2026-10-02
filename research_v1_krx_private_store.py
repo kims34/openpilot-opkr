@@ -24,6 +24,10 @@ SECRET_KEY_FRAGMENTS = (
     "password", "passwd", "pwd", "secret", "token", "auth_key",
     "api_key", "apikey", "authorization", "cookie", "session",
 )
+SAFE_NONSECRET_METADATA_KEYS = {
+    "authorization_evidence_reference",
+    "authorization_evidence_fingerprint_sha256",
+}
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -162,6 +166,8 @@ def verify_raw_object(
 
 def _secret_like_key(key: Any) -> bool:
     normal = "".join(ch.lower() if ch.isalnum() else "_" for ch in str(key))
+    if normal in SAFE_NONSECRET_METADATA_KEYS:
+        return False
     return any(fragment in normal for fragment in SECRET_KEY_FRAGMENTS)
 
 
