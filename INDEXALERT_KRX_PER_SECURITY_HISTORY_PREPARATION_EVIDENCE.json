@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-PREP-2026-10-03-v1",
+  "observed_date": "2026-10-03",
+  "stage": "PER_SECURITY_HISTORY",
+  "status": "PREPARED_NETWORK_FREE_EXECUTION_NOT_AUTHORIZED",
+  "preparation": {
+    "railway_service": "indexalert-krx-historical-worker",
+    "deployment_id": "f683b1a2-5db6-4e95-81a7-6ec5889a2c59",
+    "source_revision": "ffe0e2c05e2a705c4b4cf06922600d07daa464cc",
+    "mode": "PREPARE_PER_SECURITY_HISTORY",
+    "task_count": 14296,
+    "task_count_by_kind": {
+      "investor_trading_individual_daily": 9485,
+      "trading_halt": 4811
+    },
+    "task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+    "private_task_manifest_metadata_sha256": "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116",
+    "private_task_manifest_relpath": "task_manifests/per-security-history-v3.json",
+    "phase_status": "PENDING",
+    "phase_complete": false,
+    "network_request_attempted": false,
+    "security_identifiers_emitted": false,
+    "raw_rows_emitted": false
+  },
+  "identity_boundary": {
+    "preserves_official_six_character_alphanumeric_short_codes": true,
+    "same_day_official_noncommon_new_listings_excluded": true,
+    "official_noncommon_prestart_delisted_excluded_at_start": true,
+    "missing_or_ambiguous_identity_fail_closed": true,
+    "lookahead_backfill_used": false
+  },
+  "authority": {
+    "per_security_history_execution_authorized": false,
+    "status_economics_execution_authorized": false,
+    "expected_scope_network_execution_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "genuine_live_authorized": false,
+    "live_trading_authorized": false
+  }
+}
