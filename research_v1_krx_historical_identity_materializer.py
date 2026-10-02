@@ -29,7 +29,10 @@ from research_v1_krx_historical_fetchers import (
     parse_openapi_raw,
 )
 from research_v1_krx_historical_identity import (
+    PLAN_END,
+    PLAN_START,
     _market,
+    _normal_history,
     _short_code,
     identity_summary,
     listing_dates_for_standard_code_binding,
@@ -616,6 +619,116 @@ def _merge_master_snapshots_fail_closed(
         "duplicate symbol after seed/binding security-master reconciliation",
     )
     return merged
+
+
+def public_new_listing_master_mapping_summary(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> dict[str, Any]:
+    """Network-free aggregate diagnostic for new-listing -> same-day master mapping.
+
+    No security identifiers, names, or raw rows are returned. This exists only
+    to explain fail-closed identity reconstruction gaps in private evidence.
+    """
+    seed = load_identity_seed_material(root, git_worktree=git_worktree)
+    binding = load_identity_binding_master_snapshots(
+        root,
+        git_worktree=git_worktree,
+    )
+    masters = _merge_master_snapshots_fail_closed(
+        seed["security_master_snapshots"],
+        binding,
+    )
+    new = _normal_history(seed["new_listing_history"], delisted=False)
+    new = new[
+        new["listing_date"].between(PLAN_START, PLAN_END, inclusive="both")
+    ].copy()
+
+    counts = {
+        "new_listing_episode_count": int(len(new)),
+        "exact_same_day_symbol_unique_count": 0,
+        "exact_same_day_symbol_missing_count": 0,
+        "exact_same_day_symbol_multiple_count": 0,
+        "missing_with_same_day_listing_date_candidate_count": 0,
+        "missing_with_unique_same_day_listing_date_candidate_count": 0,
+        "missing_with_same_day_name_candidate_count": 0,
+        "missing_with_unique_same_day_name_candidate_count": 0,
+        "missing_new_symbol_numeric_6_count": 0,
+        "missing_new_symbol_alphanumeric_6_count": 0,
+        "same_day_listing_date_candidate_numeric_6_count": 0,
+        "same_day_listing_date_candidate_alphanumeric_6_count": 0,
+    }
+
+    master_names_available = "name" in masters.columns
+    for row in new.itertuples(index=False):
+        same_day = masters[
+            masters["decision_date"].eq(row.listing_date)
+            & masters["symbol"].eq(row.short_code)
+        ]
+        if len(same_day) == 1:
+            counts["exact_same_day_symbol_unique_count"] += 1
+            continue
+        if len(same_day) > 1:
+            counts["exact_same_day_symbol_multiple_count"] += 1
+            continue
+
+        counts["exact_same_day_symbol_missing_count"] += 1
+        short = str(row.short_code).strip().upper()
+        if short.isdigit() and len(short) == 6:
+            counts["missing_new_symbol_numeric_6_count"] += 1
+        elif len(short) == 6 and short.isascii() and short.isalnum():
+            counts["missing_new_symbol_alphanumeric_6_count"] += 1
+
+        candidates = masters[
+            masters["decision_date"].eq(row.listing_date)
+            & masters["listing_date_official"].eq(row.listing_date)
+        ].copy()
+        if not candidates.empty:
+            counts["missing_with_same_day_listing_date_candidate_count"] += 1
+            if len(candidates) == 1:
+                counts["missing_with_unique_same_day_listing_date_candidate_count"] += 1
+            candidate_symbols = candidates["symbol"].astype("string").str.strip().str.upper()
+            counts["same_day_listing_date_candidate_numeric_6_count"] += int(
+                candidate_symbols.str.fullmatch(r"[0-9]{6}", na=False).sum()
+            )
+            counts["same_day_listing_date_candidate_alphanumeric_6_count"] += int(
+                (
+                    candidate_symbols.str.fullmatch(r"[A-Z0-9]{6}", na=False)
+                    & ~candidate_symbols.str.fullmatch(r"[0-9]{6}", na=False)
+                ).sum()
+            )
+
+        if master_names_available and str(getattr(row, "name", "") or "").strip():
+            same_name = masters[
+                masters["decision_date"].eq(row.listing_date)
+                & masters["listing_date_official"].eq(row.listing_date)
+                & masters["name"].astype("string").str.strip().eq(
+                    str(row.name).strip()
+                )
+            ]
+            if not same_name.empty:
+                counts["missing_with_same_day_name_candidate_count"] += 1
+                if len(same_name) == 1:
+                    counts["missing_with_unique_same_day_name_candidate_count"] += 1
+
+    _require(
+        counts["exact_same_day_symbol_unique_count"]
+        + counts["exact_same_day_symbol_missing_count"]
+        + counts["exact_same_day_symbol_multiple_count"]
+        == counts["new_listing_episode_count"],
+        "new-listing mapping diagnostic count drift",
+    )
+    return {
+        **counts,
+        "identifiers_emitted": False,
+        "names_emitted": False,
+        "raw_rows_emitted": False,
+        "network_request_attempted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
 
 
 def reconstruct_private_historical_episodes(
