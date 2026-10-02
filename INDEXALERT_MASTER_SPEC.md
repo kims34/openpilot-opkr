@@ -382,6 +382,8 @@ Before a KRX source family may be treated as source-ready for its declared scope
 - **Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED`**: acquisition and source metadata must be reproducible/auditable; ambiguity, undocumented proxies and synthetic source substitution fail closed.
 - **Gate F — `INTENDED_USE_RIGHTS`**: permitted use must be verified for the declared scope; internal research and external/commercial product use are separate scopes.
 
+For the `DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION` route, ordinary KRX membership/account credentials never count as automation permission. The current KRX Data Marketplace homepage terms prohibit unauthorized automated collection; therefore any automated web-session probe/acquisition additionally requires explicit KRX-issued evidence that automated collection is authorized for the declared scope. Missing or ambiguous permission fails closed before network access.
+
 Each gate is `PASS`, `PARTIAL` or `BLOCKED`; only `PASS` closes it. `PARTIAL` is never treated as a pass. Any non-PASS gate keeps that source contract open for the declared scope.
 
 Even six PASS results are **source-governance evidence only**. They do not by themselves authorize model/Final-Judge promotion, sealed-holdout consumption, Shadow/Paper/Tiny-Live progression or live trading. All existing PIT/time consistency, anchored Walk-Forward, Purged/CPCV, realistic transaction/execution cost and fill modeling, distributional NetEV, tail/recency/capacity, one-shot holdout, Shadow S1 and Fresh Confirmation S2 requirements remain unchanged and independent.
