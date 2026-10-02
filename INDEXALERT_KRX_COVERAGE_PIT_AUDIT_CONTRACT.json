@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "contract_id": "INDEXALERT-KRX-COVERAGE-PIT-AUDIT-v1",
+  "bound_historical_plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+  "expected_scope_contract_id": "INDEXALERT-KRX-EXPECTED-SCOPE-ATTESTATION-v1",
+  "phase": "COVERAGE_PIT_AUDIT",
+  "network_request_attempted": false,
+  "prerequisites": {
+    "identity_seed_complete": true,
+    "identity_standard_code_binding_complete": true,
+    "per_security_history_complete": true,
+    "status_economics_phase_complete": true,
+    "expected_scope_attestation_complete": true,
+    "all_private_raw_objects_verified": true,
+    "all_request_receipts_verified": true,
+    "all_rows_within_preregistered_request_windows": true
+  },
+  "status_review": {
+    "gate_c_candidate_requires": [
+      "status_identity_coverage.coverage_structurally_complete=true",
+      "status_event_integrity.structurally_consistent=true",
+      "all trading-halt/delisting/cleanup historical request tasks complete",
+      "exact expected-scope contract fingerprint match"
+    ],
+    "gate_d_candidate_requires": [
+      "separate status PIT lineage audit with explicit official availability timestamps",
+      "no retrospective retrieval timestamp may be backdated into historical availability"
+    ],
+    "exact_status_economics_not_inferred_from_price_context": true
+  },
+  "investor_flow_review": {
+    "gate_c_candidate_requires": [
+      "investor_flow_coverage.coverage_structurally_complete=true",
+      "validated observed keys exactly match independently attested expected keys",
+      "all investor-flow historical request tasks complete"
+    ],
+    "gate_d_candidate_requires": [
+      "investor_flow_lineage.lineage_structurally_valid=true",
+      "event_time <= published_at <= available_at <= ingested_at",
+      "official publication-floor rule satisfied for every row"
+    ],
+    "no_zero_flow_synthesis": true
+  },
+  "decision_boundary": {
+    "composer_may_emit_gate_review_candidates": true,
+    "composer_may_set_source_gate_pass": false,
+    "composer_may_close_source_contract": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  }
+}
