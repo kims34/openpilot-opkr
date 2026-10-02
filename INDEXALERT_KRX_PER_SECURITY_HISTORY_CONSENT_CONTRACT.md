@@ -3,7 +3,7 @@
 Updated: 2026-10-03 KST  
 Contract ID: `INDEXALERT-KRX-PER-SECURITY-HISTORY-CONSENT-v1`  
 Stage: `PER_SECURITY_HISTORY`  
-Status: **FROZEN — NOT YET USER-AUTHORIZED**
+Status: **USER-AUTHORIZED — EXECUTION IN PROGRESS**
 
 ## Purpose
 
@@ -75,3 +75,18 @@ After successful one-shot execution:
 - worker start command must return to network-free preflight;
 - public evidence must contain metadata only;
 - later stages remain unauthorized unless separately approved.
+
+
+## Authorization / active execution record — 2026-10-03 KST
+
+The exact user approval phrase `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1` was received and is consumed only for this one-shot stage.
+
+- Railway deployment: `bc79d1b5-5fb8-46c7-8067-682e61947014`
+- source revision: `9009c48a00394063c813d29219507ee2190ce09e`
+- command: `python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history`
+- exact frozen scope: **14,296** tasks
+- task-set SHA-256: `fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38`
+- restart policy: `NEVER`
+- later-stage auto-authorization: **false**
+
+This authorization does **not** authorize `STATUS_ECONOMICS`, expected-scope network execution, feature-performance testing, sealed holdout, genuine LIVE, or live trading. After this stage completes or fails, both execution consent variables must be disabled again and the worker must return to preflight-only.
