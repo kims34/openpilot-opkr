@@ -17,7 +17,7 @@ from research_v1_krx_historical_acquisition_rights import validate_file as valid
 
 PLAN_PATH = Path("INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.json")
 CONSENT_ENV = "KRX_HISTORICAL_ACQUISITION_CONSENT"
-CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v1"
+CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2"
 
 
 def evaluate_historical_acquisition_preflight(
