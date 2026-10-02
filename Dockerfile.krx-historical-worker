@@ -1,0 +1,28 @@
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN python -m pip install --upgrade pip \
+    && pip install pandas==2.3.3 requests==2.32.3 python-dotenv \
+    && pip install 'git+https://github.com/beaten-by-the-market/krx-data-api.git@e6ebac9b71482db127348d8a08ebc6743aa3b50e'
+
+COPY research_v1_krx_*.py ./
+COPY INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.json ./
+COPY INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.json ./
+COPY INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.json ./
+COPY INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json ./
+COPY INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json ./
+COPY INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json ./
+
+# Intentionally network-free by default. Historical KRX collection can only
+# start when the operator explicitly adds --execute-identity-seed AND the
+# runtime passes the frozen bulk acquisition preflight.
+CMD ["python", "research_v1_krx_historical_worker_entrypoint.py"]
