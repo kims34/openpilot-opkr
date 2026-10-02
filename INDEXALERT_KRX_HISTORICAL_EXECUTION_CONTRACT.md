@@ -28,6 +28,9 @@ On 2026-10-02 KST, the exact v3 execution sentinel was explicitly supplied for t
 
 That one-shot execution authority was consumed and the exact sentinel was disabled immediately after completion. The worker was restored to its network-free preflight start command. Current machine-contract authority therefore remains `bulk_network_execution_authorized_by_user=false`.
 
+
+For the next protected stage, `IDENTITY_STANDARD_CODE_BINDING`, the historical-network sentinel is necessary but no longer sufficient. The worker additionally requires the frozen stage-specific sentinel `I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1` in `KRX_IDENTITY_BINDING_CONSENT`. The exact task set must first be generated network-free and frozen in a private manifest. Canonical authority is `INDEXALERT_KRX_IDENTITY_BINDING_CONSENT_CONTRACT.md/.json`.
+
 This completed seed does **not** authorize `IDENTITY_STANDARD_CODE_BINDING`, expected-scope execution, per-security history, status-economics execution, feature-performance testing, sealed holdout, promotion or live trading. Each protected later network stage requires its own current authorization boundary.
 
 ## Private raw storage
