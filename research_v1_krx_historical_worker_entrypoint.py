@@ -68,6 +68,9 @@ IDENTITY_BINDING_EXPECTED_TASK_SET_SHA256 = "b3e9c845d74b0b479af0fd95d9015de9269
 IDENTITY_BINDING_EXPECTED_MANIFEST_SHA256 = "940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c"
 PER_SECURITY_TASK_MANIFEST_REL = "task_manifests/per-security-history-v3.json"
 PER_SECURITY_BATCH_REL = "batches/per-security-history-v3.json"
+PER_SECURITY_EXPECTED_TASK_COUNT = 14296
+PER_SECURITY_EXPECTED_TASK_SET_SHA256 = "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38"
+PER_SECURITY_EXPECTED_MANIFEST_SHA256 = "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116"
 STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
 STATUS_ECONOMICS_BATCH_REL = "batches/status-economics-v3.json"
 IDENTITY_BINDING_CONSENT_ENV = "KRX_IDENTITY_BINDING_CONSENT"
@@ -104,6 +107,31 @@ def _require_frozen_identity_binding_summary(
     ):
         raise KRXHistoricalWorkerEntrypointError(
             "identity binding frozen manifest metadata SHA-256 drift"
+        )
+
+
+def _require_frozen_per_security_summary(
+    summary: Mapping[str, Any],
+    *,
+    manifest_metadata_sha256: str | None = None,
+) -> None:
+    if int(summary.get("task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security frozen task count drift"
+        )
+    if (
+        str(summary.get("task_set_fingerprint_sha256") or "")
+        != PER_SECURITY_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security frozen task-set fingerprint drift"
+        )
+    if (
+        manifest_metadata_sha256 is not None
+        and str(manifest_metadata_sha256) != PER_SECURITY_EXPECTED_MANIFEST_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security frozen manifest metadata SHA-256 drift"
         )
 
 
@@ -860,6 +888,8 @@ def prepare_per_security_history(
         raise KRXHistoricalWorkerEntrypointError(
             "per-security history task set is empty"
         )
+    if task_builder is build_per_security_history_tasks_from_private_identity:
+        _require_frozen_per_security_summary(summary)
 
     state = initialize_phase_state(
         root=root,
@@ -893,6 +923,11 @@ def prepare_per_security_history(
         private_manifest,
         git_worktree=worktree,
     )
+    if task_builder is build_per_security_history_tasks_from_private_identity:
+        _require_frozen_per_security_summary(
+            summary,
+            manifest_metadata_sha256=manifest_write["metadata_sha256"],
+        )
 
     return {
         "mode": "PREPARE_PER_SECURITY_HISTORY",
@@ -1038,11 +1073,17 @@ def load_frozen_per_security_history_tasks(
     worktree = git_worktree or str(Path.cwd().resolve())
     regenerated = task_builder(root, git_worktree=worktree)
     regenerated_summary = public_task_summary(regenerated)
-    manifest = read_private_json(
+    manifest_read = read_private_json(
         root,
         PER_SECURITY_TASK_MANIFEST_REL,
         git_worktree=worktree,
-    )["value"]
+    )
+    manifest = manifest_read["value"]
+    if task_builder is build_per_security_history_tasks_from_private_identity:
+        _require_frozen_per_security_summary(
+            regenerated_summary,
+            manifest_metadata_sha256=manifest_read["metadata_sha256"],
+        )
 
     if manifest.get("plan_id") != PLAN_ID:
         raise KRXHistoricalWorkerEntrypointError(
@@ -1130,6 +1171,8 @@ def execute_per_security_history(
         raise KRXHistoricalWorkerEntrypointError(
             "per-security history frozen task set is empty"
         )
+    if task_loader is load_frozen_per_security_history_tasks:
+        _require_frozen_per_security_summary(summary)
 
     completed = []
     resumed = 0
