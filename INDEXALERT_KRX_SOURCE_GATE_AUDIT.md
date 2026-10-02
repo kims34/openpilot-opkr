@@ -1,6 +1,6 @@
 # IndexAlert KRX Source Gate Audit — A-F
 
-Updated: 2026-10-01 KST  
+Updated: 2026-10-02 KST  
 Branch: `index-alert-research-v1`  
 Status: **SOURCE-GOVERNANCE AUDIT — NO ALPHA / HOLDOUT / LIVE AUTHORITY**
 
@@ -29,11 +29,11 @@ Overall: **OPEN — NOT ALL A-F PASS**
 
 | Gate | Status | Current evidence / blocker |
 |---|---|---|
-| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | `research_v1_krx_auth_preflight.py` now requires route-specific credentials, a non-secret evidence reference, a separately validated structured authorization-evidence record and exact per-run explicit consent before a tiny authenticated request. `research_v1_krx_authorization_evidence.py` validates issuer/family/route/use-scope/approval-state/document-hash/timestamps while capping evidence at tiny-probe readiness. `research_v1_krx_auth_readiness.py` can verify configuration without permitting or attempting a network request. No authorized authenticated KRX status request has been demonstrated. |
-| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Public contracts MDCSTAT213/237/238/239 and status semantics are identified, but exact approved historical transport/schema equivalence and stable full issue-ID contract for Final Judge remain unfrozen. |
+| Gate A — `AUTHORIZED_OFFICIAL_ROUTE` | `BLOCKED` | Authenticated KRX OpenAPI access is now demonstrated in production for the separately enabled `유가증권 종목기본정보` and `유가증권 일별매매정보` services (2026-10-01 basis date, HTTP 200, Action `36952309738`). This proves the OpenAPI transport/key works for those exact services only. The declared `KRX_SECURITY_STATUS` family still lacks an exact approved/authenticated route for trading-halt, cleanup-trading and actual-delisting history, and the canonical structured authorization-evidence / source-acquisition chain for that status route remains incomplete. Therefore Gate A for the declared status family stays `BLOCKED`. |
+| Gate B — `EXACT_DATASET_SCHEMA_MAPPING` | `PARTIAL` | Exact live schemas are now verified for `유가증권 종목기본정보` (`stk_isu_base_info`) and `유가증권 일별매매정보` (`stk_bydd_trd`): both returned 942 rows for `20261001`, and the observed fields matched the KRX development specifications. Public contracts MDCSTAT213/237/238/239 and status semantics are identified, but exact approved historical transport/schema equivalence for halt/cleanup/delisting status and the stable full issue-ID contract for Final Judge remain unfrozen. |
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_status_coverage.py` can exact-audit caller-attested `(snapshot_date, symbol, isu_cd)` scope, but no authorized full-period scope/history with stable full issue identity has been supplied. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | Status adapters require availability lineage, but complete historical event/publication/availability/ingestion evidence across all required status families is absent. |
-| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. No authenticated end-to-end full historical acquisition has yet demonstrated the real-data chain. |
+| Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. Production Action `36952309738` additionally freezes exact-revision sanitized OpenAPI connectivity/schema evidence for the two enabled services. That startup probe is not a full historical acquisition receipt/batch chain, so Gate E remains `PARTIAL`. |
 | Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | Current OpenAPI terms are audited as non-commercial/no-third-party-distribution; exact rights for the final selected historical route/product remain unverified. |
 
 Current verdict: `judge_security_status_ready=false`.
@@ -70,7 +70,21 @@ The 2026-10-01 official public re-audit established:
 
 These facts improve Gate B/F evidence only; they do not close A/C/D/E.
 
+### 5.1 Authenticated OpenAPI production evidence — 2026-10-02
+
+Canonical record: `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md` and `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json`.
+
+Production server revision `62cb089131ca519815434616dd7f217315fbe346`, Railway deployment `3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681`, and GitHub Smoke Action `36952309738` / job `110667696519` demonstrated authenticated KRX OpenAPI GET access for basis date `20261001` without exposing the authentication key:
+
+- `유가증권 종목기본정보` / `stk_isu_base_info`: HTTP 200, JSON parsed, 942 rows, exact expected schema.
+- `유가증권 일별매매정보` / `stk_bydd_trd`: HTTP 200, JSON parsed, 942 rows, exact expected schema.
+
+This supersedes the older generic statement that no authenticated KRX request had been demonstrated. It does **not** demonstrate an authenticated halt/cleanup/delisting route or investor-flow route, does not establish full history/PIT/use rights, and grants no performance, holdout, promotion or live authority.
+
 ## 6. Authorization, readiness and workflow evidence
+
+The production OpenAPI probe is a separate operational path from the Data Marketplace source-probe workflows below. It successfully demonstrated the two exact approved OpenAPI services recorded in `INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.md`; it must not be re-labeled as status-event or investor-flow acquisition evidence.
+
 
 Current Data Marketplace request boundary:
 - credentials alone do not authorize a request;
@@ -127,11 +141,9 @@ Therefore no authorization/readiness/infrastructure-only success can skip the Re
 
 ## 8. External evidence still missing
 
-- approved/authenticated exact historical KRX route/product;
-- route credentials plus a real non-secret authorization-evidence reference;
-- a matching real structured authorization-evidence record whose document fingerprint/approval state/timestamps can be attested;
-- a successful network-free readiness result after those are configured;
-- one explicitly consented manual tiny probe demonstrating the approved route without exposing credentials;
+- approved/authenticated exact historical **status-event and investor-flow** route/product (basic security-master/daily-trade OpenAPI connectivity is now proven separately);
+- route-specific non-secret authorization-evidence references and matching structured authorization-evidence records for the still-unresolved status/investor routes;
+- network-free readiness and explicitly consented tiny-probe evidence for those still-unresolved routes where the canonical research preflight applies;
 - complete historical status/investor-flow data;
 - independently attested full expected scope/stable security mapping;
 - record-level historical PIT timestamps/availability;
@@ -142,7 +154,7 @@ The presence of structured-evidence validators, readiness, preflight, workflow c
 
 ## 9. Evidence required to close gates
 
-- **Gate A:** approved exact route/product, matching validated structured authorization evidence, and explicitly consented demonstrated authorized access without exposing credentials. A readiness result alone is not access evidence.
+- **Gate A:** for each declared source family, approved exact route/product, matching validated structured authorization evidence, and demonstrated authorized access without exposing credentials. The successful basic-info/daily-trade OpenAPI proof does not substitute for the unresolved status-event or investor-flow route.
 - **Gate B:** exact service/screen/feed, schema, version/transport and equivalence boundaries for the actual route.
 - **Gate C:** full-period attested expected scope + exact observed coverage + stable security identity.
 - **Gate D:** real record-level PIT lineage and decision eligibility.
