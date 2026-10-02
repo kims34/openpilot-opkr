@@ -12,13 +12,13 @@ def _load():
 
 def test_krx_openapi_evidence_is_exact_revision_and_sanitized():
     data = _load()
-    assert data["schema_version"] == "1"
-    assert data["evidence_id"] == "INDEXALERT-KRX-OPENAPI-CONNECTIVITY-2026-10-02-v1"
+    assert data["schema_version"] == "2"
+    assert data["evidence_id"] == "INDEXALERT-KRX-OPENAPI-CONNECTIVITY-2026-10-02-v2"
     assert data["evidence_class"] == "AUTHENTICATED_CONNECTIVITY_AND_SCHEMA_ONLY"
-    assert data["production_server_commit"] == "62cb089131ca519815434616dd7f217315fbe346"
-    assert data["railway_deployment_id"] == "3cc6ffb2-4f11-4582-a5ba-aeca7fb1b681"
-    assert data["github_action_run_id"] == 36952309738
-    assert data["github_action_job_id"] == 110667696519
+    assert data["production_server_commit"] == "4714f8e2d47881b7ccc42d7add0bfebb67ce3bf5"
+    assert data["railway_deployment_id"] == "2ae60f51-720c-463f-96cb-c9ef98fc449b"
+    assert data["github_action_run_id"] == 36956234911
+    assert data["github_action_job_id"] == 110679680755
     assert data["request_date"] == "20261001"
     assert data["authentication"]["route"] == "KRX_OPENAPI"
     assert data["authentication"]["header_name"] == "AUTH_KEY"
@@ -38,6 +38,11 @@ def test_exact_observed_service_schemas_are_frozen():
         assert row["json_parsed"] is True
         assert row["row_count"] == 942
         assert row["schema_ok"] is True
+        assert isinstance(row["observed_at"], str) and row["observed_at"]
+        for key in ("response_schema_sha256", "response_payload_sha256"):
+            value = row[key]
+            assert len(value) == 64
+            assert set(value) <= set("0123456789abcdef")
 
     assert set(master["fields"]) == {
         "ISU_ABBRV", "ISU_CD", "ISU_ENG_NM", "ISU_NM", "ISU_SRT_CD",
@@ -49,6 +54,10 @@ def test_exact_observed_service_schemas_are_frozen():
         "ISU_CD", "ISU_NM", "LIST_SHRS", "MKTCAP", "MKT_NM", "SECT_TP_NM",
         "TDD_CLSPRC", "TDD_HGPRC", "TDD_LWPRC", "TDD_OPNPRC",
     }
+    assert master["response_schema_sha256"] == "11b766977e67ed2f4665a4752a80d18ab76c086d89cf0f853e2642e5575a54e5"
+    assert master["response_payload_sha256"] == "cc64d8b8e9c028ee48a59928195998dfafbfd797587c9f3c1406002a4212792d"
+    assert daily["response_schema_sha256"] == "5d68cce946a3c9361e7d662351f4896518cad40a3804fd262f577ad29d1d56f3"
+    assert daily["response_payload_sha256"] == "b5ff8d6894a1956aaf963aa9bad853eff1c3ee465f50f3ab611f7098ca0f93d3"
 
 
 def test_connectivity_evidence_cannot_grant_source_promotion_holdout_or_live_authority():
