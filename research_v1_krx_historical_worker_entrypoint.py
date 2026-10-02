@@ -47,6 +47,7 @@ from research_v1_krx_historical_identity_materializer import (
     build_identity_binding_tasks_from_private_seed,
     build_per_security_history_tasks_from_private_identity,
     build_status_economics_tasks_from_private_identity,
+    public_delisted_start_master_mapping_summary,
     public_identity_master_code_shape_summary,
     public_new_listing_master_mapping_summary,
 )
@@ -767,6 +768,60 @@ def diagnose_new_listing_master_mapping(
     }
 
 
+def diagnose_delisted_start_master_mapping(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    summary_loader=public_delisted_start_master_mapping_summary,
+) -> dict[str, Any]:
+    """Network-free aggregate diagnostic for delisted/start-master mapping."""
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "delisted/start mapping diagnostic blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "delisted/start mapping diagnostic blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "delisted/start mapping diagnostic blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+    worktree = git_worktree or str(Path.cwd().resolve())
+    summary = summary_loader(
+        str(env["KRX_PRIVATE_RAW_DIR"]),
+        git_worktree=worktree,
+    )
+    if summary.get("network_request_attempted") is not False:
+        raise KRXHistoricalWorkerEntrypointError(
+            "delisted/start mapping diagnostic attempted network access"
+        )
+    if summary.get("identifiers_emitted") is not False:
+        raise KRXHistoricalWorkerEntrypointError(
+            "delisted/start mapping diagnostic emitted identifiers"
+        )
+    if summary.get("names_emitted") is not False:
+        raise KRXHistoricalWorkerEntrypointError(
+            "delisted/start mapping diagnostic emitted names"
+        )
+    return {
+        "mode": "DIAGNOSE_DELISTED_START_MASTER_MAPPING",
+        "summary": dict(summary),
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "names_emitted": False,
+        "raw_rows_emitted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def prepare_per_security_history(
     *,
     environment: Mapping[str, str] | None = None,
@@ -1475,6 +1530,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     group.add_argument(
+        "--diagnose-delisted-start-master-mapping",
+        action="store_true",
+        help=(
+            "Network-free: report only aggregate mapping-gap counts between "
+            "pre-start delisted history and the research-start security master. "
+            "Never emits identifiers, names, or raw rows."
+        ),
+    )
+    group.add_argument(
         "--prepare-per-security-history",
         action="store_true",
         help=(
@@ -1525,6 +1589,8 @@ def main(argv: list[str] | None = None) -> int:
         result = diagnose_identity_master_code_shapes()
     elif args.diagnose_new_listing_master_mapping:
         result = diagnose_new_listing_master_mapping()
+    elif args.diagnose_delisted_start_master_mapping:
+        result = diagnose_delisted_start_master_mapping()
     elif args.prepare_per_security_history:
         result = prepare_per_security_history()
     elif args.execute_per_security_history:
