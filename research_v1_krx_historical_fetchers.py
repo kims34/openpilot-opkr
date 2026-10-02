@@ -83,6 +83,20 @@ def _csv_frame(raw: bytes) -> pd.DataFrame:
         raise KRXHistoricalFetchError("KRX CSV response could not be parsed") from exc
 
 
+
+def parse_data_marketplace_raw(method: str, raw: bytes) -> pd.DataFrame:
+    method = str(method).lower().strip()
+    if method == "csv":
+        return _csv_frame(raw)
+    if method == "json":
+        return _json_frame(raw)
+    raise KRXHistoricalFetchError("method must be csv or json")
+
+
+def parse_openapi_raw(raw: bytes) -> pd.DataFrame:
+    return _json_frame(raw)
+
+
 def _response_ok(resp: Any) -> bool:
     ok = getattr(resp, "ok", None)
     if ok is not None:
@@ -213,7 +227,7 @@ def fetch_data_marketplace_raw(
         session = auth.session
         raw, status = call(session)
 
-    frame = _csv_frame(raw) if method == "csv" else _json_frame(raw)
+    frame = parse_data_marketplace_raw(method, raw)
     return FetchResult(
         raw_bytes=raw,
         response_frame=frame,
@@ -260,7 +274,7 @@ def fetch_openapi_raw(
         )
     if not raw:
         raise KRXHistoricalFetchError("KRX OpenAPI response was empty")
-    frame = _json_frame(raw)
+    frame = parse_openapi_raw(raw)
     return FetchResult(
         raw_bytes=raw,
         response_frame=frame,
