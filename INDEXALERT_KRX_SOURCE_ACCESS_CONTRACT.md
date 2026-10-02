@@ -16,7 +16,7 @@ The following six gates are the canonical source-governance contract for every K
 
 The exact official KRX access route/product must be identified and the dataset must be accessed under the appropriate authorization. KRX OpenAPI `AUTH_KEY`, Data Marketplace authenticated web-session credentials and purchased/distributed data products are distinct routes and must never be substituted for one another.
 
-**Credential presence is not authorization, an opaque approval reference is not validated evidence, and authorization metadata is not runtime consent.** For any online route, IndexAlert must preserve a non-secret authorization/approval evidence reference separately from the credential itself and must validate a structured non-secret authorization-evidence record before preflight can authorize even a tiny request. A tiny authenticated reachability probe may be attempted only after that route-specific evidence validation and preflight are satisfied **and** the exact per-run explicit-consent sentinel is present. Successful reachability may contribute only partial Gate-A evidence; it can never make Gate A `PASS` by itself.
+**Credential presence is not authorization, an opaque approval reference is not validated evidence, and authorization metadata is not runtime consent.** For the Data Marketplace web-session route, ordinary account membership/login is also not automation permission: the current KRX homepage terms prohibit unauthorized automated collection/reproduction/distribution and separately prohibit copying/reproduction/distribution/transmission/public transmission without prior KRX permission. For any online route, IndexAlert must preserve a non-secret authorization/approval evidence reference separately from the credential itself and must validate a structured non-secret authorization-evidence record before preflight can authorize even a tiny request. A tiny authenticated reachability probe may be attempted only after that route-specific evidence validation and preflight are satisfied **and** the exact per-run explicit-consent sentinel is present. Successful reachability may contribute only partial Gate-A evidence; it can never make Gate A `PASS` by itself.
 
 Normal push-triggered diagnostics are dry-run only. Pushes must not inject KRX credentials or authorization-evidence JSON into the probe process and must never trigger an authenticated request merely because repository secrets/variables happen to be configured.
 
@@ -87,6 +87,7 @@ A tiny authenticated probe requires all of:
 - `KRX_PW` present through secret management;
 - non-secret `KRX_AUTH_EVIDENCE_REF` identifying the approval/authorization basis;
 - matching validated `KRX_AUTH_EVIDENCE_JSON` metadata for the declared family/route/use scope;
+- explicit `automated_collection_authorized=true` backed by KRX-issued evidence for the Data Marketplace web-session route;
 - exact runtime sentinel `KRX_EXPLICIT_PROBE_CONSENT=ALLOW_TINY_AUTHENTICATED_REQUEST` for that specific run.
 
 `KRX_AUTH_EVIDENCE_REF` and `KRX_AUTH_EVIDENCE_JSON` are non-secret metadata only. They must not contain a password, token, cookie, API key, bearer token or session identifier. Their presence/validity is necessary for the tiny probe but is not itself proof that Gate A passes.
@@ -109,7 +110,7 @@ Purchased/distributed product access must be verified by a product-specific inge
 
 ### Workflow execution boundary
 
-The two current Data Marketplace probe workflows are frozen as follows:
+The two current Data Marketplace probe workflows are frozen as follows. In addition to workflow controls, `research_v1_krx_authorization_evidence.py` and `research_v1_krx_auth_preflight.py` independently require explicit KRX automation permission before the authenticated path can authorize a request:
 - `push` events run a dry-run diagnostic only;
 - dry-run steps receive empty KRX credential/authorization-evidence/consent environment values;
 - the authenticated step is skipped on push;
@@ -145,7 +146,7 @@ An OpenAPI key therefore does not by itself authorize every API service. IndexAl
 
 ### Route 2 — KRX Data Marketplace authenticated web session
 
-The current feasibility probes are explicitly Data Marketplace web-session probes through a pinned exploratory client. They may attempt an authenticated request only when `KRX_ID`, `KRX_PW`, `KRX_AUTH_EVIDENCE_REF`, a matching validated structured authorization-evidence record **and** the exact explicit per-run consent sentinel satisfy the preflight.
+The current feasibility probes are explicitly Data Marketplace web-session probes through a pinned exploratory client. They may attempt an authenticated request only when `KRX_ID`, `KRX_PW`, `KRX_AUTH_EVIDENCE_REF`, a matching validated structured authorization-evidence record that explicitly confirms KRX permission for automated collection, **and** the exact explicit per-run consent sentinel satisfy the preflight. Account credentials or successful ordinary login alone can never satisfy this route.
 
 Candidate low-level BLDs or screen transports remain provisional until live authorized responses, exact schema equivalence, historical coverage and PIT lineage are validated.
 
@@ -158,6 +159,12 @@ Canonical map: `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md` / `.json`.
 The project pins `beaten-by-the-market/krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e` only as a reproducible transport implementation. Its catalog maps the current candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902` and `MDCSTAT02303`; direct `MDCSTAT23701` cleanup transport remains provisional. These are not official KRX approval artifacts and must not be promoted to Gate A/B PASS until the project itself demonstrates the approved authenticated route and exact schema/history contract.
 
 The pinned client login implementation reads `KRX_ID` / `KRX_PW` and posts to the KRX Data Marketplace login endpoint, but credential mechanics do not establish authorization or intended-use rights. The existing structured authorization-evidence and explicit-consent preflight remains mandatory.
+
+### Data Marketplace homepage terms boundary — 2026-10-02
+
+Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`, enforced by `research_v1_krx_data_marketplace_terms.py`.
+
+The current KRX Data Marketplace homepage terms, effective 2026-08-29, prohibit unauthorized automated collection/reproduction/distribution and require prior KRX permission before copying/reproduction/distribution/transmission/public transmission of site information. Therefore a normal member account is not treated as authorization for programmatic Data Marketplace collection. Until explicit KRX automation permission is evidenced, the Data Marketplace authenticated probe remains blocked even though `KRX_ID` and `KRX_PW` are configured.
 
 ### Route 3 — KRX data purchase / distribution products
 
