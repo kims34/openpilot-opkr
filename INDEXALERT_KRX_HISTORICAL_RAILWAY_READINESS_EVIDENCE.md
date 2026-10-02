@@ -63,3 +63,17 @@ Current verdict:
 - live trading authorized: **false**
 
 The worker-secret prerequisite and IDENTITY_SEED are now complete. The exact bulk-execution sentinel used for the seed has been disabled again. The next historical stage is `IDENTITY_STANDARD_CODE_BINDING`, derived from the private seed; it remains a protected network stage and is **not authorized by the completed seed evidence**. Gates C/D/E remain open.
+
+
+## Identity-binding network-free preparation
+
+On 2026-10-02 KST, fresh worker deployment `6d0081a8-933b-4e2e-bd83-4753d2a75799` at revision `ab09e9a0aabf5bcaba53372b6f48b34796715e5d` ran only `--prepare-identity-standard-code-binding`.
+
+It froze exactly **145 `security_master` tasks** from the completed private seed:
+- task-set SHA-256: `b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9`;
+- private manifest metadata SHA-256: `940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c`;
+- phase: `PENDING`;
+- network requests attempted: **0**;
+- raw rows / identifiers emitted publicly: **false**.
+
+The worker start command was restored to preflight-only immediately after preparation. `KRX_IDENTITY_BINDING_CONSENT` remains absent. Actual binding execution is not authorized.
