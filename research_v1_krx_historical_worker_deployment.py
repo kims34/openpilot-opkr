@@ -148,6 +148,18 @@ def validate_deployment_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         start.get("execute_command_forbidden_until_user_bulk_approval") is True,
         "execute-command approval guard lost",
     )
+    _require(
+        start.get("execute_identity_standard_code_binding_command")
+        == "python research_v1_krx_historical_worker_entrypoint.py --execute-identity-standard-code-binding",
+        "identity-binding execute command drift",
+    )
+    _require(
+        start.get(
+            "execute_identity_standard_code_binding_forbidden_until_user_bulk_approval"
+        )
+        is True,
+        "identity-binding approval guard lost",
+    )
 
     authority = data.get("authority") or {}
     for key in (
