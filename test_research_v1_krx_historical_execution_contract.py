@@ -19,8 +19,8 @@ def _data():
 def test_committed_execution_contract_is_private_and_nonexecuting():
     out = validate_file()
     assert out["valid"] is True
-    assert out["contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v1"
-    assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v2"
+    assert out["contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v2"
+    assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v3"
     assert out["rights_to_acquire"] is True
     assert out["bulk_network_execution_authorized_by_user"] is False
     assert out["private_persistent_storage_required"] is True
@@ -62,7 +62,7 @@ def test_bulk_execution_cannot_be_pre_authorized():
         validate_execution_contract(data)
 
 
-def test_bulk_consent_sentinel_is_frozen_to_plan_v2():
+def test_bulk_consent_sentinel_is_frozen_to_plan_v3():
     data = _data()
     data["execution_isolation"]["exact_consent_sentinel"] = "yes"
     with pytest.raises(KRXHistoricalExecutionContractError, match="sentinel drift"):
@@ -73,4 +73,17 @@ def test_credentials_and_raw_rows_remain_forbidden_public_output():
     data = _data()
     data["forbidden_public_output"].remove("KRX_PW")
     with pytest.raises(KRXHistoricalExecutionContractError, match="KRX_PW"):
+        validate_execution_contract(data)
+
+
+def test_cleanup_source_correction_is_frozen():
+    data = _data()
+    correction = data["source_contract_correction"]
+    assert correction["historical_cleanup_source"] == "MDCSTAT23801 delisted-history cleanup-period fields"
+    assert correction["current_cleanup_reconciliation_source"] == "MDCSTAT23701 mktId=ALL snapshot"
+    assert correction["mdcstat237_historical_date_window_assumption_forbidden"] is True
+
+    data = _data()
+    data["source_contract_correction"]["mdcstat237_historical_date_window_assumption_forbidden"] = False
+    with pytest.raises(KRXHistoricalExecutionContractError, match="prohibition lost"):
         validate_execution_contract(data)
