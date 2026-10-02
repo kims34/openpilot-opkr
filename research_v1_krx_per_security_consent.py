@@ -9,6 +9,9 @@ from typing import Any, Mapping
 PATH = Path("INDEXALERT_KRX_PER_SECURITY_HISTORY_CONSENT_CONTRACT.json")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
+IN_PROGRESS = "USER_AUTHORIZED_EXECUTION_IN_PROGRESS"
+COMPLETE_CONSUMED = "EXECUTION_COMPLETE_AUTHORITY_CONSUMED"
+
 
 class KRXPerSecurityConsentError(ValueError):
     pass
@@ -27,7 +30,9 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "contract_id drift",
     )
     _require(data.get("stage") == "PER_SECURITY_HISTORY", "stage drift")
-    _require(data.get("status") == "USER_AUTHORIZED_EXECUTION_IN_PROGRESS", "status drift")
+
+    status = str(data.get("status") or "")
+    _require(status in {IN_PROGRESS, COMPLETE_CONSUMED}, "status drift")
 
     pre = data.get("prerequisite") or {}
     _require(pre.get("identity_binding_phase_complete") is True, "identity binding prerequisite lost")
@@ -63,7 +68,6 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         == "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1",
         "approval phrase drift",
     )
-    _require(user.get("authorized") is True, "authorized execution record lost")
     _require(user.get("received_date_kst") == "2026-10-03", "authorization date drift")
     _require(
         user.get("consumed_for_deployment_id")
@@ -110,7 +114,6 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         == "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
         "execution task-set fingerprint drift",
     )
-    _require(execution.get("execution_status") == "IN_PROGRESS", "execution status drift")
     for key in (
         "later_stage_auto_authorization",
         "status_economics_authorized",
@@ -133,10 +136,6 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(lock.get("later_stage_auto_authorization") is False, "later-stage auto authority enabled")
 
     authority = data.get("authority") or {}
-    _require(
-        authority.get("per_security_history_execution_authorized") is True,
-        "per-security execution authority record lost",
-    )
     for key in (
         "status_economics_execution_authorized",
         "expected_scope_network_execution_authorized",
@@ -148,10 +147,66 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     ):
         _require(authority.get(key) is False, f"{key} illegally true")
 
+    if status == IN_PROGRESS:
+        _require(user.get("authorized") is True, "authorized execution record lost")
+        _require(user.get("consumed") is not True, "active authority prematurely marked consumed")
+        _require(execution.get("execution_status") == "IN_PROGRESS", "execution status drift")
+        _require(
+            authority.get("per_security_history_execution_authorized") is True,
+            "per-security execution authority record lost",
+        )
+        _require(data.get("completion") in (None, {}), "completion record prematurely present")
+        authorized = True
+        completed = False
+    else:
+        _require(user.get("authorized") is False, "completed authority still active")
+        _require(user.get("consumed") is True, "completed authority not marked consumed")
+        _require(execution.get("execution_status") == "COMPLETE", "completed execution status drift")
+        _require(
+            authority.get("per_security_history_execution_authorized") is False,
+            "completed per-security execution authority still active",
+        )
+
+        completion = data.get("completion") or {}
+        _require(
+            completion.get("evidence_id")
+            == "INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1",
+            "completion evidence binding drift",
+        )
+        _require(int(completion.get("completed_task_count", -1)) == 14296, "completion task count drift")
+        _require(int(completion.get("failed_task_count", -1)) == 0, "completion has failed tasks")
+        _require(completion.get("phase_status") == "COMPLETE", "completion phase status drift")
+        _require(completion.get("phase_complete") is True, "completion phase_complete lost")
+        _require(
+            completion.get("task_set_fingerprint_sha256")
+            == "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+            "completion task-set fingerprint drift",
+        )
+        for key in (
+            "bulk_execution_consent_disabled_again",
+            "per_security_consent_disabled_again",
+            "start_command_restored_to_preflight_only",
+            "preflight_network_request_attempted_false",
+        ):
+            _require(completion.get(key) is True, f"completion {key} guard lost")
+        for key in (
+            "status_economics_authorized",
+            "expected_scope_network_execution_authorized",
+            "feature_performance_testing_authorized",
+            "sealed_holdout_authorized",
+            "genuine_live_authorized",
+            "live_trading_authorized",
+        ):
+            _require(completion.get(key) is False, f"completion {key} illegally true")
+        authorized = False
+        completed = True
+
     return {
         "valid": True,
         "task_count": 14296,
-        "authorized": True,
+        "authorized": authorized,
+        "completed": completed,
+        "authority_consumed": completed,
         "one_shot": True,
         "later_stage_auto_authorization": False,
     }
