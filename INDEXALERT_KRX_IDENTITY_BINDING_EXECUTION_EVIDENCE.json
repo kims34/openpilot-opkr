@@ -1,0 +1,39 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-IDENTITY-BINDING-EXEC-2026-10-03-v1",
+  "observed_at": "2026-10-03T03:20:44+09:00",
+  "stage": "IDENTITY_STANDARD_CODE_BINDING",
+  "status": "COMPLETE_METADATA_ONLY",
+  "execution": {
+    "railway_service": "indexalert-krx-historical-worker",
+    "deployment_id": "3501cbb8-a6a6-4972-bf82-4fb8e3fb36f6",
+    "source_revision": "6c152d8f29354d843b16c35be27a86a8a8058908",
+    "dockerfile": "Dockerfile.krx-historical-worker",
+    "mode": "EXECUTE_IDENTITY_STANDARD_CODE_BINDING",
+    "task_count": 145,
+    "completed_task_count": 145,
+    "resumed_task_count": 0,
+    "network_request_attempt_count": 145,
+    "phase_status": "COMPLETE",
+    "phase_complete": true
+  },
+  "integrity": {
+    "task_set_fingerprint_sha256": "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9",
+    "private_batch_metadata_sha256": "d5ca4e7ea45033f6bd6d45e301f1d3041b2e7257836e60d71c442fa73d8013be",
+    "private_batch_relpath": "batches/identity-standard-code-binding-v3.json",
+    "raw_rows_emitted": false,
+    "security_identifiers_emitted": false
+  },
+  "post_run_boundary": {
+    "bulk_execution_consent_disabled_again": true,
+    "identity_binding_consent_disabled_again": true,
+    "start_command_restored_to_preflight_only": true,
+    "per_security_history_authorized": false,
+    "status_economics_authorized": false,
+    "expected_scope_network_execution_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "genuine_live_authorized": false,
+    "live_trading_authorized": false
+  }
+}
