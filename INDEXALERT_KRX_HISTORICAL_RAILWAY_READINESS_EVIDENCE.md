@@ -62,7 +62,7 @@ Current verdict:
 - sealed holdout authorized: **false**
 - live trading authorized: **false**
 
-The worker-secret prerequisite and IDENTITY_SEED are now complete. The exact bulk-execution sentinel used for the seed has been disabled again. The next historical stage is `IDENTITY_STANDARD_CODE_BINDING`, derived from the private seed; it remains a protected network stage and is **not authorized by the completed seed evidence**. Gates C/D/E remain open.
+The worker-secret prerequisite and IDENTITY_SEED are now complete. The exact bulk-execution sentinel used for the seed has been disabled again. `IDENTITY_STANDARD_CODE_BINDING` is complete and `PER_SECURITY_HISTORY` is prepared network-free. Actual `PER_SECURITY_HISTORY` network execution remains separately unauthorized. Gates C/D/E remain open.
 
 
 ## Identity-binding network-free preparation
@@ -92,3 +92,21 @@ On 2026-10-03 KST, deployment `3501cbb8-a6a6-4972-bf82-4fb8e3fb36f6` at exact re
 - public raw rows / security identifiers: **none**
 
 The one-shot binding consent and lower-level network consent were disabled again immediately after completion. Worker configuration was restored to preflight-only. The next safe internal step is network-free preparation of `PER_SECURITY_HISTORY`; its actual network execution remains separately unauthorized.
+
+
+## PER_SECURITY_HISTORY network-free preparation
+
+On 2026-10-03 KST, deployment `f683b1a2-5db6-4e95-81a7-6ec5889a2c59` at exact revision `ffe0e2c05e2a705c4b4cf06922600d07daa464cc` ran only `--prepare-per-security-history`.
+
+It froze:
+- total tasks: **14,296**
+- `investor_trading_individual_daily`: **9,485**
+- `trading_halt`: **4,811**
+- task-set SHA-256: `fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38`
+- private manifest metadata SHA-256: `0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116`
+- private manifest: `task_manifests/per-security-history-v3.json`
+- phase: `PENDING`
+- network requests attempted: **0**
+- public raw rows / identifiers: **none**
+
+The exact prepared scope is now code-pinned and execution-contract-pinned. `KRX_PER_SECURITY_HISTORY_CONSENT` remains disabled. Actual execution requires the separate exact approval `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1` in addition to the v3 bulk-network sentinel. No later-stage authority was created.
