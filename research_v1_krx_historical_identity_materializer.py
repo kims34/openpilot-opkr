@@ -200,6 +200,109 @@ def load_identity_seed_material(
     }
 
 
+def _public_master_code_shape_counts(frame: pd.DataFrame) -> dict[str, Any]:
+    required = {
+        "decision_date",
+        "standard_code",
+        "symbol",
+        "market_type_official",
+        "common_stock_identity_official",
+    }
+    missing = required - set(frame.columns)
+    _require(not missing, f"master shape diagnostic missing columns: {sorted(missing)}")
+
+    scoped = frame.copy()
+    scoped["market_type_official"] = _market(scoped["market_type_official"])
+    scoped = scoped[
+        scoped["market_type_official"].eq("KOSPI")
+        & scoped["common_stock_identity_official"].astype(bool)
+    ].copy()
+
+    raw = scoped["symbol"].astype("string").str.strip().str.upper()
+    counts = {
+        "numeric_6": int(raw.str.fullmatch(r"[0-9]{6}", na=False).sum()),
+        "numeric_1_to_5": int(raw.str.fullmatch(r"[0-9]{1,5}", na=False).sum()),
+        "prefix_letter_plus_6_digits": int(
+            raw.str.fullmatch(r"[A-Z][0-9]{6}", na=False).sum()
+        ),
+        "five_digits_plus_suffix_letter": int(
+            raw.str.fullmatch(r"[0-9]{5}[A-Z]", na=False).sum()
+        ),
+        "six_alnum_other": 0,
+        "other": 0,
+    }
+    covered = (
+        raw.str.fullmatch(r"[0-9]{6}", na=False)
+        | raw.str.fullmatch(r"[0-9]{1,5}", na=False)
+        | raw.str.fullmatch(r"[A-Z][0-9]{6}", na=False)
+        | raw.str.fullmatch(r"[0-9]{5}[A-Z]", na=False)
+    )
+    six_alnum = raw.str.fullmatch(r"[A-Z0-9]{6}", na=False) & ~covered
+    counts["six_alnum_other"] = int(six_alnum.sum())
+    counts["other"] = int((~covered & ~six_alnum).sum())
+
+    probe = pd.DataFrame({
+        "decision_date": pd.to_datetime(scoped["decision_date"], errors="coerce").dt.normalize(),
+        "raw_symbol": raw,
+        "old_digit_stripped_symbol": _short_code(raw),
+        "standard_code": scoped["standard_code"].astype("string").str.strip().str.upper(),
+    })
+    group = probe.groupby(
+        ["decision_date", "old_digit_stripped_symbol"],
+        dropna=False,
+    )
+    conflict_groups = 0
+    collision_rows = 0
+    for _, rows in group:
+        if len(rows) <= 1:
+            continue
+        if rows["raw_symbol"].nunique(dropna=False) > 1:
+            collision_rows += int(len(rows))
+            if rows["standard_code"].nunique(dropna=False) > 1:
+                conflict_groups += 1
+
+    return {
+        "kospi_common_row_count": int(len(scoped)),
+        "decision_date_count": int(
+            pd.to_datetime(scoped["decision_date"], errors="coerce")
+            .dropna()
+            .dt.normalize()
+            .nunique()
+        ),
+        "raw_symbol_shape_counts": counts,
+        "old_digit_strip_collision_row_count": int(collision_rows),
+        "old_digit_strip_conflicting_standard_code_group_count": int(conflict_groups),
+        "identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "network_request_attempted": False,
+    }
+
+
+def public_identity_master_code_shape_summary(
+    root: str,
+    *,
+    git_worktree: str | None = None,
+) -> dict[str, Any]:
+    """Aggregate private master-code shapes without emitting identifiers."""
+    seed = load_identity_seed_material(root, git_worktree=git_worktree)[
+        "security_master_snapshots"
+    ]
+    binding = load_identity_binding_master_snapshots(
+        root,
+        git_worktree=git_worktree,
+    )
+    return {
+        "seed": _public_master_code_shape_counts(seed),
+        "binding": _public_master_code_shape_counts(binding),
+        "identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "network_request_attempted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def build_identity_binding_tasks_from_private_seed(
     root: str,
     *,
