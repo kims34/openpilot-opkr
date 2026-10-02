@@ -46,6 +46,7 @@ class FetchResult:
     response_frame: pd.DataFrame
     retrieved_at: str
     transport_status: str
+    network_request_attempted: bool
 
 
 AUTH_FILES = {
@@ -219,6 +220,8 @@ def execute_private_request(
         raise KRXHistoricalWorkerError("fetcher response_frame must be a DataFrame")
     if not str(result.transport_status).strip():
         raise KRXHistoricalWorkerError("transport_status must be non-empty")
+    if not isinstance(result.network_request_attempted, bool):
+        raise KRXHistoricalWorkerError("network_request_attempted must be boolean")
 
     raw = write_raw_object(
         root,
@@ -317,7 +320,7 @@ def execute_private_request(
         "receipt_fingerprint_sha256": receipt["receipt_fingerprint_sha256"],
         "manifest_metadata_sha256": manifest_written["metadata_sha256"],
         "raw_rows_emitted": False,
-        "network_request_attempted": True,
+        "network_request_attempted": result.network_request_attempted,
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
