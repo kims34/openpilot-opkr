@@ -29,6 +29,7 @@ def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
     assert out["contract"]["service_creation_authorized"] is False
     assert out["contract"]["volume_creation_or_attachment_authorized"] is False
     assert out["contract"]["bulk_network_execution_authorized_by_user"] is False
+    assert out["contract"]["expected_scope_network_execution_authorized_by_user"] is False
     assert out["requirements"]["pinned_client"] is True
     assert out["requirements"]["pinned_client_commit"] == "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
     assert out["dockerfile"]["default_mode"] == "PREFLIGHT_ONLY"
@@ -55,6 +56,15 @@ def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
     assert data["start_contract"]["prepare_status_economics_bulk_consent_required"] is False
     assert data["start_contract"]["prepare_status_economics_requires_completed_per_security_history"] is True
     assert data["start_contract"]["prepare_status_economics_exact_realized_economics_claim_allowed"] is False
+    assert data["start_contract"]["expected_scope_preflight_command"] == "python research_v1_krx_expected_scope_worker.py"
+    assert data["start_contract"]["expected_scope_preflight_network_request_attempted"] is False
+    assert data["start_contract"]["execute_expected_scope_command"] == "python research_v1_krx_expected_scope_worker.py --execute"
+    assert data["start_contract"]["execute_expected_scope_forbidden_until_user_expected_scope_approval"] is True
+    assert data["start_contract"]["execute_expected_scope_requires_distinct_consent_env"] == "KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT"
+    assert data["start_contract"]["execute_expected_scope_requires_distinct_consent_exact_value"] == "I_AUTHORIZE_INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_v1"
+    assert data["start_contract"]["historical_bulk_consent_does_not_substitute_for_expected_scope_consent"] is True
+    assert data["start_contract"]["expected_scope_checkpoint_resume_required"] is True
+    assert data["start_contract"]["expected_scope_calendar_date_count"] == 4127
     assert data["start_contract"]["execute_status_economics_command"].endswith(
         "--execute-status-economics"
     )
@@ -82,6 +92,7 @@ def test_worker_deployment_cannot_self_authorize_cloud_or_bulk_actions():
         "service_creation_authorized",
         "volume_creation_or_attachment_authorized",
         "bulk_network_execution_authorized_by_user",
+        "expected_scope_network_execution_authorized_by_user",
         "sealed_holdout_authorized",
         "live_trading_authorized",
     ):
@@ -136,3 +147,40 @@ def test_worker_requirements_must_pin_exact_krx_client_commit():
     )
     with pytest.raises(KRXHistoricalWorkerDeploymentError, match="pinned KRX client"):
         validate_worker_requirements(bad)
+
+
+def test_expected_scope_consent_must_be_absent_during_initial_deployment():
+    data = _data()
+    data["expected_scope_consent"]["must_be_absent_during_initial_preflight_deployment"] = False
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="expected-scope consent absence"):
+        validate_deployment_contract(data)
+
+
+def test_historical_bulk_consent_cannot_substitute_for_expected_scope_consent():
+    data = _data()
+    data["expected_scope_consent"]["historical_bulk_consent_does_not_substitute"] = False
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="consent separation"):
+        validate_deployment_contract(data)
+
+    data = _data()
+    data["start_contract"]["historical_bulk_consent_does_not_substitute_for_expected_scope_consent"] = False
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="substitution guard"):
+        validate_deployment_contract(data)
+
+
+def test_worker_image_must_package_expected_scope_contract_but_not_execute_it_by_default():
+    text = DOCKERFILE.read_text(encoding="utf-8")
+    out = validate_worker_dockerfile(text)
+    assert out["expected_scope_contract_packaged"] is True
+    assert out["expected_scope_execute_in_default_cmd"] is False
+
+    bad = text.replace(
+        "COPY INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_CONTRACT.json ./",
+        "# expected-scope contract omitted",
+    )
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="expected-scope contract"):
+        validate_worker_dockerfile(bad)
+
+    bad = text + "\nENV KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT=forbidden\n"
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="forbidden"):
+        validate_worker_dockerfile(bad)
