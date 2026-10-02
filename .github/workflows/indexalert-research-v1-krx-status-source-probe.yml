@@ -53,6 +53,11 @@ jobs:
           KRX_AUTH_EVIDENCE_JSON: ''
           KRX_EXPLICIT_PROBE_CONSENT: ''
         run: |
+          if [ -z "${KRX_AUTH_EVIDENCE_JSON}" ]; then
+            EVIDENCE_FILE="INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json"
+            export KRX_AUTH_EVIDENCE_JSON="$(cat "${EVIDENCE_FILE}")"
+            export KRX_AUTH_EVIDENCE_REF="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["evidence_reference"])' "${EVIDENCE_FILE}")"
+          fi
           python -m py_compile research_v1_krx_auth_preflight.py research_v1_krx_authorization_evidence.py research_v1_krx_source_gates.py research_v1_krx_public_evidence.py research_v1_krx_status_source_probe.py
           python research_v1_krx_status_source_probe.py
           cat research_results/krx_status_source_probe/summary.json
