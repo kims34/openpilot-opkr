@@ -99,13 +99,13 @@ The project-pinned `beaten-by-the-market/krx-data-api` commit `e6ebac9b71482db12
 
 Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`.
 
-The current KRX homepage terms make ordinary membership/account access insufficient for automated collection. The subsequent 2026-10-02 KRX reply explicitly permits low-frequency programmatic/automated querying for the stated personal, non-commercial/internal-research scope. Structured permission records validate for both source families. Network-free Action `36973737546` established readiness; authenticated status Action `36976085781` and investor-flow Action `36976873119` subsequently succeeded under separate explicit one-run consent.
+The current KRX homepage terms make ordinary membership/account access insufficient for automated collection. The latest KRX permission evidence v3 explicitly permits complete full-history download/query plus low- and high-frequency programmatic/automated collection for the stated personal, non-commercial/internal-research scope, with external leakage, sale and third-party distribution prohibited. Structured permission records validate for both source families. Network-free Action `36973737546` established readiness; authenticated status Action `36976085781` and investor-flow Action `36976873119` subsequently succeeded under separate explicit one-run consent.
 
 ### 5.4 User-provided full-history/high-frequency personal-research permission reply
 
 Canonical record: `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; fail-closed validator: `research_v1_krx_permission_reply_evidence.py`.
 
-The original screenshot is fingerprinted but not stored in the repository. The user subsequently supplied the email subject, sender `krxdata@krx.co.kr`, reply time `2026-10-02T14:40:00+09:00`, and the full reply text explicitly including `프로그램을 통한 조회 및 자동 조회`. Recipient identity is intentionally redacted. The redacted normalized email-record SHA-256 is `c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38`.
+The original screenshot is fingerprinted but not stored in the repository. The user supplied KRX email-thread context with sender `krxdata@krx.co.kr`; the prior reply time `2026-10-02T14:40:00+09:00` is preserved, while the exact timestamp of the later stronger v3 reply was not re-provided and is intentionally recorded as unknown. Recipient identity is redacted. The normalized latest v3 record SHA-256 is `7361065e06599f947216233fc84e97126b1675de5af41068114cf6ef9577e304`.
 
 This now establishes `automated_collection_authorized=true`, `high_frequency_collection_authorized=true` and `full_historical_download_rights_authorized=true` for the declared personal/non-commercial/internal-research scope. It also explicitly prohibits external leakage, sale and third-party distribution. Gate F is PASS for that scope. Rights evidence does not make Gate A/B/C/D/E PASS and does not authorize performance testing, holdout or live trading.
 
