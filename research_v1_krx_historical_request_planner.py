@@ -69,10 +69,14 @@ def build_private_request_plan(episodes: pd.DataFrame) -> pd.DataFrame:
         end=pd.Timestamp(ep.coverage_end)
         if start<PLAN_START or end>PLAN_END or end<start:
             raise KRXHistoricalRequestPlanError("episode coverage outside frozen plan")
-        code=str(ep.short_code)
+        code=str(ep.short_code).strip().upper()
         standard=str(ep.standard_code).strip().upper()
         key=str(ep.episode_key)
-        if len(code)!=6 or not code.isdigit():
+        if (
+            len(code)!=6
+            or not code.isascii()
+            or not code.isalnum()
+        ):
             raise KRXHistoricalRequestPlanError("invalid short code")
         if len(standard)!=12 or not standard.isalnum():
             raise KRXHistoricalRequestPlanError("invalid or unresolved standard code")
