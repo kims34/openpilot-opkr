@@ -2,7 +2,7 @@
   "schema_version": "1",
   "evidence_id": "INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1",
   "evidence_class": "RAILWAY_PREFLIGHT_PROVISIONING_EVIDENCE",
-  "observed_at": "2026-10-02T23:08:15+09:00",
+  "observed_at": "2026-10-03T03:20:44+09:00",
   "project": {
     "name": "IndexAlert",
     "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
@@ -82,7 +82,7 @@
     "worker_secret_configuration_authorized": false,
     "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "IDENTITY_STANDARD_CODE_BINDING is prepared as exactly 145 frozen security_master tasks. Execute only after explicit stage approval I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1; prior seed approval is not reusable.",
+  "next_external_action": "Prepare PER_SECURITY_HISTORY network-free from the completed identity binding. Any later PER_SECURITY_HISTORY network execution requires its own explicit stage authorization.",
   "worker_only_secrets_configured": true,
   "preflight_infrastructure_ready": true,
   "runtime_preflight": {
@@ -143,5 +143,29 @@
     "network_request_attempted": false,
     "binding_stage_consent_present": false,
     "start_command_restored_to_preflight_only": true
+  },
+  "identity_binding_execution": {
+    "evidence_id": "INDEXALERT-KRX-IDENTITY-BINDING-EXEC-2026-10-03-v1",
+    "deployment_id": "3501cbb8-a6a6-4972-bf82-4fb8e3fb36f6",
+    "source_revision": "6c152d8f29354d843b16c35be27a86a8a8058908",
+    "mode": "EXECUTE_IDENTITY_STANDARD_CODE_BINDING",
+    "task_count": 145,
+    "completed_task_count": 145,
+    "resumed_task_count": 0,
+    "network_request_attempt_count": 145,
+    "task_set_fingerprint_sha256": "b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9",
+    "private_batch_metadata_sha256": "d5ca4e7ea45033f6bd6d45e301f1d3041b2e7257836e60d71c442fa73d8013be",
+    "phase_status": "COMPLETE",
+    "phase_complete": true,
+    "raw_rows_emitted": false,
+    "security_identifiers_emitted": false
+  },
+  "post_identity_binding_lock": {
+    "bulk_execution_sentinel_active": false,
+    "identity_binding_stage_sentinel_active": false,
+    "start_command_preflight_only": true,
+    "per_security_history_authorized": false,
+    "status_economics_authorized": false,
+    "expected_scope_network_execution_authorized": false
   }
 }
