@@ -224,3 +224,34 @@ def write_private_json(
         "metadata_bytes_size": len(payload),
         "metadata_relpath": str(rel),
     }
+
+
+def read_private_json(
+    root: str | os.PathLike[str],
+    relpath: str,
+    *,
+    git_worktree: str | os.PathLike[str] | None = None,
+) -> dict[str, Any]:
+    base = validate_private_root(root, git_worktree=git_worktree)
+    rel = Path(relpath)
+    if rel.is_absolute() or ".." in rel.parts:
+        raise KRXPrivateStoreError("private metadata relpath is unsafe")
+    target = base / rel
+    if not target.is_file():
+        raise KRXPrivateStoreError("private metadata file missing")
+    if target.stat().st_mode & 0o777 != 0o600:
+        raise KRXPrivateStoreError("private metadata file mode drift")
+    raw = target.read_bytes()
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise KRXPrivateStoreError("private metadata JSON is invalid") from exc
+    if not isinstance(value, Mapping):
+        raise KRXPrivateStoreError("private metadata JSON must be an object")
+    validate_secret_free_metadata(value)
+    return {
+        "value": dict(value),
+        "metadata_sha256": sha256_bytes(raw),
+        "metadata_bytes_size": len(raw),
+        "metadata_relpath": str(rel),
+    }
