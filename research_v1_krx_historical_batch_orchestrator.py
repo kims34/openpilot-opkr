@@ -249,6 +249,153 @@ def build_per_security_history_tasks(
     return tasks
 
 
+def _history_short_code(value: Any) -> str:
+    text = "".join(ch for ch in str(value or "").strip() if ch.isdigit())
+    if len(text) > 6:
+        text = text[-6:]
+    text = text.zfill(6)
+    if len(text) != 6 or not text.isdigit():
+        raise KRXHistoricalBatchOrchestratorError("invalid delisted-history short code")
+    return text
+
+
+def _history_date(value: Any) -> pd.Timestamp | None:
+    text = str(value or "").strip()
+    if text in {"", "-", "nan", "None", "NaT"}:
+        return None
+    digits = "".join(ch for ch in text if ch.isdigit())
+    if len(digits) != 8:
+        raise KRXHistoricalBatchOrchestratorError(
+            f"invalid delisted-history date: {value!r}"
+        )
+    ts = pd.to_datetime(digits, format="%Y%m%d", errors="coerce")
+    if pd.isna(ts):
+        raise KRXHistoricalBatchOrchestratorError(
+            f"invalid delisted-history date: {value!r}"
+        )
+    return pd.Timestamp(ts).normalize()
+
+
+def build_status_economics_tasks(
+    episodes: pd.DataFrame,
+    delisted_history: pd.DataFrame,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Build cleanup-price requests only where official cleanup intervals exist.
+
+    Delisted episodes with no cleanup interval produce no MDCSTAT23902 request;
+    they remain dependent on separate exact fill/recovery evidence. A partial
+    cleanup interval (start without end or vice versa) is ambiguous and fails
+    closed.
+    """
+    required_episode = {
+        "episode_key", "short_code", "standard_code",
+        "listing_date", "delisting_date", "source_delisted",
+    }
+    missing = required_episode - set(episodes.columns)
+    if missing:
+        raise KRXHistoricalBatchOrchestratorError(
+            f"episodes missing status-economics columns: {sorted(missing)}"
+        )
+    required_history = {
+        "종목코드", "상장일", "폐지일",
+        "정리매매기간_시작일", "정리매매기간_종료일",
+    }
+    missing = required_history - set(delisted_history.columns)
+    if missing:
+        raise KRXHistoricalBatchOrchestratorError(
+            f"delisted history missing cleanup columns: {sorted(missing)}"
+        )
+
+    history: dict[tuple[str, pd.Timestamp], dict[str, Any]] = {}
+    for row in delisted_history.to_dict("records"):
+        code = _history_short_code(row["종목코드"])
+        listing = _history_date(row["상장일"])
+        delisting = _history_date(row["폐지일"])
+        if listing is None or delisting is None:
+            raise KRXHistoricalBatchOrchestratorError(
+                "delisted history requires listing and delisting dates"
+            )
+        key = (code, listing)
+        if key in history:
+            raise KRXHistoricalBatchOrchestratorError(
+                f"duplicate delisted-history episode: {code} {listing.date()}"
+            )
+        history[key] = {
+            "delisting_date": delisting,
+            "cleanup_start": _history_date(row["정리매매기간_시작일"]),
+            "cleanup_end": _history_date(row["정리매매기간_종료일"]),
+        }
+
+    tasks: list[dict[str, Any]] = []
+    delisted_episode_count = 0
+    no_cleanup_count = 0
+
+    for ep in episodes.itertuples(index=False):
+        if not bool(ep.source_delisted):
+            continue
+        delisted_episode_count += 1
+        listing = pd.Timestamp(ep.listing_date).normalize()
+        code = _history_short_code(ep.short_code)
+        key = (code, listing)
+        if key not in history:
+            raise KRXHistoricalBatchOrchestratorError(
+                f"delisted episode lacks exact history row: {ep.episode_key}"
+            )
+        row = history[key]
+        episode_delist = pd.Timestamp(ep.delisting_date).normalize()
+        if row["delisting_date"] != episode_delist:
+            raise KRXHistoricalBatchOrchestratorError(
+                f"delisting date mismatch: {ep.episode_key}"
+            )
+
+        start = row["cleanup_start"]
+        end = row["cleanup_end"]
+        if (start is None) != (end is None):
+            raise KRXHistoricalBatchOrchestratorError(
+                f"partial cleanup interval: {ep.episode_key}"
+            )
+        if start is None and end is None:
+            no_cleanup_count += 1
+            continue
+        if end < start:
+            raise KRXHistoricalBatchOrchestratorError(
+                f"cleanup interval reversed: {ep.episode_key}"
+            )
+        if end > episode_delist:
+            raise KRXHistoricalBatchOrchestratorError(
+                f"cleanup interval extends beyond delisting: {ep.episode_key}"
+            )
+
+        standard = str(ep.standard_code).strip().upper()
+        if len(standard) != 12 or not standard.isalnum():
+            raise KRXHistoricalBatchOrchestratorError(
+                f"invalid standard code for status economics: {ep.episode_key}"
+            )
+        tasks.append(
+            _task(
+                phase="STATUS_ECONOMICS",
+                source_family="KRX_SECURITY_STATUS",
+                kind="delisted_stock_price",
+                params={
+                    "isuCd": standard,
+                    "strtDd": start.strftime("%Y%m%d"),
+                    "endDd": end.strftime("%Y%m%d"),
+                },
+                contains_security_identifier=True,
+            )
+        )
+
+    if len({row["task_id"] for row in tasks}) != len(tasks):
+        raise KRXHistoricalBatchOrchestratorError(
+            "duplicate status-economics task"
+        )
+    return tasks, {
+        "delisted_episode_count": int(delisted_episode_count),
+        "cleanup_price_task_count": int(len(tasks)),
+        "delisted_without_cleanup_interval_count": int(no_cleanup_count),
+    }
+
+
 def public_task_summary(tasks: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     """Metadata-only summary safe for public CI logs."""
     rows = list(tasks)
