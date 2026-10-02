@@ -24,7 +24,9 @@ def test_committed_railway_readiness_is_not_bulk_ready():
     assert out["infrastructure_ready_for_bulk_execution"] is False
     assert out["service_creation_authorized"] is False
     assert out["volume_creation_or_attachment_authorized"] is False
+    assert out["worker_secret_configuration_authorized"] is False
     assert out["bulk_network_execution_authorized_by_user"] is False
+    assert out["expected_scope_network_execution_authorized_by_user"] is False
     assert out["sealed_holdout_authorized"] is False
     assert out["live_trading_authorized"] is False
 
@@ -58,3 +60,25 @@ def test_read_only_audit_cannot_authorize_creation_or_execution():
     data["authority"]["bulk_network_execution_authorized_by_user"] = True
     with pytest.raises(KRXHistoricalRailwayReadinessError, match="illegally true"):
         validate_readiness(data)
+
+
+def test_initial_worker_snapshot_requires_separate_secrets_and_absent_bulk_consent():
+    data = _data()
+    req = data["required_worker"]
+    assert set(req["required_secret_names"]) == {"KRX_ID","KRX_PW","KRX_AUTH_KEY"}
+    assert req["required_nonsecret_variables"]["KRX_PRIVATE_RAW_DIR"] == "/data/indexalert/krx-historical-v3"
+    assert req["required_nonsecret_variables"]["INDEXALERT_KRX_HIST_WORKER_ROLE"] == "DEDICATED_ONE_SHOT"
+    assert req["bulk_consent_env"] == "KRX_HISTORICAL_ACQUISITION_CONSENT"
+    assert req["bulk_consent_must_be_absent_initially"] is True
+    assert data["worker_only_secrets_configured"] is False
+
+
+def test_readiness_snapshot_cannot_authorize_worker_secret_or_expected_scope_execution():
+    for key in (
+        "worker_secret_configuration_authorized",
+        "expected_scope_network_execution_authorized_by_user",
+    ):
+        data = _data()
+        data["authority"][key] = True
+        with pytest.raises(KRXHistoricalRailwayReadinessError, match="illegally true"):
+            validate_readiness(data)
