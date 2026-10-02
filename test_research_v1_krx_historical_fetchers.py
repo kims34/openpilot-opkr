@@ -12,6 +12,7 @@ from research_v1_krx_historical_fetchers import (
     fetch_openapi_raw,
     parse_data_marketplace_raw,
     parse_openapi_raw,
+    resolve_pinned_endpoint_request,
 )
 
 
@@ -165,3 +166,49 @@ def test_raw_parsers_support_resume_without_network():
 
     with pytest.raises(KRXHistoricalFetchError, match="method must be csv or json"):
         parse_data_marketplace_raw("xml", b"x")
+
+
+def test_resolver_uses_pinned_catalog_defaults_required_and_period_limit():
+    specs = {
+        "investor": {
+            "bld":"dbms/MDC/STAT/standard/MDCSTAT02303",
+            "method":"csv",
+            "menu_id":"MDC0201020302",
+            "defaults":{"askBid":"3","trdVolVal":"2","isuCd2":""},
+            "required":["isuCd","strtDd","endDd"],
+        },
+        "halt": {
+            "bld":"dbms/MDC/STAT/issue/MDCSTAT21301",
+            "method":"json",
+            "menu_id":"MDC0202",
+            "defaults":{"param1isuCd_finder_stkisu0_3":"ALL"},
+            "required":["isuCd","isuCd2","strtDd","endDd"],
+            "max_period_days":730,
+        },
+    }
+    getter=lambda name: specs[name]
+
+    out=resolve_pinned_endpoint_request(
+        "investor",
+        {"isuCd":"KR7005930003","strtDd":"20260101","endDd":"20261231"},
+        catalog_getter=getter,
+    )
+    assert out["bld"].endswith("MDCSTAT02303")
+    assert out["method"] == "csv"
+    assert out["params"]["askBid"] == "3"
+    assert out["params"]["trdVolVal"] == "2"
+    assert out["pinned_client_commit"] == "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
+
+    with pytest.raises(KRXHistoricalFetchError, match="missing required params"):
+        resolve_pinned_endpoint_request(
+            "investor",
+            {"strtDd":"20260101","endDd":"20261231"},
+            catalog_getter=getter,
+        )
+
+    with pytest.raises(KRXHistoricalFetchError, match="exceeds max_period_days=730"):
+        resolve_pinned_endpoint_request(
+            "halt",
+            {"isuCd":"KR7000300004","isuCd2":"000300","strtDd":"20240101","endDd":"20260102"},
+            catalog_getter=getter,
+        )
