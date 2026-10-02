@@ -335,6 +335,42 @@ def load_identity_binding_master_snapshots(
     return pd.concat(masters, ignore_index=True)
 
 
+def _dedupe_master_source_fail_closed(
+    frame: pd.DataFrame,
+    *,
+    label: str,
+    key_cols: list[str],
+    compare_cols: list[str],
+) -> pd.DataFrame:
+    """Collapse only identity-equivalent duplicate rows inside one source."""
+    if frame.empty:
+        return frame.copy()
+
+    keep_indices: list[int] = []
+    for _, group in frame.groupby(key_cols, sort=False, dropna=False):
+        first_idx = int(group.index[0])
+        first = group.iloc[0]
+        for pos in range(1, len(group)):
+            other = group.iloc[pos]
+            for col in compare_cols:
+                lv = first[col]
+                rv = other[col]
+                if pd.isna(lv) and pd.isna(rv):
+                    continue
+                if col == "common_stock_identity_official":
+                    same = bool(lv) == bool(rv)
+                elif col == "listing_date_official":
+                    same = pd.Timestamp(lv) == pd.Timestamp(rv)
+                else:
+                    same = str(lv) == str(rv)
+                _require(
+                    same,
+                    f"{label} duplicate identity conflict: {col}",
+                )
+        keep_indices.append(first_idx)
+    return frame.loc[keep_indices].copy().reset_index(drop=True)
+
+
 def _merge_master_snapshots_fail_closed(
     seed_master: pd.DataFrame,
     binding_master: pd.DataFrame,
@@ -389,21 +425,27 @@ def _merge_master_snapshots_fail_closed(
         not binding[["decision_date", "listing_date_official"]].isna().any().any(),
         "binding master has invalid merge date",
     )
-    for label, frame in (("seed", seed), ("binding", binding)):
-        _require(
-            not frame.duplicated(key_cols).any(),
-            f"duplicate symbol inside {label} security-master snapshot",
-        )
-
-    seed_indexed = seed.set_index(key_cols, drop=False)
-    binding_indexed = binding.set_index(key_cols, drop=False)
-    overlap = seed_indexed.index.intersection(binding_indexed.index)
-
     compare_cols = identity_cols + [
         col
         for col in optional_identity_cols
         if col in seed.columns and col in binding.columns
     ]
+    seed = _dedupe_master_source_fail_closed(
+        seed,
+        label="seed",
+        key_cols=key_cols,
+        compare_cols=compare_cols,
+    )
+    binding = _dedupe_master_source_fail_closed(
+        binding,
+        label="binding",
+        key_cols=key_cols,
+        compare_cols=compare_cols,
+    )
+
+    seed_indexed = seed.set_index(key_cols, drop=False)
+    binding_indexed = binding.set_index(key_cols, drop=False)
+    overlap = seed_indexed.index.intersection(binding_indexed.index)
     for key in overlap:
         left = seed_indexed.loc[key]
         right = binding_indexed.loc[key]
