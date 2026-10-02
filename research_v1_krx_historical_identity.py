@@ -31,9 +31,24 @@ def _date(series: pd.Series) -> pd.Series:
 
 
 def _short_code(series: pd.Series) -> pd.Series:
-    raw = _text(series).str.replace(r"[^0-9]", "", regex=True)
-    raw = raw.where(raw.str.len() <= 6, raw.str[-6:])
-    return raw.str.zfill(6)
+    """Canonicalize official KRX short issue codes without destroying letters.
+
+    Numeric codes may arrive without leading zeroes and are padded to six
+    characters. Official six-character alphanumeric codes are preserved
+    exactly (upper-cased). Any other shape becomes invalid and is rejected by
+    the caller instead of being digit-stripped into a different security.
+    """
+    raw = (
+        _text(series)
+        .str.upper()
+        .str.replace(r"\.0$", "", regex=True)
+    )
+    numeric = raw.str.fullmatch(r"[0-9]{1,6}", na=False)
+    alnum6 = raw.str.fullmatch(r"[A-Z0-9]{6}", na=False)
+    out = pd.Series("", index=raw.index, dtype="string")
+    out.loc[numeric] = raw.loc[numeric].str.zfill(6)
+    out.loc[~numeric & alnum6] = raw.loc[~numeric & alnum6]
+    return out
 
 
 def _market(series: pd.Series) -> pd.Series:
@@ -81,7 +96,10 @@ def _normal_history(frame: pd.DataFrame, *, delisted: bool) -> pd.DataFrame:
         frame.index,
     )
     out = out[mask & out["market"].eq("KOSPI")].copy()
-    if out["short_code"].eq("").any() or out["short_code"].str.len().ne(6).any():
+    if (
+        out["short_code"].eq("").any()
+        or ~out["short_code"].str.fullmatch(r"[A-Z0-9]{6}", na=False).all()
+    ):
         raise KRXHistoricalIdentityError("invalid short_code in history identity")
     if out["listing_date"].isna().any():
         raise KRXHistoricalIdentityError("missing listing_date in history identity")
@@ -150,13 +168,9 @@ def _validate_master_snapshots(frame: pd.DataFrame) -> pd.DataFrame:
         raise KRXHistoricalIdentityError("no KOSPI common-stock master rows")
 
     raw_symbol = _text(out["symbol"]).str.upper()
-    if (~raw_symbol.str.fullmatch(r"[0-9]{1,6}", na=False)).any():
-        raise KRXHistoricalIdentityError(
-            "KOSPI common-stock master has non-numeric short code"
-        )
     out["symbol"] = _short_code(raw_symbol)
 
-    if out["symbol"].eq("").any() or ~out["symbol"].str.fullmatch(r"[0-9]{6}", na=False).all():
+    if out["symbol"].eq("").any() or ~out["symbol"].str.fullmatch(r"[A-Z0-9]{6}", na=False).all():
         raise KRXHistoricalIdentityError("security master has invalid short code")
     bad_std = ~out["standard_code"].str.fullmatch(r"[A-Z0-9]{12}", na=False)
     if bad_std.any():
