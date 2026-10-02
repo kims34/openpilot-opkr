@@ -75,3 +75,16 @@ def test_post_run_lock_must_remain_fail_closed():
     data["post_run_lock"]["later_stage_auto_authorization"] = True
     with pytest.raises(KRXIdentityBindingConsentError, match="auto authorization illegally enabled"):
         validate_contract(data)
+
+
+def test_binding_contract_is_bound_to_prepared_145_task_set():
+    data = _data()
+    prepared = data["prepared_task_set"]
+    assert prepared["task_count"] == 145
+    assert prepared["task_count_by_kind"] == {"security_master": 145}
+    assert prepared["network_request_attempted_during_prepare"] is False
+
+    data = _data()
+    data["prepared_task_set"]["task_count"] = 144
+    with pytest.raises(KRXIdentityBindingConsentError, match="prepared binding task count drift"):
+        validate_contract(data)
