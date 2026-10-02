@@ -1,0 +1,79 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from research_v1_krx_historical_worker_deployment import (
+    KRXHistoricalWorkerDeploymentError,
+    validate_deployment_contract,
+    validate_files,
+    validate_worker_dockerfile,
+)
+
+
+CONTRACT = Path("INDEXALERT_KRX_HISTORICAL_WORKER_DEPLOYMENT_CONTRACT.json")
+DOCKERFILE = Path("Dockerfile.krx-historical-worker")
+
+
+def _data():
+    return json.loads(CONTRACT.read_text(encoding="utf-8"))
+
+
+def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
+    out = validate_files()
+    assert out["contract"]["valid"] is True
+    assert out["contract"]["preflight_only_by_default"] is True
+    assert out["contract"]["dedicated_volume_required"] is True
+    assert out["contract"]["service_creation_authorized"] is False
+    assert out["contract"]["volume_creation_or_attachment_authorized"] is False
+    assert out["contract"]["bulk_network_execution_authorized_by_user"] is False
+    assert out["dockerfile"]["default_mode"] == "PREFLIGHT_ONLY"
+    assert out["dockerfile"]["public_port_exposed"] is False
+    assert out["dockerfile"]["bulk_execute_in_default_cmd"] is False
+
+
+def test_worker_deployment_cannot_self_authorize_cloud_or_bulk_actions():
+    for key in (
+        "service_creation_authorized",
+        "volume_creation_or_attachment_authorized",
+        "bulk_network_execution_authorized_by_user",
+        "sealed_holdout_authorized",
+        "live_trading_authorized",
+    ):
+        data = _data()
+        data["authority"][key] = True
+        with pytest.raises(KRXHistoricalWorkerDeploymentError, match="illegally true"):
+            validate_deployment_contract(data)
+
+
+def test_volume_must_be_dedicated_and_under_data():
+    data = _data()
+    data["required_volume"]["sharing_with_public_runtime_forbidden"] = False
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="sharing prohibition"):
+        validate_deployment_contract(data)
+
+    data = _data()
+    data["required_volume"]["raw_root"] = "/tmp/krx"
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="raw root drift"):
+        validate_deployment_contract(data)
+
+
+def test_dockerfile_cannot_default_to_network_execution_or_bake_secrets():
+    text = DOCKERFILE.read_text(encoding="utf-8")
+    bad = text.replace(
+        'CMD ["python", "research_v1_krx_historical_worker_entrypoint.py"]',
+        'CMD ["python", "research_v1_krx_historical_worker_entrypoint.py", "--execute-identity-seed"]',
+    )
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="preflight-only|must not execute"):
+        validate_worker_dockerfile(bad)
+
+    bad = text + "\nENV KRX_ID=forbidden\n"
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="forbidden"):
+        validate_worker_dockerfile(bad)
+
+
+def test_bulk_consent_must_be_absent_during_initial_deployment():
+    data = _data()
+    data["execution_consent"]["must_be_absent_during_initial_preflight_deployment"] = False
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="consent absence"):
+        validate_deployment_contract(data)
