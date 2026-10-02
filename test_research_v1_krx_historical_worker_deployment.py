@@ -8,11 +8,13 @@ from research_v1_krx_historical_worker_deployment import (
     validate_deployment_contract,
     validate_files,
     validate_worker_dockerfile,
+    validate_worker_requirements,
 )
 
 
 CONTRACT = Path("INDEXALERT_KRX_HISTORICAL_WORKER_DEPLOYMENT_CONTRACT.json")
 DOCKERFILE = Path("Dockerfile.krx-historical-worker")
+REQUIREMENTS = Path("requirements-krx-historical-worker.txt")
 
 
 def _data():
@@ -27,6 +29,8 @@ def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
     assert out["contract"]["service_creation_authorized"] is False
     assert out["contract"]["volume_creation_or_attachment_authorized"] is False
     assert out["contract"]["bulk_network_execution_authorized_by_user"] is False
+    assert out["requirements"]["pinned_client"] is True
+    assert out["requirements"]["pinned_client_commit"] == "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
     assert out["dockerfile"]["default_mode"] == "PREFLIGHT_ONLY"
     assert out["dockerfile"]["public_port_exposed"] is False
     assert out["dockerfile"]["bulk_execute_in_default_cmd"] is False
@@ -77,3 +81,17 @@ def test_bulk_consent_must_be_absent_during_initial_deployment():
     data["execution_consent"]["must_be_absent_during_initial_preflight_deployment"] = False
     with pytest.raises(KRXHistoricalWorkerDeploymentError, match="consent absence"):
         validate_deployment_contract(data)
+
+
+def test_worker_requirements_must_pin_exact_krx_client_commit():
+    text = REQUIREMENTS.read_text(encoding="utf-8")
+    out = validate_worker_requirements(text)
+    assert out["valid"] is True
+    assert out["pinned_client_commit"] == "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
+
+    bad = text.replace(
+        "e6ebac9b71482db127348d8a08ebc6743aa3b50e",
+        "0000000000000000000000000000000000000000",
+    )
+    with pytest.raises(KRXHistoricalWorkerDeploymentError, match="pinned KRX client"):
+        validate_worker_requirements(bad)
