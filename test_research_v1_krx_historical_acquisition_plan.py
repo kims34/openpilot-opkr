@@ -19,7 +19,7 @@ def _data():
 def test_committed_plan_v2_is_frozen_stable_identity_and_nonexecuting():
     out=validate_file()
     assert out["valid"] is True
-    assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v2"
+    assert out["plan_id"] == "INDEXALERT-KRX-HIST-ACQ-v3"
     assert len(out["plan_fingerprint_sha256"]) == 64
     assert out["rights_to_acquire"] is True
     assert out["network_execution_authorized"] is False
