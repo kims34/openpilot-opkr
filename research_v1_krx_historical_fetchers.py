@@ -129,6 +129,67 @@ def _text(resp: Any) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
+
+def resolve_pinned_endpoint_request(
+    name: str,
+    overrides: Mapping[str, Any],
+    *,
+    catalog_getter: Any | None = None,
+) -> dict[str, Any]:
+    """Resolve one request from the pinned krx-data-api endpoint catalog.
+
+    The import is lazy so integrity/unit tests do not need the third-party
+    package installed. Callers may inject a catalog_getter in tests.
+    """
+    if catalog_getter is None:
+        try:
+            from krx_data_api import endpoints
+        except Exception as exc:
+            raise KRXHistoricalFetchError(
+                "pinned krx-data-api endpoint catalog is unavailable"
+            ) from exc
+        catalog_getter = endpoints.get
+
+    spec = dict(catalog_getter(str(name)))
+    method = str(spec.get("method") or "").lower().strip()
+    bld = str(spec.get("bld") or "").strip()
+    menu_id = str(spec.get("menu_id") or "").strip()
+    if method not in {"csv", "json"} or not bld or not menu_id:
+        raise KRXHistoricalFetchError("invalid pinned endpoint specification")
+
+    params = {**dict(spec.get("defaults") or {}), **dict(overrides)}
+    params = {k: v for k, v in params.items() if v is not None}
+    missing = [key for key in spec.get("required", []) if key not in params]
+    if missing:
+        raise KRXHistoricalFetchError(
+            f"pinned endpoint {name!r} missing required params: {missing}"
+        )
+
+    limit = spec.get("max_period_days")
+    if limit is not None and "strtDd" in params and "endDd" in params:
+        try:
+            start = datetime.strptime(str(params["strtDd"]), "%Y%m%d")
+            end = datetime.strptime(str(params["endDd"]), "%Y%m%d")
+        except ValueError as exc:
+            raise KRXHistoricalFetchError("invalid request date format") from exc
+        days = (end - start).days
+        if days > int(limit):
+            raise KRXHistoricalFetchError(
+                f"pinned endpoint {name!r} exceeds max_period_days={limit}"
+            )
+
+    return {
+        "name": str(name),
+        "bld": bld,
+        "method": method,
+        "menu_id": menu_id,
+        "params": params,
+        "required": list(spec.get("required") or []),
+        "max_period_days": limit,
+        "pinned_client_commit": PINNED_KRX_DATA_API,
+    }
+
+
 def fetch_data_marketplace_raw(
     *,
     method: str,
