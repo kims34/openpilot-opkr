@@ -1,6 +1,6 @@
 {
-  "schema_version": "2",
-  "contract_id": "INDEXALERT-KRX-HIST-EXEC-v2",
+  "schema_version": "3",
+  "contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
   "acquisition_plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
   "created_date": "2026-10-02",
   "execution_authorized": false,
@@ -14,12 +14,21 @@
     "production_web_process_must_not_run_bulk_job": true,
     "concurrent_public_web_serving_from_raw_root_forbidden": true,
     "network_execution_requires_exact_plan_preflight": true,
-    "exact_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3"
+    "exact_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
+    "dedicated_worker_role_env": "INDEXALERT_KRX_HIST_WORKER_ROLE",
+    "dedicated_worker_role_value": "DEDICATED_ONE_SHOT",
+    "railway_service_name_env": "RAILWAY_SERVICE_NAME",
+    "forbidden_public_service_names": [
+      "indexalert-runtime",
+      "indexalert-backend",
+      "indexalert-push"
+    ],
+    "forbidden_public_service_bulk_execution": true
   },
   "private_storage": {
     "persistent_private_volume_required": true,
     "raw_root_env": "KRX_PRIVATE_RAW_DIR",
-    "recommended_mount_root": "/data/indexalert/krx-historical-v2",
+    "recommended_mount_root": "/data/indexalert/krx-historical-v3",
     "raw_root_must_be_absolute": true,
     "raw_root_inside_git_worktree_forbidden": true,
     "raw_root_under_public_static_directory_forbidden": true,
@@ -94,7 +103,7 @@
     "sealed_holdout_authorized": false,
     "live_trading_authorized": false
   },
-  "supersedes_contract_id": "INDEXALERT-KRX-HIST-EXEC-v1",
+  "supersedes_contract_id": "INDEXALERT-KRX-HIST-EXEC-v2",
   "superseded_before_any_bulk_network_execution": true,
   "source_contract_correction": {
     "historical_cleanup_source": "MDCSTAT23801 delisted-history cleanup-period fields",
