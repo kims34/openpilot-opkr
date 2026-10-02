@@ -144,3 +144,31 @@ def test_identity_binding_stage_authority_is_separate_and_fail_closed():
     data["stage_specific_authority"]["identity_standard_code_binding"]["currently_authorized"] = True
     with pytest.raises(KRXHistoricalExecutionContractError, match="cannot be pre-authorized"):
         validate_execution_contract(data)
+
+
+def test_later_krx_network_stages_have_independent_authority():
+    data = _data()
+    stage = data["stage_specific_authority"]
+
+    per_security = stage["per_security_history"]
+    assert per_security["predecessor_phase"] == "IDENTITY_STANDARD_CODE_BINDING"
+    assert per_security["both_consents_required"] is True
+    assert per_security["currently_authorized"] is False
+    assert per_security["prior_stage_authorization_reusable"] is False
+
+    status = stage["status_economics"]
+    assert status["predecessor_phase"] == "PER_SECURITY_HISTORY"
+    assert status["both_consents_required"] is True
+    assert status["currently_authorized"] is False
+    assert status["prior_stage_authorization_reusable"] is False
+    assert status["exact_status_economics_claim_allowed"] is False
+
+    data = _data()
+    data["stage_specific_authority"]["per_security_history"]["both_consents_required"] = False
+    with pytest.raises(KRXHistoricalExecutionContractError, match="per-security dual-consent guard lost"):
+        validate_execution_contract(data)
+
+    data = _data()
+    data["stage_specific_authority"]["status_economics"]["exact_status_economics_claim_allowed"] = True
+    with pytest.raises(KRXHistoricalExecutionContractError, match="exact status economics claim illegally allowed"):
+        validate_execution_contract(data)
