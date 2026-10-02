@@ -1,4 +1,6 @@
 from research_v1_krx_public_evidence import (
+    PUBLIC_EVIDENCE_AUDIT_DATE,
+    PUBLIC_EVIDENCE_VERSION,
     EXACT_MAPPING_STATE,
     OPENAPI_ACCESS_MODEL,
     OPENAPI_MISSING_DATA_NOTICE,
@@ -77,3 +79,11 @@ def test_trading_halt_public_screen_contract_is_frozen_without_openapi_inference
     assert halt["name"] == "매매거래정지 내역(개별종목)"
     assert {"종목코드", "정지일", "재개일"}.issubset(set(halt["fields_verified"]))
     assert "immediately before suspension" in halt["price_context"]
+
+
+def test_public_evidence_version_and_fingerprint_are_frozen():
+    assert PUBLIC_EVIDENCE_VERSION == "2026-10-02.v2"
+    assert PUBLIC_EVIDENCE_AUDIT_DATE == "2026-10-02"
+    assert public_evidence_fingerprint_sha256() == (
+        "39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380"
+    )
