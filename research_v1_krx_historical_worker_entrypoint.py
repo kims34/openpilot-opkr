@@ -225,6 +225,73 @@ def preflight_only(environment: Mapping[str, str] | None = None) -> dict[str, An
     }
 
 
+def status_per_security_history(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    state_loader=read_private_json,
+) -> dict[str, Any]:
+    """Return only public-safe aggregate PER_SECURITY_HISTORY progress.
+
+    This is strictly network-free. It reads only the persisted private phase
+    state, then projects it through public_phase_summary so task IDs, security
+    identifiers and raw KRX rows can never be emitted.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security status blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security status blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security status blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+    state = state_loader(
+        root,
+        "batch_state/PER_SECURITY_HISTORY.json",
+        git_worktree=worktree,
+    )["value"]
+    safe = public_phase_summary(state)
+
+    if safe.get("phase") != "PER_SECURITY_HISTORY":
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security status phase drift"
+        )
+    if int(safe.get("expected_task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security status expected task count drift"
+        )
+    if (
+        str(safe.get("task_set_fingerprint_sha256") or "")
+        != PER_SECURITY_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security status task-set fingerprint drift"
+        )
+
+    return {
+        "mode": "STATUS_PER_SECURITY_HISTORY",
+        "summary": safe,
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def execute_identity_seed(
     *,
     environment: Mapping[str, str] | None = None,
@@ -1582,6 +1649,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     group.add_argument(
+        "--status-per-security-history",
+        action="store_true",
+        help=(
+            "Network-free: read only public-safe aggregate progress for the "
+            "frozen PER_SECURITY_HISTORY phase. Never emits task IDs, security "
+            "identifiers, credentials, or raw KRX rows."
+        ),
+    )
+    group.add_argument(
         "--prepare-per-security-history",
         action="store_true",
         help=(
@@ -1634,6 +1710,8 @@ def main(argv: list[str] | None = None) -> int:
         result = diagnose_new_listing_master_mapping()
     elif args.diagnose_delisted_start_master_mapping:
         result = diagnose_delisted_start_master_mapping()
+    elif args.status_per_security_history:
+        result = status_per_security_history()
     elif args.prepare_per_security_history:
         result = prepare_per_security_history()
     elif args.execute_per_security_history:
