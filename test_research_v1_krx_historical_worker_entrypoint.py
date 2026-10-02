@@ -9,6 +9,8 @@ from research_v1_krx_historical_batch_state import (
     record_task_completion,
 )
 from research_v1_krx_historical_worker_entrypoint import (
+    IDENTITY_BINDING_CONSENT_ENV,
+    IDENTITY_BINDING_CONSENT_SENTINEL,
     KRXHistoricalWorkerEntrypointError,
     execute_identity_seed,
     execute_identity_standard_code_binding,
@@ -187,6 +189,12 @@ def _complete_seed_predecessor(tmp_path, worktree):
     )
 
 
+def _binding_env(tmp_path):
+    env = _env(tmp_path, consent=True)
+    env[IDENTITY_BINDING_CONSENT_ENV] = IDENTITY_BINDING_CONSENT_SENTINEL
+    return env
+
+
 def _binding_task():
     return {
         "phase": "IDENTITY_STANDARD_CODE_BINDING",
@@ -216,12 +224,34 @@ def test_identity_binding_blocks_before_executor_without_bulk_consent(tmp_path):
     assert calls == []
 
 
+def test_identity_binding_rejects_reused_bulk_consent_without_stage_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_seed_predecessor(tmp_path, worktree)
+    calls = []
+    builders = []
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="EXPLICIT_IDENTITY_STANDARD_CODE_BINDING_CONSENT",
+    ):
+        execute_identity_standard_code_binding(
+            environment=_env(tmp_path, consent=True),
+            git_worktree=str(worktree),
+            executor=lambda **kwargs: calls.append(kwargs),
+            task_builder=lambda *args, **kwargs: builders.append(True) or [_binding_task()],
+            evaluation_time=EVAL,
+        )
+    assert calls == []
+    assert builders == []
+
+
 def test_identity_binding_requires_completed_seed_phase(tmp_path):
     worktree = (tmp_path / "repo").resolve()
     worktree.mkdir()
     with pytest.raises(Exception, match="prior phase IDENTITY_SEED"):
         execute_identity_standard_code_binding(
-            environment=_env(tmp_path, consent=True),
+            environment=_binding_env(tmp_path),
             git_worktree=str(worktree),
             executor=lambda **kwargs: {},
             task_builder=lambda *args, **kwargs: [_binding_task()],
@@ -261,7 +291,7 @@ def test_identity_binding_executes_private_task_set_after_seed_completion(tmp_pa
         }
 
     out = execute_identity_standard_code_binding(
-        environment=_env(tmp_path, consent=True),
+        environment=_binding_env(tmp_path),
         git_worktree=str(worktree),
         executor=executor,
         task_builder=lambda *args, **kwargs: [_binding_task()],
