@@ -134,7 +134,18 @@
       "both_consents_required": true,
       "currently_authorized": false,
       "prior_stage_authorization_reusable": false,
-      "later_stage_auto_authorization": false
+      "later_stage_auto_authorization": false,
+      "preparation_evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-PREP-2026-10-03-v1",
+      "prepared_task_count": 14296,
+      "prepared_task_count_by_kind": {
+        "investor_trading_individual_daily": 9485,
+        "trading_halt": 4811
+      },
+      "prepared_task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+      "prepared_private_task_manifest_metadata_sha256": "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116",
+      "prepared_private_task_manifest_relpath": "task_manifests/per-security-history-v3.json",
+      "network_request_attempted_during_prepare": false,
+      "exact_prepared_scope_required": true
     },
     "status_economics": {
       "predecessor_phase": "PER_SECURITY_HISTORY",
