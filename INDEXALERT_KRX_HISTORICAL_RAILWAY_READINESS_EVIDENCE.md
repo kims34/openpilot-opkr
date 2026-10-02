@@ -1,8 +1,8 @@
 # IndexAlert KRX Historical Railway Readiness Evidence
 
-Updated: 2026-10-02 22:47 KST  
+Updated: 2026-10-02 23:08 KST  
 Evidence ID: `INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1`  
-Status: **PREFLIGHT PROVISIONING COMPLETE — BULK EXECUTION NOT AUTHORIZED**
+Status: **IDENTITY_SEED COMPLETE — FURTHER NETWORK EXECUTION NOT AUTHORIZED**
 
 Railway production now contains the isolated historical worker required by the frozen deployment contract:
 
@@ -28,13 +28,15 @@ Direct worker variables present:
 - `KRX_PW`
 - `KRX_AUTH_KEY`
 
-Still absent:
-- `KRX_HISTORICAL_ACQUISITION_CONSENT`
-- `KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT`
+Execution-consent state:
+- `KRX_HISTORICAL_ACQUISITION_CONSENT` was set to the exact sentinel only for the authorized IDENTITY_SEED run, then immediately replaced with a non-authorizing value after completion;
+- `KRX_EXPECTED_SCOPE_ATTESTATION_CONSENT` remains absent.
 
-After the user corrected the password variable name from `KRW_PW` to `KRX_PW`, Railway auto-redeployed once with the repository default image and failed to find the worker entrypoint. No KRX network request was attempted. A manual redeploy under the frozen worker config then produced corrected deployment `02b5697c-b959-45b5-9ef5-600c05efcf32`, which completed SUCCESS using `Dockerfile.krx-historical-worker`.
+After the user corrected the password variable name from `KRW_PW` to `KRX_PW`, Railway exposed a builder-selection problem: the generic research-branch `railway.json` pointed at the repository default Dockerfile, and direct Railway `redeploy` could also reuse a Railpack path. Those mismatched attempts were forced back to preflight-only before runtime and made zero KRX network requests. Because `index-alert-research-v1` is used by this dedicated worker only, the branch-root `railway.json` was pinned to `Dockerfile.krx-historical-worker`.
 
-Runtime preflight evidence from deployment `02b5697c-b959-45b5-9ef5-600c05efcf32` reported:
+Fresh preflight deployment `83be77ba-ccb1-4dcf-a40d-dd67a49fa9fb` at exact revision `6343f01b493404d59736e06eb6968e9820d0e595` completed SUCCESS using the 12-step worker Dockerfile.
+
+Runtime preflight evidence from deployment `83be77ba-ccb1-4dcf-a40d-dd67a49fa9fb` reported:
 - `mode=PREFLIGHT_ONLY`
 - `krx_id_present=true`
 - `krx_pw_present=true`
@@ -46,7 +48,7 @@ Runtime preflight evidence from deployment `02b5697c-b959-45b5-9ef5-600c05efcf32
 - `sealed_holdout_authorized=false`
 - `live_trading_authorized=false`
 
-The initial deployment `4c9958db-d3be-410d-9f5a-792be9cc5cbd` built the repository default Dockerfile before the dedicated Dockerfile setting was corrected. It was superseded and removed. No KRX credential or network-execution consent was present and no historical KRX network request was attempted.
+The authorized IDENTITY_SEED then ran as fresh deployment `d268e5b0-b7c2-46be-b9ae-ca41d27cdb02` on the same exact revision and worker Dockerfile. It completed all **27/27** preregistered tasks with **27** network requests, zero resumes, phase `COMPLETE`, and `raw_rows_emitted=false`. Canonical sanitized evidence is `INDEXALERT_KRX_HISTORICAL_IDENTITY_SEED_EXECUTION_EVIDENCE.md/.json`.
 
 Current verdict:
 - dedicated worker service exists: **true**
@@ -60,4 +62,4 @@ Current verdict:
 - sealed holdout authorized: **false**
 - live trading authorized: **false**
 
-The worker-secret prerequisite is now satisfied. The next protected step is the separate frozen bulk-execution consent. The 27-request `IDENTITY_SEED` must not run until the exact execution sentinel `I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3` is explicitly supplied.
+The worker-secret prerequisite and IDENTITY_SEED are now complete. The exact bulk-execution sentinel used for the seed has been disabled again. The next historical stage is `IDENTITY_STANDARD_CODE_BINDING`, derived from the private seed; it remains a protected network stage and is **not authorized by the completed seed evidence**. Gates C/D/E remain open.
