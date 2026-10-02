@@ -26,6 +26,9 @@ from research_v1_krx_authorization_evidence import validate_authorization_eviden
 from research_v1_krx_historical_acquisition_preflight import (
     evaluate_historical_acquisition_preflight,
 )
+from research_v1_krx_openapi_connectivity_evidence import (
+    validate_file as validate_openapi_evidence_file,
+)
 from research_v1_krx_private_store import (
     KRXPrivateStoreError,
     read_private_json,
@@ -48,6 +51,8 @@ class FetchResult:
     transport_status: str
     network_request_attempted: bool
 
+
+OPENAPI_ROUTE = "KRX_OPENAPI_APPROVED_SERVICE"
 
 AUTH_FILES = {
     "KRX_SECURITY_STATUS": (
@@ -96,14 +101,40 @@ def _load_auth_record(
     }
 
 
+def _load_provenance(
+    source_family: str,
+    access_route: str,
+    *,
+    evaluation_time: datetime,
+) -> dict[str, Any]:
+    if access_route == DATA_MARKETPLACE_ROUTE:
+        return _load_auth_record(source_family, evaluation_time=evaluation_time)
+
+    if access_route == OPENAPI_ROUTE:
+        if source_family != "KRX_SECURITY_STATUS":
+            raise KRXHistoricalWorkerError(
+                "historical OpenAPI route is restricted to KRX_SECURITY_STATUS identity support"
+            )
+        evidence = validate_openapi_evidence_file()
+        return {
+            "scope": "INTERNAL_RESEARCH_AND_FINAL_JUDGE_INPUT_PREPARATION",
+            "reference": evidence["evidence_id"],
+            "fingerprint": evidence["evidence_fingerprint_sha256"],
+        }
+
+    raise KRXHistoricalWorkerError(f"unsupported access route: {access_route}")
+
+
 def _checkpoint_relpath(
     source_family: str,
+    access_route: str,
     dataset_identifier: str,
     request_sha: str,
 ) -> str:
     return (
         "checkpoints/"
         f"{_safe_component(source_family)}/"
+        f"{_safe_component(access_route)}/"
         f"{_safe_component(dataset_identifier)}/"
         f"{request_sha}.json"
     )
@@ -167,6 +198,7 @@ def execute_private_request(
     git_worktree: str,
     source_family: str,
     dataset_identifier: str,
+    access_route: str = DATA_MARKETPLACE_ROUTE,
     request_metadata: Mapping[str, Any],
     client_revision: str,
     fetcher: Callable[[Mapping[str, Any]], FetchResult],
@@ -195,8 +227,14 @@ def execute_private_request(
 
     request = canonical_request_metadata(request_metadata)
     request_sha = _sha256(request)
+    if access_route == OPENAPI_ROUTE and dataset_identifier != "stk_isu_base_info":
+        raise KRXHistoricalWorkerError(
+            "historical OpenAPI worker permits only stk_isu_base_info"
+        )
+
     checkpoint_rel = _checkpoint_relpath(
         source_family,
+        access_route,
         dataset_identifier,
         request_sha,
     )
@@ -209,7 +247,11 @@ def execute_private_request(
     if resumed is not None:
         return resumed
 
-    auth = _load_auth_record(source_family, evaluation_time=now)
+    auth = _load_provenance(
+        source_family,
+        access_route,
+        evaluation_time=now,
+    )
 
     result = fetcher(request)
     if not isinstance(result, FetchResult):
@@ -232,7 +274,7 @@ def execute_private_request(
     receipt = build_acquisition_receipt(
         source_family=source_family,
         intended_use_scope=auth["scope"],
-        access_route=DATA_MARKETPLACE_ROUTE,
+        access_route=access_route,
         dataset_identifier=dataset_identifier,
         authorization_evidence_reference=auth["reference"],
         authorization_evidence_fingerprint_sha256=auth["fingerprint"],
