@@ -59,6 +59,32 @@ def _state_relpath(phase: str) -> str:
     return f"batch_state/{phase}.json"
 
 
+def _require_predecessor_complete(
+    *,
+    root: str,
+    phase: str,
+    git_worktree: str | None,
+) -> None:
+    if phase not in PHASE_ORDER:
+        raise KRXHistoricalBatchStateError(f"unknown phase: {phase}")
+    idx = PHASE_ORDER.index(phase)
+    if idx == 0:
+        return
+    prior = PHASE_ORDER[idx - 1]
+    try:
+        state = read_private_json(
+            root, _state_relpath(prior), git_worktree=git_worktree
+        )["value"]
+    except Exception as exc:
+        raise KRXHistoricalBatchStateError(
+            f"prior phase {prior} has no completion state"
+        ) from exc
+    if state.get("phase_complete") is not True or state.get("status") != "COMPLETE":
+        raise KRXHistoricalBatchStateError(
+            f"prior phase {prior} is not complete"
+        )
+
+
 def _task_ids(tasks: Iterable[Mapping[str, Any]], phase: str) -> list[str]:
     ids = []
     for row in tasks:
@@ -80,6 +106,11 @@ def initialize_phase_state(
     git_worktree: str | None = None,
 ) -> dict[str, Any]:
     """Initialize or verify one frozen phase task set."""
+    _require_predecessor_complete(
+        root=root,
+        phase=phase,
+        git_worktree=git_worktree,
+    )
     ids = _task_ids(tasks, phase)
     task_set_fp = _sha256(ids)
     rel = _state_relpath(phase)
