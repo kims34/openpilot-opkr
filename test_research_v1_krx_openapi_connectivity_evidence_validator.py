@@ -58,14 +58,14 @@ def test_service_schema_or_endpoint_drift_is_rejected():
 
 def test_schema_v2_requires_provenance_hashes_and_timestamp():
     data = _data()
-    data["schema_version"] = "2"
+    for row in data["services"].values():
+        row.pop("response_schema_sha256", None)
+        row.pop("response_payload_sha256", None)
+        row.pop("observed_at", None)
     with pytest.raises(KRXOpenAPIEvidenceError, match="response_schema_sha256 invalid"):
         validate_evidence(data)
 
-    for row in data["services"].values():
-        row["response_schema_sha256"] = "a" * 64
-        row["response_payload_sha256"] = "b" * 64
-        row["observed_at"] = "2026-10-02T02:00:00+00:00"
+    data = _data()
     out = validate_evidence(data)
     assert out["valid"] is True
     assert out["schema_version"] == "2"
