@@ -191,10 +191,10 @@ A source/authentication probe alone is not feature-performance evidence.
 
 ## 6. Public OpenAPI mapping and current public evidence
 
-Machine-readable official-public evidence is frozen in `research_v1_krx_public_evidence.py`, version `2026-10-01.v1`, fingerprint:
-`349d310647c78412e45ac13078259bab2d002958db597b2f7dd26228f8b3ca7b`.
+Machine-readable official-public evidence is frozen in `research_v1_krx_public_evidence.py`, version `2026-10-02.v2`, fingerprint:
+`39f357fda6eec5bb994f1dcba1ba44ed913714df256ec6b542b5aeadf14a0380`.
 
-The 2026-10-01 public re-audit establishes the OpenAPI key + per-service approval model, public status-screen semantics, final investor-result after-20:00 rule and current OpenAPI-use restrictions. It also confirms that the KRX OpenAPI site has a June 2026 notice titled `KRX Open API 미제공 데이터에 대한 안내`; because the retrievable notice body did not reliably expose a dataset list, no specific IndexAlert-required dataset may be inferred available or unavailable from that notice alone.
+The 2026-10-02 public re-audit establishes the OpenAPI key + per-service approval model, public status-screen semantics, final investor-result after-20:00 rule and current OpenAPI-use restrictions. It also confirms that the KRX OpenAPI site has a June 2026 notice titled `KRX Open API 미제공 데이터에 대한 안내`; because the retrievable notice body did not reliably expose a dataset list, no specific IndexAlert-required dataset may be inferred available or unavailable from that notice alone.
 
 Frozen mapping rules:
 - a Data Marketplace screen name is not an OpenAPI service ID;
