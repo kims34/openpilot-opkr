@@ -16,19 +16,19 @@ def _data():
     return json.loads(PATH.read_text(encoding="utf-8"))
 
 
-def test_committed_per_security_consent_is_frozen_not_authorized():
+def test_committed_per_security_consent_is_authorized_in_progress():
     out = validate_file()
     assert out["valid"] is True
     assert out["task_count"] == 14296
-    assert out["authorized"] is False
+    assert out["authorized"] is True
     assert out["one_shot"] is True
     assert out["later_stage_auto_authorization"] is False
 
 
-def test_per_security_consent_rejects_pre_authorization_or_reuse():
+def test_per_security_consent_rejects_authorization_loss_or_reuse():
     data = _data()
-    data["user_authorization"]["authorized"] = True
-    with pytest.raises(KRXPerSecurityConsentError, match="cannot be pre-authorized"):
+    data["user_authorization"]["authorized"] = False
+    with pytest.raises(KRXPerSecurityConsentError, match="authorization record lost"):
         validate_contract(data)
 
     data = _data()
@@ -58,4 +58,23 @@ def test_per_security_consent_cannot_authorize_later_stages():
     data = _data()
     data["post_run_lock"]["later_stage_auto_authorization"] = True
     with pytest.raises(KRXPerSecurityConsentError, match="auto authority"):
+        validate_contract(data)
+
+
+def test_active_per_security_execution_is_exactly_bound():
+    data = _data()
+    execution = data["execution"]
+    assert execution["deployment_id"] == "bc79d1b5-5fb8-46c7-8067-682e61947014"
+    assert execution["task_count"] == 14296
+    assert execution["execution_status"] == "IN_PROGRESS"
+    assert execution["later_stage_auto_authorization"] is False
+
+    data = _data()
+    data["execution"]["task_count"] = 14295
+    with pytest.raises(KRXPerSecurityConsentError, match="execution task count drift"):
+        validate_contract(data)
+
+    data = _data()
+    data["execution"]["status_economics_authorized"] = True
+    with pytest.raises(KRXPerSecurityConsentError, match="illegally true"):
         validate_contract(data)
