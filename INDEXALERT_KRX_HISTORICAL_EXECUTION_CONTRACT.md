@@ -1,8 +1,8 @@
-# IndexAlert KRX Historical Execution Contract v1
+# IndexAlert KRX Historical Execution Contract v2
 
 Updated: 2026-10-02 KST  
-Contract ID: `INDEXALERT-KRX-HIST-EXEC-v1`  
-Bound acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v2`  
+Contract ID: `INDEXALERT-KRX-HIST-EXEC-v2`  
+Bound acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v3`  
 Status: **IMPLEMENTATION CONTRACT ONLY — BULK NETWORK EXECUTION NOT YET USER-AUTHORIZED**
 
 ## Purpose
@@ -15,9 +15,9 @@ Rights to acquire history are established, but those rights do not make the netw
 
 Bulk acquisition must run in a dedicated one-shot worker. The production public web process must not run the bulk job.
 
-Before any network request the worker must pass the exact network-free v2 historical-acquisition preflight, including the exact execution sentinel:
+Before any network request the worker must pass the exact network-free v3 historical-acquisition preflight bound to execution contract v2, including the exact execution sentinel:
 
-`I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v2`
+`I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3`
 
 The prior tiny-probe consent does not satisfy this bulk execution gate.
 
@@ -57,6 +57,12 @@ Each request must bind:
 - metadata-only raw-object manifest.
 
 The raw-object manifest may contain hashes/metadata only. It must never contain KRX credentials, cookies, session tokens, authorization headers or raw rows.
+
+## Source-contract correction
+
+Historical cleanup intervals must come from `MDCSTAT23801` delisted-history fields (`정리매매기간_시작일`, `정리매매기간_종료일`, `폐지일`, `폐지사유`). The authenticated `MDCSTAT23701` route is retained only as a current/ongoing cleanup-trading reconciliation snapshot with `mktId=ALL`.
+
+The executor must **never** invent historical `strtDd/endDd` semantics for `MDCSTAT23701`. Plan v3 superseded plan v2 before any bulk network execution specifically to remove that unsupported assumption.
 
 ## Checkpoint/resume
 
