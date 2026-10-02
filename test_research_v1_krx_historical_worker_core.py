@@ -19,6 +19,7 @@ def _env(tmp_path: Path, *, consent: bool = True) -> dict[str, str]:
     out = {
         "KRX_ID": "present",
         "KRX_PW": "present",
+        "KRX_AUTH_KEY": "present",
         "KRX_PRIVATE_RAW_DIR": str((tmp_path / "private-krx").resolve()),
     }
     if consent:
