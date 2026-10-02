@@ -29,6 +29,7 @@ from research_v1_krx_historical_fetchers import (
     parse_openapi_raw,
 )
 from research_v1_krx_historical_identity import (
+    _short_code,
     identity_summary,
     listing_dates_for_standard_code_binding,
     reconstruct_historical_kospi_episodes,
@@ -377,6 +378,13 @@ def _merge_master_snapshots_fail_closed(
     binding["listing_date_official"] = pd.to_datetime(
         binding["listing_date_official"], errors="coerce"
     ).dt.normalize()
+    # Use the exact same short-code canonicalization as the core identity
+    # validator before duplicate/overlap checks. This prevents representation
+    # differences such as 5930 vs 005930 from surviving until the core layer.
+    seed["symbol"] = _short_code(seed["symbol"])
+    binding["symbol"] = _short_code(binding["symbol"])
+    seed["standard_code"] = seed["standard_code"].astype("string").str.strip().str.upper()
+    binding["standard_code"] = binding["standard_code"].astype("string").str.strip().str.upper()
     _require(
         not seed[["decision_date", "listing_date_official"]].isna().any().any(),
         "seed master has invalid merge date",
