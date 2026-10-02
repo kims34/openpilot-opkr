@@ -74,7 +74,12 @@
     "prepare_status_economics_network_request_attempted": false,
     "prepare_status_economics_bulk_consent_required": false,
     "prepare_status_economics_requires_completed_per_security_history": true,
-    "prepare_status_economics_exact_realized_economics_claim_allowed": false
+    "prepare_status_economics_exact_realized_economics_claim_allowed": false,
+    "execute_status_economics_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-status-economics",
+    "execute_status_economics_forbidden_until_user_bulk_approval": true,
+    "execute_status_economics_requires_prepared_private_manifest": true,
+    "execute_status_economics_requires_completed_per_security_history": true,
+    "execute_status_economics_exact_realized_economics_claim_allowed": false
   },
   "public_output": {
     "raw_rows_forbidden": true,
