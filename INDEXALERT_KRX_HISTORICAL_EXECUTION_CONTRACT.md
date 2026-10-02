@@ -3,7 +3,7 @@
 Updated: 2026-10-02 KST  
 Contract ID: `INDEXALERT-KRX-HIST-EXEC-v3`  
 Bound acquisition plan: `INDEXALERT-KRX-HIST-ACQ-v3`  
-Status: **IMPLEMENTATION CONTRACT ONLY — BULK NETWORK EXECUTION NOT YET USER-AUTHORIZED**
+Status: **IDENTITY_SEED ONE-SHOT COMPLETED — FURTHER NETWORK EXECUTION NOT AUTHORIZED**
 
 ## Purpose
 
@@ -20,6 +20,15 @@ Before any network request the worker must pass the exact network-free v3 histor
 `I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3`
 
 The prior tiny-probe consent does not satisfy this bulk execution gate.
+
+
+## Consumed one-shot authorization record
+
+On 2026-10-02 KST, the exact v3 execution sentinel was explicitly supplied for the **27-request `IDENTITY_SEED` stage only**. Deployment `d268e5b0-b7c2-46be-b9ae-ca41d27cdb02` at source revision `6343f01b493404d59736e06eb6968e9820d0e595` completed 27/27 preregistered requests with phase `COMPLETE`, zero resumes and `raw_rows_emitted=false`. Canonical sanitized evidence is `INDEXALERT_KRX_HISTORICAL_IDENTITY_SEED_EXECUTION_EVIDENCE.md/.json`.
+
+That one-shot execution authority was consumed and the exact sentinel was disabled immediately after completion. The worker was restored to its network-free preflight start command. Current machine-contract authority therefore remains `bulk_network_execution_authorized_by_user=false`.
+
+This completed seed does **not** authorize `IDENTITY_STANDARD_CODE_BINDING`, expected-scope execution, per-security history, status-economics execution, feature-performance testing, sealed holdout, promotion or live trading. Each protected later network stage requires its own current authorization boundary.
 
 ## Private raw storage
 
