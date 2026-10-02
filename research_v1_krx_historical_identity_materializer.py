@@ -878,6 +878,85 @@ def public_new_listing_master_mapping_summary(
     }
 
 
+def _exclude_new_listings_officially_noncommon_on_listing_date(
+    new_listing_history: pd.DataFrame,
+    raw_master_snapshots: pd.DataFrame,
+) -> pd.DataFrame:
+    """Apply the frozen common-stock filter using same-day official master truth.
+
+    A new-listing history row may describe an issue broadly enough to pass its
+    own stock-type fields while the authoritative same-day security master says
+    it is not a KOSPI common stock. Such an episode is outside the frozen
+    research universe and must be excluded, not force-mapped or backfilled.
+    Missing/ambiguous same-day master evidence is *not* excluded here; it stays
+    fail-closed in reconstruct_historical_kospi_episodes().
+    """
+    normalized_new = _normal_history(new_listing_history, delisted=False)
+    normalized_new = normalized_new[
+        normalized_new["listing_date"].between(PLAN_START, PLAN_END, inclusive="both")
+    ].copy()
+
+    masters = raw_master_snapshots.copy()
+    required = {
+        "decision_date",
+        "symbol",
+        "listing_date_official",
+        "market_type_official",
+        "common_stock_identity_official",
+    }
+    missing = required - set(masters.columns)
+    _require(not missing, f"raw master missing universe columns: {sorted(missing)}")
+    masters["decision_date"] = pd.to_datetime(
+        masters["decision_date"], errors="coerce"
+    ).dt.normalize()
+    masters["listing_date_official"] = pd.to_datetime(
+        masters["listing_date_official"], errors="coerce"
+    ).dt.normalize()
+    masters["symbol"] = _short_code(masters["symbol"])
+    masters["market_type_official"] = _market(masters["market_type_official"])
+
+    excluded: set[tuple[str, pd.Timestamp]] = set()
+    for row in normalized_new.itertuples(index=False):
+        same = masters[
+            masters["decision_date"].eq(row.listing_date)
+            & masters["symbol"].eq(row.short_code)
+        ]
+        if len(same) != 1:
+            continue
+        m = same.iloc[0]
+        if (
+            str(m["market_type_official"]) == "KOSPI"
+            and not bool(m["common_stock_identity_official"])
+            and pd.Timestamp(m["listing_date_official"]) == pd.Timestamp(row.listing_date)
+        ):
+            excluded.add((str(row.short_code), pd.Timestamp(row.listing_date)))
+
+    if not excluded:
+        return new_listing_history.copy()
+
+    _require(
+        {"종목코드", "상장일"}.issubset(new_listing_history.columns),
+        "new-listing history missing exclusion key columns",
+    )
+    out = new_listing_history.copy()
+    raw_short = _short_code(out["종목코드"])
+    raw_date = pd.to_datetime(
+        out["상장일"].astype("string").str.replace(r"[^0-9]", "", regex=True),
+        format="%Y%m%d",
+        errors="coerce",
+    ).dt.normalize()
+    keep = [
+        (str(code), pd.Timestamp(dt)) not in excluded if not pd.isna(dt) else True
+        for code, dt in zip(raw_short, raw_date)
+    ]
+    filtered = out.loc[keep].copy()
+    _require(
+        len(out) - len(filtered) == len(excluded),
+        "official non-common new-listing exclusion count drift",
+    )
+    return filtered
+
+
 def reconstruct_private_historical_episodes(
     root: str,
     *,
@@ -889,13 +968,22 @@ def reconstruct_private_historical_episodes(
         root,
         git_worktree=git_worktree,
     )
+    raw_masters = pd.concat(
+        [seed["security_master_snapshots"], binding],
+        ignore_index=True,
+        sort=False,
+    )
+    new_listing = _exclude_new_listings_officially_noncommon_on_listing_date(
+        seed["new_listing_history"],
+        raw_masters,
+    )
     masters = _merge_master_snapshots_fail_closed(
         seed["security_master_snapshots"],
         binding,
     )
     return reconstruct_historical_kospi_episodes(
         security_master_snapshots=masters,
-        new_listing=seed["new_listing_history"],
+        new_listing=new_listing,
         delisted=seed["delisted_history"],
     )
 
