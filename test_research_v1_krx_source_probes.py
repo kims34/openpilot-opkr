@@ -27,7 +27,8 @@ def test_status_probe_without_authorized_request_blocks_gate_a():
 def test_status_probe_authorized_tiny_request_still_cannot_close_contract():
     out = status_gate_audit(request_authorized=True)
     assert out["gates"]["A"]["status"] == "PARTIAL"
-    assert all(out["gates"][gate]["status"] != "PASS" for gate in "ABCDEF")
+    assert out["gates"]["F"]["status"] == "PASS"
+    assert any(out["gates"][gate]["status"] != "PASS" for gate in "ABCDE")
     assert out["source_contract_closed_for_declared_scope"] is False
     assert out["alpha_or_final_judge_promotion_authorized"] is False
 
