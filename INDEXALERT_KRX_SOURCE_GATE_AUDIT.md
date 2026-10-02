@@ -34,7 +34,7 @@ Overall: **OPEN — NOT ALL A-F PASS**
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_status_coverage.py` can exact-audit caller-attested `(snapshot_date, symbol, isu_cd)` scope, but no authorized full-period scope/history with stable full issue identity has been supplied. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `BLOCKED` | Status adapters require availability lineage, but complete historical event/publication/availability/ingestion evidence across all required status families is absent. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Public evidence, structured authorization-evidence validation, network-free readiness, pinned probes, push-safe workflow isolation, workflow-safety regression tests, fail-closed adapters, status coverage/event integrity, immutable acquisition receipts and consistent batch provenance are implemented. Production Action `36956234911` freezes exact-revision OpenAPI response fingerprints, while `research_v1_krx_data_marketplace_route_map.py` fail-closed validates the pinned candidate BLD map. Neither is a full authenticated historical acquisition receipt/batch chain, so Gate E remains `PARTIAL`. |
-| Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | OpenAPI terms remain route-specific. Separately, `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json` freezes the current Data Marketplace homepage restriction against unauthorized automated collection and the prior-permission requirement for copying/reproduction/distribution/transmission/public transmission. Explicit KRX automation permission for the required historical status route has not been evidenced. |
+| Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | OpenAPI terms remain route-specific. The Data Marketplace terms restriction is frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`. A user-provided reply screenshot now adds strong scope evidence that a personal user may perform low-frequency queries for non-commercial/internal research without a separate approval procedure (`INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`). However sender identity and explicit automated/programmatic-query wording are not visible in that screenshot, so automation permission for the required historical status route is not yet evidenced. |
 
 Current verdict: `judge_security_status_ready=false`.
 
@@ -51,7 +51,7 @@ Overall: **OPEN — PERFORMANCE TESTING REMAINS BLOCKED**
 | Gate C — `HISTORICAL_COVERAGE_SECURITY_MAPPING` | `BLOCKED` | `research_v1_krx_investor_flow_coverage.py` exact-compares caller-attested `(event_date, symbol, isu_cd)` scope to validated observed keys and never invents dates/universe/zeros. No authorized full-period scope/history exists yet. |
 | Gate D — `PIT_AVAILABILITY_LINEAGE` | `PARTIAL` | `research_v1_krx_investor_flow_lineage.py` enforces timezone-aware chronology, day-D publication floor >=20:00 KST, current public-contract fingerprint, one source contract and decision-time availability. No real full historical dataset has passed it. |
 | Gate E — `REPRODUCIBLE_INTEGRITY_FAIL_CLOSED` | `PARTIAL` | Probe/public evidence, structured authorization-evidence validation, network-free readiness, push-safe workflow isolation, immutable acquisition receipts, batch provenance, PIT and exact coverage validators, and `research_v1_krx_source_data_admission.py` are fail-closed. Bulk authenticated historical retrieval and real-data admission evidence remain unavailable. |
-| Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | The Data Marketplace terms restriction on unauthorized automated collection is now explicitly frozen. The project has no KRX-issued permission authorizing automated collection of `MDCSTAT02303` for the declared research scope, so exact rights remain unverified. |
+| Gate F — `INTENDED_USE_RIGHTS` | `PARTIAL` | The Data Marketplace terms restriction on unauthorized automated collection is frozen. The user-provided reply screenshot strengthens the permitted-use case for personal, non-commercial/internal research and low-frequency querying without a separate approval procedure, but it does not visibly show KRX sender identity or explicitly state that programmatic/automated querying is included. `MDCSTAT02303` automation rights therefore remain unverified. |
 
 Current verdict: investor-flow feature-performance experiments remain blocked.
 
@@ -100,6 +100,14 @@ The project-pinned `beaten-by-the-market/krx-data-api` commit `e6ebac9b71482db12
 Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`.
 
 The current KRX homepage terms make ordinary membership/account access insufficient for automated collection. Project readiness on 2026-10-02 confirmed `KRX_ID` and `KRX_PW` are present for both declared Data Marketplace source families, but the strengthened preflight correctly remains blocked on `EXPLICIT_KRX_AUTOMATED_COLLECTION_PERMISSION`, validated authorization evidence, and per-run consent. No authenticated Data Marketplace request was attempted.
+
+### 5.4 User-provided low-frequency internal-research permission reply
+
+Canonical record: `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`; fail-closed validator: `research_v1_krx_permission_reply_evidence.py`.
+
+The supplied screenshot states that, for a personal user, non-commercial/internal-research low-frequency querying may be used without a separate approval procedure. Its image SHA-256 is `1983036114310ea42dd60ad49fc52c19a7378f7f1d3f1c1a65dabc7b4d1cf1e1`. The image itself is not stored in the repository.
+
+Because the screenshot does not visibly show sender identity, the original question, or an explicit statement that "low-frequency querying" includes programmatic/automated querying, it strengthens Gate F evidence but cannot set `automated_collection_authorized=true`, cannot authorize a tiny authenticated probe, and does not move Gate A.
 
 ## 6. Authorization, readiness and workflow evidence
 
