@@ -164,7 +164,15 @@ The pinned client login implementation reads `KRX_ID` / `KRX_PW` and posts to th
 
 Canonical audit: `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json`, enforced by `research_v1_krx_data_marketplace_terms.py`.
 
-The current KRX Data Marketplace homepage terms, effective 2026-08-29, prohibit unauthorized automated collection/reproduction/distribution and require prior KRX permission before copying/reproduction/distribution/transmission/public transmission of site information. Therefore a normal member account is not treated as authorization for programmatic Data Marketplace collection. Until explicit KRX automation permission is evidenced, the Data Marketplace authenticated probe remains blocked even though `KRX_ID` and `KRX_PW` are configured.
+The current KRX Data Marketplace homepage terms, effective 2026-08-29, prohibit unauthorized automated collection/reproduction/distribution and require prior KRX permission before copying/reproduction/distribution/transmission/public transmission of site information. Therefore a normal member account is not treated as authorization for programmatic Data Marketplace collection. A user-provided KRX email reply dated 2026-10-02 now explicitly permits personal, non-commercial/internal-research, low-frequency programmatic and automated querying without a separate approval procedure. Canonical evidence is `INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.md/.json`, and the two source-family records are `INDEXALERT_KRX_AUTH_EVIDENCE_SECURITY_STATUS.json` and `INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json`. This permission is limited to the stated low-frequency research scope and does not authorize bulk/high-frequency collection.
+
+### Current Data Marketplace readiness — 2026-10-02
+
+Network-free Action `36973737546` verified, for both `KRX_SECURITY_STATUS` and `KRX_INVESTOR_FLOW`, that route credentials are present, the committed structured authorization record validates, `automated_collection_authorized=true`, and `configuration_ready_for_manual_authenticated_probe=true`. No KRX network request was attempted. The only remaining pre-request requirement is `EXPLICIT_TINY_REQUEST_CONSENT`.
+
+Canonical readiness evidence: `INDEXALERT_KRX_DATA_MARKETPLACE_READINESS_EVIDENCE.md/.json`.
+
+A later successful tiny authenticated probe may raise Gate A only to `PARTIAL`; it cannot authorize bulk history, performance testing, sealed holdout or live trading.
 
 ### Route 3 — KRX data purchase / distribution products
 
@@ -283,9 +291,9 @@ Readiness reports, authorization-evidence records, receipts, batches, validators
 The current source strategy is:
 1. preserve the verified basic-info/daily-trade OpenAPI evidence as exact-service plumbing only; do not substitute it for status-event or investor-flow data;
 2. keep Data Marketplace probes explicitly labeled as that route;
-3. configure route-specific credentials, opaque approval reference and structured non-secret approval evidence only through secure secret/variable management;
+3. preserve route-specific credentials only in secret management and keep the redacted KRX permission evidence plus source-family structured authorization records under version control;
 4. validate structured authorization evidence with `research_v1_krx_authorization_evidence.py`;
-5. run the **network-free auth readiness** workflow first after credentials/approval evidence are configured or changed;
+5. treat network-free readiness Action `36973737546` as configuration evidence only; rerun readiness after any credential/permission change;
 6. require exact per-run consent before a tiny authenticated request under the canonical research probe contract;
 7. keep push-triggered probe runs dry-run only and never inject KRX secrets/evidence JSON on push;
 8. keep OpenAPI `AUTH_KEY` as a separate route requiring exact service mapping and approval;
