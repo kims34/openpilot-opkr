@@ -66,6 +66,10 @@ STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
 STATUS_ECONOMICS_BATCH_REL = "batches/status-economics-v3.json"
 IDENTITY_BINDING_CONSENT_ENV = "KRX_IDENTITY_BINDING_CONSENT"
 IDENTITY_BINDING_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1"
+PER_SECURITY_CONSENT_ENV = "KRX_PER_SECURITY_HISTORY_CONSENT"
+PER_SECURITY_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1"
+STATUS_ECONOMICS_CONSENT_ENV = "KRX_STATUS_ECONOMICS_CONSENT"
+STATUS_ECONOMICS_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1"
 
 
 class KRXHistoricalWorkerEntrypointError(RuntimeError):
@@ -90,12 +94,26 @@ def _require_completed_predecessor(
         ) from exc
 
 
-def _require_identity_binding_stage_consent(environment: Mapping[str, str]) -> None:
-    if str(environment.get(IDENTITY_BINDING_CONSENT_ENV) or "").strip() != IDENTITY_BINDING_CONSENT_SENTINEL:
+def _require_exact_stage_consent(
+    environment: Mapping[str, str],
+    *,
+    env_name: str,
+    sentinel: str,
+    requirement_name: str,
+) -> None:
+    if str(environment.get(env_name) or "").strip() != sentinel:
         raise KRXHistoricalWorkerEntrypointError(
-            "identity binding stage consent blocked: "
-            "EXPLICIT_IDENTITY_STANDARD_CODE_BINDING_CONSENT"
+            f"stage consent blocked: {requirement_name}"
         )
+
+
+def _require_identity_binding_stage_consent(environment: Mapping[str, str]) -> None:
+    _require_exact_stage_consent(
+        environment,
+        env_name=IDENTITY_BINDING_CONSENT_ENV,
+        sentinel=IDENTITY_BINDING_CONSENT_SENTINEL,
+        requirement_name="EXPLICIT_IDENTITY_STANDARD_CODE_BINDING_CONSENT",
+    )
 
 
 def _public_preflight(environment: Mapping[str, str]) -> dict[str, Any]:
@@ -892,6 +910,12 @@ def execute_per_security_history(
             "historical acquisition preflight blocked: "
             + ",".join(preflight["missing_requirements"])
         )
+    _require_exact_stage_consent(
+        env,
+        env_name=PER_SECURITY_CONSENT_ENV,
+        sentinel=PER_SECURITY_CONSENT_SENTINEL,
+        requirement_name="EXPLICIT_PER_SECURITY_HISTORY_CONSENT",
+    )
 
     worktree = git_worktree or str(Path.cwd().resolve())
     root = str(env["KRX_PRIVATE_RAW_DIR"])
@@ -1113,6 +1137,12 @@ def execute_status_economics(
             "historical acquisition preflight blocked: "
             + ",".join(preflight["missing_requirements"])
         )
+    _require_exact_stage_consent(
+        env,
+        env_name=STATUS_ECONOMICS_CONSENT_ENV,
+        sentinel=STATUS_ECONOMICS_CONSENT_SENTINEL,
+        requirement_name="EXPLICIT_STATUS_ECONOMICS_CONSENT",
+    )
 
     worktree = git_worktree or str(Path.cwd().resolve())
     root = str(env["KRX_PRIVATE_RAW_DIR"])
