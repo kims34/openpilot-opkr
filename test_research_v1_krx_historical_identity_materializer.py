@@ -436,22 +436,20 @@ def test_non_common_alphanumeric_short_code_is_filtered_before_canonicalization(
     assert "KR7000088999" not in set(out["standard_code"])
 
 
-def test_common_stock_alphanumeric_short_code_fails_closed():
-    common_bad = _normal_master_row(
+def test_common_stock_alphanumeric_short_code_is_preserved_in_private_merge():
+    common = _normal_master_row(
         "2026-10-01",
         "KR7000088000",
         "00088K",
         "2000-01-03",
-        "잘못된보통주",
+        "알파보통주",
     )
-    with pytest.raises(
-        m.KRXHistoricalIdentityMaterializerError,
-        match="seed KOSPI common-stock master has non-numeric short code",
-    ):
-        m._merge_master_snapshots_fail_closed(
-            pd.DataFrame([common_bad]),
-            _non_overlapping_binding(),
-        )
+    out = m._merge_master_snapshots_fail_closed(
+        pd.DataFrame([common]),
+        _non_overlapping_binding(),
+    )
+    assert "00088K" in set(out["symbol"])
+    assert "KR7000088000" in set(out["standard_code"])
 
 
 def test_private_identity_reconstruction_combines_seed_and_listing_date_masters(monkeypatch):
