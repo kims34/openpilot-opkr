@@ -1,0 +1,99 @@
+{
+  "schema_version": "1",
+  "evidence_class": "PINNED_THIRD_PARTY_ROUTE_MAPPING_ONLY",
+  "pinned_client": {
+    "repository": "beaten-by-the-market/krx-data-api",
+    "commit": "e6ebac9b71482db127348d8a08ebc6743aa3b50e",
+    "login_page": "https://data.krx.co.kr/contents/MDC/COMS/client/view/login.jsp?site=mdc",
+    "login_api": "https://data.krx.co.kr/contents/MDC/COMS/client/MDCCOMS001D1.cmd",
+    "credential_env_names": [
+      "KRX_ID",
+      "KRX_PW"
+    ],
+    "session_ttl_seconds": 1500,
+    "unauthenticated_rejection_claim_source": "pinned client README/live-validation notes; not official KRX authorization evidence"
+  },
+  "routes": {
+    "trading_halt": {
+      "source_family": "KRX_SECURITY_STATUS",
+      "bld": "dbms/MDC/STAT/issue/MDCSTAT21301",
+      "method": "json",
+      "menu_id": "MDC0202",
+      "official_screen": "MDCSTAT213 / 매매거래정지 내역(개별종목)",
+      "required": [
+        "isuCd",
+        "isuCd2",
+        "strtDd",
+        "endDd"
+      ],
+      "max_period_days": 730,
+      "mapping_state": "PINNED_CLIENT_CATALOGUED_OFFICIAL_SCREEN_MATCH_NOT_YET_AUTHENTICATED_BY_PROJECT"
+    },
+    "cleanup_trading": {
+      "source_family": "KRX_SECURITY_STATUS",
+      "bld": "dbms/MDC/STAT/issue/MDCSTAT23701",
+      "method": "json",
+      "menu_id": "MDC0202",
+      "official_screen": "MDCSTAT237 / 정리매매종목 현황",
+      "required": [
+        "strtDd",
+        "endDd"
+      ],
+      "mapping_state": "PROVISIONAL_DIRECT_TRANSPORT_NOT_CATALOGUED_IN_PINNED_CLIENT"
+    },
+    "delisted_status": {
+      "source_family": "KRX_SECURITY_STATUS",
+      "bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
+      "method": "csv",
+      "menu_id": "MDC0202",
+      "official_screen": "MDCSTAT238 / 상장폐지종목 현황",
+      "required": [
+        "strtDd",
+        "endDd"
+      ],
+      "mapping_state": "PINNED_CLIENT_CATALOGUED_OFFICIAL_SCREEN_MATCH_NOT_YET_AUTHENTICATED_BY_PROJECT"
+    },
+    "delisted_price": {
+      "source_family": "KRX_SECURITY_STATUS",
+      "bld": "dbms/MDC/STAT/issue/MDCSTAT23902",
+      "method": "csv",
+      "menu_id": "MDC0202",
+      "official_screen": "MDCSTAT239 / 상장폐지종목 시세 추이",
+      "required": [
+        "isuCd",
+        "strtDd",
+        "endDd"
+      ],
+      "mapping_state": "PINNED_CLIENT_CATALOGUED_OFFICIAL_SCREEN_MATCH_NOT_YET_AUTHENTICATED_BY_PROJECT"
+    },
+    "investor_flow_daily": {
+      "source_family": "KRX_INVESTOR_FLOW",
+      "bld": "dbms/MDC/STAT/standard/MDCSTAT02303",
+      "method": "csv",
+      "menu_id": "MDC0201020302",
+      "official_screen": "12009 / 투자자별 거래실적(개별종목) 일별추이",
+      "required": [
+        "isuCd",
+        "strtDd",
+        "endDd"
+      ],
+      "mapping_state": "PINNED_CLIENT_CATALOGUED_DATA_MARKETPLACE_SCREEN_NOT_YET_AUTHENTICATED_BY_PROJECT",
+      "pit_publication_floor": "20:00 Asia/Seoul"
+    }
+  },
+  "authority": {
+    "official_krx_route_authorized": false,
+    "gate_a_pass": false,
+    "gate_b_pass": false,
+    "bulk_historical_acquisition_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "guardrails": [
+    "Pinned third-party code can establish reproducible candidate transport mapping only.",
+    "It cannot prove KRX authorization, licensing, complete history, PIT lineage, or official schema equivalence.",
+    "Any authenticated probe must still pass the project authorization-evidence and explicit-consent preflight.",
+    "Cleanup-trading MDCSTAT23701 remains provisional until project-authenticated response and exact schema verification."
+  ]
+}
