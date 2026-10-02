@@ -34,6 +34,13 @@ def test_committed_worker_deployment_is_preflight_only_and_nonexecuting():
     assert out["dockerfile"]["default_mode"] == "PREFLIGHT_ONLY"
     assert out["dockerfile"]["public_port_exposed"] is False
     assert out["dockerfile"]["bulk_execute_in_default_cmd"] is False
+    data = _data()
+    assert data["start_contract"]["execute_identity_standard_code_binding_command"].endswith(
+        "--execute-identity-standard-code-binding"
+    )
+    assert data["start_contract"][
+        "execute_identity_standard_code_binding_forbidden_until_user_bulk_approval"
+    ] is True
 
 
 def test_worker_deployment_cannot_self_authorize_cloud_or_bulk_actions():
