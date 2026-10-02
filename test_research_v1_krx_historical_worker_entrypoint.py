@@ -4,9 +4,14 @@ from pathlib import Path
 import pytest
 
 from research_v1_krx_historical_acquisition_preflight import CONSENT_SENTINEL
+from research_v1_krx_historical_batch_state import (
+    initialize_phase_state,
+    record_task_completion,
+)
 from research_v1_krx_historical_worker_entrypoint import (
     KRXHistoricalWorkerEntrypointError,
     execute_identity_seed,
+    execute_identity_standard_code_binding,
     preflight_only,
 )
 from research_v1_krx_private_store import write_raw_object
@@ -150,3 +155,124 @@ def test_entrypoint_requires_timezone_aware_execution_time(tmp_path):
             executor=lambda **kwargs: {},
             evaluation_time=datetime(2026, 10, 2, 11, 0),
         )
+
+
+def _complete_seed_predecessor(tmp_path, worktree):
+    root = (tmp_path / "private").resolve()
+    task = {"phase": "IDENTITY_SEED", "task_id": "d" * 64}
+    initialize_phase_state(root=str(root), phase="IDENTITY_SEED", tasks=[task])
+    raw = write_raw_object(root, b"seed-predecessor", git_worktree=str(worktree))
+    record_task_completion(
+        root=str(root),
+        phase="IDENTITY_SEED",
+        task_id=task["task_id"],
+        worker_result={
+            "completed": True,
+            "request_metadata_sha256": "1" * 64,
+            "raw_object_sha256": raw["raw_object_sha256"],
+            "raw_bytes_size": raw["raw_bytes_size"],
+            "response_rows": 1,
+            "response_schema_sha256": "2" * 64,
+            "response_payload_sha256": "3" * 64,
+            "receipt_fingerprint_sha256": "4" * 64,
+            "raw_rows_emitted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        },
+        git_worktree=str(worktree),
+    )
+
+
+def _binding_task():
+    return {
+        "phase": "IDENTITY_STANDARD_CODE_BINDING",
+        "task_id": "e" * 64,
+        "request_spec": {
+            "kind": "security_master",
+            "params": {"basDd": "20200102"},
+        },
+        "contains_security_identifier": False,
+    }
+
+
+def test_identity_binding_blocks_before_executor_without_bulk_consent(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_seed_predecessor(tmp_path, worktree)
+    calls = []
+
+    with pytest.raises(KRXHistoricalWorkerEntrypointError, match="preflight blocked"):
+        execute_identity_standard_code_binding(
+            environment=_env(tmp_path, consent=False),
+            git_worktree=str(worktree),
+            executor=lambda **kwargs: calls.append(kwargs),
+            task_builder=lambda *args, **kwargs: [_binding_task()],
+            evaluation_time=EVAL,
+        )
+    assert calls == []
+
+
+def test_identity_binding_requires_completed_seed_phase(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    with pytest.raises(Exception, match="prior phase IDENTITY_SEED"):
+        execute_identity_standard_code_binding(
+            environment=_env(tmp_path, consent=True),
+            git_worktree=str(worktree),
+            executor=lambda **kwargs: {},
+            task_builder=lambda *args, **kwargs: [_binding_task()],
+            evaluation_time=EVAL,
+        )
+
+
+def test_identity_binding_executes_private_task_set_after_seed_completion(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_seed_predecessor(tmp_path, worktree)
+    calls = []
+
+    def executor(**kwargs):
+        calls.append(kwargs["spec"])
+        raw = write_raw_object(
+            Path(kwargs["environment"]["KRX_PRIVATE_RAW_DIR"]),
+            b"binding-master",
+            git_worktree=kwargs["git_worktree"],
+        )
+        return {
+            "completed": True,
+            "resumed": False,
+            "request_metadata_sha256": "5" * 64,
+            "raw_object_sha256": raw["raw_object_sha256"],
+            "raw_bytes_size": raw["raw_bytes_size"],
+            "response_rows": 1,
+            "retrieved_at": EVAL.isoformat(),
+            "response_schema_sha256": "6" * 64,
+            "response_payload_sha256": "7" * 64,
+            "receipt_fingerprint_sha256": "8" * 64,
+            "network_request_attempted": False,
+            "raw_rows_emitted": False,
+            "feature_performance_testing_authorized": False,
+            "sealed_holdout_authorized": False,
+            "live_trading_authorized": False,
+        }
+
+    out = execute_identity_standard_code_binding(
+        environment=_env(tmp_path, consent=True),
+        git_worktree=str(worktree),
+        executor=executor,
+        task_builder=lambda *args, **kwargs: [_binding_task()],
+        evaluation_time=EVAL,
+    )
+    assert len(calls) == 1
+    assert out["mode"] == "EXECUTE_IDENTITY_STANDARD_CODE_BINDING"
+    assert out["task_count"] == 1
+    assert out["completed_task_count"] == 1
+    assert out["phase_complete"] is True
+    assert out["phase_status"] == "COMPLETE"
+    assert out["raw_rows_emitted"] is False
+    assert out["feature_performance_testing_authorized"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+    assert "20200102" not in str(out)
+    assert (tmp_path / "private" / out["private_batch_relpath"]).is_file()
