@@ -151,6 +151,14 @@ Candidate low-level BLDs or screen transports remain provisional until live auth
 
 `KRX_ID` / `KRX_PW` must never be described as OpenAPI `AUTH_KEY` authentication. A green push workflow whose authenticated step was skipped is diagnostic execution evidence only.
 
+### Pinned Data Marketplace route candidates — 2026-10-02
+
+Canonical map: `INDEXALERT_KRX_DATA_MARKETPLACE_ROUTE_MAP.md` / `.json`.
+
+The project pins `beaten-by-the-market/krx-data-api@e6ebac9b71482db127348d8a08ebc6743aa3b50e` only as a reproducible transport implementation. Its catalog maps the current candidates `MDCSTAT21301`, `MDCSTAT23801`, `MDCSTAT23902` and `MDCSTAT02303`; direct `MDCSTAT23701` cleanup transport remains provisional. These are not official KRX approval artifacts and must not be promoted to Gate A/B PASS until the project itself demonstrates the approved authenticated route and exact schema/history contract.
+
+The pinned client login implementation reads `KRX_ID` / `KRX_PW` and posts to the KRX Data Marketplace login endpoint, but credential mechanics do not establish authorization or intended-use rights. The existing structured authorization-evidence and explicit-consent preflight remains mandatory.
+
 ### Route 3 — KRX data purchase / distribution products
 
 Purchased/distributed data products are separate access/licensing routes from the free/public OpenAPI catalog and from authenticated web-session screens. The existence of a feed, screen or API name does not imply another route may legally or technically substitute for it.
