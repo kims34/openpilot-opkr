@@ -172,3 +172,25 @@ def test_later_krx_network_stages_have_independent_authority():
     data["stage_specific_authority"]["status_economics"]["exact_status_economics_claim_allowed"] = True
     with pytest.raises(KRXHistoricalExecutionContractError, match="exact status economics claim illegally allowed"):
         validate_execution_contract(data)
+
+
+def test_per_security_execution_contract_is_bound_to_prepared_task_set():
+    data = _data()
+    stage = data["stage_specific_authority"]["per_security_history"]
+    assert stage["prepared_task_count"] == 14296
+    assert stage["prepared_task_count_by_kind"] == {
+        "investor_trading_individual_daily": 9485,
+        "trading_halt": 4811,
+    }
+    assert stage["network_request_attempted_during_prepare"] is False
+    assert stage["exact_prepared_scope_required"] is True
+
+    data = _data()
+    data["stage_specific_authority"]["per_security_history"]["prepared_task_count"] = 14295
+    with pytest.raises(KRXHistoricalExecutionContractError, match="per-security prepared task count drift"):
+        validate_execution_contract(data)
+
+    data = _data()
+    data["stage_specific_authority"]["per_security_history"]["prepared_task_set_fingerprint_sha256"] = "0" * 64
+    with pytest.raises(KRXHistoricalExecutionContractError, match="per-security prepared task-set drift"):
+        validate_execution_contract(data)
