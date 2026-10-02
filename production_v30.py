@@ -12,6 +12,7 @@ import math
 from datetime import datetime, timezone
 
 import execution_evidence_ledger
+import krx_readonly_probe
 import monitor
 import production
 import production_v27
@@ -182,3 +183,8 @@ push_self_test.attach(app)
 # Sanitized aggregate push-health endpoint. No FCM token or device payload is
 # returned; this is operational observability only.
 push_health.attach(app)
+
+# KRX Open API connectivity/schema probe. The probe is read-only, caches one
+# sanitized startup result, never exposes AUTH_KEY, and has no promotion or
+# trading authority.
+krx_readonly_probe.attach(app)
