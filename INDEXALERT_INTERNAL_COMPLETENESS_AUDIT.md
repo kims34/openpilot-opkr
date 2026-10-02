@@ -52,6 +52,19 @@ Fail-closed fix:
 - the official terms constraint is frozen in `INDEXALERT_KRX_DATA_MARKETPLACE_TERMS_AUDIT.md/.json` and validated in CI;
 - confirmed `KRX_ID/KRX_PW` presence therefore does not authorize any automated KRX web-session request.
 
+### IC-004 — historical bulk preflight accepted arbitrary non-public service names — FIXED FAIL-CLOSED
+
+The historical deployment contract already required the exact dedicated Railway service `indexalert-krx-historical-worker`, but the bulk acquisition preflight previously rejected only a small denylist of public service names. A caller could therefore combine the dedicated-worker role marker with an arbitrary other non-public service name and satisfy the isolation check.
+
+Fail-closed fix:
+- `research_v1_krx_historical_acquisition_preflight.py` now requires exact `RAILWAY_SERVICE_NAME=indexalert-krx-historical-worker`;
+- an arbitrary private service name fails with `DEDICATED_WORKER_SERVICE_ISOLATION`;
+- the public runtime denylist remains as an additional explicit guard;
+- worker-core and preflight regression fixtures now bind the exact dedicated service name;
+- Official KRX Status Integrity succeeded after the hardening.
+
+This change adds no service, volume, credential, bulk-execution consent, source-gate authority, holdout authority or live-order authority.
+
 ### Order-path audit
 
 No Kiwoom network/auth/order-submission implementation is present in the reviewed native execution module; it is offline normalization/reconciliation only and hard-codes project LIVE admission/provenance false. Automation control validates broker-neutral intents/capital ceilings and does not submit orders. No internal evidence was found that authorizes real-account ordering.
