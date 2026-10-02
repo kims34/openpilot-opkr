@@ -88,3 +88,25 @@ def test_binding_contract_is_bound_to_prepared_145_task_set():
     data["prepared_task_set"]["task_count"] = 144
     with pytest.raises(KRXIdentityBindingConsentError, match="prepared binding task count drift"):
         validate_contract(data)
+
+
+def test_completed_binding_authority_is_consumed_and_nonreusable():
+    data = _data()
+    assert data["status"] == "FROZEN_USER_AUTHORIZED_ONCE_EXECUTION_COMPLETE_AUTHORITY_CONSUMED"
+    assert data["user_authorization"]["authorized"] is False
+    assert data["user_authorization"]["consumed"] is True
+    assert data["user_authorization"]["reusable"] is False
+    assert data["completed_execution"]["task_count"] == 145
+    assert data["completed_execution"]["completed_task_count"] == 145
+    assert data["completed_execution"]["network_request_attempt_count"] == 145
+    assert data["completed_execution"]["phase_complete"] is True
+
+    data = _data()
+    data["user_authorization"]["reusable"] = True
+    with pytest.raises(KRXIdentityBindingConsentError, match="reuse illegally enabled"):
+        validate_contract(data)
+
+    data = _data()
+    data["completed_execution"]["completed_task_count"] = 144
+    with pytest.raises(KRXIdentityBindingConsentError, match="completed execution count drift"):
+        validate_contract(data)
