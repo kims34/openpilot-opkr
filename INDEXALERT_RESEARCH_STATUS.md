@@ -275,4 +275,4 @@ Continuous research governance is now implemented by `research_v1_continuous_res
 
 ## Internal completeness audit — authority boundary hardened
 
-`INDEXALERT_INTERNAL_COMPLETENESS_AUDIT.md` records the internal audit. Successor research can become promotion-eligible but cannot self-authorize a Core code mutation; caller booleans cannot grant that authority. Real-order and sealed-holdout authorization remain false. Remaining material blockers are external/evidence-bound.
+`INDEXALERT_INTERNAL_COMPLETENESS_AUDIT.md` records the internal audit. Successor research may satisfy represented promotion conditions but remains `promotion_eligible=false` until independent canonical gate admission exists; caller booleans cannot grant that authority. The audit also fixed a legacy KRX staging ambiguity: `research_v1_krx.py` now hard-codes `judge_eligible=false`, requires source-governance admission, and cannot label pykrx transport success as authenticated Final-Judge evidence. Real-order and sealed-holdout authorization remain false. Remaining material blockers are external/evidence-bound.
