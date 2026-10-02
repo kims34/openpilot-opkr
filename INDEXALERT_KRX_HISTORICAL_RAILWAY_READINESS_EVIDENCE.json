@@ -2,7 +2,7 @@
   "schema_version": "1",
   "evidence_id": "INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1",
   "evidence_class": "RAILWAY_READ_ONLY_INFRASTRUCTURE_GAP_AUDIT",
-  "observed_at": "2026-10-02T19:20:00+09:00",
+  "observed_at": "2026-10-02T21:27:00+09:00",
   "project": {
     "name": "IndexAlert",
     "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
@@ -16,7 +16,19 @@
     "dedicated_volume_mount": "/data",
     "private_raw_root": "/data/indexalert/krx-historical-v3",
     "public_domain_forbidden": true,
-    "restart_policy": "NEVER"
+    "restart_policy": "NEVER",
+    "cron_forbidden": true,
+    "required_secret_names": [
+      "KRX_ID",
+      "KRX_PW",
+      "KRX_AUTH_KEY"
+    ],
+    "required_nonsecret_variables": {
+      "KRX_PRIVATE_RAW_DIR": "/data/indexalert/krx-historical-v3",
+      "INDEXALERT_KRX_HIST_WORKER_ROLE": "DEDICATED_ONE_SHOT"
+    },
+    "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
+    "bulk_consent_must_be_absent_initially": true
   },
   "observed_services": [
     {
@@ -52,7 +64,10 @@
     "bulk_network_execution_authorized_by_user": false,
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
-    "live_trading_authorized": false
+    "live_trading_authorized": false,
+    "worker_secret_configuration_authorized": false,
+    "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "Explicitly authorize creation of a new Railway service and dedicated persistent volume before any historical network job."
+  "next_external_action": "Explicitly authorize creation of a new Railway service and dedicated persistent volume, then configure worker-only KRX secrets in preflight-only mode. Bulk and expected-scope network execution remain separately consent-gated.",
+  "worker_only_secrets_configured": false
 }
