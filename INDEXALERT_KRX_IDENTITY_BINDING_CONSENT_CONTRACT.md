@@ -21,6 +21,15 @@ Canonical seed evidence:
 
 The private seed objects remain on the dedicated Railway volume and are not copied into GitHub.
 
+
+Network-free preparation is also complete and frozen:
+- prepared request count: **145**
+- request kind: `security_master` = **145**
+- prepared task-set SHA-256: `b3e9c845d74b0b479af0fd95d9015de92697fbd82b7bf07f9765378dfafd11d9`
+- private task-manifest metadata SHA-256: `940f446caec81dd1a4a7b3a01053ae3f6a6ef6c79654e23bf2b971dca3622a6c`
+- canonical public evidence: `INDEXALERT_KRX_IDENTITY_BINDING_PREPARATION_EVIDENCE.md/.json`
+- network requests during preparation: **0**
+
 ## Exact future approval phrase
 
 To authorize this stage only, the user must explicitly send:
