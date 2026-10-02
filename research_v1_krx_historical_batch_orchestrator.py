@@ -1,8 +1,9 @@
 """Offline-only staged task builder for the frozen KRX historical job.
 
 This module never imports a network client and never performs KRX requests.
-It converts the frozen acquisition plan plus already reconstructed historical
-episodes into private task specifications consumed later by the dedicated worker.
+It emits request specifications in the exact shape consumed by
+research_v1_krx_historical_request_executor. Endpoint BLD/menu/default resolution
+therefore has one canonical implementation: the pinned endpoint resolver.
 
 Security identifiers may exist only in private task rows. Public summaries emit
 counts/hashes only.
@@ -22,14 +23,13 @@ from research_v1_krx_historical_acquisition_plan import (
 from research_v1_krx_historical_execution_contract import (
     validate_file as validate_execution_contract_file,
 )
+from research_v1_krx_historical_request_executor import CLEANUP_CURRENT
 from research_v1_krx_historical_request_planner import build_private_request_plan
 
 
 PLAN_PATH = Path("INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.json")
 PLAN_ID = "INDEXALERT-KRX-HIST-ACQ-v3"
 EXECUTION_CONTRACT_ID = "INDEXALERT-KRX-HIST-EXEC-v3"
-OPENAPI_ROUTE = "KRX_OPENAPI_APPROVED_SERVICE"
-DATA_MARKETPLACE_ROUTE = "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION"
 
 PHASE_ORDER = (
     "IDENTITY_SEED",
@@ -60,33 +60,19 @@ def _task(
     *,
     phase: str,
     source_family: str,
-    access_route: str,
-    dataset_identifier: str,
-    method: str,
-    request_metadata: Mapping[str, Any],
-    endpoint: str | None = None,
-    bld: str | None = None,
-    menu_id: str | None = None,
+    kind: str,
+    params: Mapping[str, Any],
     contains_security_identifier: bool,
 ) -> dict[str, Any]:
     if phase not in PHASE_ORDER:
         raise KRXHistoricalBatchOrchestratorError(f"unknown phase: {phase}")
-    if bool(endpoint) == bool(bld):
-        raise KRXHistoricalBatchOrchestratorError(
-            "exactly one of endpoint or bld is required"
-        )
+    spec = {"kind": str(kind), "params": dict(params)}
     base = {
         "plan_id": PLAN_ID,
         "execution_contract_id": EXECUTION_CONTRACT_ID,
         "phase": phase,
         "source_family": source_family,
-        "access_route": access_route,
-        "dataset_identifier": dataset_identifier,
-        "method": method,
-        "endpoint": endpoint,
-        "bld": bld,
-        "menu_id": menu_id,
-        "request_metadata": dict(request_metadata),
+        "request_spec": spec,
         "contains_security_identifier": bool(contains_security_identifier),
     }
     base["task_id"] = _canonical_sha256(base)
@@ -108,10 +94,13 @@ def _load_plan() -> dict[str, Any]:
 def build_identity_seed_tasks() -> list[dict[str, Any]]:
     """Build the fixed 27-request identity/status seed queue.
 
-    2 approved OpenAPI master snapshots
+    2 approved OpenAPI security-master snapshots
     + 12 new-listing year windows
     + 12 delisted-history year windows
     + 1 current cleanup reconciliation snapshot.
+
+    These specs intentionally omit pinned endpoint defaults; the request executor
+    resolves those defaults from the one pinned endpoint catalog at execution.
     """
     plan = _load_plan()
     seed = plan["phases"]["identity_seed"]
@@ -124,11 +113,8 @@ def build_identity_seed_tasks() -> list[dict[str, Any]]:
             _task(
                 phase="IDENTITY_SEED",
                 source_family="KRX_SECURITY_STATUS",
-                access_route=OPENAPI_ROUTE,
-                dataset_identifier="stk_isu_base_info",
-                method="GET",
-                endpoint=row["endpoint"],
-                request_metadata={"basDd": row["basDd"]},
+                kind="security_master",
+                params={"basDd": row["basDd"]},
                 contains_security_identifier=False,
             )
         )
@@ -141,24 +127,8 @@ def build_identity_seed_tasks() -> list[dict[str, Any]]:
             _task(
                 phase="IDENTITY_SEED",
                 source_family="KRX_SECURITY_STATUS",
-                access_route=DATA_MARKETPLACE_ROUTE,
-                dataset_identifier="MDCSTAT20001",
-                method="csv",
-                bld=new_cfg["bld"],
-                menu_id="MDC0201",
-                request_metadata={
-                    "mktId": "ALL",
-                    "tboxisurCd_finder_comnm0_0": "전체",
-                    "isurCd": "ALL",
-                    "isurCd2": "ALL",
-                    "codeNmisurCd_finder_comnm0_0": "",
-                    "param1isurCd_finder_comnm0_0": "",
-                    "leadTpComp": "",
-                    "listClssCd": "ALL",
-                    "secugrpTp": "ALL",
-                    "cntrIsoCd": "ALL",
-                    "share": "1",
-                    "csvxls_isNo": "true",
+                kind="new_listing",
+                params={
                     "strtDd": str(start).replace("-", ""),
                     "endDd": str(end).replace("-", ""),
                 },
@@ -174,20 +144,8 @@ def build_identity_seed_tasks() -> list[dict[str, Any]]:
             _task(
                 phase="IDENTITY_SEED",
                 source_family="KRX_SECURITY_STATUS",
-                access_route=DATA_MARKETPLACE_ROUTE,
-                dataset_identifier="MDCSTAT23801",
-                method="csv",
-                bld=delisted_cfg["bld"],
-                menu_id="MDC0202",
-                request_metadata={
-                    "mktId": "ALL",
-                    "tboxisuCd_finder_listdelisu0_1": "전체",
-                    "isuCd": "ALL",
-                    "isuCd2": "ALL",
-                    "codeNmisuCd_finder_listdelisu0_1": "",
-                    "param1isuCd_finder_listdelisu0_1": "",
-                    "share": "1",
-                    "csvxls_isNo": "true",
+                kind="delisted",
+                params={
                     "strtDd": str(start).replace("-", ""),
                     "endDd": str(end).replace("-", ""),
                 },
@@ -204,12 +162,8 @@ def build_identity_seed_tasks() -> list[dict[str, Any]]:
         _task(
             phase="IDENTITY_SEED",
             source_family="KRX_SECURITY_STATUS",
-            access_route=DATA_MARKETPLACE_ROUTE,
-            dataset_identifier="MDCSTAT23701_CURRENT_RECONCILIATION",
-            method=cleanup["method"],
-            bld=cleanup["bld"],
-            menu_id="MDC0202",
-            request_metadata=dict(cleanup["request_params"]),
+            kind=CLEANUP_CURRENT,
+            params=dict(cleanup["request_params"]),
             contains_security_identifier=False,
         )
     )
@@ -232,27 +186,22 @@ def build_listing_date_master_tasks(
     start = pd.Timestamp("2015-06-15")
     end = pd.Timestamp("2026-10-01")
     dates = sorted({d for d in dates if start <= d <= end})
-    tasks = []
-    for date in dates:
-        tasks.append(
-            _task(
-                phase="IDENTITY_STANDARD_CODE_BINDING",
-                source_family="KRX_SECURITY_STATUS",
-                access_route=OPENAPI_ROUTE,
-                dataset_identifier="stk_isu_base_info",
-                method="GET",
-                endpoint="https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
-                request_metadata={"basDd": date.strftime("%Y%m%d")},
-                contains_security_identifier=False,
-            )
+    return [
+        _task(
+            phase="IDENTITY_STANDARD_CODE_BINDING",
+            source_family="KRX_SECURITY_STATUS",
+            kind="security_master",
+            params={"basDd": date.strftime("%Y%m%d")},
+            contains_security_identifier=False,
         )
-    return tasks
+        for date in dates
+    ]
 
 
 def build_per_security_history_tasks(
     episodes: pd.DataFrame,
 ) -> list[dict[str, Any]]:
-    """Translate the frozen private request plan into exact worker tasks."""
+    """Translate the frozen private request plan into executor-compatible specs."""
     private = build_private_request_plan(episodes)
     tasks: list[dict[str, Any]] = []
 
@@ -264,13 +213,8 @@ def build_per_security_history_tasks(
                 _task(
                     phase="PER_SECURITY_HISTORY",
                     source_family="KRX_SECURITY_STATUS",
-                    access_route=DATA_MARKETPLACE_ROUTE,
-                    dataset_identifier="MDCSTAT21301",
-                    method="json",
-                    bld="dbms/MDC/STAT/issue/MDCSTAT21301",
-                    menu_id="MDC0202",
-                    request_metadata={
-                        "param1isuCd_finder_stkisu0_3": "ALL",
+                    kind="trading_halt",
+                    params={
                         "isuCd": row.isuCd,
                         "isuCd2": row.isuCd2,
                         "strtDd": start,
@@ -284,23 +228,9 @@ def build_per_security_history_tasks(
                 _task(
                     phase="PER_SECURITY_HISTORY",
                     source_family="KRX_INVESTOR_FLOW",
-                    access_route=DATA_MARKETPLACE_ROUTE,
-                    dataset_identifier="MDCSTAT02303",
-                    method="csv",
-                    bld="dbms/MDC/STAT/standard/MDCSTAT02303",
-                    menu_id="MDC0201020302",
-                    request_metadata={
-                        "inqTpCd": "2",
-                        "trdVolVal": "2",
-                        "askBid": "3",
-                        "detailView": "1",
-                        "tboxisuCd_finder_stkisu0_0": "",
+                    kind="investor_trading_individual_daily",
+                    params={
                         "isuCd": row.isuCd,
-                        "isuCd2": "",
-                        "codeNmisuCd_finder_stkisu0_0": "",
-                        "param1isuCd_finder_stkisu0_0": "ALL",
-                        "money": "1",
-                        "csvxls_isNo": "false",
                         "strtDd": start,
                         "endDd": end,
                     },
@@ -323,18 +253,18 @@ def public_task_summary(tasks: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     """Metadata-only summary safe for public CI logs."""
     rows = list(tasks)
     by_phase: dict[str, int] = {}
-    by_dataset: dict[str, int] = {}
+    by_kind: dict[str, int] = {}
     for row in rows:
         phase = str(row["phase"])
-        dataset = str(row["dataset_identifier"])
+        kind = str(row["request_spec"]["kind"])
         by_phase[phase] = by_phase.get(phase, 0) + 1
-        by_dataset[dataset] = by_dataset.get(dataset, 0) + 1
+        by_kind[kind] = by_kind.get(kind, 0) + 1
     return {
         "plan_id": PLAN_ID,
         "execution_contract_id": EXECUTION_CONTRACT_ID,
         "task_count": len(rows),
         "task_count_by_phase": dict(sorted(by_phase.items())),
-        "task_count_by_dataset": dict(sorted(by_dataset.items())),
+        "task_count_by_kind": dict(sorted(by_kind.items())),
         "task_set_fingerprint_sha256": _canonical_sha256(
             sorted(str(row["task_id"]) for row in rows)
         ),
