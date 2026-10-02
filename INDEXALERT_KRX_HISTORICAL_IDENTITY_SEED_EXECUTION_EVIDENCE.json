@@ -1,0 +1,45 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-HIST-IDENTITY-SEED-2026-10-02-v1",
+  "observed_at": "2026-10-02T23:08:15+09:00",
+  "plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+  "execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+  "execution": {
+    "railway_service": "indexalert-krx-historical-worker",
+    "deployment_id": "d268e5b0-b7c2-46be-b9ae-ca41d27cdb02",
+    "source_revision": "6343f01b493404d59736e06eb6968e9820d0e595",
+    "dockerfile": "Dockerfile.krx-historical-worker",
+    "mode": "EXECUTE_IDENTITY_SEED",
+    "task_count": 27,
+    "completed_task_count": 27,
+    "resumed_task_count": 0,
+    "network_request_attempt_count": 27,
+    "phase_status": "COMPLETE",
+    "phase_complete": true
+  },
+  "integrity": {
+    "task_set_fingerprint_sha256": "fb69ed44c2944911417dc26f088f0c5876942530a7c17abdd1fc38ee3f197aa1",
+    "private_batch_metadata_sha256": "054a9689adac7f57fa5a797f10ff9a69d3a7abd34a8697b624464588c6f0502f",
+    "private_batch_relpath": "batches/identity-seed-v3.json",
+    "raw_rows_emitted": false
+  },
+  "post_run_boundary": {
+    "execution_consent_disabled_again": true,
+    "start_command_restored_to_preflight_only": true,
+    "identity_standard_code_binding_authorized": false,
+    "expected_scope_network_execution_authorized": false,
+    "per_security_history_execution_authorized": false,
+    "status_economics_execution_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "source_gate_c_closed": false,
+    "source_gate_d_closed": false,
+    "source_gate_e_closed": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  },
+  "safety_correction": {
+    "redeploy_builder_mismatch_attempts": 2,
+    "krx_network_requests_from_mismatched_attempts": 0,
+    "research_branch_railway_json_pinned_to_worker_dockerfile": true
+  }
+}
