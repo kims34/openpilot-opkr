@@ -34,6 +34,8 @@ from research_v1_krx_historical_fetchers import (
     fetch_openapi_raw,
 )
 from research_v1_krx_private_store import (
+    read_private_json,
+    verify_raw_object,
     write_private_json,
     write_raw_object,
 )
@@ -98,22 +100,25 @@ def _persist_response(
         "method": "GET",
         "params": {"basDd": requested_date},
     }
+    request_sha = _sha256(request_meta)
+    payload_sha = dataframe_payload_fingerprint(frame)
+    schema_sha = schema_fingerprint(
+        list(frame.columns),
+        [str(x) for x in frame.dtypes],
+    )
     receipt = {
-        "receipt_version": "2026-10-02.expected-scope-v1",
+        "receipt_version": "2026-10-02.expected-scope-v2",
         "contract_id": CONTRACT_ID,
         "dataset_identifier": dataset_identifier,
         "requested_date": requested_date,
-        "request_metadata_sha256": _sha256(request_meta),
+        "request_metadata_sha256": request_sha,
         "retrieved_at": pd.Timestamp(result.retrieved_at).isoformat(),
         "transport_status": str(result.transport_status),
         "raw_object_sha256": raw["raw_object_sha256"],
         "raw_bytes_size": int(raw["raw_bytes_size"]),
         "response_rows": int(len(frame)),
-        "response_schema_sha256": schema_fingerprint(
-            list(frame.columns),
-            [str(x) for x in frame.dtypes],
-        ),
-        "response_payload_sha256": dataframe_payload_fingerprint(frame),
+        "response_schema_sha256": schema_sha,
+        "response_payload_sha256": payload_sha,
         "network_request_attempted": True,
         "raw_rows_emitted": False,
         "source_gate_c_closed": False,
@@ -123,9 +128,44 @@ def _persist_response(
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
     }
+
+    receipt_dir = Path(root) / "expected_scope" / "receipts" / requested_date / dataset_identifier
+    if receipt_dir.exists():
+        for existing_path in sorted(receipt_dir.glob("*.json")):
+            rel_existing = str(existing_path.relative_to(Path(root)))
+            wrapped = read_private_json(
+                root,
+                rel_existing,
+                git_worktree=git_worktree,
+            )
+            existing = wrapped["value"]
+            if existing.get("request_metadata_sha256") != request_sha:
+                continue
+            if (
+                existing.get("response_payload_sha256") != payload_sha
+                or existing.get("response_schema_sha256") != schema_sha
+                or existing.get("raw_object_sha256") != raw["raw_object_sha256"]
+            ):
+                raise KRXExpectedScopeExecutorError(
+                    "same expected-scope request produced conflicting payload"
+                )
+            verify_raw_object(
+                root,
+                str(existing["raw_object_sha256"]),
+                expected_size=int(existing["raw_bytes_size"]),
+                git_worktree=git_worktree,
+            )
+            return {
+                **existing,
+                "receipt_metadata_sha256": wrapped["metadata_sha256"],
+                "receipt_relpath": rel_existing,
+                "reused_immutable_receipt": True,
+            }
+
+    receipt_fp = _sha256(receipt)
     rel = (
-        f"expected_scope/receipts/{requested_date}/"
-        f"{dataset_identifier}.json"
+        f"expected_scope/receipts/{requested_date}/{dataset_identifier}/"
+        f"{receipt_fp}.json"
     )
     written = write_private_json(
         root,
@@ -137,6 +177,7 @@ def _persist_response(
         **receipt,
         "receipt_metadata_sha256": written["metadata_sha256"],
         "receipt_relpath": rel,
+        "reused_immutable_receipt": False,
     }
 
 
@@ -241,13 +282,37 @@ def execute_expected_scope_date(
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
     }
-    scope_rel = f"expected_scope/dates/{day}.json"
-    scope_write = write_private_json(
-        root,
-        scope_rel,
-        private_scope,
-        git_worktree=git_worktree,
-    )
+    scope_fp = _sha256(private_scope)
+    scope_dir = Path(root) / "expected_scope" / "dates" / day
+    scope_rel = f"expected_scope/dates/{day}/{scope_fp}.json"
+    scope_write = None
+    if scope_dir.exists():
+        existing_scope_paths = sorted(scope_dir.glob("*.json"))
+        for existing_path in existing_scope_paths:
+            rel_existing = str(existing_path.relative_to(Path(root)))
+            wrapped = read_private_json(
+                root,
+                rel_existing,
+                git_worktree=git_worktree,
+            )
+            existing_scope = wrapped["value"]
+            if _sha256(existing_scope) == scope_fp:
+                scope_rel = rel_existing
+                scope_write = {
+                    "metadata_sha256": wrapped["metadata_sha256"],
+                    "metadata_relpath": rel_existing,
+                }
+                break
+            raise KRXExpectedScopeExecutorError(
+                "same expected-scope date produced conflicting private scope"
+            )
+    if scope_write is None:
+        scope_write = write_private_json(
+            root,
+            scope_rel,
+            private_scope,
+            git_worktree=git_worktree,
+        )
 
     safe = public_date_summary(materialized)
     safe.update(
