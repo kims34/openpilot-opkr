@@ -83,6 +83,7 @@ def test_identity_seed_executes_exactly_27_tasks_and_writes_private_batch(tmp_pa
             "raw_object_sha256": raw["raw_object_sha256"],
             "raw_bytes_size": raw["raw_bytes_size"],
             "response_rows": n,
+            "retrieved_at": EVAL.isoformat(),
             "response_schema_sha256": "a" * 64,
             "response_payload_sha256": "b" * 64,
             "receipt_fingerprint_sha256": "c" * 64,
@@ -116,6 +117,7 @@ def test_identity_seed_executes_exactly_27_tasks_and_writes_private_batch(tmp_pa
     batch = tmp_path / "private" / out["private_batch_relpath"]
     assert batch.is_file()
     assert batch.stat().st_mode & 0o777 == 0o600
+    assert "retrieved_at" in batch.read_text(encoding="utf-8")
     rendered = str(out)
     assert "005930" not in rendered
     assert "KR7005930003" not in rendered
