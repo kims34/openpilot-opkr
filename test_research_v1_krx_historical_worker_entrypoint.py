@@ -15,6 +15,8 @@ from research_v1_krx_historical_worker_entrypoint import (
     execute_identity_seed,
     execute_identity_standard_code_binding,
     execute_per_security_history,
+    load_frozen_identity_binding_tasks,
+    prepare_identity_standard_code_binding,
     prepare_per_security_history,
     prepare_status_economics,
     preflight_only,
@@ -207,6 +209,73 @@ def _binding_task():
     }
 
 
+def test_prepare_identity_binding_is_network_free_and_freezes_exact_task_set(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_seed_predecessor(tmp_path, worktree)
+
+    out = prepare_identity_standard_code_binding(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=lambda *args, **kwargs: [_binding_task()],
+    )
+    assert out["mode"] == "PREPARE_IDENTITY_STANDARD_CODE_BINDING"
+    assert out["task_count"] == 1
+    assert out["task_count_by_kind"] == {"security_master": 1}
+    assert out["phase_status"] == "PENDING"
+    assert out["phase_complete"] is False
+    assert out["network_request_attempted"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["raw_rows_emitted"] is False
+    assert out["sealed_holdout_authorized"] is False
+    assert out["live_trading_authorized"] is False
+
+    manifest = tmp_path / "private" / out["private_task_manifest_relpath"]
+    assert manifest.is_file()
+    assert manifest.stat().st_mode & 0o777 == 0o600
+
+    frozen = load_frozen_identity_binding_tasks(
+        str((tmp_path / "private").resolve()),
+        git_worktree=str(worktree),
+        task_builder=lambda *args, **kwargs: [_binding_task()],
+    )
+    assert frozen == [_binding_task()]
+
+
+def test_identity_binding_frozen_manifest_rejects_drift(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    _complete_seed_predecessor(tmp_path, worktree)
+    out = prepare_identity_standard_code_binding(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=lambda *args, **kwargs: [_binding_task()],
+    )
+
+    import json
+    from research_v1_krx_private_store import write_private_json
+
+    manifest = tmp_path / "private" / out["private_task_manifest_relpath"]
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["task_set_fingerprint_sha256"] = "0" * 64
+    write_private_json(
+        (tmp_path / "private").resolve(),
+        out["private_task_manifest_relpath"],
+        data,
+        git_worktree=str(worktree),
+    )
+
+    with pytest.raises(
+        KRXHistoricalWorkerEntrypointError,
+        match="identity binding task manifest fingerprint drift",
+    ):
+        load_frozen_identity_binding_tasks(
+            str((tmp_path / "private").resolve()),
+            git_worktree=str(worktree),
+            task_builder=lambda *args, **kwargs: [_binding_task()],
+        )
+
+
 def test_identity_binding_blocks_before_executor_without_bulk_consent(tmp_path):
     worktree = (tmp_path / "repo").resolve()
     worktree.mkdir()
@@ -218,7 +287,7 @@ def test_identity_binding_blocks_before_executor_without_bulk_consent(tmp_path):
             environment=_env(tmp_path, consent=False),
             git_worktree=str(worktree),
             executor=lambda **kwargs: calls.append(kwargs),
-            task_builder=lambda *args, **kwargs: [_binding_task()],
+            task_loader=lambda *args, **kwargs: [_binding_task()],
             evaluation_time=EVAL,
         )
     assert calls == []
@@ -239,7 +308,7 @@ def test_identity_binding_rejects_reused_bulk_consent_without_stage_consent(tmp_
             environment=_env(tmp_path, consent=True),
             git_worktree=str(worktree),
             executor=lambda **kwargs: calls.append(kwargs),
-            task_builder=lambda *args, **kwargs: builders.append(True) or [_binding_task()],
+            task_loader=lambda *args, **kwargs: builders.append(True) or [_binding_task()],
             evaluation_time=EVAL,
         )
     assert calls == []
@@ -254,7 +323,7 @@ def test_identity_binding_requires_completed_seed_phase(tmp_path):
             environment=_binding_env(tmp_path),
             git_worktree=str(worktree),
             executor=lambda **kwargs: {},
-            task_builder=lambda *args, **kwargs: [_binding_task()],
+            task_loader=lambda *args, **kwargs: [_binding_task()],
             evaluation_time=EVAL,
         )
 
@@ -290,11 +359,24 @@ def test_identity_binding_executes_private_task_set_after_seed_completion(tmp_pa
             "live_trading_authorized": False,
         }
 
+    prepare_identity_standard_code_binding(
+        environment=_env(tmp_path, consent=False),
+        git_worktree=str(worktree),
+        task_builder=lambda *args, **kwargs: [_binding_task()],
+    )
+
+    def frozen_loader(root, *, git_worktree=None):
+        return load_frozen_identity_binding_tasks(
+            root,
+            git_worktree=git_worktree,
+            task_builder=lambda *args, **kwargs: [_binding_task()],
+        )
+
     out = execute_identity_standard_code_binding(
         environment=_binding_env(tmp_path),
         git_worktree=str(worktree),
         executor=executor,
-        task_builder=lambda *args, **kwargs: [_binding_task()],
+        task_loader=frozen_loader,
         evaluation_time=EVAL,
     )
     assert len(calls) == 1
