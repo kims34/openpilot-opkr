@@ -1,0 +1,77 @@
+{
+  "schema_version": "1",
+  "deployment_contract_id": "INDEXALERT-KRX-HIST-WORKER-DEPLOY-v1",
+  "historical_acquisition_plan_id": "INDEXALERT-KRX-HIST-ACQ-v3",
+  "historical_execution_contract_id": "INDEXALERT-KRX-HIST-EXEC-v3",
+  "repository": "kims34/openpilot-opkr",
+  "branch": "index-alert-research-v1",
+  "service_name": "indexalert-krx-historical-worker",
+  "dockerfile_path": "Dockerfile.krx-historical-worker",
+  "deployment_mode": "PREFLIGHT_ONLY_BY_DEFAULT",
+  "public_domain_forbidden": true,
+  "cron_forbidden": true,
+  "restart_policy": "NEVER",
+  "required_volume": {
+    "dedicated_persistent_volume": true,
+    "mount_path": "/data",
+    "raw_root": "/data/indexalert/krx-historical-v3",
+    "must_be_visible_in_railway_service_config_before_execution": true,
+    "sharing_with_public_runtime_forbidden": true
+  },
+  "required_variables": {
+    "KRX_ID": {
+      "secret": true,
+      "purpose": "KRX Data Marketplace authenticated web session"
+    },
+    "KRX_PW": {
+      "secret": true,
+      "purpose": "KRX Data Marketplace authenticated web session"
+    },
+    "KRX_AUTH_KEY": {
+      "secret": true,
+      "purpose": "approved KRX OpenAPI security-master identity snapshots"
+    },
+    "KRX_PRIVATE_RAW_DIR": {
+      "secret": false,
+      "exact_value": "/data/indexalert/krx-historical-v3"
+    },
+    "INDEXALERT_KRX_HIST_WORKER_ROLE": {
+      "secret": false,
+      "exact_value": "DEDICATED_ONE_SHOT"
+    }
+  },
+  "railway_runtime_attestation": {
+    "RAILWAY_SERVICE_NAME_expected": "indexalert-krx-historical-worker",
+    "forbidden_service_names": [
+      "indexalert-runtime",
+      "indexalert-backend",
+      "indexalert-push"
+    ]
+  },
+  "execution_consent": {
+    "env_name": "KRX_HISTORICAL_ACQUISITION_CONSENT",
+    "exact_value": "I_AUTHORIZE_INDEXALERT_KRX_HIST_ACQ_v3",
+    "must_be_absent_during_initial_preflight_deployment": true,
+    "may_be_set_only_after_explicit_user_bulk_execution_approval": true
+  },
+  "start_contract": {
+    "default_command": "python research_v1_krx_historical_worker_entrypoint.py",
+    "default_network_request_attempted": false,
+    "execute_identity_seed_command": "python research_v1_krx_historical_worker_entrypoint.py --execute-identity-seed",
+    "execute_command_forbidden_until_user_bulk_approval": true
+  },
+  "public_output": {
+    "raw_rows_forbidden": true,
+    "raw_response_bytes_forbidden": true,
+    "secrets_forbidden": true,
+    "metadata_counts_hashes_only": true
+  },
+  "authority": {
+    "service_creation_authorized": false,
+    "volume_creation_or_attachment_authorized": false,
+    "bulk_network_execution_authorized_by_user": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "live_trading_authorized": false
+  }
+}
