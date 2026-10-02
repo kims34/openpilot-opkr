@@ -250,11 +250,17 @@ def build_per_security_history_tasks(
 
 
 def _history_short_code(value: Any) -> str:
-    text = "".join(ch for ch in str(value or "").strip() if ch.isdigit())
-    if len(text) > 6:
-        text = text[-6:]
-    text = text.zfill(6)
-    if len(text) != 6 or not text.isdigit():
+    """Canonicalize KRX history short codes without deleting letters."""
+    text = str(value or "").strip().upper()
+    if text.endswith(".0") and text[:-2].isdigit():
+        text = text[:-2]
+    if text.isdigit() and 1 <= len(text) <= 6:
+        text = text.zfill(6)
+    if (
+        len(text) != 6
+        or not text.isascii()
+        or not text.isalnum()
+    ):
         raise KRXHistoricalBatchOrchestratorError("invalid delisted-history short code")
     return text
 
