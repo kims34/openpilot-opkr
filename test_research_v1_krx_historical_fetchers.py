@@ -10,6 +10,8 @@ from research_v1_krx_historical_fetchers import (
     OTP_URL,
     fetch_data_marketplace_raw,
     fetch_openapi_raw,
+    parse_data_marketplace_raw,
+    parse_openapi_raw,
 )
 
 
@@ -147,3 +149,19 @@ def test_openapi_rejects_unexpected_endpoint_before_network():
             session=s,
         )
     assert s.calls == []
+
+
+def test_raw_parsers_support_resume_without_network():
+    csv_raw = "일자,개인\n20260921,7\n".encode("euc-kr")
+    csv_frame = parse_data_marketplace_raw("csv", csv_raw)
+    assert csv_frame.iloc[0]["개인"] == 7
+
+    json_raw = json.dumps(
+        {"OutBlock_1":[{"ISU_CD":"KR7005930003","ISU_SRT_CD":"005930"}]},
+        separators=(",",":"),
+    ).encode("utf-8")
+    frame = parse_openapi_raw(json_raw)
+    assert frame.iloc[0]["ISU_SRT_CD"] == "005930"
+
+    with pytest.raises(KRXHistoricalFetchError, match="method must be csv or json"):
+        parse_data_marketplace_raw("xml", b"x")
