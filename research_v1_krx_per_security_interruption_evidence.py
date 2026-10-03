@@ -46,6 +46,8 @@ def validate_evidence(d:Mapping[str,Any])->dict[str,Any]:
         _r(b.get(k) is True,f"{k} guard lost")
     for k in ("resume_authorized","status_economics_authorized","expected_scope_network_execution_authorized","feature_performance_testing_authorized","sealed_holdout_authorized","genuine_live_authorized","live_trading_authorized"):
         _r(b.get(k) is False,f"{k} illegally true")
+    _r(b.get("resume_consent_env")=="KRX_PER_SECURITY_HISTORY_RESUME_CONSENT","resume consent env drift")
+    _r(b.get("resume_consent_sentinel")=="I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1","resume consent sentinel drift")
     _r(int(p["completed_task_count"])+int(p["remaining_task_count"])==int(s["expected_task_count"]),"checkpoint accounting drift")
     return {"valid":True,"completed_task_count":11750,"remaining_task_count":2546,"failed_task_count":0,"resume_authorized":False}
 
