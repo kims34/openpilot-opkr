@@ -2,7 +2,7 @@
   "schema_version": "1",
   "evidence_id": "INDEXALERT-KRX-HIST-WORKER-RAILWAY-READINESS-2026-10-02-v1",
   "evidence_class": "RAILWAY_PREFLIGHT_PROVISIONING_EVIDENCE",
-  "observed_at": "2026-10-03T06:13:21+09:00",
+  "observed_at": "2026-10-03T09:51:48+09:00",
   "project": {
     "name": "IndexAlert",
     "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
@@ -82,7 +82,7 @@
     "worker_secret_configuration_authorized": false,
     "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "PER_SECURITY_HISTORY is prepared as exactly 14,296 frozen requests. Execute only after explicit stage approval I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1 plus the v3 bulk-network sentinel; no later stage is authorized.",
+  "next_external_action": "PER_SECURITY_HISTORY is interrupted at a verified 11,750/14,296 checkpoint with 2,546 remaining and failed=0. Original one-shot authority is consumed. Keep both execution consents disabled and preflight-only; resume only after a new explicit user authorization for the exact frozen scope using the CI-validated alphanumeric-short-code executor fix.",
   "worker_only_secrets_configured": true,
   "preflight_infrastructure_ready": true,
   "runtime_preflight": {
@@ -198,5 +198,26 @@
     "expected_scope_network_execution_authorized": false,
     "sealed_holdout_authorized": false,
     "live_trading_authorized": false
+  },
+  "per_security_history_interruption": {
+    "evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-INTERRUPTION-2026-10-03-v1",
+    "original_deployment_id": "bc79d1b5-5fb8-46c7-8067-682e61947014",
+    "original_source_revision": "9009c48a00394063c813d29219507ee2190ce09e",
+    "crashed_at_utc": "2026-10-03T00:45:16Z",
+    "reason_code": "ALPHANUMERIC_SHORT_CODE_VALIDATOR_MISMATCH",
+    "checkpoint_probe_deployment_id": "92439b24-644a-4d3d-a888-9e0ba568bfac",
+    "checkpoint_probe_source_revision": "d156f0dc6056924a798679bd9e93e1f2eb0241fc",
+    "expected_task_count": 14296,
+    "completed_task_count": 11750,
+    "remaining_task_count": 2546,
+    "failed_task_count": 0,
+    "phase_status": "IN_PROGRESS",
+    "phase_complete": false,
+    "task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+    "status_probe_network_request_attempted": false,
+    "original_authority_consumed": true,
+    "resume_authorized": false,
+    "resume_requires_new_user_authorization": true,
+    "executor_fix_ci_validated": true
   }
 }
