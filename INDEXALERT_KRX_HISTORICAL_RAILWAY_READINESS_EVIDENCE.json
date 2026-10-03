@@ -82,7 +82,7 @@
     "worker_secret_configuration_authorized": false,
     "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "PER_SECURITY_HISTORY is interrupted at a verified 11,750/14,296 checkpoint with 2,546 remaining and failed=0. Original one-shot authority is consumed. Keep all execution consents disabled and preflight-only. Resume only after a new explicit user message `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1`; runtime additionally requires `KRX_PER_SECURITY_HISTORY_RESUME_CONSENT` to match that sentinel.",
+  "next_external_action": "PER_SECURITY_HISTORY remains interrupted at verified checkpoint 11,750/14,296 with 2,546 remaining and failed=0. The alphanumeric short-code fix, exact source revision 585d763542b2fbbdc3f928621f679fb14c8c3bbf, Official KRX CI and fresh preflight-only deployment c1f875b2-4164-491a-9aaf-e6c5b2a387db are verified with network_request_attempted=false. Resume is still unauthorized. Keep execution consents disabled and preflight-only. Resume only after explicit user message `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1`; then create/bind a fresh execution deployment from the frozen source branch/revision.",
   "worker_only_secrets_configured": true,
   "preflight_infrastructure_ready": true,
   "runtime_preflight": {
@@ -221,5 +221,22 @@
     "executor_fix_ci_validated": true,
     "resume_consent_env": "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT",
     "resume_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1"
+  },
+  "per_security_history_resume_preflight": {
+    "status": "FIX_VERIFIED_WAITING_FOR_EXPLICIT_USER_AUTHORIZATION",
+    "code_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+    "official_krx_ci_run_id": 37087007640,
+    "official_krx_ci_passed": true,
+    "preflight_deployment_id": "c1f875b2-4164-491a-9aaf-e6c5b2a387db",
+    "preflight_source_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+    "dockerfile": "Dockerfile.krx-historical-worker",
+    "mode": "PREFLIGHT_ONLY",
+    "explicit_execution_consent_present": false,
+    "network_request_attempted": false,
+    "historical_acquisition_network_execution_authorized": false,
+    "frozen_source_branch": "index-alert-krx-per-security-resume-v1",
+    "frozen_source_branch_exact_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+    "resume_network_execution_authorized": false,
+    "resume_execution_deployment_id": null
   }
 }
