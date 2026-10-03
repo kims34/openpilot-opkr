@@ -43,6 +43,8 @@
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
     "genuine_live_authorized": false,
-    "live_trading_authorized": false
+    "live_trading_authorized": false,
+    "resume_consent_env": "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT",
+    "resume_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1"
   }
 }
