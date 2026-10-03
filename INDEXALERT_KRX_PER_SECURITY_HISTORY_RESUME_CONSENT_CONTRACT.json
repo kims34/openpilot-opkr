@@ -3,7 +3,7 @@
   "contract_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-RESUME-CONSENT-v1",
   "created_date": "2026-10-03",
   "stage": "PER_SECURITY_HISTORY_RESUME",
-  "status": "WAITING_FOR_EXPLICIT_USER_AUTHORIZATION",
+  "status": "FIX_VERIFIED_WAITING_FOR_EXPLICIT_USER_AUTHORIZATION",
   "frozen_scope": {
     "expected_task_count": 14296,
     "checkpoint_completed_task_count": 11750,
@@ -20,8 +20,8 @@
     "short_code_contract": "ASCII_ALPHANUMERIC_EXACTLY_6",
     "regression_test_required": true,
     "official_krx_ci_required": true,
-    "source_revision": null,
-    "official_krx_ci_passed": false
+    "source_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+    "official_krx_ci_passed": true
   },
   "user_authorization": {
     "exact_user_approval_phrase": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1",
@@ -41,13 +41,13 @@
     "fresh_deployment_required": true,
     "redeploy_existing_crashed_deployment_forbidden": true,
     "deployment_id": null,
-    "source_revision": null,
+    "source_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
     "entrypoint": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
-    "preflight_verified": false,
-    "preflight_deployment_id": null,
-    "preflight_source_revision": null,
-    "preflight_network_request_attempted": null,
-    "preflight_dockerfile": null
+    "preflight_verified": true,
+    "preflight_deployment_id": "c1f875b2-4164-491a-9aaf-e6c5b2a387db",
+    "preflight_source_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+    "preflight_network_request_attempted": false,
+    "preflight_dockerfile": "Dockerfile.krx-historical-worker"
   },
   "authority": {
     "resume_network_execution_authorized": false,
