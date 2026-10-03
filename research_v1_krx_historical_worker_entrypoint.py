@@ -73,6 +73,12 @@ PER_SECURITY_EXPECTED_TASK_SET_SHA256 = "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae
 PER_SECURITY_EXPECTED_MANIFEST_SHA256 = "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116"
 STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
 STATUS_ECONOMICS_BATCH_REL = "batches/status-economics-v3.json"
+# Deliberately unset until network-free STATUS_ECONOMICS preparation completes.
+# Future execution must remain fail-closed until the exact prepared scope is
+# copied here and verified by CI/contracts.
+STATUS_ECONOMICS_EXPECTED_TASK_COUNT: int | None = None
+STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256: str | None = None
+STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256: str | None = None
 IDENTITY_BINDING_CONSENT_ENV = "KRX_IDENTITY_BINDING_CONSENT"
 IDENTITY_BINDING_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1"
 PER_SECURITY_CONSENT_ENV = "KRX_PER_SECURITY_HISTORY_CONSENT"
@@ -132,6 +138,39 @@ def _require_frozen_per_security_summary(
     ):
         raise KRXHistoricalWorkerEntrypointError(
             "per-security frozen manifest metadata SHA-256 drift"
+        )
+
+
+def _require_frozen_status_economics_summary(
+    summary: Mapping[str, Any],
+    *,
+    manifest_metadata_sha256: str | None = None,
+) -> None:
+    if (
+        STATUS_ECONOMICS_EXPECTED_TASK_COUNT is None
+        or STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256 is None
+        or STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256 is None
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics frozen scope not code-pinned"
+        )
+    if int(summary.get("task_count", -1)) != STATUS_ECONOMICS_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics frozen task count drift"
+        )
+    if (
+        str(summary.get("task_set_fingerprint_sha256") or "")
+        != STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics frozen task-set fingerprint drift"
+        )
+    if (
+        manifest_metadata_sha256 is not None
+        and str(manifest_metadata_sha256) != STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics frozen manifest metadata SHA-256 drift"
         )
 
 
@@ -1508,11 +1547,12 @@ def load_frozen_status_economics_tasks(
     worktree = git_worktree or str(Path.cwd().resolve())
     regenerated, event_summary = task_builder(root, git_worktree=worktree)
     regenerated_summary = public_task_summary(regenerated)
-    manifest = read_private_json(
+    manifest_read = read_private_json(
         root,
         STATUS_ECONOMICS_TASK_MANIFEST_REL,
         git_worktree=worktree,
-    )["value"]
+    )
+    manifest = manifest_read["value"]
 
     if manifest.get("plan_id") != PLAN_ID:
         raise KRXHistoricalWorkerEntrypointError(
@@ -1552,6 +1592,12 @@ def load_frozen_status_economics_tasks(
     if frozen_ids != regenerated_ids:
         raise KRXHistoricalWorkerEntrypointError(
             "status-economics private task ordering/content drift"
+        )
+
+    if task_builder is build_status_economics_tasks_from_private_identity:
+        _require_frozen_status_economics_summary(
+            regenerated_summary,
+            manifest_metadata_sha256=manifest_read["metadata_sha256"],
         )
 
     initialize_phase_state(
@@ -1602,6 +1648,8 @@ def execute_status_economics(
         raise KRXHistoricalWorkerEntrypointError(
             "status-economics frozen task set is empty"
         )
+    if task_loader is load_frozen_status_economics_tasks:
+        _require_frozen_status_economics_summary(summary)
 
     completed = []
     resumed = 0
