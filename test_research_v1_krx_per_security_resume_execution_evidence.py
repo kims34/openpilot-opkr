@@ -115,7 +115,7 @@ def test_resumed_evidence_rejects_checkpoint_or_network_count_drift():
             public_phase_summary=_summary(),
             private_batch_metadata_sha256="a" * 64,
             completed_task_count=EXPECTED_TASK_COUNT,
-            resumed_task_count=CHECKPOINT_COUNT + 1,
+            resumed_task_count=CHECKPOINT_COUNT,
             network_request_attempt_count=REMAINING_COUNT - 1,
             deployment_id="resume-deployment",
             source_revision="resume-revision",
