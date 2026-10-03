@@ -179,7 +179,7 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         _require(user.get("consumed") is not True, "unexecuted authority marked consumed")
         _require(
             authority.get("status_economics_execution_authorized") is False,
-            "status-economics stage cannot be pre-authorized",
+            "status_economics_execution_authorized illegally true before explicit authorization",
         )
         _require(data.get("execution") in (None, {}), "execution record prematurely present")
         _require(data.get("completion") in (None, {}), "completion record prematurely present")
