@@ -110,3 +110,25 @@ It froze:
 - public raw rows / identifiers: **none**
 
 The exact prepared scope is now code-pinned and execution-contract-pinned. `KRX_PER_SECURITY_HISTORY_CONSENT` remains disabled. Actual execution requires the separate exact approval `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1` in addition to the v3 bulk-network sentinel. No later-stage authority was created.
+
+
+## PER_SECURITY_HISTORY verified resume preflight
+
+The original `PER_SECURITY_HISTORY` network run remains interrupted at the canonical private checkpoint **11,750 / 14,296 complete**, **2,546 remaining**, **failed=0**. The original one-shot authority is consumed.
+
+The internal crash cause was corrected without changing the frozen task scope: the executor now accepts the same exact six-character ASCII alphanumeric short-code domain already enforced by the PIT-safe planner.
+
+Resume preparation evidence is now:
+- verified code revision: `585d763542b2fbbdc3f928621f679fb14c8c3bbf`;
+- Official KRX Status Integrity Action `37087007640`: **SUCCESS**;
+- preflight-only Railway deployment: `c1f875b2-4164-491a-9aaf-e6c5b2a387db`;
+- deployment source revision: `585d763542b2fbbdc3f928621f679fb14c8c3bbf`;
+- build definition: `Dockerfile.krx-historical-worker`;
+- runtime mode: `PREFLIGHT_ONLY`;
+- explicit execution consent present: **false**;
+- `network_request_attempted=false`;
+- historical network execution authorized: **false**.
+
+GitHub branch `index-alert-krx-per-security-resume-v1` is frozen exactly at the verified code revision, preventing ordinary research-branch movement from changing the future resume executable.
+
+The resume contract is now `FIX_VERIFIED_WAITING_FOR_EXPLICIT_USER_AUTHORIZATION`. No resume execution deployment exists. No resume consent sentinel is active. Actual network resume requires the new exact user phrase `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1`; after that authorization a fresh execution deployment must be bound to the frozen verified source. STATUS_ECONOMICS, expected-scope execution, feature-performance testing, sealed holdout, Shadow S1, genuine LIVE and real-account ordering remain unauthorized.
