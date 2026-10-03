@@ -112,6 +112,8 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
             _require(intr.get(key) is True, f"interruption {key} guard lost")
         _require(intr.get("resume_authorized") is False, "resume illegally authorized")
         _require(intr.get("resume_requires_new_user_authorization") is True, "new resume authorization guard lost")
+        _require(intr.get("resume_consent_env") == "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT", "resume consent env drift")
+        _require(intr.get("resume_consent_sentinel") == "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1", "resume consent sentinel drift")
         for key in ("later_stage_auto_authorization","status_economics_authorized","expected_scope_network_execution_authorized","feature_performance_testing_authorized","sealed_holdout_authorized","genuine_live_authorized","live_trading_authorized"):
             _require(intr.get(key) is False, f"interruption {key} illegally true")
         return {"valid":True,"task_count":14296,"authorized":False,"completed":False,"interrupted":True,"authority_consumed":True,"one_shot":True,"later_stage_auto_authorization":False}
