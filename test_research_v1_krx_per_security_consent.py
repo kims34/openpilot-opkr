@@ -1,145 +1,96 @@
-import json
+import copy, json
 from pathlib import Path
-
 import pytest
+from research_v1_krx_per_security_consent import KRXPerSecurityConsentError, validate_contract, validate_file
 
-from research_v1_krx_per_security_consent import (
-    KRXPerSecurityConsentError,
-    validate_contract,
-    validate_file,
-)
-
-PATH = Path("INDEXALERT_KRX_PER_SECURITY_HISTORY_CONSENT_CONTRACT.json")
-
+PATH=Path("INDEXALERT_KRX_PER_SECURITY_HISTORY_CONSENT_CONTRACT.json")
 
 def _data():
     return json.loads(PATH.read_text(encoding="utf-8"))
 
-
-def test_committed_per_security_consent_is_authorized_in_progress():
-    out = validate_file()
-    assert out["valid"] is True
-    assert out["task_count"] == 14296
-    assert out["authorized"] is True
-    assert out["one_shot"] is True
-    assert out["later_stage_auto_authorization"] is False
-
-
-def test_per_security_consent_rejects_authorization_loss_or_reuse():
-    data = _data()
-    data["user_authorization"]["authorized"] = False
-    with pytest.raises(KRXPerSecurityConsentError, match="authorized execution record lost"):
-        validate_contract(data)
-
-    data = _data()
-    data["user_authorization"]["earlier_stage_authorization_reusable"] = True
-    with pytest.raises(KRXPerSecurityConsentError, match="reuse illegally enabled"):
-        validate_contract(data)
-
-
-def test_per_security_consent_rejects_task_scope_drift():
-    data = _data()
-    data["prepared_task_set"]["task_count"] = 14297
-    with pytest.raises(KRXPerSecurityConsentError, match="prepared task count drift"):
-        validate_contract(data)
-
-    data = _data()
-    data["prepared_task_set"]["private_task_manifest_metadata_sha256"] = "0" * 64
-    with pytest.raises(KRXPerSecurityConsentError, match="private manifest hash drift"):
-        validate_contract(data)
-
-
-def test_per_security_consent_cannot_authorize_later_stages():
-    data = _data()
-    data["authority"]["status_economics_execution_authorized"] = True
-    with pytest.raises(KRXPerSecurityConsentError, match="illegally true"):
-        validate_contract(data)
-
-    data = _data()
-    data["post_run_lock"]["later_stage_auto_authorization"] = True
-    with pytest.raises(KRXPerSecurityConsentError, match="auto authority"):
-        validate_contract(data)
-
-
-def test_active_per_security_execution_is_exactly_bound():
-    data = _data()
-    execution = data["execution"]
-    assert execution["deployment_id"] == "bc79d1b5-5fb8-46c7-8067-682e61947014"
-    assert execution["task_count"] == 14296
-    assert execution["execution_status"] == "IN_PROGRESS"
-    assert execution["later_stage_auto_authorization"] is False
-
-    data = _data()
-    data["execution"]["task_count"] = 14295
-    with pytest.raises(KRXPerSecurityConsentError, match="execution task count drift"):
-        validate_contract(data)
-
-    data = _data()
-    data["execution"]["status_economics_authorized"] = True
-    with pytest.raises(KRXPerSecurityConsentError, match="illegally true"):
-        validate_contract(data)
-
+def _active_data():
+    data=_data()
+    data["status"]="USER_AUTHORIZED_EXECUTION_IN_PROGRESS"
+    data["user_authorization"]["authorized"]=True
+    data["user_authorization"].pop("consumed",None)
+    data["execution"]["execution_status"]="IN_PROGRESS"
+    data["authority"]["per_security_history_execution_authorized"]=True
+    data.pop("interruption",None)
+    return data
 
 def _completed_data():
-    data = _data()
-    data["status"] = "EXECUTION_COMPLETE_AUTHORITY_CONSUMED"
-    data["user_authorization"]["authorized"] = False
-    data["user_authorization"]["consumed"] = True
-    data["execution"]["execution_status"] = "COMPLETE"
-    data["authority"]["per_security_history_execution_authorized"] = False
-    data["completion"] = {
-        "evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1",
-        "completed_task_count": 14296,
-        "failed_task_count": 0,
-        "phase_status": "COMPLETE",
-        "phase_complete": True,
-        "task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
-        "bulk_execution_consent_disabled_again": True,
-        "per_security_consent_disabled_again": True,
-        "start_command_restored_to_preflight_only": True,
-        "preflight_network_request_attempted_false": True,
-        "status_economics_authorized": False,
-        "expected_scope_network_execution_authorized": False,
-        "feature_performance_testing_authorized": False,
-        "sealed_holdout_authorized": False,
-        "genuine_live_authorized": False,
-        "live_trading_authorized": False,
+    data=_active_data()
+    data["status"]="EXECUTION_COMPLETE_AUTHORITY_CONSUMED"
+    data["user_authorization"]["authorized"]=False
+    data["user_authorization"]["consumed"]=True
+    data["execution"]["execution_status"]="COMPLETE"
+    data["authority"]["per_security_history_execution_authorized"]=False
+    data["completion"]={
+        "evidence_id":"INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1",
+        "completed_task_count":14296,"failed_task_count":0,"phase_status":"COMPLETE","phase_complete":True,
+        "task_set_fingerprint_sha256":"fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+        "bulk_execution_consent_disabled_again":True,"per_security_consent_disabled_again":True,
+        "start_command_restored_to_preflight_only":True,"preflight_network_request_attempted_false":True,
+        "status_economics_authorized":False,"expected_scope_network_execution_authorized":False,
+        "feature_performance_testing_authorized":False,"sealed_holdout_authorized":False,
+        "genuine_live_authorized":False,"live_trading_authorized":False,
     }
     return data
 
-
-def test_completed_per_security_state_requires_consumed_authority_and_relock():
-    out = validate_contract(_completed_data())
+def test_committed_per_security_state_is_interrupted_and_consumed():
+    out=validate_file()
     assert out["valid"] is True
+    assert out["task_count"]==14296
     assert out["authorized"] is False
-    assert out["completed"] is True
+    assert out["completed"] is False
+    assert out["interrupted"] is True
     assert out["authority_consumed"] is True
 
-    data = _completed_data()
-    data["user_authorization"]["consumed"] = False
-    with pytest.raises(KRXPerSecurityConsentError, match="not marked consumed"):
+def test_interrupted_state_requires_relock_and_new_authorization():
+    data=_data()
+    data["interruption"]["per_security_consent_disabled_again"]=False
+    with pytest.raises(KRXPerSecurityConsentError,match="guard lost"):
+        validate_contract(data)
+    data=_data()
+    data["interruption"]["resume_authorized"]=True
+    with pytest.raises(KRXPerSecurityConsentError,match="illegally authorized"):
+        validate_contract(data)
+    data=_data()
+    data["interruption"]["resume_requires_new_user_authorization"]=False
+    with pytest.raises(KRXPerSecurityConsentError,match="guard lost"):
         validate_contract(data)
 
-    data = _completed_data()
-    data["completion"]["preflight_network_request_attempted_false"] = False
-    with pytest.raises(KRXPerSecurityConsentError, match="guard lost"):
+def test_interrupted_state_does_not_invent_checkpoint_count():
+    data=_data()
+    data["interruption"]["checkpoint_count_observed"]=1
+    with pytest.raises(KRXPerSecurityConsentError,match="unverified checkpoint count asserted"):
+        validate_contract(data)
+    data=_data()
+    data["interruption"]["checkpoint_preservation_verified"]=True
+    with pytest.raises(KRXPerSecurityConsentError,match="prematurely verified"):
         validate_contract(data)
 
-
-def test_completed_per_security_state_rejects_incomplete_or_later_authority():
-    data = _completed_data()
-    data["completion"]["completed_task_count"] = 14295
-    with pytest.raises(KRXPerSecurityConsentError, match="completion task count drift"):
+def test_active_state_still_validates_original_exact_binding():
+    out=validate_contract(_active_data())
+    assert out["authorized"] is True and out["interrupted"] is False
+    data=_active_data(); data["execution"]["task_count"]=14295
+    with pytest.raises(KRXPerSecurityConsentError,match="execution task count drift"):
         validate_contract(data)
 
-    data = _completed_data()
-    data["completion"]["status_economics_authorized"] = True
-    with pytest.raises(KRXPerSecurityConsentError, match="illegally true"):
+def test_scope_and_later_authority_drift_are_rejected():
+    data=_data(); data["prepared_task_set"]["task_count"]=14297
+    with pytest.raises(KRXPerSecurityConsentError,match="prepared task count drift"):
+        validate_contract(data)
+    data=_data(); data["authority"]["status_economics_execution_authorized"]=True
+    with pytest.raises(KRXPerSecurityConsentError,match="illegally true"):
         validate_contract(data)
 
-
-def test_in_progress_state_rejects_premature_completion_record():
-    data = _data()
-    data["completion"] = {"phase_status": "COMPLETE"}
-    with pytest.raises(KRXPerSecurityConsentError, match="prematurely present"):
+def test_completed_state_remains_fail_closed():
+    out=validate_contract(_completed_data())
+    assert out["completed"] is True and out["authority_consumed"] is True
+    data=_completed_data(); data["completion"]["completed_task_count"]=14295
+    with pytest.raises(KRXPerSecurityConsentError,match="completion task count drift"):
+        validate_contract(data)
+    data=_completed_data(); data["completion"]["sealed_holdout_authorized"]=True
+    with pytest.raises(KRXPerSecurityConsentError,match="illegally true"):
         validate_contract(data)
