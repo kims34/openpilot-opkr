@@ -10,6 +10,7 @@ PATH = Path("INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_CONSENT_CONTRACT.json")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 WAITING = "WAITING_FOR_EXPLICIT_USER_AUTHORIZATION"
+VERIFIED_WAITING = "FIX_VERIFIED_WAITING_FOR_EXPLICIT_USER_AUTHORIZATION"
 READY = "USER_AUTHORIZED_RESUME_READY"
 IN_PROGRESS = "RESUME_EXECUTION_IN_PROGRESS"
 COMPLETE_CONSUMED = "RESUME_COMPLETE_AUTHORITY_CONSUMED"
@@ -40,7 +41,10 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     )
     _require(data.get("stage") == "PER_SECURITY_HISTORY_RESUME", "stage drift")
     status = str(data.get("status") or "")
-    _require(status in {WAITING, READY, IN_PROGRESS, COMPLETE_CONSUMED}, "status drift")
+    _require(
+        status in {WAITING, VERIFIED_WAITING, READY, IN_PROGRESS, COMPLETE_CONSUMED},
+        "status drift",
+    )
 
     scope = data.get("frozen_scope") or {}
     _require(int(scope.get("expected_task_count", -1)) == 14296, "expected count drift")
@@ -121,6 +125,29 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         "resume entrypoint drift",
     )
 
+    def _require_verified_fix() -> tuple[str, str]:
+        source_revision = str(gate.get("source_revision") or "").strip()
+        fix_revision = str(fix.get("source_revision") or "").strip()
+        preflight_revision = str(gate.get("preflight_source_revision") or "").strip()
+        preflight_deployment = str(gate.get("preflight_deployment_id") or "").strip()
+        _require(bool(source_revision), "resume source revision required")
+        _require(bool(fix_revision), "code-fix source revision required")
+        _require(fix_revision == source_revision, "code-fix source binding drift")
+        _require(fix.get("official_krx_ci_passed") is True, "official KRX CI proof missing")
+        _require(gate.get("preflight_verified") is True, "resume preflight not verified")
+        _require(bool(preflight_deployment), "resume preflight deployment required")
+        _require(preflight_revision == source_revision, "resume preflight source drift")
+        _require(
+            gate.get("preflight_network_request_attempted") is False,
+            "resume preflight attempted network",
+        )
+        _require(
+            gate.get("preflight_dockerfile") == "Dockerfile.krx-historical-worker",
+            "resume preflight Dockerfile drift",
+        )
+        return source_revision, preflight_deployment
+
+
     authority = data.get("authority") or {}
     for key in (
         "status_economics_execution_authorized",
@@ -137,21 +164,34 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         _require(user.get("authorized") is False, "resume cannot be pre-authorized")
         _require(user.get("received_date_kst") is None, "authorization date prematurely present")
         _require(fix.get("source_revision") is None, "fix source prematurely bound")
+        _require(fix.get("official_krx_ci_passed") is False, "CI state prematurely verified")
         _require(gate.get("deployment_id") is None, "deployment prematurely bound")
         _require(gate.get("source_revision") is None, "runtime source prematurely bound")
+        _require(gate.get("preflight_verified") is False, "preflight prematurely verified")
+        _require(gate.get("preflight_deployment_id") is None, "preflight deployment prematurely bound")
+        _require(gate.get("preflight_source_revision") is None, "preflight source prematurely bound")
+        _require(gate.get("preflight_network_request_attempted") is None, "preflight network state prematurely bound")
+        _require(gate.get("preflight_dockerfile") is None, "preflight Dockerfile prematurely bound")
+        _require(authority.get("resume_network_execution_authorized") is False, "resume authority illegally true")
+        _require(data.get("completion") in (None, {}), "completion prematurely present")
+        authorized = False
+        completed = False
+    elif status == VERIFIED_WAITING:
+        source_revision, _ = _require_verified_fix()
+        _require(user.get("authorized") is False, "verified waiting cannot be authorized")
+        _require(user.get("received_date_kst") is None, "authorization date prematurely present")
+        _require(gate.get("deployment_id") is None, "execution deployment prematurely bound")
         _require(authority.get("resume_network_execution_authorized") is False, "resume authority illegally true")
         _require(data.get("completion") in (None, {}), "completion prematurely present")
         authorized = False
         completed = False
     elif status in {READY, IN_PROGRESS}:
+        source_revision, _ = _require_verified_fix()
         _require(user.get("authorized") is True, "resume authorization record lost")
         _require(user.get("consumed") is not True, "resume authority prematurely consumed")
         _require(bool(str(user.get("received_date_kst") or "").strip()), "resume authorization date required")
-        source_revision = str(gate.get("source_revision") or "").strip()
         deployment_id = str(gate.get("deployment_id") or "").strip()
-        _require(bool(source_revision), "resume source revision required")
         _require(bool(deployment_id), "resume deployment required")
-        _require(fix.get("source_revision") == source_revision, "code-fix source binding drift")
         _require(
             deployment_id != "bc79d1b5-5fb8-46c7-8067-682e61947014",
             "crashed deployment cannot be reused",
@@ -161,6 +201,7 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         authorized = True
         completed = False
     else:
+        _require_verified_fix()
         _require(user.get("authorized") is False, "completed resume authority still active")
         _require(user.get("consumed") is True, "completed resume authority not consumed")
         _require(authority.get("resume_network_execution_authorized") is False, "completed resume authority still active")
