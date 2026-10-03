@@ -60,14 +60,20 @@ def test_interrupted_state_requires_relock_and_new_authorization():
     with pytest.raises(KRXPerSecurityConsentError,match="guard lost"):
         validate_contract(data)
 
-def test_interrupted_state_does_not_invent_checkpoint_count():
+def test_interrupted_state_binds_verified_checkpoint():
+    out=validate_file()
+    assert out["interrupted"] is True
     data=_data()
-    data["interruption"]["checkpoint_count_observed"]=1
-    with pytest.raises(KRXPerSecurityConsentError,match="unverified checkpoint count asserted"):
+    data["interruption"]["checkpoint_count_observed"]=11749
+    with pytest.raises(KRXPerSecurityConsentError,match="checkpoint count drift"):
         validate_contract(data)
     data=_data()
-    data["interruption"]["checkpoint_preservation_verified"]=True
-    with pytest.raises(KRXPerSecurityConsentError,match="prematurely verified"):
+    data["interruption"]["remaining_task_count"]=2545
+    with pytest.raises(KRXPerSecurityConsentError,match="remaining task count drift"):
+        validate_contract(data)
+    data=_data()
+    data["interruption"]["checkpoint_probe_network_request_attempted"]=True
+    with pytest.raises(KRXPerSecurityConsentError,match="attempted network"):
         validate_contract(data)
 
 def test_active_state_still_validates_original_exact_binding():
