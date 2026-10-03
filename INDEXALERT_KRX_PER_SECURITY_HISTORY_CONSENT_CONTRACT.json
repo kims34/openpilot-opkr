@@ -79,8 +79,8 @@
     "error_class": "KRXHistoricalRequestExecutorError",
     "reason_code": "ALPHANUMERIC_SHORT_CODE_VALIDATOR_MISMATCH",
     "raw_security_identifier_emitted": false,
-    "checkpoint_count_observed": null,
-    "checkpoint_preservation_verified": false,
+    "checkpoint_count_observed": 11750,
+    "checkpoint_preservation_verified": true,
     "bulk_execution_consent_disabled_again": true,
     "per_security_consent_disabled_again": true,
     "start_command_restored_to_preflight_only": true,
@@ -93,6 +93,13 @@
     "feature_performance_testing_authorized": false,
     "sealed_holdout_authorized": false,
     "genuine_live_authorized": false,
-    "live_trading_authorized": false
+    "live_trading_authorized": false,
+    "remaining_task_count": 2546,
+    "checkpoint_probe_deployment_id": "92439b24-644a-4d3d-a888-9e0ba568bfac",
+    "checkpoint_probe_source_revision": "d156f0dc6056924a798679bd9e93e1f2eb0241fc",
+    "checkpoint_probe_network_request_attempted": false,
+    "checkpoint_probe_failed_task_count": 0,
+    "checkpoint_probe_phase_complete": false,
+    "interruption_evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-INTERRUPTION-2026-10-03-v1"
   }
 }
