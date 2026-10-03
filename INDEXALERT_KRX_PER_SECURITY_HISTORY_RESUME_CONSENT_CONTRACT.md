@@ -48,3 +48,20 @@ Before network resume:
 After exact 14,296/14,296 completion or any failure, all execution consent values must be disabled again and the worker returned to preflight-only.
 
 This contract never authorizes STATUS_ECONOMICS, expected-scope execution, feature-performance testing, sealed holdout, Shadow S1, genuine LIVE, or real-account ordering.
+
+
+## Frozen execution-source provenance
+
+A future authorized resume deployment is valid only when Railway deployment metadata directly proves both:
+- required execution source branch: `index-alert-krx-per-security-resume-v1`;
+- required execution commit SHA: `585d763542b2fbbdc3f928621f679fb14c8c3bbf`.
+
+The deployment must be fresh and must not reuse crashed deployment `bc79d1b5-5fb8-46c7-8067-682e61947014`.
+
+Before the contract may transition to `USER_AUTHORIZED_RESUME_READY` or `RESUME_EXECUTION_IN_PROGRESS`, the runtime-gate record must bind:
+- the new deployment ID;
+- `deployment_branch=index-alert-krx-per-security-resume-v1`;
+- `deployment_commit_sha=585d763542b2fbbdc3f928621f679fb14c8c3bbf`;
+- `deployment_source_verified=true`.
+
+A preflight or execution deployment from moving branch `index-alert-research-v1`, even if otherwise green, cannot satisfy this execution-source gate. This branch/SHA binding is independent of the resume consent phrase and does not grant network authority by itself.
