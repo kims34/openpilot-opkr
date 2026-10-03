@@ -54,9 +54,11 @@ def _validate_standard_code(value: Any) -> str:
 
 
 def _validate_short_code(value: Any) -> str:
-    code = _require_text(value, "isuCd2")
-    if len(code) != 6 or not code.isdigit():
-        raise KRXHistoricalRequestExecutorError("isuCd2 must be a six-digit short code")
+    code = _require_text(value, "isuCd2").upper()
+    if len(code) != 6 or not code.isascii() or not code.isalnum():
+        raise KRXHistoricalRequestExecutorError(
+            "isuCd2 must be a six-character alphanumeric short code"
+        )
     return code
 
 
