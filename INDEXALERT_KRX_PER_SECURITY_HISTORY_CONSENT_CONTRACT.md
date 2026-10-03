@@ -90,3 +90,14 @@ The exact user approval phrase `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_
 - later-stage auto-authorization: **false**
 
 This authorization does **not** authorize `STATUS_ECONOMICS`, expected-scope network execution, feature-performance testing, sealed holdout, genuine LIVE, or live trading. After this stage completes or fails, both execution consent variables must be disabled again and the worker must return to preflight-only.
+
+
+## Interrupted execution — 2026-10-03
+
+The original one-shot deployment `bc79d1b5-5fb8-46c7-8067-682e61947014` at source revision `9009c48a00394063c813d29219507ee2190ce09e` terminated at 2026-10-03T00:45:16Z with `KRXHistoricalRequestExecutorError`.
+
+The failure was an internal validator mismatch: the frozen PIT-safe planner correctly permits official six-character ASCII alphanumeric short codes, while that execution revision's request executor incorrectly required decimal digits only. No raw security identifier is recorded in this public contract.
+
+The original one-shot authority is **consumed and inactive**. Both execution consent environment values have been disabled again, the configured start command has been restored to preflight-only, and restart policy remains NEVER. The run is **not complete** and no completion count is asserted here until a network-free aggregate checkpoint inspection verifies it.
+
+Any resume must preserve the exact frozen 14,296-task manifest/fingerprint and private checkpoint semantics, use a CI-validated patched source revision, and requires a **new explicit user authorization** before any network request resumes. This interruption does not authorize STATUS_ECONOMICS or any later protected stage.
