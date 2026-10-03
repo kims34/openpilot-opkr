@@ -19,4 +19,4 @@ A later network-free aggregate status deployment `92439b24-644a-4d3d-a888-9e0ba5
 
 The original one-shot authority is consumed. Both execution consent values are disabled again, the configured worker start command is restored to preflight-only, restart policy remains NEVER, and no later protected stage is authorized.
 
-A resume may only use the exact frozen scope and preserved checkpoint semantics, a CI-validated patched source revision, and a **new explicit user authorization** before any network request resumes.
+A resume may only use the exact frozen scope and preserved checkpoint semantics, a CI-validated patched source revision, and a **new explicit user authorization** before any network request resumes. The exact required resume phrase is `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1`, and runtime additionally requires `KRX_PER_SECURITY_HISTORY_RESUME_CONSENT` to equal that sentinel.
