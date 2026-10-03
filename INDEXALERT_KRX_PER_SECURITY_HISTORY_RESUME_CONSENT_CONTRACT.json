@@ -1,0 +1,56 @@
+{
+  "schema_version": "1",
+  "contract_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-RESUME-CONSENT-v1",
+  "created_date": "2026-10-03",
+  "stage": "PER_SECURITY_HISTORY_RESUME",
+  "status": "WAITING_FOR_EXPLICIT_USER_AUTHORIZATION",
+  "frozen_scope": {
+    "expected_task_count": 14296,
+    "checkpoint_completed_task_count": 11750,
+    "remaining_task_count": 2546,
+    "failed_task_count": 0,
+    "phase_status": "IN_PROGRESS",
+    "phase_complete": false,
+    "task_set_fingerprint_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
+    "private_task_manifest_metadata_sha256": "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116",
+    "interruption_evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-INTERRUPTION-2026-10-03-v1"
+  },
+  "code_fix": {
+    "bug_reason_code": "ALPHANUMERIC_SHORT_CODE_VALIDATOR_MISMATCH",
+    "short_code_contract": "ASCII_ALPHANUMERIC_EXACTLY_6",
+    "regression_test_required": true,
+    "official_krx_ci_required": true,
+    "source_revision": null
+  },
+  "user_authorization": {
+    "exact_user_approval_phrase": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1",
+    "authorized": false,
+    "one_shot": true,
+    "original_authorization_reusable": false,
+    "reusable": false,
+    "received_date_kst": null
+  },
+  "runtime_gate": {
+    "resume_consent_env": "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT",
+    "resume_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1",
+    "bulk_consent_env": "KRX_HISTORICAL_ACQUISITION_CONSENT",
+    "stage_consent_env": "KRX_PER_SECURITY_HISTORY_CONSENT",
+    "exact_checkpoint_required": true,
+    "exact_frozen_scope_required": true,
+    "fresh_deployment_required": true,
+    "redeploy_existing_crashed_deployment_forbidden": true,
+    "deployment_id": null,
+    "source_revision": null,
+    "entrypoint": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history"
+  },
+  "authority": {
+    "resume_network_execution_authorized": false,
+    "status_economics_execution_authorized": false,
+    "expected_scope_network_execution_authorized": false,
+    "feature_performance_testing_authorized": false,
+    "sealed_holdout_authorized": false,
+    "shadow_s1_authorized": false,
+    "genuine_live_authorized": false,
+    "live_trading_authorized": false
+  }
+}
