@@ -131,6 +131,42 @@ def test_request_spec_rejects_short_code_as_standard_code_and_oversize_halt_wind
         )
 
 
+def test_trading_halt_accepts_official_alphanumeric_short_code():
+    out = validate_request_spec(
+        {
+            "kind": "trading_halt",
+            "params": {
+                "isuCd": "KR7000300004",
+                "isuCd2": "a12345",
+                "strtDd": "20250101",
+                "endDd": "20250131",
+            },
+        },
+        catalog_getter=_catalog,
+    )
+    assert out["params"]["isuCd2"] == "A12345"
+
+
+def test_trading_halt_rejects_non_ascii_or_non_alphanumeric_short_code():
+    for bad in ("12345", "1234567", "12-345", "Ａ12345"):
+        with pytest.raises(
+            KRXHistoricalRequestExecutorError,
+            match="six-character alphanumeric short code",
+        ):
+            validate_request_spec(
+                {
+                    "kind": "trading_halt",
+                    "params": {
+                        "isuCd": "KR7000300004",
+                        "isuCd2": bad,
+                        "strtDd": "20250101",
+                        "endDd": "20250131",
+                    },
+                },
+                catalog_getter=_catalog,
+            )
+
+
 def test_cleanup_current_is_snapshot_only_and_has_no_fake_historical_dates():
     out=validate_request_spec({"kind":CLEANUP_CURRENT,"params":{"mktId":"ALL"}})
     assert out["dataset_identifier"]=="MDCSTAT23701"
