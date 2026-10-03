@@ -1615,6 +1615,7 @@ def finalize_status_economics_metadata(
     git_worktree: str | None = None,
     state_loader=read_private_json,
     batch_loader=read_private_json,
+    manifest_loader=read_private_json,
 ) -> dict[str, Any]:
     """Return public-safe STATUS_ECONOMICS completion metadata only.
 
@@ -1684,6 +1685,22 @@ def finalize_status_economics_metadata(
         raise KRXHistoricalWorkerEntrypointError(
             "status-economics finalization has failed tasks"
         )
+
+    manifest_read = manifest_loader(
+        root,
+        STATUS_ECONOMICS_TASK_MANIFEST_REL,
+        git_worktree=worktree,
+    )
+    manifest = manifest_read["value"]
+    _require_frozen_status_economics_summary(
+        {
+            "task_count": manifest.get("task_count"),
+            "task_set_fingerprint_sha256": manifest.get(
+                "task_set_fingerprint_sha256"
+            ),
+        },
+        manifest_metadata_sha256=manifest_read["metadata_sha256"],
+    )
 
     batch_read = batch_loader(
         root,
