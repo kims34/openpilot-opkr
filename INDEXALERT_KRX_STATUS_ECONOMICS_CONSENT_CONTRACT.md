@@ -76,3 +76,37 @@ This contract does not authorize:
 - real-account order submission.
 
 Preparation alone can never grant execution authority.
+
+
+## Lifecycle state machine
+
+This contract is validated as a four-state fail-closed lifecycle:
+
+1. `FROZEN_SHELL_PREPARATION_NOT_COMPLETE_EXECUTION_NOT_AUTHORIZED`
+   - predecessor completion not yet admitted;
+   - no prepared task count or hashes;
+   - no execution record;
+   - no authority.
+
+2. `PREPARED_SCOPE_FROZEN_EXECUTION_NOT_AUTHORIZED`
+   - canonical `PER_SECURITY_HISTORY` completion evidence is bound;
+   - exact positive STATUS_ECONOMICS task count, task-set SHA-256 and private-manifest metadata SHA-256 are frozen;
+   - network-free preparation is proven;
+   - execution authority remains false.
+
+3. `USER_AUTHORIZED_EXECUTION_IN_PROGRESS`
+   - allowed only after the exact user phrase `I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1` is received;
+   - the authorization record must bind a concrete deployment ID and source revision;
+   - execution task count/task fingerprint/private-manifest hash must equal the frozen prepared scope;
+   - only `status_economics_execution_authorized` may be true;
+   - expected-scope, performance testing, sealed holdout, Shadow S1, genuine LIVE and live trading remain false.
+
+4. `EXECUTION_COMPLETE_AUTHORITY_CONSUMED`
+   - exact prepared task count must complete with failed=0;
+   - completion evidence must bind `INDEXALERT-KRX-STATUS-ECONOMICS-EXEC-v1`;
+   - both execution consent values must be disabled again and preflight-only restored;
+   - the one-shot user authority must be marked consumed and inactive;
+   - cleanup-price context completion still must not be described as realized fills, recovery cash flows or exact status economics;
+   - Gates C/D/E and all later protected authorities remain false.
+
+The committed contract is currently state 1. Supporting code for later states does not itself grant execution authority.
