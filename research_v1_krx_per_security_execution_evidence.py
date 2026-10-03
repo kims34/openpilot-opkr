@@ -13,6 +13,9 @@ EXPECTED_TASK_COUNT = 14296
 EXPECTED_TASK_SET_SHA256 = "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38"
 EXPECTED_DEPLOYMENT_ID = "bc79d1b5-5fb8-46c7-8067-682e61947014"
 EXPECTED_SOURCE_REVISION = "9009c48a00394063c813d29219507ee2190ce09e"
+INTERRUPTION_EVIDENCE_ID = "INDEXALERT-KRX-PER-SECURITY-HISTORY-INTERRUPTION-2026-10-03-v1"
+CHECKPOINT_COUNT = 11750
+REMAINING_COUNT = 2546
 PRIVATE_BATCH_RELPATH = "batches/per-security-history-v3.json"
 EVIDENCE_ID = "INDEXALERT-KRX-PER-SECURITY-HISTORY-EXEC-2026-10-03-v1"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -73,12 +76,13 @@ def build_execution_evidence(
     network_request_attempt_count: int,
     deployment_id: str = EXPECTED_DEPLOYMENT_ID,
     source_revision: str = EXPECTED_SOURCE_REVISION,
+    interruption_evidence_id: str | None = None,
     post_run_boundary: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Build metadata-only evidence only after exact frozen completion."""
     _require_complete_summary(public_phase_summary)
-    _require(deployment_id == EXPECTED_DEPLOYMENT_ID, "deployment drift")
-    _require(source_revision == EXPECTED_SOURCE_REVISION, "source revision drift")
+    _require(bool(str(deployment_id or "").strip()), "deployment_id required")
+    _require(bool(str(source_revision or "").strip()), "source_revision required")
     _require(int(completed_task_count) == EXPECTED_TASK_COUNT, "execution completion count drift")
 
     resumed = int(resumed_task_count)
@@ -89,6 +93,26 @@ def build_execution_evidence(
         resumed + network == EXPECTED_TASK_COUNT,
         "network/resume accounting does not equal frozen task count",
     )
+
+    resumed_after_interruption = (
+        deployment_id != EXPECTED_DEPLOYMENT_ID
+        or source_revision != EXPECTED_SOURCE_REVISION
+        or interruption_evidence_id is not None
+    )
+    if resumed_after_interruption:
+        _require(
+            interruption_evidence_id == INTERRUPTION_EVIDENCE_ID,
+            "interruption evidence binding drift",
+        )
+        _require(resumed == CHECKPOINT_COUNT, "resume checkpoint accounting drift")
+        _require(network == REMAINING_COUNT, "resume network accounting drift")
+        _require(
+            post_run_boundary.get("resume_consent_disabled_again") is True,
+            "resume_consent_disabled_again guard lost",
+        )
+    else:
+        _require(deployment_id == EXPECTED_DEPLOYMENT_ID, "deployment drift")
+        _require(source_revision == EXPECTED_SOURCE_REVISION, "source revision drift")
 
     batch_sha = _sha(private_batch_metadata_sha256, "private_batch_metadata_sha256")
 
@@ -120,6 +144,14 @@ def build_execution_evidence(
             "source_revision": source_revision,
             "dockerfile": "Dockerfile.krx-historical-worker",
             "mode": "EXECUTE_PER_SECURITY_HISTORY",
+            "execution_path": (
+                "RESUMED_AFTER_INTERRUPTION"
+                if resumed_after_interruption
+                else "ORIGINAL_SINGLE_RUN"
+            ),
+            "interruption_evidence_id": (
+                INTERRUPTION_EVIDENCE_ID if resumed_after_interruption else None
+            ),
             "task_count": EXPECTED_TASK_COUNT,
             "completed_task_count": EXPECTED_TASK_COUNT,
             "resumed_task_count": resumed,
@@ -147,10 +179,26 @@ def validate_evidence(data: Mapping[str, Any]) -> dict[str, Any]:
 
     execution = data.get("execution") or {}
     _require(execution.get("railway_service") == "indexalert-krx-historical-worker", "worker drift")
-    _require(execution.get("deployment_id") == EXPECTED_DEPLOYMENT_ID, "deployment drift")
-    _require(execution.get("source_revision") == EXPECTED_SOURCE_REVISION, "source revision drift")
+    deployment_id = str(execution.get("deployment_id") or "").strip()
+    source_revision = str(execution.get("source_revision") or "").strip()
+    _require(bool(deployment_id), "deployment_id required")
+    _require(bool(source_revision), "source_revision required")
     _require(execution.get("dockerfile") == "Dockerfile.krx-historical-worker", "Dockerfile drift")
     _require(execution.get("mode") == "EXECUTE_PER_SECURITY_HISTORY", "mode drift")
+    execution_path = execution.get("execution_path", "ORIGINAL_SINGLE_RUN")
+    _require(
+        execution_path in {"ORIGINAL_SINGLE_RUN", "RESUMED_AFTER_INTERRUPTION"},
+        "execution path drift",
+    )
+    if execution_path == "ORIGINAL_SINGLE_RUN":
+        _require(deployment_id == EXPECTED_DEPLOYMENT_ID, "deployment drift")
+        _require(source_revision == EXPECTED_SOURCE_REVISION, "source revision drift")
+        _require(execution.get("interruption_evidence_id") in (None, ""), "unexpected interruption binding")
+    else:
+        _require(
+            execution.get("interruption_evidence_id") == INTERRUPTION_EVIDENCE_ID,
+            "interruption evidence binding drift",
+        )
     _require(int(execution.get("task_count", -1)) == EXPECTED_TASK_COUNT, "task count drift")
     _require(
         int(execution.get("completed_task_count", -1)) == EXPECTED_TASK_COUNT,
@@ -160,6 +208,9 @@ def validate_evidence(data: Mapping[str, Any]) -> dict[str, Any]:
     network = int(execution.get("network_request_attempt_count", -1))
     _require(resumed >= 0 and network >= 0, "negative execution count")
     _require(resumed + network == EXPECTED_TASK_COUNT, "network/resume accounting drift")
+    if execution_path == "RESUMED_AFTER_INTERRUPTION":
+        _require(resumed == CHECKPOINT_COUNT, "resume checkpoint accounting drift")
+        _require(network == REMAINING_COUNT, "resume network accounting drift")
     _require(execution.get("phase_status") == "COMPLETE", "phase status drift")
     _require(execution.get("phase_complete") is True, "phase_complete lost")
 
@@ -191,6 +242,12 @@ def validate_evidence(data: Mapping[str, Any]) -> dict[str, Any]:
         "live_trading_authorized",
     ):
         _require(boundary.get(key) is False, f"{key} illegally true")
+
+    if execution_path == "RESUMED_AFTER_INTERRUPTION":
+        _require(
+            boundary.get("resume_consent_disabled_again") is True,
+            "resume_consent_disabled_again guard lost",
+        )
 
     return {
         "valid": True,
