@@ -83,6 +83,8 @@ IDENTITY_BINDING_CONSENT_ENV = "KRX_IDENTITY_BINDING_CONSENT"
 IDENTITY_BINDING_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1"
 PER_SECURITY_CONSENT_ENV = "KRX_PER_SECURITY_HISTORY_CONSENT"
 PER_SECURITY_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_v1"
+PER_SECURITY_RESUME_CONSENT_ENV = "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT"
+PER_SECURITY_RESUME_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1"
 STATUS_ECONOMICS_CONSENT_ENV = "KRX_STATUS_ECONOMICS_CONSENT"
 STATUS_ECONOMICS_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_STATUS_ECONOMICS_v1"
 
@@ -203,6 +205,67 @@ def _require_exact_stage_consent(
         raise KRXHistoricalWorkerEntrypointError(
             f"stage consent blocked: {requirement_name}"
         )
+
+
+def _require_per_security_resume_consent_if_checkpointed(
+    *,
+    environment: Mapping[str, str],
+    root: str,
+    git_worktree: str,
+    state_loader=read_private_json,
+) -> dict[str, Any]:
+    """Require a distinct explicit resume consent after any partial checkpoint."""
+    state_read = state_loader(
+        root,
+        "batch_state/PER_SECURITY_HISTORY.json",
+        git_worktree=git_worktree,
+    )
+    safe = public_phase_summary(state_read["value"])
+    if safe.get("phase") != "PER_SECURITY_HISTORY":
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security resume guard phase drift"
+        )
+    if int(safe.get("expected_task_count", -1)) != PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security resume guard expected task count drift"
+        )
+    if (
+        str(safe.get("task_set_fingerprint_sha256") or "")
+        != PER_SECURITY_EXPECTED_TASK_SET_SHA256
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security resume guard task-set fingerprint drift"
+        )
+
+    completed = int(safe.get("completed_task_count", -1))
+    failed = int(safe.get("failed_task_count", -1))
+    if completed < 0 or completed > PER_SECURITY_EXPECTED_TASK_COUNT:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security resume guard completed count invalid"
+        )
+    if failed != 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "per-security resume guard has failed tasks"
+        )
+
+    if 0 < completed < PER_SECURITY_EXPECTED_TASK_COUNT:
+        _require_exact_stage_consent(
+            environment,
+            env_name=PER_SECURITY_RESUME_CONSENT_ENV,
+            sentinel=PER_SECURITY_RESUME_CONSENT_SENTINEL,
+            requirement_name="EXPLICIT_PER_SECURITY_HISTORY_RESUME_CONSENT",
+        )
+
+    return {
+        "phase": "PER_SECURITY_HISTORY",
+        "completed_task_count": completed,
+        "remaining_task_count": PER_SECURITY_EXPECTED_TASK_COUNT - completed,
+        "failed_task_count": failed,
+        "phase_complete": bool(safe.get("phase_complete")),
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+    }
 
 
 def _require_identity_binding_stage_consent(environment: Mapping[str, str]) -> None:
@@ -1414,6 +1477,11 @@ def execute_per_security_history(
         )
     if task_loader is load_frozen_per_security_history_tasks:
         _require_frozen_per_security_summary(summary)
+        _require_per_security_resume_consent_if_checkpointed(
+            environment=env,
+            root=root,
+            git_worktree=worktree,
+        )
 
     completed = []
     resumed = 0
