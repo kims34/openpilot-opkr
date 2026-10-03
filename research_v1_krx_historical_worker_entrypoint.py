@@ -1609,6 +1609,163 @@ def load_frozen_status_economics_tasks(
     return frozen
 
 
+def finalize_status_economics_metadata(
+    *,
+    environment: Mapping[str, str] | None = None,
+    git_worktree: str | None = None,
+    state_loader=read_private_json,
+    batch_loader=read_private_json,
+) -> dict[str, Any]:
+    """Return public-safe STATUS_ECONOMICS completion metadata only.
+
+    Strictly network-free/read-only. The prepared STATUS_ECONOMICS scope must
+    already be code-pinned. This finalizer never emits private task rows or
+    upgrades cleanup-price context into realized fill/recovery economics.
+    """
+    env = dict(os.environ if environment is None else environment)
+    preflight = evaluate_historical_acquisition_preflight(
+        environment=env,
+        git_worktree=git_worktree,
+    )
+    if not preflight["rights_authorized"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization blocked: KRX_FULL_HISTORY_RIGHTS"
+        )
+    if not preflight["dedicated_worker_isolation_ok"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization blocked: DEDICATED_WORKER_SERVICE_ISOLATION"
+        )
+    if not preflight["private_raw_dir_configured"] or not preflight["private_raw_dir_valid"]:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization blocked: SAFE_KRX_PRIVATE_RAW_DIR"
+        )
+    if (
+        STATUS_ECONOMICS_EXPECTED_TASK_COUNT is None
+        or STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256 is None
+        or STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256 is None
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization blocked: frozen scope not code-pinned"
+        )
+
+    worktree = git_worktree or str(Path.cwd().resolve())
+    root = str(env["KRX_PRIVATE_RAW_DIR"])
+
+    state_read = state_loader(
+        root,
+        "batch_state/STATUS_ECONOMICS.json",
+        git_worktree=worktree,
+    )
+    safe = public_phase_summary(state_read["value"])
+    _require_frozen_status_economics_summary(
+        {
+            "task_count": safe.get("expected_task_count"),
+            "task_set_fingerprint_sha256": safe.get(
+                "task_set_fingerprint_sha256"
+            ),
+        }
+    )
+    if safe.get("phase") != "STATUS_ECONOMICS":
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization phase drift"
+        )
+    if safe.get("status") != "COMPLETE" or safe.get("phase_complete") is not True:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization blocked: phase is not COMPLETE"
+        )
+    if (
+        int(safe.get("completed_task_count", -1))
+        != STATUS_ECONOMICS_EXPECTED_TASK_COUNT
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization completed task count drift"
+        )
+    if int(safe.get("failed_task_count", -1)) != 0:
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics finalization has failed tasks"
+        )
+
+    batch_read = batch_loader(
+        root,
+        STATUS_ECONOMICS_BATCH_REL,
+        git_worktree=worktree,
+    )
+    batch = batch_read["value"]
+    if batch.get("phase") != "STATUS_ECONOMICS":
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics batch phase drift"
+        )
+    _require_frozen_status_economics_summary(
+        {
+            "task_count": batch.get("task_count"),
+            "task_set_fingerprint_sha256": batch.get(
+                "task_set_fingerprint_sha256"
+            ),
+        }
+    )
+    if (
+        int(batch.get("completed_task_count", -1))
+        != STATUS_ECONOMICS_EXPECTED_TASK_COUNT
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics batch completion count drift"
+        )
+    resumed = int(batch.get("resumed_task_count", -1))
+    network = int(batch.get("network_request_attempt_count", -1))
+    if (
+        resumed < 0
+        or network < 0
+        or resumed + network != STATUS_ECONOMICS_EXPECTED_TASK_COUNT
+    ):
+        raise KRXHistoricalWorkerEntrypointError(
+            "status-economics batch network/resume accounting drift"
+        )
+    for key in (
+        "exact_status_economics_ready",
+        "source_gate_c_closed",
+        "source_gate_d_closed",
+        "source_gate_e_closed",
+        "feature_performance_testing_authorized",
+        "sealed_holdout_authorized",
+        "live_trading_authorized",
+    ):
+        if batch.get(key) is not False:
+            raise KRXHistoricalWorkerEntrypointError(
+                f"status-economics batch {key} illegally true"
+            )
+
+    return {
+        "mode": "FINALIZE_STATUS_ECONOMICS_METADATA",
+        "phase": "STATUS_ECONOMICS",
+        "status": "COMPLETE",
+        "expected_task_count": STATUS_ECONOMICS_EXPECTED_TASK_COUNT,
+        "completed_task_count": STATUS_ECONOMICS_EXPECTED_TASK_COUNT,
+        "failed_task_count": 0,
+        "resumed_task_count": resumed,
+        "network_request_attempt_count": network,
+        "task_set_fingerprint_sha256":
+            STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256,
+        "private_batch_metadata_sha256": batch_read["metadata_sha256"],
+        "private_batch_relpath": STATUS_ECONOMICS_BATCH_REL,
+        "network_request_attempted": False,
+        "security_identifiers_emitted": False,
+        "raw_rows_emitted": False,
+        "cleanup_price_context_complete": True,
+        "exact_status_economics_ready": False,
+        "realized_fill_economics_proven": False,
+        "realized_recovery_cashflows_proven": False,
+        "source_gate_c_closed": False,
+        "source_gate_d_closed": False,
+        "source_gate_e_closed": False,
+        "expected_scope_network_execution_authorized": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "shadow_s1_authorized": False,
+        "genuine_live_authorized": False,
+        "live_trading_authorized": False,
+    }
+
+
 def execute_status_economics(
     *,
     environment: Mapping[str, str] | None = None,
@@ -1877,6 +2034,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     group.add_argument(
+        "--finalize-status-economics-metadata",
+        action="store_true",
+        help=(
+            "Network-free/read-only: only after exact code-pinned "
+            "STATUS_ECONOMICS completion, return public-safe aggregate "
+            "completion/batch metadata without claiming realized economics."
+        ),
+    )
+    group.add_argument(
         "--execute-status-economics",
         action="store_true",
         help=(
@@ -1912,6 +2078,8 @@ def main(argv: list[str] | None = None) -> int:
         result = execute_per_security_history()
     elif args.prepare_status_economics:
         result = prepare_status_economics()
+    elif args.finalize_status_economics_metadata:
+        result = finalize_status_economics_metadata()
     elif args.execute_status_economics:
         result = execute_status_economics()
     else:
