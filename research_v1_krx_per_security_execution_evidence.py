@@ -89,10 +89,6 @@ def build_execution_evidence(
     network = int(network_request_attempt_count)
     _require(resumed >= 0, "negative resumed task count")
     _require(network >= 0, "negative network request count")
-    _require(
-        resumed + network == EXPECTED_TASK_COUNT,
-        "network/resume accounting does not equal frozen task count",
-    )
 
     resumed_after_interruption = (
         deployment_id != EXPECTED_DEPLOYMENT_ID
@@ -110,6 +106,12 @@ def build_execution_evidence(
             post_run_boundary.get("resume_consent_disabled_again") is True,
             "resume_consent_disabled_again guard lost",
         )
+    _require(
+        resumed + network == EXPECTED_TASK_COUNT,
+        "network/resume accounting does not equal frozen task count",
+    )
+    if resumed_after_interruption:
+        pass
     else:
         _require(deployment_id == EXPECTED_DEPLOYMENT_ID, "deployment drift")
         _require(source_revision == EXPECTED_SOURCE_REVISION, "source revision drift")
@@ -207,10 +209,10 @@ def validate_evidence(data: Mapping[str, Any]) -> dict[str, Any]:
     resumed = int(execution.get("resumed_task_count", -1))
     network = int(execution.get("network_request_attempt_count", -1))
     _require(resumed >= 0 and network >= 0, "negative execution count")
-    _require(resumed + network == EXPECTED_TASK_COUNT, "network/resume accounting drift")
     if execution_path == "RESUMED_AFTER_INTERRUPTION":
         _require(resumed == CHECKPOINT_COUNT, "resume checkpoint accounting drift")
         _require(network == REMAINING_COUNT, "resume network accounting drift")
+    _require(resumed + network == EXPECTED_TASK_COUNT, "network/resume accounting drift")
     _require(execution.get("phase_status") == "COMPLETE", "phase status drift")
     _require(execution.get("phase_complete") is True, "phase_complete lost")
 
