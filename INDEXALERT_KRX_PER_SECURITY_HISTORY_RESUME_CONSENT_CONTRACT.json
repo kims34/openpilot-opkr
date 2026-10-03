@@ -47,7 +47,12 @@
     "preflight_deployment_id": "c1f875b2-4164-491a-9aaf-e6c5b2a387db",
     "preflight_source_revision": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
     "preflight_network_request_attempted": false,
-    "preflight_dockerfile": "Dockerfile.krx-historical-worker"
+    "preflight_dockerfile": "Dockerfile.krx-historical-worker",
+    "required_execution_branch": "index-alert-krx-per-security-resume-v1",
+    "required_execution_commit_sha": "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+    "deployment_branch": null,
+    "deployment_commit_sha": null,
+    "deployment_source_verified": false
   },
   "authority": {
     "resume_network_execution_authorized": false,
