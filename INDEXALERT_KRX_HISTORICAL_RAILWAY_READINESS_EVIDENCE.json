@@ -82,7 +82,7 @@
     "worker_secret_configuration_authorized": false,
     "expected_scope_network_execution_authorized_by_user": false
   },
-  "next_external_action": "PER_SECURITY_HISTORY is interrupted at a verified 11,750/14,296 checkpoint with 2,546 remaining and failed=0. Original one-shot authority is consumed. Keep both execution consents disabled and preflight-only; resume only after a new explicit user authorization for the exact frozen scope using the CI-validated alphanumeric-short-code executor fix.",
+  "next_external_action": "PER_SECURITY_HISTORY is interrupted at a verified 11,750/14,296 checkpoint with 2,546 remaining and failed=0. Original one-shot authority is consumed. Keep all execution consents disabled and preflight-only. Resume only after a new explicit user message `I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1`; runtime additionally requires `KRX_PER_SECURITY_HISTORY_RESUME_CONSENT` to match that sentinel.",
   "worker_only_secrets_configured": true,
   "preflight_infrastructure_ready": true,
   "runtime_preflight": {
@@ -218,6 +218,8 @@
     "original_authority_consumed": true,
     "resume_authorized": false,
     "resume_requires_new_user_authorization": true,
-    "executor_fix_ci_validated": true
+    "executor_fix_ci_validated": true,
+    "resume_consent_env": "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT",
+    "resume_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1"
   }
 }
