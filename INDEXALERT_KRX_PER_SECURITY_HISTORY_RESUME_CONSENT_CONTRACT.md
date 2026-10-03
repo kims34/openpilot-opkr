@@ -1,11 +1,28 @@
 # IndexAlert KRX PER_SECURITY_HISTORY Resume Consent Contract v1
 
 Contract ID: `INDEXALERT-KRX-PER-SECURITY-HISTORY-RESUME-CONSENT-v1`  
-Current state: **WAITING FOR EXPLICIT USER AUTHORIZATION**
+Current state: **FIX VERIFIED — WAITING FOR EXPLICIT USER AUTHORIZATION**
 
 The original one-shot PER_SECURITY_HISTORY authority is consumed. Deployment `bc79d1b5-5fb8-46c7-8067-682e61947014` crashed because its executor incorrectly required decimal-only `isuCd2` values while the frozen PIT-safe planner correctly preserved official six-character ASCII alphanumeric short codes.
 
 A network-free probe verified the private checkpoint at exactly **11,750 / 14,296 complete**, **2,546 remaining**, **0 failed**, phase `IN_PROGRESS`, with frozen task-set SHA-256 `fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38`. The frozen task manifest is unchanged.
+
+## Verified fix and preflight binding
+
+The executor/planner short-code domain mismatch is fixed and frozen for resume preparation:
+- verified code revision: `585d763542b2fbbdc3f928621f679fb14c8c3bbf`;
+- Official KRX Status Integrity Action `37087007640`: **SUCCESS**;
+- regression coverage includes official six-character ASCII alphanumeric `isuCd2` values and rejects malformed/non-ASCII forms;
+- fresh preflight-only Railway deployment: `c1f875b2-4164-491a-9aaf-e6c5b2a387db`;
+- deployment source revision: `585d763542b2fbbdc3f928621f679fb14c8c3bbf`;
+- build definition: `Dockerfile.krx-historical-worker`;
+- runtime mode: `PREFLIGHT_ONLY`;
+- `network_request_attempted=false`;
+- explicit execution consent absent and historical network execution unauthorized.
+
+A frozen GitHub source branch `index-alert-krx-per-security-resume-v1` points exactly to the same verified revision (ahead 0 / behind 0). This prevents later development commits from silently changing the future resume code.
+
+No resume execution deployment has been created or authorized. The future execution deployment must be fresh, must resolve to the frozen verified source revision, and must be bound into the machine consent contract only after the exact user authorization below is received.
 
 ## Resume authority
 
