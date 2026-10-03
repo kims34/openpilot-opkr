@@ -55,6 +55,9 @@ def _ready():
     data["user_authorization"]["consumed"] = False
     data["user_authorization"]["received_date_kst"] = "2099-01-01"
     data["runtime_gate"]["deployment_id"] = "fresh-deployment"
+    data["runtime_gate"]["deployment_branch"] = "index-alert-krx-per-security-resume-v1"
+    data["runtime_gate"]["deployment_commit_sha"] = "585d763542b2fbbdc3f928621f679fb14c8c3bbf"
+    data["runtime_gate"]["deployment_source_verified"] = True
     data["authority"]["resume_network_execution_authorized"] = True
     return data
 
@@ -139,4 +142,21 @@ def test_waiting_state_rejects_premature_fix_or_preflight_binding():
     data = _waiting()
     data["runtime_gate"]["preflight_verified"] = True
     with pytest.raises(KRXPerSecurityResumeConsentError, match="prematurely verified"):
+        validate_contract(data)
+
+
+def test_resume_ready_rejects_wrong_branch_or_commit():
+    data = _ready()
+    data["runtime_gate"]["deployment_branch"] = "index-alert-research-v1"
+    with pytest.raises(KRXPerSecurityResumeConsentError, match="execution branch drift"):
+        validate_contract(data)
+
+    data = _ready()
+    data["runtime_gate"]["deployment_commit_sha"] = "0" * 40
+    with pytest.raises(KRXPerSecurityResumeConsentError, match="execution commit drift"):
+        validate_contract(data)
+
+    data = _ready()
+    data["runtime_gate"]["deployment_source_verified"] = False
+    with pytest.raises(KRXPerSecurityResumeConsentError, match="source not verified"):
         validate_contract(data)
