@@ -23,3 +23,10 @@ def test_rejects_network_or_authority_escalation():
     with pytest.raises(KRXPerSecurityInterruptionEvidenceError,match="illegally true"): validate_evidence(d)
     d=_d(); d["boundary"]["sealed_holdout_authorized"]=True
     with pytest.raises(KRXPerSecurityInterruptionEvidenceError,match="illegally true"): validate_evidence(d)
+
+
+def test_rejects_resume_consent_contract_drift():
+    d=_d(); d["boundary"]["resume_consent_env"]="WRONG"
+    with pytest.raises(KRXPerSecurityInterruptionEvidenceError,match="resume consent env drift"): validate_evidence(d)
+    d=_d(); d["boundary"]["resume_consent_sentinel"]="WRONG"
+    with pytest.raises(KRXPerSecurityInterruptionEvidenceError,match="resume consent sentinel drift"): validate_evidence(d)
