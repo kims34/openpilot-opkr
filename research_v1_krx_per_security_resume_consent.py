@@ -124,6 +124,16 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         == "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
         "resume entrypoint drift",
     )
+    _require(
+        gate.get("required_execution_branch")
+        == "index-alert-krx-per-security-resume-v1",
+        "required execution branch drift",
+    )
+    _require(
+        gate.get("required_execution_commit_sha")
+        == "585d763542b2fbbdc3f928621f679fb14c8c3bbf",
+        "required execution commit drift",
+    )
 
     def _require_verified_fix() -> tuple[str, str]:
         source_revision = str(gate.get("source_revision") or "").strip()
@@ -172,6 +182,9 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         _require(gate.get("preflight_source_revision") is None, "preflight source prematurely bound")
         _require(gate.get("preflight_network_request_attempted") is None, "preflight network state prematurely bound")
         _require(gate.get("preflight_dockerfile") is None, "preflight Dockerfile prematurely bound")
+        _require(gate.get("deployment_branch") is None, "execution branch prematurely bound")
+        _require(gate.get("deployment_commit_sha") is None, "execution commit prematurely bound")
+        _require(gate.get("deployment_source_verified") is False, "execution source prematurely verified")
         _require(authority.get("resume_network_execution_authorized") is False, "resume authority illegally true")
         _require(data.get("completion") in (None, {}), "completion prematurely present")
         authorized = False
@@ -181,6 +194,9 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
         _require(user.get("authorized") is False, "verified waiting cannot be authorized")
         _require(user.get("received_date_kst") is None, "authorization date prematurely present")
         _require(gate.get("deployment_id") is None, "execution deployment prematurely bound")
+        _require(gate.get("deployment_branch") is None, "execution branch prematurely bound")
+        _require(gate.get("deployment_commit_sha") is None, "execution commit prematurely bound")
+        _require(gate.get("deployment_source_verified") is False, "execution source prematurely verified")
         _require(authority.get("resume_network_execution_authorized") is False, "resume authority illegally true")
         _require(data.get("completion") in (None, {}), "completion prematurely present")
         authorized = False
@@ -196,6 +212,15 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
             deployment_id != "bc79d1b5-5fb8-46c7-8067-682e61947014",
             "crashed deployment cannot be reused",
         )
+        _require(
+            gate.get("deployment_branch") == gate.get("required_execution_branch"),
+            "resume execution branch drift",
+        )
+        _require(
+            gate.get("deployment_commit_sha") == gate.get("required_execution_commit_sha"),
+            "resume execution commit drift",
+        )
+        _require(gate.get("deployment_source_verified") is True, "resume deployment source not verified")
         _require(authority.get("resume_network_execution_authorized") is True, "resume authority record lost")
         _require(data.get("completion") in (None, {}), "completion prematurely present")
         authorized = True
