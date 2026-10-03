@@ -16,6 +16,24 @@ def _data():
     return json.loads(PATH.read_text(encoding="utf-8"))
 
 
+def _waiting():
+    data = _data()
+    data["status"] = "WAITING_FOR_EXPLICIT_USER_AUTHORIZATION"
+    data["code_fix"]["source_revision"] = None
+    data["code_fix"]["official_krx_ci_passed"] = False
+    data["runtime_gate"]["deployment_id"] = None
+    data["runtime_gate"]["source_revision"] = None
+    data["runtime_gate"]["preflight_verified"] = False
+    data["runtime_gate"]["preflight_deployment_id"] = None
+    data["runtime_gate"]["preflight_source_revision"] = None
+    data["runtime_gate"]["preflight_network_request_attempted"] = None
+    data["runtime_gate"]["preflight_dockerfile"] = None
+    data["user_authorization"]["authorized"] = False
+    data["user_authorization"]["received_date_kst"] = None
+    data["authority"]["resume_network_execution_authorized"] = False
+    return data
+
+
 def _verified_waiting():
     data = _data()
     data["status"] = "FIX_VERIFIED_WAITING_FOR_EXPLICIT_USER_AUTHORIZATION"
@@ -41,10 +59,10 @@ def _ready():
     return data
 
 
-def test_committed_resume_contract_is_waiting_and_unauthorized():
+def test_committed_resume_contract_is_verified_waiting_and_unauthorized():
     out = validate_file()
     assert out["valid"] is True
-    assert out["status"] == "WAITING_FOR_EXPLICIT_USER_AUTHORIZATION"
+    assert out["status"] == "FIX_VERIFIED_WAITING_FOR_EXPLICIT_USER_AUTHORIZATION"
     assert out["checkpoint_completed_task_count"] == 11750
     assert out["remaining_task_count"] == 2546
     assert out["authorized"] is False
@@ -113,12 +131,12 @@ def test_resume_contract_preserves_frozen_checkpoint_and_later_stage_boundaries(
 
 
 def test_waiting_state_rejects_premature_fix_or_preflight_binding():
-    data = _data()
+    data = _waiting()
     data["code_fix"]["source_revision"] = "premature"
     with pytest.raises(KRXPerSecurityResumeConsentError, match="prematurely bound"):
         validate_contract(data)
 
-    data = _data()
+    data = _waiting()
     data["runtime_gate"]["preflight_verified"] = True
     with pytest.raises(KRXPerSecurityResumeConsentError, match="prematurely verified"):
         validate_contract(data)
