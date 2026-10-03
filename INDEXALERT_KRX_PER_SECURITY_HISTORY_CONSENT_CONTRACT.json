@@ -100,6 +100,8 @@
     "checkpoint_probe_network_request_attempted": false,
     "checkpoint_probe_failed_task_count": 0,
     "checkpoint_probe_phase_complete": false,
-    "interruption_evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-INTERRUPTION-2026-10-03-v1"
+    "interruption_evidence_id": "INDEXALERT-KRX-PER-SECURITY-HISTORY-INTERRUPTION-2026-10-03-v1",
+    "resume_consent_env": "KRX_PER_SECURITY_HISTORY_RESUME_CONSENT",
+    "resume_consent_sentinel": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1"
   }
 }
