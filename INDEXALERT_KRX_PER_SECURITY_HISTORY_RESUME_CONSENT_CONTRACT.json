@@ -20,7 +20,8 @@
     "short_code_contract": "ASCII_ALPHANUMERIC_EXACTLY_6",
     "regression_test_required": true,
     "official_krx_ci_required": true,
-    "source_revision": null
+    "source_revision": null,
+    "official_krx_ci_passed": false
   },
   "user_authorization": {
     "exact_user_approval_phrase": "I_AUTHORIZE_INDEXALERT_KRX_PER_SECURITY_HISTORY_RESUME_v1",
@@ -41,7 +42,12 @@
     "redeploy_existing_crashed_deployment_forbidden": true,
     "deployment_id": null,
     "source_revision": null,
-    "entrypoint": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history"
+    "entrypoint": "python research_v1_krx_historical_worker_entrypoint.py --execute-per-security-history",
+    "preflight_verified": false,
+    "preflight_deployment_id": null,
+    "preflight_source_revision": null,
+    "preflight_network_request_attempted": null,
+    "preflight_dockerfile": null
   },
   "authority": {
     "resume_network_execution_authorized": false,
