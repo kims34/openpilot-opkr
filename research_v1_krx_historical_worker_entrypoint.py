@@ -73,12 +73,11 @@ PER_SECURITY_EXPECTED_TASK_SET_SHA256 = "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae
 PER_SECURITY_EXPECTED_MANIFEST_SHA256 = "0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116"
 STATUS_ECONOMICS_TASK_MANIFEST_REL = "task_manifests/status-economics-v3.json"
 STATUS_ECONOMICS_BATCH_REL = "batches/status-economics-v3.json"
-# Deliberately unset until network-free STATUS_ECONOMICS preparation completes.
-# Future execution must remain fail-closed until the exact prepared scope is
-# copied here and verified by CI/contracts.
-STATUS_ECONOMICS_EXPECTED_TASK_COUNT: int | None = None
-STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256: str | None = None
-STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256: str | None = None
+# Frozen from the network-free STATUS_ECONOMICS preparation. Future network
+# execution remains separately consent-gated and fail-closed to this exact scope.
+STATUS_ECONOMICS_EXPECTED_TASK_COUNT: int | None = 27
+STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256: str | None = "b3738dca89ab5cb6966a1e3158f995b75cbf6e2ae2cd4c199f02c95a8ba4c1d8"
+STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256: str | None = "e744530ae017510477c7353c917b5d4c9d8cccec8c0ed4543b6434b133628a79"
 IDENTITY_BINDING_CONSENT_ENV = "KRX_IDENTITY_BINDING_CONSENT"
 IDENTITY_BINDING_CONSENT_SENTINEL = "I_AUTHORIZE_INDEXALERT_KRX_IDENTITY_BINDING_v1"
 PER_SECURITY_CONSENT_ENV = "KRX_PER_SECURITY_HISTORY_CONSENT"
