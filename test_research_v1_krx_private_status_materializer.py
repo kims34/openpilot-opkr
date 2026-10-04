@@ -7,7 +7,7 @@ import research_v1_krx_private_status_materializer as m
 
 def test_materializer_reads_only_completed_halt_raw(monkeypatch):
     state={"status":"COMPLETE","phase_complete":True,"completed":{
-        "tid":{"raw_object_sha256":"a"*64,"raw_bytes_size":3}
+        "tid":{"raw_object_sha256":"a"*64,"raw_bytes_size":3,"retrieved_at":"2026-01-08T00:00:00+09:00"}
     }}
     manifest={"tasks":[{
         "task_id":"tid",
@@ -26,7 +26,7 @@ def test_materializer_reads_only_completed_halt_raw(monkeypatch):
     assert out.iloc[0]["event_type"]=="HALT"
     assert out.iloc[0]["event_start"]==pd.Timestamp("2026-01-05")
     assert out.iloc[0]["event_end"]==pd.Timestamp("2026-01-06")
-    assert pd.isna(out.iloc[0]["available_at"])
+    assert out.iloc[0]["available_at"] == pd.Timestamp("2026-01-08T00:00:00+09:00")
 
 
 def test_materializer_rejects_incomplete_phase(monkeypatch):
