@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any
 import pandas as pd
 from research_v1_krx_historical_fetchers import parse_data_marketplace_raw
-from research_v1_krx_private_store import read_private_json, read_raw_object
+from research_v1_krx_private_store import read_private_json, read_raw_object\nfrom research_v1_krx_historical_request_executor import validate_request_spec
 
 class KRXPrivateStatusMaterializerError(ValueError):
     pass
