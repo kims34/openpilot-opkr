@@ -64,7 +64,7 @@ def materialize_private_status_events(
         )
         # trading_halt is a pinned Data Marketplace endpoint. The manifest
         # records the method used by the frozen request specification.
-        method = str(task.get("method") or task.get("request", {}).get("method") or "csv")
+        method = str(task.get("method") or task.get("request_spec", {}).get("method") or "csv")
         frame = parse_data_marketplace_raw(method, raw)
         if frame.empty:
             continue
