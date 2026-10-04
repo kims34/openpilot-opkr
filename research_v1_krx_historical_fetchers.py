@@ -77,10 +77,18 @@ def _json_frame(raw: bytes) -> pd.DataFrame:
 
 
 def _csv_frame(raw: bytes) -> pd.DataFrame:
-    try:
-        return pd.read_csv(BytesIO(raw), encoding="EUC-KR")
-    except Exception as exc:
-        raise KRXHistoricalFetchError("KRX CSV response could not be parsed") from exc
+    # KRX download_csv responses are historically CP949/EUC-KR, but some
+    # endpoint responses are UTF-8. Preserve raw bytes unchanged and parse only
+    # with the two explicit encodings observed from the official transport.
+    errors: list[Exception] = []
+    for encoding in ("EUC-KR", "utf-8-sig"):
+        try:
+            return pd.read_csv(BytesIO(raw), encoding=encoding)
+        except (UnicodeDecodeError, UnicodeError) as exc:
+            errors.append(exc)
+        except Exception as exc:
+            raise KRXHistoricalFetchError("KRX CSV response could not be parsed") from exc
+    raise KRXHistoricalFetchError("KRX CSV response could not be decoded") from errors[-1]
 
 
 
