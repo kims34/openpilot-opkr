@@ -312,9 +312,17 @@ def build_status_economics_tasks(
             f"delisted history missing cleanup columns: {sorted(missing)}"
         )
 
+    # The official delisted-history table may contain rows outside the
+    # reconstructed KOSPI episode universe. A malformed short code on such an
+    # unrelated row must not block preparation. Skip only rows whose short code
+    # cannot possibly equal a canonical episode code; if a required episode is
+    # thereby absent, the exact-key lookup below still fails closed.
     history: dict[tuple[str, pd.Timestamp], dict[str, Any]] = {}
     for row in delisted_history.to_dict("records"):
-        code = _history_short_code(row["종목코드"])
+        try:
+            code = _history_short_code(row["종목코드"])
+        except KRXHistoricalBatchOrchestratorError:
+            continue
         listing = _history_date(row["상장일"])
         delisting = _history_date(row["폐지일"])
         if listing is None or delisting is None:
