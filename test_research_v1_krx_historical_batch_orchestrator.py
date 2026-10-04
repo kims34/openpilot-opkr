@@ -229,6 +229,35 @@ def test_status_economics_matches_alphanumeric_short_code_without_digit_strippin
     assert summary["cleanup_price_task_count"] == 1
 
 
+def test_status_economics_ignores_unrelated_malformed_history_code_but_keeps_exact_matching_fail_closed():
+    episodes = _delisted_episodes_for_economics()
+    history = pd.concat([
+        _delisted_history_for_economics(),
+        pd.DataFrame([{
+            "종목코드": "NOT-A-CANONICAL-CODE",
+            "상장일": "20200102",
+            "폐지일": "20240620",
+            "정리매매기간_시작일": "",
+            "정리매매기간_종료일": "",
+        }]),
+    ], ignore_index=True)
+
+    tasks, summary = build_status_economics_tasks(episodes, history)
+    assert len(tasks) == 1
+    assert summary["delisted_episode_count"] == 2
+
+    missing_required = _delisted_history_for_economics().iloc[[1]].copy()
+    missing_required.loc[len(missing_required)] = {
+        "종목코드": "NOT-A-CANONICAL-CODE",
+        "상장일": "20200102",
+        "폐지일": "20240620",
+        "정리매매기간_시작일": "",
+        "정리매매기간_종료일": "",
+    }
+    with pytest.raises(Exception, match="lacks exact history row"):
+        build_status_economics_tasks(episodes, missing_required)
+
+
 def test_status_economics_partial_cleanup_interval_fails_closed():
     history = _delisted_history_for_economics()
     history.loc[0, "정리매매기간_종료일"] = ""
