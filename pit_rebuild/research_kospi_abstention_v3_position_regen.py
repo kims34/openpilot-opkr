@@ -42,7 +42,7 @@ def _legacy_clean(raw: pd.DataFrame) -> pd.DataFrame:
     return out.reset_index(drop=True)
 
 def regenerate(obs: pd.DataFrame, n_days: int) -> pd.DataFrame:
-    rows=[]; first_test=v2.TRAIN_DAYS+v2.PURGE_DAYS
+    rows=[]; first_test=v2.TRAIN_DAYS+v2.PURGE_DAYS\n    # Exact market-session calendar used by v2 day_idx semantics.\n    idx_to_date={int(i):pd.Timestamp(d) for i,d in obs[["decision_idx","date"]].drop_duplicates().groupby("decision_idx")["date"].first().items()}
     for fold_no,test_start in enumerate(range(first_test,n_days-1,v2.TEST_DAYS),1):
         test_end=min(test_start+v2.TEST_DAYS,n_days-1)
         train_end=test_start-v2.PURGE_DAYS; train_start=max(0,train_end-v2.TRAIN_DAYS)
@@ -61,12 +61,12 @@ def regenerate(obs: pd.DataFrame, n_days: int) -> pd.DataFrame:
                 for decision_idx,day in test.groupby("decision_idx",sort=True):
                     chosen=day[day.score>=threshold].nlargest(v2.TOP_K,"score")
                     for rank,r in enumerate(chosen.itertuples(index=False),1):
-                        rows.append({"fold":fold_no,"horizon":h,"coverage":cov,"decision_idx":int(decision_idx),"decision_date":pd.Timestamp(r.date),"symbol":str(r.code).zfill(6),"rank":rank,"score":float(r.score),"gross_return":float(getattr(r,ret_col))})
+                        entry_idx=int(decision_idx)+1; exit_idx=int(decision_idx)+h\n                        if entry_idx not in idx_to_date or exit_idx not in idx_to_date: raise ValueError("exact session date mapping missing")\n                        # v2 entry is next-session open. Recover it from gross return is unsafe; join clean data in main below.\n                        rows.append({"fold":fold_no,"horizon":h,"coverage":cov,"decision_idx":int(decision_idx),"decision_date":pd.Timestamp(r.date),"entry_day":idx_to_date[entry_idx],"exit_day":idx_to_date[exit_idx],"symbol":str(r.code).zfill(6),"rank":rank,"score":float(r.score),"gross_return":float(getattr(r,ret_col))})
     return pd.DataFrame(rows)
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--pit-dir",required=True); ap.add_argument("--private-output",required=True); ap.add_argument("--from-date",default="2018-01-02"); ap.add_argument("--to-date",default="2026-09-25"); args=ap.parse_args()
-    raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); dates=sorted(clean.date.unique()); obs=v2.engineer(clean); selected=regenerate(obs,len(dates))
+    raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); dates=sorted(clean.date.unique()); obs=v2.engineer(clean); selected=regenerate(obs,len(dates))\n    entry_px=clean[["code","day_idx","open"]].rename(columns={"code":"symbol","day_idx":"entry_idx","open":"entry_price"})\n    selected["entry_idx"]=selected["decision_idx"]+1\n    selected=selected.merge(entry_px,on=["symbol","entry_idx"],how="left",validate="many_to_one")\n    if selected["entry_price"].isna().any() or (selected["entry_price"]<=0).any(): raise ValueError("selected position missing exact next-session entry price")\n    selected=selected.drop(columns=["entry_idx"])
     out=Path(args.private_output); out.parent.mkdir(parents=True,exist_ok=True); selected.to_parquet(out,index=False)
     # Fingerprint includes private identifiers but emits only the digest.
     canonical=selected.sort_values(["horizon","coverage","decision_idx","rank","symbol"]).to_csv(index=False).encode()
