@@ -70,6 +70,7 @@ def main():
     out=Path(args.private_output); out.parent.mkdir(parents=True,exist_ok=True); selected.to_parquet(out,index=False)
     # Fingerprint includes private identifiers but emits only the digest.
     canonical=selected.sort_values(["horizon","coverage","decision_idx","rank","symbol"]).to_csv(index=False).encode()
-    summary={"mode":"DEVELOPMENT_CONTAMINATED_POSITION_REGEN","rows":int(len(selected)),"decision_dates":int(selected.decision_date.nunique()) if len(selected) else 0,"position_fingerprint_sha256":hashlib.sha256(canonical).hexdigest(),"research_status":"DEVELOPMENT_CONTAMINATED_NOT_SEALED","profitability_validated":False,"network_request_attempted":False,"security_identifiers_emitted":False,"sealed_holdout_authorized":False,"live_trading_authorized":False}
+    counts={str(int(h)):{f"top_{int(round(float(cov)*100))}pct_train_threshold":int(len(cg)) for cov,cg in hg.groupby("coverage")} for h,hg in selected.groupby("horizon")}
+    summary={"mode":"DEVELOPMENT_CONTAMINATED_POSITION_REGEN","rows":int(len(selected)),"decision_dates":int(selected.decision_date.nunique()) if len(selected) else 0,"counts":counts,"position_fingerprint_sha256":hashlib.sha256(canonical).hexdigest(),"research_status":"DEVELOPMENT_CONTAMINATED_NOT_SEALED","profitability_validated":False,"network_request_attempted":False,"security_identifiers_emitted":False,"sealed_holdout_authorized":False,"live_trading_authorized":False}
     print("POSITION_REGEN="+json.dumps(summary,sort_keys=True))
 if __name__=="__main__": main()
