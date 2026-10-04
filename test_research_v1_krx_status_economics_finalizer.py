@@ -74,7 +74,10 @@ def _pin(monkeypatch):
     )
 
 
-def test_status_economics_finalizer_blocks_until_scope_is_code_pinned(tmp_path):
+def test_status_economics_finalizer_blocks_when_scope_pin_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(worker, "STATUS_ECONOMICS_EXPECTED_TASK_COUNT", None)
+    monkeypatch.setattr(worker, "STATUS_ECONOMICS_EXPECTED_TASK_SET_SHA256", None)
+    monkeypatch.setattr(worker, "STATUS_ECONOMICS_EXPECTED_MANIFEST_SHA256", None)
     worktree = (tmp_path / "repo").resolve()
     worktree.mkdir()
     with pytest.raises(
