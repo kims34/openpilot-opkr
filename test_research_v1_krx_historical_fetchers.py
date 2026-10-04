@@ -44,7 +44,7 @@ class Session:
 
 def test_csv_parser_accepts_official_utf8_fallback_without_mutating_bytes():
     raw = "종목코드,종목명\n005930,삼성전자\n".encode("utf-8")
-    frame = fetchers.parse_data_marketplace_raw("csv", raw)
+    frame = parse_data_marketplace_raw("csv", raw)
     assert list(frame.columns) == ["종목코드", "종목명"]
     assert frame.iloc[0]["종목명"] == "삼성전자"
 
