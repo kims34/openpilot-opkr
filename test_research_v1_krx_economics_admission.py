@@ -3,6 +3,7 @@ import pytest
 from research_v1_krx_economics_admission import (
     KRXEconomicsAdmissionError,
     audit_krx_economics_admission,
+    audit_terminal_treatment_coverage,
 )
 
 
@@ -68,3 +69,23 @@ def test_incomplete_cleanup_context_fails_closed():
     bad["cleanup_price_context_complete"] = False
     with pytest.raises(KRXEconomicsAdmissionError, match="not complete"):
         audit_krx_economics_admission(PER, bad)
+
+
+def test_terminal_treatment_gap_is_quantified_without_identifiers():
+    out = audit_terminal_treatment_coverage(
+        delisted_episode_count=83,
+        cleanup_price_episode_count=27,
+    )
+    assert out["no_cleanup_interval_episode_count"] == 56
+    assert out["unresolved_terminal_treatment_episode_count"] == 56
+    assert out["terminal_treatment_coverage_complete"] is False
+    assert out["security_identifiers_emitted"] is False
+    assert out["sealed_holdout_authorized"] is False
+
+
+def test_terminal_treatment_count_inconsistency_fails_closed():
+    with pytest.raises(KRXEconomicsAdmissionError, match="exceeds delisted total"):
+        audit_terminal_treatment_coverage(
+            delisted_episode_count=83,
+            cleanup_price_episode_count=84,
+        )
