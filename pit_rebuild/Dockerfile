@@ -11,4 +11,4 @@ COPY research_kospi_abstention_v3.py ./
 COPY research_v1_pit_legacy_adapter.py ./
 COPY research_kospi_abstention_v3_position_regen.py ./
 COPY verify_position_regen.py ./
-CMD ["python","research_v1_marcap.py","--start","2018-01-02","--end","2026-09-28","--out","/pit/marcap_kospi_pit","--raw","/pit/marcap_raw"]
+CMD ["python","verify_position_regen.py"]
