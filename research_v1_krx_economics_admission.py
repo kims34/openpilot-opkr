@@ -93,3 +93,40 @@ def audit_krx_economics_admission(
         "live_trading_authorized": False,
         "next_blocker": "INDEPENDENT_REALIZED_FILL_AND_RECOVERY_ECONOMICS_EVIDENCE",
     }
+
+
+def audit_terminal_treatment_coverage(
+    *,
+    delisted_episode_count: int,
+    cleanup_price_episode_count: int,
+    independently_resolved_no_cleanup_episode_count: int = 0,
+) -> dict[str, Any]:
+    """Network-free aggregate coverage audit; never emits security identifiers."""
+    total = int(delisted_episode_count)
+    cleanup = int(cleanup_price_episode_count)
+    resolved = int(independently_resolved_no_cleanup_episode_count)
+    if min(total, cleanup, resolved) < 0:
+        raise KRXEconomicsAdmissionError("coverage counts cannot be negative")
+    if cleanup > total:
+        raise KRXEconomicsAdmissionError("cleanup episode count exceeds delisted total")
+    no_cleanup = total - cleanup
+    if resolved > no_cleanup:
+        raise KRXEconomicsAdmissionError(
+            "resolved no-cleanup count exceeds no-cleanup episode count"
+        )
+    unresolved = no_cleanup - resolved
+    return {
+        "delisted_episode_count": total,
+        "cleanup_price_context_episode_count": cleanup,
+        "no_cleanup_interval_episode_count": no_cleanup,
+        "independently_resolved_no_cleanup_episode_count": resolved,
+        "unresolved_terminal_treatment_episode_count": unresolved,
+        "terminal_treatment_coverage_complete": unresolved == 0,
+        "exact_status_economics_ready": False,
+        "feature_performance_testing_authorized": False,
+        "sealed_holdout_authorized": False,
+        "shadow_s1_authorized": False,
+        "fresh_confirmation_s2_authorized": False,
+        "live_trading_authorized": False,
+        "security_identifiers_emitted": False,
+    }
