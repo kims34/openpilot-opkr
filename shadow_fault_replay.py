@@ -6,6 +6,7 @@ production databases, credentials, quotes or broker endpoints.
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
 
@@ -14,6 +15,13 @@ from indexalert_automation_control import (
     DecisionAction, EngineOrderIntent, validate_engine_plan,
 )
 from order_intent_journal import OrderIntentJournal, OrderJournalError
+from order_snapshot_reconciliation import reconcile_order_snapshot_batch
+from shadow_capital_allocator import ShadowCapitalAllocator
+from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge, NativeBridgeError
+from kiwoom_execution_inbox import KiwoomExecutionInbox
+from kiwoom_protected_execution_intake import (
+    ProtectedAccountBinding, KiwoomProtectedExecutionIntake, ProtectedIntakeError,
+)
 
 
 def _require(condition, message):
@@ -103,5 +111,99 @@ def run_offline_fault_replay():
                 production_promotion_authorized=False)
 
 
+def run_protected_capital_fault_replay():
+    """Exercise the protected-input -> durable inbox -> capital path together.
+
+    Every value is synthetic. A local zero-fill release is not settled broker
+    cash; the replay verifies that a late fill restores that local reservation.
+    """
+    completed = []
+    with tempfile.TemporaryDirectory(prefix='indexalert-protected-replay-') as root:
+        path = Path(root) / 'synthetic.sqlite'
+        journal = OrderIntentJournal(path)
+        binding = ProtectedAccountBinding(account='synthetic-private-account',
+            fingerprint_key=b's' * 32)
+        day = '2026-10-05'
+        try:
+            allocator = ShadowCapitalAllocator(journal)
+            allocator.configure(controls=AutomationUserControls(True, 100),
+                baseline=AutomationCapitalState(0, 0), expected_revision=0)
+            journal.register('synthetic-decision', symbol='005930', side='BUY', quantity=10)
+            epoch = journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch'])['epoch']
+            allocator.reserve_and_claim_buy('synthetic-decision', limit_price_krw=8,
+                fee_buffer_krw=3, expected_epoch=epoch, expected_capital_revision=1)
+            journal.bind_acknowledgement('synthetic-decision', 'synthetic-order')
+            bridge = KiwoomOrderJournalBridge(journal,
+                account_fingerprint=binding.fingerprint, trading_date=day)
+            bridge.bind_order('synthetic-decision', broker_order_id='synthetic-order', native_side='2')
+            inbox = KiwoomExecutionInbox(bridge)
+            intake = KiwoomProtectedExecutionIntake(inbox, binding)
+            snapshot = dict(key='synthetic-decision', broker_order_id='synthetic-order',
+                symbol='005930', side='BUY', quantity=10, filled_quantity=0, status='CANCELLED')
+            _require(reconcile_order_snapshot_batch(journal, revision=1,
+                orders=[snapshot])['matched'], 'synthetic cancellation mismatch')
+            allocator.release_zero_fill_principal('synthetic-decision',
+                expected_epoch=journal.shadow_control()['epoch'],
+                expected_capital_revision=1, expected_snapshot_revision=1)
+            _require(allocator.state()['managed_reserve_krw'] == 3, 'fee buffer lost')
+            raw = dict(zip(('9201','9203','9001','900','901','902','904','907',
+                '908','909','910','911','914','915','913','919'),
+                ('synthetic-private-account','synthetic-order','005930','10','8','6','','2',
+                 '091501','synthetic-execution','8','4','8','4','체결','')))
+            intake.append('synthetic-receipt', 'synthetic-decision', raw, trading_date=day)
+            _denied(lambda: journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch']),
+                OrderJournalError)
+            completed.append('protected_pending_late_fill_blocks_released_cash_reuse')
+
+            journal.close()
+            journal = OrderIntentJournal(path)
+            allocator = ShadowCapitalAllocator(journal)
+            bridge = KiwoomOrderJournalBridge(journal,
+                account_fingerprint=binding.fingerprint, trading_date=day)
+            inbox = KiwoomExecutionInbox(bridge)
+            intake = KiwoomProtectedExecutionIntake(inbox, binding)
+            _require(inbox.counts()['pending'] == 1, 'pending receipt lost on restart')
+            payload = journal.db.execute('SELECT payload FROM native_inbox_receipts').fetchone()[0]
+            _require('synthetic-private-account' not in payload, 'raw account persisted')
+            _denied(lambda: journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch']),
+                OrderJournalError)
+            completed.append('restart_retains_pending_receipt_without_raw_account_or_enable')
+
+            _require(inbox.replay_next()['executions_created'], 'late native fill lost')
+            _require(journal.get('synthetic-decision')['filled_quantity'] == 4, 'fill quantity mismatch')
+            _require(allocator.state()['managed_reserve_krw'] == 83, 'late principal not restored')
+            _require(journal.shadow_control()['mode'] == 'MASTER_OFF', 'late fill enabled claims')
+            completed.append('protected_native_late_fill_restores_principal_atomically')
+
+            intake.append('synthetic-redelivery', 'synthetic-decision', raw, trading_date=day)
+            _require(not inbox.replay_next()['executions_created'], 'redelivery created another fill')
+            _require(allocator.state()['managed_reserve_krw'] == 83, 'redelivery changed reservation')
+            _require(journal.get('synthetic-decision')['filled_quantity'] == 4, 'redelivery changed quantity')
+            completed.append('distinct_protected_redelivery_never_duplicates_fill_or_reserve')
+
+            alternate = dict(raw, **{'910':'9','914':'9'})
+            _denied(lambda: intake.append('synthetic-receipt', 'synthetic-decision',
+                alternate, trading_date=day), ProtectedIntakeError)
+            _require(inbox.counts()['conflicts'] == 1, 'conflicting delivery lost')
+            _require(allocator.state()['managed_reserve_krw'] == 83, 'conflict released capital')
+            _denied(lambda: journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch']),
+                OrderJournalError)
+            completed.append('protected_conflict_keeps_quantity_capital_and_master_off')
+
+            _denied(lambda: KiwoomOrderJournalBridge(journal,
+                account_fingerprint=binding.fingerprint, trading_date='2026-10-06'), NativeBridgeError)
+            _require(allocator.state()['managed_reserve_krw'] == 83, 'day rollover reset capital')
+            completed.append('native_day_rebind_cannot_erase_conservative_reservation')
+        finally:
+            journal.close()
+    return dict(mode='OFFLINE_SYNTHETIC_PROTECTED_CAPITAL_FAULT_REPLAY',
+        scenarios=completed, scenario_count=len(completed), passed=True,
+        network_request_attempted=False, broker_request_sent=False,
+        sealed_holdout_read=False, strategy_evaluated=False,
+        actual_cash_settlement_verified=False, genuine_live_evidence=False,
+        live_ordering_authorized=False, production_promotion_authorized=False)
+
+
 if __name__ == '__main__':
-    print(json.dumps(run_offline_fault_replay(), sort_keys=True))
+    replay = run_protected_capital_fault_replay if sys.argv[1:] == ['--protected-capital'] else run_offline_fault_replay
+    print(json.dumps(replay(), sort_keys=True))
