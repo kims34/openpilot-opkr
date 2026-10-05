@@ -2,6 +2,8 @@
 import json, hashlib
 from pathlib import Path
 import pandas as pd
+from research_v1_pit_legacy_adapter import load_legacy_compatible_pit
+from research_kospi_abstention_v3_position_regen import _legacy_clean
 
 P=Path("/pit/private/abstention_v3_positions_candidate.parquet")
 df=pd.read_parquet(P)
@@ -12,6 +14,19 @@ if df.empty: raise ValueError("position artifact is empty")
 if df[list(required)].isna().any().any(): raise ValueError("position artifact contains null required values")
 if (pd.to_datetime(df.entry_day)<=pd.to_datetime(df.decision_date)).any(): raise ValueError("entry_day must be after decision_date")
 if (pd.to_datetime(df.exit_day)<pd.to_datetime(df.entry_day)).any(): raise ValueError("exit_day must not precede entry_day")
+raw=load_legacy_compatible_pit("/pit/marcap_kospi_pit","2018-01-02","2026-09-25")
+clean=_legacy_clean(raw)
+calendar=clean[["day_idx","date"]].drop_duplicates().sort_values("day_idx")
+if calendar.day_idx.duplicated().any() or calendar.date.duplicated().any(): raise ValueError("PIT session calendar is not unique")
+if calendar.day_idx.astype(int).tolist()!=list(range(len(calendar))): raise ValueError("PIT session calendar is not contiguous")
+idx_to_date=calendar.set_index("day_idx")["date"]
+expected_decision=df["decision_idx"].map(idx_to_date)
+expected_entry=df["decision_idx"].add(1).map(idx_to_date)
+expected_exit=pd.Series([idx_to_date.get(int(i)+int(h),pd.NaT) for i,h in zip(df["decision_idx"],df["horizon"])],index=df.index)
+if expected_decision.isna().any() or expected_entry.isna().any() or expected_exit.isna().any(): raise ValueError("position references missing PIT session")
+if not pd.to_datetime(df["decision_date"]).reset_index(drop=True).equals(pd.to_datetime(expected_decision).reset_index(drop=True)): raise ValueError("decision_date failed exact PIT-session invariant")
+if not pd.to_datetime(df["entry_day"]).reset_index(drop=True).equals(pd.to_datetime(expected_entry).reset_index(drop=True)): raise ValueError("entry_day failed exact PIT-session invariant")
+if not pd.to_datetime(df["exit_day"]).reset_index(drop=True).equals(pd.to_datetime(expected_exit).reset_index(drop=True)): raise ValueError("exit_day failed exact PIT-session invariant")
 if (pd.to_numeric(df.entry_price,errors="coerce")<=0).any(): raise ValueError("entry_price must be positive")
 if df.duplicated(["horizon","coverage","decision_idx","rank"]).any(): raise ValueError("duplicate selection rank within decision bucket")
 rank_ok=df.groupby(["horizon","coverage","decision_idx"])["rank"].apply(lambda x: sorted(x.astype(int).tolist())==list(range(1,len(x)+1)))
