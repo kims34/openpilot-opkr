@@ -109,5 +109,22 @@ class ProtectedIntakeTests(unittest.TestCase):
         with self.assertRaises(AttributeError):self.binding._fingerprint='sha256:'+'f'*64
         self.assertTrue(self.binding.matches('synthetic-protected-account'))
 
+    def test_official_extra_fields_are_accepted_and_discarded_before_retention(self):
+        row=dict(self.raw,**{'9205':'synthetic-admin','302':'synthetic-name',
+            '10':'100','27':'101','28':'99','920':'synthetic-screen',
+            '921':'synthetic-terminal','922':'0','923':'','10010':'100'})
+        self.append(row)
+        payload=self.j.db.execute('SELECT payload FROM native_inbox_receipts').fetchone()[0]
+        for value in ('synthetic-admin','synthetic-name','synthetic-screen','synthetic-terminal'):
+            self.assertNotIn(value,payload)
+        self.inbox.replay_next()
+        self.assertEqual(self.j.get('intent')['filled_quantity'],4)
+
+    def test_unused_official_metadata_does_not_change_receipt_identity(self):
+        self.append(dict(self.raw,**{'9205':'synthetic-admin-1','10':'100'}))
+        out=self.append(dict(self.raw,**{'9205':'synthetic-admin-2','10':'101'}))
+        self.assertEqual(out['result'],'DUPLICATE_RECEIPT')
+        self.assertEqual(self.inbox.counts()['conflicts'],0)
+
 
 if __name__=='__main__':unittest.main()
