@@ -431,3 +431,9 @@ resolve actual archival source/availability and official terminal-economics evid
 through permitted evidence sources. Only independently preregistered research can
 create an accepted successor; do not weaken frozen sample or promotion gates.
 Current real-trading-ready=false. These are evidence/authority blockers, not CI failures.
+
+
+## 2026-10-05 — actual data validation started and stored integrity passed
+PR #12 merged ef95e7857f692fda3855390e918e165487624881. Railway KRX read-only deployment e56cf101-15c5-478e-ae67-228585013ef0 SUCCESS on that exact pin, with python -S -B isolated audit and NEVER restart. Real report at2026-10-05T11:04:18.033555102Z verified14,495/14,495 acquisition checkpoints and14,425 unique raw objects, errors={}, storage_integrity_pass=true. Snapshot17ab461a78822b58b4026fe727d519aff992d200fabe036d905a20c99629a060. No source rows/identifiers emitted, no provider request or private-data mutation. Local12 tests and Actions37300286035/37300290443/37300359601 passed.
+
+This is actual DATA_STORAGE_INTEGRITY_VALIDATION, not a strategy/Shadow/live pass. Complete independently attested coverage/PIT historical availability, exact affected-position economics, source gates and admitted independent successor validation remain open. The600/200/400/120 LIVE requirement concerns eventual promotion, not when data/code validation can begin. Existing failed/consumed sealed window remains immutable; no model/threshold/cutoff change or holdout rerun. See INDEXALERT_KRX_STORED_INTEGRITY_VALIDATION.json and latest INDEXALERT_HANDOFF.md.

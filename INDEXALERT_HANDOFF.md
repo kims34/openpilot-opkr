@@ -1,3 +1,54 @@
+# Latest authoritative continuation — 2026-10-05 20:07 KST
+
+Supersedes older current-state sections below. **Data storage integrity validation has actually run and passed. Strategy/Shadow/live validation readiness remains false.**
+
+## Latest branch and implementation
+- Active development branch `index-alert-position-regen-fix-v1`, GitHub HEAD at this observation **ef95e7857f692fda3855390e918e165487624881** (before this evidence checkpoint commit). Resolve the branch again for the containing checkpoint HEAD; final response records its exact SHA.
+- PR #12 https://github.com/kims34/openpilot-opkr/pull/12; feature commit **b1add8ac86b463b2e5a5baa255d9fae62fba733a**, merged implementation **ef95e7857f692fda3855390e918e165487624881**.
+- Server HEAD/pin **d1c2a91ca46f754ac65ef94aa243e1ea9454b351**; research branch HEAD **5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e** unchanged.
+- Immutable historical execution branch `index-alert-krx-per-security-resume-v1` @ **585d763542b2fbbdc3f928621f679fb14c8c3bbf** must not move.
+
+## Railway deployment and volumes
+- KRX worker service003812ee-102b-42b6-bda4-36925885b428: deployment **e56cf101-15c5-478e-ae67-228585013ef0 SUCCESS**, pin **ef95e7857f692fda3855390e918e165487624881** on active dev branch. Start `python -S -B research_v1_krx_readonly_integrity_audit.py`, restart NEVER, completed batch running0/crashed0. Volume61610fae-dc0c-493e-9920-eb3cef4cea86 /data5000MB preserved; no acquisition request, metadata repair or raw-data mutation.
+- Runtime service37902fde-ca05-43e0-bc76-278992bf7732: **291dddd5-e957-4aab-ad25-e6a49c6bb007 SUCCESS**, pin d1c2a91..., running1/crashed0; /data volume f96f985a-8aba-41ef-88df-f76999c4ff0c500MB retained.
+- PIT service225f2279-d728-4e1a-a3f3-2447ff0f9dc1: **a2cd6b78-90d8-4a46-a140-642ba2edf86e SUCCESS**, pin03140e9f9c5327bb79b1b0621dafa6e6908ca700, read-only completed batch running0/crashed0, NEVER restart; volume03f389e5-5030-46a9-bfa5-dd8aa3dc24fa /pit5000MB retained.
+- Environment pendingWork=[]; legacy push/backend remain offline. Historical PIT failure remains visible, no new failure from this validation.
+- Latest KRX source branch differs from prior research audit pin intentionally: only new read-only audit starts; historical execution source remains frozen.
+
+## Completed real validation
+- Audit report **2026-10-05T11:04:18.033555102Z**: observed/verified checkpoints **14,495/14,495**, verified unique raw objects **14,425**, errors **{}**, storage_integrity_pass **true**.
+- Snapshot fingerprint **17ab461a78822b58b4026fe727d519aff992d200fabe036d905a20c99629a060**.
+- Full byte hashes, canonical receipt fingerprint, cross-artifact bindings, raw size/content-address hashes, forbidden authority flags, unsafe paths/symlinks, permission drift, orphans/duplicate bindings checked without changing data.
+- Stdlib-only -S -B process avoids startup hooks and bytecode writes. No raw rows/security identifiers emitted; no provider request attempted.
+- Local12 tests PASS; GitHub Actions37300286035/37300290443/37300359601 SUCCESS.
+- Interval11:03:15Z..11:04:30Z telemetry returned2 ingress flows before startup,0 egress and0 DNS entries. Do not misstate total network observations as zero.
+- Deployment-bound evidence: `INDEXALERT_KRX_STORED_INTEGRITY_VALIDATION.json`.
+- Prior PR9 persistent local safety, PR10 eight offline fault scenarios, PR11 read-only execution audit remain completed as detailed below. They do not constitute a deployed broker trading loop.
+
+## Unfinished / actual blockers
+- Storage pass is only one integrity layer. Full independently attested expected scope, request-window/row coverage, historical publication/available_at/PIT and exact status economics remain unvalidated. Do not mark A-F closed from this report.
+- 56/83 delisting episodes have no cleanup-resolution evidence. Existing terminal materializer leaves available_at=NaT intentionally.
+- Actual affected-position broker execution/fill/recovery records remain missing. Runtime execution audit TABLE_MISSING means counts UNKNOWN, not verified zero. Synthetic/demo/OHLC cannot replace actual fill economics.
+- Existing v1 holdout is consumed, failed, invalid for independent promotion. No admitted independent successor candidate/protocol; downstream strategy/Shadow validation blocked.
+- Broker-neutral safety code is offline only. Actual pretrade gate/sender, Kill/cancel integration, account/market freshness, reconciliation and full live adapter remain unimplemented/admitted. No actual stock order, transfer or permission change occurred.
+- Genuine LIVE sufficiency600 observations/200 distinct decision dates/400filled/120near-capacity and all frozen quality/risk tests remain required for eventual promotion. **They do not require waiting200 days to begin data/code validation.**
+
+## Next exact execution steps
+1. Fetch active dev/server/research branch HEADs and Railway describe-service/status first; completed NEVER batches must not restart accidentally.
+2. Read deployment-bound integrity JSON. Reuse observed storage verdict only; never fabricate coverage/PIT booleans.
+3. Obtain independent official historical expected-scope and record-level publication/availability lineage, plus affected-position broker-native fills and official recovery evidence. Match declared frozen routes/periods and private raw hashes. Existing data without availability evidence must stay ineligible.
+4. Run existing exact coverage/PIT/economics validators on that independently attested private evidence, then the source-gate review; any missing field remains blocked.
+5. An accepted successor and untouched validation lineage require independently preregistered/admitted protocol. Do not repair-and-rerun the consumed window or choose new windows to rescue failure.
+6. Continue broker-neutral integration/testing where independent safe work exists; real orders/account changes still require separate explicit approval.
+
+## Frozen invariants
+- Never change existing cutoff2026-09-25, accepted criteria, model/threshold, frozen Core q25/abstention, costs/recency, Top3 no-backfill0..3/NO_TRADE, H5 504/126/126 horizon purge/embargo, H1 1%25bp >=30trades meanNet>0 positivefraction>.5, rejected H10/H20 or unswept H6-H9.
+- Sealed result hash **30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82**, passed=false, fresh2026-09-28..2026-10-01; preserve result/manifest/receipt and discrepancy; no delete/reset/re-evaluation. Retired evaluator remains retired.
+- Historical task fingerprints preserved: per-security fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38; cleanup b3738dca89ab5cb6966a1e3158f995b75cbf6e2ae2cd4c199f02c95a8ba4c1d8.
+- Source/governance, storage, PIT, statistical validation, actual execution and live-order authority remain separate. No self-labelled PASS or caller boolean grants independent canonical admission.
+
+---
+
 # Latest authoritative continuation — 2026-10-05 19:46 KST
 
 Supersedes older current-state text below. Overall real automated-trading readiness remains **false**; do not claim all internal integration complete.

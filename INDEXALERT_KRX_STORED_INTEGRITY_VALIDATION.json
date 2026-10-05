@@ -1,0 +1,70 @@
+{
+  "evidence_version": "2026-10-05.v1",
+  "phase": "DATA_STORAGE_INTEGRITY_VALIDATION",
+  "repository": "kims34/openpilot-opkr",
+  "implementation_branch": "index-alert-position-regen-fix-v1",
+  "implementation_sha": "ef95e7857f692fda3855390e918e165487624881",
+  "pull_request": 12,
+  "railway": {
+    "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
+    "environment_id": "83d5840b-270e-4d3f-a941-a37fd4a55ff7",
+    "service_id": "003812ee-102b-42b6-bda4-36925885b428",
+    "deployment_id": "e56cf101-15c5-478e-ae67-228585013ef0",
+    "deployment_status": "SUCCESS",
+    "volume_id": "61610fae-dc0c-493e-9920-eb3cef4cea86",
+    "mount_path": "/data",
+    "volume_size_mb": 5000,
+    "start_command": "python -S -B research_v1_krx_readonly_integrity_audit.py",
+    "restart_policy": "NEVER",
+    "running_replicas": 0,
+    "crashed_replicas": 0,
+    "report_timestamp": "2026-10-05T11:04:18.033555102Z"
+  },
+  "validation_result": {
+    "alpha_or_final_judge_promotion_authorized": false,
+    "database_or_file_mutation_attempted": false,
+    "errors": {},
+    "feature_performance_testing_authorized": false,
+    "historical_coverage_validated": false,
+    "live_trading_authorized": false,
+    "mode": "READ_ONLY_KRX_STORED_INTEGRITY_VALIDATION",
+    "network_request_attempted": false,
+    "observed_checkpoint_count": 14495,
+    "pit_availability_validated": false,
+    "raw_rows_emitted": false,
+    "sealed_holdout_authorized": false,
+    "security_identifiers_emitted": false,
+    "snapshot_fingerprint_sha256": "17ab461a78822b58b4026fe727d519aff992d200fabe036d905a20c99629a060",
+    "storage_integrity_pass": true,
+    "verified_checkpoint_count": 14495,
+    "verified_unique_raw_object_count": 14425
+  },
+  "network_observation": {
+    "start": "2026-10-05T11:03:15Z",
+    "end": "2026-10-05T11:04:30Z",
+    "returned_flow_count": 2,
+    "ingress_flow_count": 2,
+    "egress_flow_count": 0,
+    "dns_log_count": 0,
+    "interpretation": "Observed two ingress flows before process startup; no egress or DNS entries returned in this interval. This is deployment telemetry, not a universal network proof."
+  },
+  "tests": {
+    "local_tests_passed": 12,
+    "github_successful_runs": [
+      37300286035,
+      37300290443,
+      37300359601
+    ]
+  },
+  "limitations": [
+    "Validates observed checkpoint/manifest/receipt/raw-object byte and fingerprint chains only.",
+    "Does not independently attest complete expected historical scope, row windows, authorization legitimacy, PIT publication/availability or actual economics.",
+    "Does not close source gates A-F or grant experiment, holdout, alpha promotion or live authority.",
+    "PIT consumed/failed result preserved; no model or holdout runner executed."
+  ],
+  "next_stage_blockers": [
+    "Independent exact historical scope and record-level PIT availability evidence absent.",
+    "Actual affected-position broker fill and official recovery evidence absent; configured runtime execution audit reports TABLE_MISSING, counts unknown.",
+    "Existing consumed failed/invalid v1 holdout cannot be reused; no independently admitted successor validation protocol/candidate."
+  ]
+}
