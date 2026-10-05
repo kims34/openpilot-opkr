@@ -2,7 +2,7 @@ name: IndexAlert Research v1 Execution Evidence Integrity
 
 on:
   push:
-    branches: [index-alert-research-v1]
+    branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
     paths:
       - 'research_v1_execution_evidence.py'
       - 'test_research_v1_execution_evidence.py'
@@ -32,6 +32,11 @@ on:
       - 'test_research_v1_execution_evidence_contract.py'
       - 'test_indexalert_execution_sufficiency_docs.py'
       - 'test_indexalert_kiwoom_rest_readiness_docs.py'
+      - 'test_indexalert_physical_e2e_docs.py'
+      - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
+  pull_request:
+    branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
+    paths:
       - 'test_indexalert_physical_e2e_docs.py'
       - '.github/workflows/indexalert-research-v1-execution-evidence.yml'
   workflow_dispatch:
