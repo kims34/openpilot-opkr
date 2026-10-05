@@ -3,7 +3,7 @@ import json, hashlib
 from pathlib import Path
 import pandas as pd
 
-P=Path("/pit/private/abstention_v3_positions.parquet")
+P=Path("/pit/private/abstention_v3_positions_candidate.parquet")
 df=pd.read_parquet(P)
 required={"fold","horizon","coverage","decision_idx","decision_date","entry_day","exit_day","symbol","rank","score","gross_return","entry_price"}
 missing=required-set(df.columns)
