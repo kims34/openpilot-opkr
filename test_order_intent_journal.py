@@ -47,6 +47,7 @@ class JournalTests(unittest.TestCase):
         self.j.claim_submission('decision-1')
         self.j.close()
         self.j = OrderIntentJournal(self.path)
+        self.assertEqual(self.j.get('decision-1')['state'], 'RECONCILIATION_REQUIRED')
         self.assertEqual(self.j.recover()[0]['state'], 'RECONCILIATION_REQUIRED')
         with self.assertRaises(OrderJournalError):
             self.j.claim_submission('decision-1')

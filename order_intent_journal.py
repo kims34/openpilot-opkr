@@ -44,6 +44,9 @@ class OrderIntentJournal:
                 quantity INTEGER NOT NULL,
                 PRIMARY KEY(key, execution_id));
         """)
+        # Every new connection is treated conservatively as startup/reconnect.
+        # An in-flight submission on another connection also becomes uncertain.
+        self.recover()
 
     def close(self):
         self.db.close()
