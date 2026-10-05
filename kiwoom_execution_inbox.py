@@ -89,10 +89,15 @@ class KiwoomExecutionInbox:
                 # Preserve the alternate delivery before quarantining. It must
                 # never replace the original receipt or be applied implicitly.
                 self.journal.db.execute('INSERT INTO native_inbox_conflicts(receipt_id,key,day,payload,digest) VALUES(?,?,?,?,?)', (receipt_id, *material))
+                # Persist the alternate and quarantine in the SAME commit.
+                # A crash after this commit cannot retain an enabled mode.
+                self.journal.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE state!='INTENT_CREATED'")
+                self.journal.db.execute('UPDATE reconciliation_barrier SET blocked=1 WHERE id=1')
+                self.journal.db.execute('DELETE FROM reconciled_snapshot_bindings')
+                self.journal._stop_shadow('NORMALIZED_EXECUTION_CONFLICT')
                 conflict = True
         if conflict:
-            with self._guard():
-                require(False)
+            raise ExecutionInboxError('EXECUTION_INBOX_RECONCILIATION_REQUIRED') from None
         return self._report('RECEIPT_PERSISTED' if old is None else 'DUPLICATE_RECEIPT')
 
     def replay(self, receipt_id):
@@ -108,7 +113,9 @@ class KiwoomExecutionInbox:
                 # A conflicting receipt requires an independent resolution;
                 # neither the original nor alternate may silently win.
                 require(not self.journal.db.execute('SELECT 1 FROM native_inbox_conflicts WHERE receipt_id=?', (receipt_id,)).fetchone())
-            result = self.bridge.apply_execution(key, row, trading_date=day)
+                # Hold the write lock from receipt/conflict verification through
+                # fill binding. No competing conflict can commit in between.
+                result = self.bridge._apply_execution_locked(key, row, trading_date=day)
             outcome = 'APPLIED' if result['executions_created'] else 'DUPLICATE'
             with self._guard():
                 self.journal.db.execute('INSERT INTO native_inbox_attempts(receipt_sequence,outcome) VALUES(?,?)', (sequence, outcome))

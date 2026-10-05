@@ -116,40 +116,45 @@ class KiwoomOrderJournalBridge:
 
     def apply_execution(self,key,row,*,trading_date):
         with self._guard():
-            order,binding=self._row(key,row,trading_date,SOURCE_CONTRACT,'broker_execution_event')
-            require(row.get('source_api')=='domestic_realtime_order_fill_00')
-            require(row.get('broker_execution_id_available_in_source') is True)
-            require(row.get('side')==binding[1] and row.get('order_status')=='체결' and row.get('rejection_reason')=='')
-            execution=row.get('broker_execution_id')
-            require(isinstance(execution,str) and bool(execution.strip()))
-            qty=number(row.get('fill_qty'),integer=True,positive=True)
-            # Both reported and unit quantities/prices must agree. Ambiguous
-            # cumulative-vs-unit data cannot be interpreted as another fill.
-            require(qty==number(row.get('unit_fill_qty'),integer=True,positive=True))
-            price=number(row.get('fill_price'),positive=True)
-            require(price==number(row.get('unit_fill_price'),positive=True))
-            remaining=number(row.get('remaining_qty'),integer=True)
-            time=row.get('broker_lifecycle_time')
-            require(isinstance(time,str) and re.fullmatch(r'[0-9]{6}',time))
-            datetime.strptime(time,'%H%M%S')
-            payload=dict(account=self.account,day=self.day,order=binding[0],symbol=order['symbol'],
-                native_side=binding[1],execution_id=execution,quantity=qty,
-                price=str(price.normalize()),time=time,remaining=remaining)
-            serialized=json.dumps(payload,sort_keys=True,separators=(',',':'))
-            digest=hashlib.sha256(serialized.encode()).hexdigest()
-            old=self.journal.db.execute('SELECT digest FROM native_fill_bindings WHERE key=? AND execution_id=?',(key,execution)).fetchone()
-            if old:
-                require(old[0]==digest)
-                # Replay remains idempotent even after later fills or restart.
-                prior=self.journal.db.execute('SELECT quantity FROM executions WHERE key=? AND execution_id=?',(key,execution)).fetchone()
-                require(prior==(qty,))
-                created=False
-            else:
-                require(not self.journal.db.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?',(key,execution)).fetchone())
-                require(order['quantity']-order['filled_quantity']-qty==remaining)
-                self.journal._record_execution_locked(key,broker_order_id=binding[0],execution_id=execution,quantity=qty)
-                self.journal.db.execute('INSERT INTO native_fill_bindings VALUES(?,?,?,?)',(key,execution,digest,serialized))
-                created=True
+            return self._apply_execution_locked(key,row,trading_date=trading_date)
+
+    def _apply_execution_locked(self,key,row,*,trading_date):
+        """Caller holds the journal write transaction, including receipt checks."""
+        require(self.journal.db.in_transaction)
+        order,binding=self._row(key,row,trading_date,SOURCE_CONTRACT,'broker_execution_event')
+        require(row.get('source_api')=='domestic_realtime_order_fill_00')
+        require(row.get('broker_execution_id_available_in_source') is True)
+        require(row.get('side')==binding[1] and row.get('order_status')=='체결' and row.get('rejection_reason')=='')
+        execution=row.get('broker_execution_id')
+        require(isinstance(execution,str) and bool(execution.strip()))
+        qty=number(row.get('fill_qty'),integer=True,positive=True)
+        # Both reported and unit quantities/prices must agree. Ambiguous
+        # cumulative-vs-unit data cannot be interpreted as another fill.
+        require(qty==number(row.get('unit_fill_qty'),integer=True,positive=True))
+        price=number(row.get('fill_price'),positive=True)
+        require(price==number(row.get('unit_fill_price'),positive=True))
+        remaining=number(row.get('remaining_qty'),integer=True)
+        time=row.get('broker_lifecycle_time')
+        require(isinstance(time,str) and re.fullmatch(r'[0-9]{6}',time))
+        datetime.strptime(time,'%H%M%S')
+        payload=dict(account=self.account,day=self.day,order=binding[0],symbol=order['symbol'],
+            native_side=binding[1],execution_id=execution,quantity=qty,
+            price=str(price.normalize()),time=time,remaining=remaining)
+        serialized=json.dumps(payload,sort_keys=True,separators=(',',':'))
+        digest=hashlib.sha256(serialized.encode()).hexdigest()
+        old=self.journal.db.execute('SELECT digest FROM native_fill_bindings WHERE key=? AND execution_id=?',(key,execution)).fetchone()
+        if old:
+            require(old[0]==digest)
+            # Replay remains idempotent even after later fills or restart.
+            prior=self.journal.db.execute('SELECT quantity FROM executions WHERE key=? AND execution_id=?',(key,execution)).fetchone()
+            require(prior==(qty,))
+            created=False
+        else:
+            require(not self.journal.db.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?',(key,execution)).fetchone())
+            require(order['quantity']-order['filled_quantity']-qty==remaining)
+            self.journal._record_execution_locked(key,broker_order_id=binding[0],execution_id=execution,quantity=qty)
+            self.journal.db.execute('INSERT INTO native_fill_bindings VALUES(?,?,?,?)',(key,execution,digest,serialized))
+            created=True
         return self._report('EXECUTION_RECORDED' if created else 'DUPLICATE_EXECUTION',executions_created=created)
 
     def verify_rest_snapshot(self,key,row,*,trading_date):
