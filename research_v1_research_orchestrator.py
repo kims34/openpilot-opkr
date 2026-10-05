@@ -26,9 +26,9 @@ def build_research_queue(signals: list[ResearchSignal], *, core_version: str) ->
     if not core_version: raise ValueError("core_version is required")
     out=[]
     for s in signals:
-        if not s.observed: continue
+        if s.observed is not True: continue
         if s.kind not in ALLOWED: continue
-        if not s.evidence_ref: continue
+        if type(s.evidence_ref) is not str or not s.evidence_ref.strip(): continue
         out.append({"state":"IDEA","trigger":s.kind,"core_version":core_version,"hypothesis":ALLOWED[s.kind],"evidence_ref":s.evidence_ref,"detail":s.detail,"requires_preregistration":True,"may_use_sealed_holdout":False,"production_write_authority":False,"automatic_promotion":False,"live_order_authorized":False})
     return out
 
@@ -42,9 +42,17 @@ def signals_from_snapshot(snapshot: dict[str, Any]) -> list[ResearchSignal]:
       "data_quality_drift":"DATA_QUALITY_DRIFT",
     }
     refs=snapshot.get("evidence_refs",{}) or {}
-    return [ResearchSignal(kind, bool(snapshot.get(key,False)), str(refs.get(key,"")), str(snapshot.get(key+"_detail",""))) for key,kind in mapping.items()]
+    if type(refs) is not dict: refs={}
+    return [ResearchSignal(kind, snapshot.get(key) is True, refs.get(key,""), str(snapshot.get(key+"_detail",""))) for key,kind in mapping.items()]
 
 def orchestrate(snapshot: dict[str, Any], *, core_version: str) -> dict[str, Any]:
+    fields=("sealed_holdout_accessed", "calibration_drift", "execution_cost_drift",
+            "feature_freshness_drift", "regime_drift", "data_quality_drift")
+    malformed=[key for key in fields if key in snapshot and type(snapshot[key]) is not bool]
+    if malformed or ("evidence_refs" in snapshot and type(snapshot["evidence_refs"]) is not dict):
+        return {"status":"INVALID_INPUT","blockers":["INVALID_DIAGNOSTIC_INPUT_TYPES"],
+            "queue":[],"core_mutation_allowed":False,"sealed_holdout_authorized":False,
+            "live_order_authorized":False,"automatic_promotion_allowed":False}
     if snapshot.get("sealed_holdout_accessed") is True:
         return {"status":"INVALID_INPUT","blockers":["SEALED_HOLDOUT_INPUT_FORBIDDEN"],"queue":[],"core_mutation_allowed":False,"live_order_authorized":False}
     queue=build_research_queue(signals_from_snapshot(snapshot),core_version=core_version)

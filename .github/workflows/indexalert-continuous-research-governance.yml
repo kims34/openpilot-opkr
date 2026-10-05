@@ -7,6 +7,10 @@ on:
       - 'INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md'
       - 'research_v1_continuous_research.py'
       - 'test_research_v1_continuous_research.py'
+      - 'research_v1_research_orchestrator.py'
+      - 'test_research_v1_research_orchestrator.py'
+      - 'research_v1_successor_core.py'
+      - 'test_research_v1_successor_core.py'
       - '.github/workflows/indexalert-continuous-research-governance.yml'
   pull_request:
     branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
@@ -14,6 +18,10 @@ on:
       - 'INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md'
       - 'research_v1_continuous_research.py'
       - 'test_research_v1_continuous_research.py'
+      - 'research_v1_research_orchestrator.py'
+      - 'test_research_v1_research_orchestrator.py'
+      - 'research_v1_successor_core.py'
+      - 'test_research_v1_successor_core.py'
       - '.github/workflows/indexalert-continuous-research-governance.yml'
   workflow_dispatch:
 
@@ -30,5 +38,5 @@ jobs:
           python-version: '3.12'
       - name: Compile and test fail-closed continuous research governance
         run: |
-          python -m py_compile research_v1_continuous_research.py
-          python -m unittest test_research_v1_continuous_research.py
+          python -m py_compile research_v1_continuous_research.py research_v1_research_orchestrator.py research_v1_successor_core.py
+          python -m unittest test_research_v1_continuous_research test_research_v1_research_orchestrator test_research_v1_successor_core
