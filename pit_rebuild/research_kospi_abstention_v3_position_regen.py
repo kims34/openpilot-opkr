@@ -42,7 +42,9 @@ def _legacy_clean(raw: pd.DataFrame) -> pd.DataFrame:
     return out.reset_index(drop=True)
 
 def regenerate(obs: pd.DataFrame, n_days: int) -> pd.DataFrame:
-    rows=[]; first_test=v2.TRAIN_DAYS+v2.PURGE_DAYS\n    # Exact market-session calendar used by v2 day_idx semantics.\n    idx_to_date={int(i):pd.Timestamp(d) for i,d in obs[["decision_idx","date"]].drop_duplicates().groupby("decision_idx")["date"].first().items()}
+    rows=[]; first_test=v2.TRAIN_DAYS+v2.PURGE_DAYS
+    # Exact market-session calendar used by v2 day_idx semantics.
+    idx_to_date={int(i):pd.Timestamp(d) for i,d in obs[["decision_idx","date"]].drop_duplicates().groupby("decision_idx")["date"].first().items()}
     for fold_no,test_start in enumerate(range(first_test,n_days-1,v2.TEST_DAYS),1):
         test_end=min(test_start+v2.TEST_DAYS,n_days-1)
         train_end=test_start-v2.PURGE_DAYS; train_start=max(0,train_end-v2.TRAIN_DAYS)
