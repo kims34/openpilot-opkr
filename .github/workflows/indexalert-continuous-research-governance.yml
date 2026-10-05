@@ -2,7 +2,14 @@ name: IndexAlert Continuous Research Governance
 
 on:
   push:
-    branches: [index-alert-research-v1]
+    branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
+    paths:
+      - 'INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md'
+      - 'research_v1_continuous_research.py'
+      - 'test_research_v1_continuous_research.py'
+      - '.github/workflows/indexalert-continuous-research-governance.yml'
+  pull_request:
+    branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
     paths:
       - 'INDEXALERT_CONTINUOUS_RESEARCH_CONTRACT.md'
       - 'research_v1_continuous_research.py'

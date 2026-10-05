@@ -14,10 +14,19 @@ def protocol_fingerprint(protocol: dict) -> str:
 
 def validate_preregistration(protocol: dict) -> dict:
     missing=[k for k in REQUIRED if not protocol.get(k)]
-    roles={str(x).strip().lower() for x in protocol.get("data_roles", [])}
     blockers=[]
+    declared_roles=protocol.get("data_roles")
+    if (type(declared_roles) is not list or not declared_roles
+        or any(type(x) is not str or not x.strip() for x in declared_roles)):
+        blockers.append("INVALID_DATA_ROLES")
+        roles=set()
+    else:
+        roles={x.strip().lower() for x in declared_roles}
     if missing: blockers.append("MISSING_REQUIRED_FIELDS:"+",".join(missing))
     if roles & FORBIDDEN_DATA_ROLES: blockers.append("SEALED_HOLDOUT_FORBIDDEN")
+    for flag in ("automatic_production_promotion", "live_order_authorized"):
+        if flag in protocol and type(protocol[flag]) is not bool:
+            blockers.append("INVALID_PROTOCOL_BOOLEAN:"+flag)
     if protocol.get("automatic_production_promotion") is True: blockers.append("AUTO_PROMOTION_FORBIDDEN")
     if protocol.get("live_order_authorized") is True: blockers.append("RESEARCH_CANNOT_AUTHORIZE_LIVE_ORDER")
     return {"valid":not blockers,"blockers":blockers,"fingerprint":protocol_fingerprint(protocol)}
@@ -26,11 +35,17 @@ def evaluate_trial(protocol: dict, registered_fingerprint: str, results: dict) -
     pre=validate_preregistration(protocol)
     blockers=list(pre["blockers"])
     if pre["fingerprint"] != registered_fingerprint: blockers.append("PROTOCOL_CHANGED_AFTER_PREREGISTRATION")
+    # JSON strings/numbers are not acceptance evidence. In particular, "false"
+    # is truthy in Python and must never admit a Challenger.
+    for flag in ("all_preregistered_acceptance_criteria_passed",
+                 "sealed_holdout_accessed", "criteria_changed_after_results"):
+        if flag in results and type(results[flag]) is not bool:
+            blockers.append("INVALID_RESULT_BOOLEAN:"+flag)
     if results.get("sealed_holdout_accessed"): blockers.append("SEALED_HOLDOUT_ACCESSED")
     if results.get("criteria_changed_after_results"): blockers.append("POST_HOC_CRITERIA_CHANGE")
     if blockers:
         classification="INVALIDATED"
-    elif not results.get("all_preregistered_acceptance_criteria_passed", False):
+    elif results.get("all_preregistered_acceptance_criteria_passed") is not True:
         classification="REJECTED"
     else:
         classification="ACCEPTED_CHALLENGER"

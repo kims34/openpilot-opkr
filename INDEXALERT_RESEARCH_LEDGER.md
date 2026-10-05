@@ -226,3 +226,7 @@ Canonical `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md` records a user-opera
 ## 2026-10-02 — Internal completeness audit
 
 Disposition: **INTERNAL AUTHORITY BOUNDARY HARDENED; NO EXTERNAL BLOCKER CREDIT**. Whole-boundary review of continuous research, successor staging, automation controls, Kiwoom offline normalization and execution evidence found one internal authority ambiguity and fixed it fail-closed. Promotion eligibility is now explicitly distinct from Core mutation authority. No sealed holdout or genuine LIVE evidence was consumed.
+
+## 2026-10-05 — Research governance malformed-input correction
+
+Engineering fault reproduction on canonical research code: all_preregistered_acceptance_criteria_passed="false" incorrectly classified a trial ACCEPTED_CHALLENGER; scalar data_roles="sealed_holdout" also bypassed role exclusion. Disposition: **INPUT VALIDATION DEFECT; NO RESEARCH OR PROMOTION CREDIT**. Fix exact-boolean acceptance and result/authority flags, require an explicit nonempty role list, and retain normalized forbidden-role matching. Existing accepted synthetic fixtures remain staging only; no empirical trial was evaluated or adopted. Ten governance tests and21 adjacent governance/orchestrator/successor tests pass locally. Remote exact-head CI must pass before merge. No Core/model/threshold/holdout/private artifact/order change. This safety code correction is to be synchronized into development separately; it is not a strategy Challenger.
