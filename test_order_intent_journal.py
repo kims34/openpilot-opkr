@@ -108,7 +108,8 @@ class JournalTests(unittest.TestCase):
         out = self.j.reconcile_snapshot('decision-1', broker_order_id='broker-1', status='CANCELLED', filled_quantity=4)
         self.assertEqual(out['state'], 'CANCELLED')
         out = self.fill('late-fill', 6)
-        self.assertEqual(out['state'], 'FILLED')
+        self.assertEqual(out['state'], 'RECONCILIATION_REQUIRED')
+        self.assertEqual(out['terminal_status'], 'FILLED')
         self.assertEqual(out['filled_quantity'], 10)
 
     def test_snapshot_mismatch_does_not_invent_missing_executions(self):

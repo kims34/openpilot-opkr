@@ -1,0 +1,9 @@
+# Late fill after zero-fill release — offline safety correction
+
+A previously complete zero-fill cancellation snapshot can be crossed by a late fill after local principal release. The old journal retained the fill but did not restore the released reservation, allowing understated local exposure after another claim reused capacity.
+
+Every new execution crossing a confirmed CANCELLED terminal now atomically retains the fill, restores any previously released principal once, records the revocation without deleting the original release audit, advances the capital revision, clears settlement snapshot bindings, blocks batch reconciliation and stops SHADOW. Full fills retain terminal_status=FILLED while state remains RECONCILIATION_REQUIRED until a newer complete matching batch. Duplicate executions do not restore or stop again. Later fills cannot restore twice. The whole restoration shares the native bridge transaction, so a source-binding insert failure rolls back both fill and capital changes. A direct journal persistence constraint conflict stops local claims after rollback.
+
+Restore exposure even when it exceeds the configured ceiling: rejecting that fill would conceal the liability. Aggregate reservation reporting uses Python integer summation so representable individual reservations remain exactly reported even when the total exceeds SQLite int64. This does not increase the user ceiling or authorize over-budget claims. Existing reservation validation and fail-closed controls remain in force.
+
+Validation: 131 offline tests, including eight new regressions covering capacity already reused, replay/restart, full late fill, atomic failure/retry, native binding rollback, cancellation without release and aggregate overflow. No provider network, broker request, stock order, sale, funds transfer, fee settlement or source/LIVE admission. No frozen model, threshold, cutoff, holdout or gate changes.

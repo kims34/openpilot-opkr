@@ -40,7 +40,9 @@ class ShadowCapitalAllocator:
         if row is None:
             raise OrderJournalError('missing shadow capital configuration')
         revision, enabled, maximum, baseline = row
-        reserve = self.journal.db.execute('SELECT COALESCE(SUM(reserve),0) FROM shadow_capital_reservations').fetchone()[0]
+        # Restoring a late-fill reservation can exceed the ceiling or even the
+        # SQLite aggregate integer range. Preserve/report exposure exactly.
+        reserve = sum(row[0] for row in self.journal.db.execute('SELECT reserve FROM shadow_capital_reservations'))
         return dict(revision=revision, controls=AutomationUserControls(bool(enabled), maximum),
             capital=AutomationCapitalState(*json.loads(baseline)), managed_reserve_krw=reserve)
 

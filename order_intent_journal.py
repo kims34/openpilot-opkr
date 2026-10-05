@@ -21,12 +21,14 @@ def quarantine_conflict(method):
     def guarded(self, key, *args, **kwargs):
         try:
             return method(self, key, *args, **kwargs)
-        except OrderJournalError:
+        except (OrderJournalError, sqlite3.IntegrityError) as error:
             # Persist after the failed event transaction rolled back.
             with self._atomic():
                 if isinstance(key, str):
                     self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE key=? AND state!='INTENT_CREATED'", (key,))
                 self._stop_shadow("EVENT_CONFLICT")
+            if isinstance(error, sqlite3.IntegrityError):
+                raise OrderJournalError('journal persistence conflict') from None
             raise
     return guarded
 
@@ -240,12 +242,41 @@ class OrderIntentJournal:
             if filled > row["quantity"]:
                 raise OrderJournalError("execution exceeds requested quantity")
             self.db.execute("INSERT INTO executions VALUES(?,?,?)", (key, execution_id, quantity))
+            late_cancel = row['terminal_status'] == 'CANCELLED'
+            if late_cancel:
+                self._restore_released_principal_locked(key, execution_id)
+                self.db.execute('UPDATE reconciliation_barrier SET blocked=1 WHERE id=1')
+                self.db.execute('DELETE FROM reconciled_snapshot_bindings')
+                self._stop_shadow('LATE_FILL_AFTER_CANCEL')
             # A late fill may cross a cancellation. Never erase executions.
-            state = "RECONCILIATION_REQUIRED" if row["state"] == "RECONCILIATION_REQUIRED" else "FILLED" if filled == row["quantity"] else (
+            state = "RECONCILIATION_REQUIRED" if late_cancel or row["state"] == "RECONCILIATION_REQUIRED" else "FILLED" if filled == row["quantity"] else (
                 row["state"] if row["state"] in ("CANCELLED", "RECONCILIATION_REQUIRED") else "PARTIALLY_FILLED")
             self.db.execute("UPDATE intents SET filled=?,state=? WHERE key=?", (filled, state, key))
             if filled == row["quantity"]:
                 self.db.execute("UPDATE intents SET terminal_status='FILLED' WHERE key=?", (key,))
+
+    def _restore_released_principal_locked(self, key, execution_id):
+        """Revoke a local zero-fill release without losing the original audit.
+
+        An actual late fill must be retained even when conservative exposure
+        now exceeds the configured ceiling. Nothing here moves broker funds.
+        """
+        if not self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_releases'").fetchone():
+            return
+        released = self.db.execute('SELECT released_principal FROM shadow_capital_releases WHERE key=?', (key,)).fetchone()
+        if released is None:
+            return
+        self.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_release_revocations (
+            key TEXT PRIMARY KEY, restored_principal INTEGER NOT NULL,
+            execution_id TEXT NOT NULL)''')
+        if self.db.execute('SELECT 1 FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone():
+            return
+        reservation = self.db.execute('SELECT reserve,fee_buffer FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
+        if reservation is None or reservation[0] != reservation[1]:
+            raise OrderJournalError('released capital reservation inconsistent')
+        self.db.execute('UPDATE shadow_capital_reservations SET reserve=reserve+? WHERE key=?', (released[0], key))
+        self.db.execute('INSERT INTO shadow_capital_release_revocations VALUES(?,?,?)', (key, released[0], execution_id))
+        self.db.execute('UPDATE shadow_capital_config SET revision=revision+1 WHERE id=1')
 
     def _require_batch_reconciled(self):
         row = self.db.execute("SELECT blocked FROM reconciliation_barrier WHERE id=1").fetchone()
