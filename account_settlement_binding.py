@@ -30,10 +30,12 @@ class AccountSettlementBinder:
             # manufacture executions and manual/pre-existing holdings are not
             # silently opted into automation.
             managed={}
-            for key,side,symbol in self.journal.db.execute("SELECT key,side,symbol FROM intents"):
-                if side!="BUY": continue
+            for key,payload in self.journal.db.execute("SELECT key,payload FROM intents"):
+                identity=json.loads(payload)
+                if identity["side"]!="BUY": continue
                 order=self.journal.get(key)
                 if order["filled_quantity"]:
+                    symbol=identity["symbol"]
                     managed[symbol]=managed.get(symbol,0)+order["filled_quantity"]
             broker={p["symbol"]:p["quantity"] for p in snapshot.get("positions",[])}
             mismatches={s:(q,broker.get(s)) for s,q in managed.items() if broker.get(s)!=q}
