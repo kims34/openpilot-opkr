@@ -155,4 +155,15 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(json.loads(self.requests[-1][1]['body'])['appkey'],'synthetic-private-key')
 
 
+
+
+
+    def test_missing_or_empty_header_is_not_explicit_terminal_marker(self):
+        self.authenticate()
+        for headers,present in (({},False),({'cont-yn':''},False),({'cont-yn':'N'},True)):
+            self.responses.append(Response({'return_code':0,'cntr':[]},headers=headers))
+            page=self.transport.query('ka10076',{'qry_tp':'0','sell_tp':'0','stex_tp':'1'})
+            self.assertEqual(page.continuation,'N')
+            self.assertEqual(page.continuation_header_present,present)
+
 if __name__=='__main__':unittest.main()

@@ -66,4 +66,12 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(snapshot.rows[0]['ord_no'],'private-order')
 
 
+
+
+
+    def test_default_n_without_provider_header_never_terminates_collection(self):
+        self.pages=[PrivateDemoPage({'cntr':[]},'N','',continuation_header_present=False)]
+        with self.assertRaises(SnapshotCollectionError):self.collect()
+        self.assertEqual(len(self.calls),1)
+
 if __name__=='__main__':unittest.main()
