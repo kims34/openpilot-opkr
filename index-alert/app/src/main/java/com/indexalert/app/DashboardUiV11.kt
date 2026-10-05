@@ -56,7 +56,8 @@ fun HomeV11(
     statusText: String,
     onRefresh: () -> Unit,
     laggards: List<LaggardItem> = emptyList(),
-    laggardStatus: String = ""
+    laggardStatus: String = "",
+    automationAvailability: AutomationAvailability = AutomationAvailability.CHECKING
 ) {
     val prefs = ctx.getSharedPreferences("state", Context.MODE_PRIVATE)
     var refreshHistory by remember { mutableIntStateOf(0) }
@@ -110,6 +111,14 @@ fun HomeV11(
         }
 
         StockRecommendationSection(statusText)
+
+        Spacer(Modifier.height(12.dp))
+        Card(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Column(Modifier.padding(14.dp)) {
+                Text("자동매매", style = MaterialTheme.typography.titleMedium)
+                Text(automationAvailability.description, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
 
         Spacer(Modifier.height(18.dp))
         OutlinedButton(

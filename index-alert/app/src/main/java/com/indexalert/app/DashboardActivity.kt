@@ -31,7 +31,8 @@ private data class DashboardPayload(
     val snapshots: List<IndexSnapshot>,
     val ready: Boolean,
     val laggards: List<LaggardItem>,
-    val laggardStatus: String
+    val laggardStatus: String,
+    val automationAvailability: AutomationAvailability
 )
 
 data class LaggardFeed(val items: List<LaggardItem>, val statusText: String)
@@ -51,6 +52,7 @@ class DashboardActivity : ComponentActivity() {
     private var loading = androidx.compose.runtime.mutableStateOf(false)
     private var status = androidx.compose.runtime.mutableStateOf("")
     private var serverPushReady = false
+    private var automationAvailability = androidx.compose.runtime.mutableStateOf(AutomationAvailability.CHECKING)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,7 +78,8 @@ class DashboardActivity : ComponentActivity() {
                     statusText = status.value,
                     onRefresh = { refreshNow() },
                     laggards = laggards.value,
-                    laggardStatus = laggardStatus.value
+                    laggardStatus = laggardStatus.value,
+                    automationAvailability = automationAvailability.value
                 )
             }
         }
@@ -113,9 +116,12 @@ class DashboardActivity : ComponentActivity() {
                 } else {
                     LaggardFeed(emptyList(), "서버 연결 시 구성종목 등락 상위 3개 제공")
                 }
-                DashboardPayload(data, ready, feed.items, feed.statusText)
+                val availability = runCatching { AutomationReadiness.fetchAvailability() }
+                    .getOrDefault(AutomationAvailability.UNKNOWN)
+                DashboardPayload(data, ready, feed.items, feed.statusText, availability)
             }
 
+            automationAvailability.value = result.automationAvailability
             snapshots.value = result.snapshots
             laggards.value = result.laggards
             laggardStatus.value = result.laggardStatus
