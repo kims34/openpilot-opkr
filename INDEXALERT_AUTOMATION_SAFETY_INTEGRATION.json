@@ -1,9 +1,9 @@
 {
-  "evidence_version": "2026-10-06.v1",
+  "evidence_version": "2026-10-06.v2",
   "phase": "OFFLINE_BROKER_SAFETY_AND_OBSERVED_DEMO_READONLY_DIAGNOSTICS",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "ed3e0f2cbb2a30830aed452e01c7426545dfad05",
+  "implementation_head": "8c8c3a4998c6a47c9b9de85cea29a4a480d03952",
   "completed": [
     {
       "pr": 13,
@@ -170,17 +170,80 @@
         37363206567
       ],
       "behaviour": "Exact read-only DEMO individual KRX kt00018 collection; validate credit/loan identities and quantities, no cash/fee/ownership admission."
+    },
+    {
+      "pr": 35,
+      "head": "52a900b0a6d174e2b8a1e8c25568ee2b2615b109",
+      "merge": "0f8bf39b0527548e10598a6c3ff1deee08404635",
+      "ci_success": [
+        37368494570
+      ],
+      "behaviour": "GET-only unavailable automation readiness; actual public revision-bound smoke succeeded on 0f8, no account reads or trading authority."
+    },
+    {
+      "pr": 36,
+      "head": "51292b03fc439a641cf8d066e94b36a386e3dbab",
+      "merge": "b1d4b3480035da10b0f30c6082a27b5b2509015e",
+      "behaviour": "Research canonical consumed failed holdout documentation correction; original obsolete assertion failure retained."
+    },
+    {
+      "pr": 37,
+      "head": "2dff54057fc8e9479c9fc325074bbe1f8432830e",
+      "merge": "83b122cefc42a93b27961aac4b076a1b0e599077",
+      "ci_success": [
+        37366906284,
+        37366906358
+      ],
+      "behaviour": "Three cross-connection Kill/claim/reconnect transaction-order regressions;234 offline/91 durable tests, no actual orders."
+    },
+    {
+      "pr": 38,
+      "head": "cf4782d64d590cf44491340f6030f4ed245cfb5e",
+      "merge": "1c2e907bf952d567b6b8db4b9d98692a0b5ac549",
+      "ci_success": [
+        37367541069,
+        37368185856
+      ],
+      "behaviour": "Research exact boolean/data-role/evidence-reference safety;25 tests; no empirical candidate adoption."
+    },
+    {
+      "pr": 39,
+      "head": "0bbc0f8a9d7219436566e2c72d4deec04794048a",
+      "merge": "8c48798a05686c8d21e01108e2b17e4fbfcb7817",
+      "ci_success": [
+        37367737970
+      ],
+      "behaviour": "Canonical development strict research input safety sync;25 tests."
+    },
+    {
+      "pr": 41,
+      "head": "f3b61aa91f8427412abf49d8a5b612dcb69c077c",
+      "merge": "8a68b01bca5d551d083ccda263df38d86fa54166",
+      "ci_success": [
+        37369661577
+      ],
+      "behaviour": "Repair actual secondary v32 smoke missing test-only httpx dependency; full199 CI tests; deployed successfully, current v32 public smoke queued."
+    },
+    {
+      "pr": 42,
+      "head": "62cd1d96539d3de6622e604f02a67109ed46fbe7",
+      "merge": "8c8c3a4998c6a47c9b9de85cea29a4a480d03952",
+      "ci_success": [
+        37369895620,
+        37370566261
+      ],
+      "behaviour": "Physical E2E docs require consumed failed v1 disposition and all3 preserved hashes, retain no research/trading authority guards."
     }
   ],
   "tests": {
-    "local_offline_total": 231,
-    "github_offline_total": 231,
-    "github_job": 111942410106,
-    "github_run": 37363206567,
+    "local_offline_total": 234,
+    "github_offline_total": 234,
+    "github_job": 111959549313,
+    "github_run": 37366906284,
     "synthetic_offline_only": true,
-    "postmerge_run": 37363363702,
-    "postmerge_status": "success",
-    "postmerge_job": 111942883570,
+    "postmerge_run": 37369363304,
+    "postmerge_status": "queued",
+    "postmerge_job": null,
     "pr33_postmerge_run": 37362836452,
     "pr33_postmerge_job": 111941283298,
     "durable_postmerge_retry": {
@@ -191,7 +254,24 @@
       "job": 111946907032,
       "status": "success",
       "tests": 88
-    }
+    },
+    "github_attempt": 2,
+    "first_attempt_job": 111954177592,
+    "first_attempt_status": "cancelled_before_steps",
+    "durable_total": 91,
+    "durable_run": 37366906358,
+    "durable_job": 111954177861,
+    "physical_docs_ci": {
+      "run": 37369895620,
+      "job": 111964163050,
+      "status": "success"
+    },
+    "physical_docs_postmerge_ci": {
+      "run": 37370566261,
+      "job": 111966363104,
+      "status": "success"
+    },
+    "governance_total": 25
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -292,15 +372,17 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T20:09:16.979Z",
+  "railway_rechecked_at": "2026-10-05T20:37:00Z",
   "railway_pending_work": [],
   "research_heads": {
-    "main": "b1d4b3480035da10b0f30c6082a27b5b2509015e",
+    "main": "1c2e907bf952d567b6b8db4b9d98692a0b5ac549",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
     "new_accepted_successor": false,
     "documentation_sync_pr": 36,
-    "documentation_sync_feature": "51292b03fc439a641cf8d066e94b36a386e3dbab"
+    "documentation_sync_feature": "51292b03fc439a641cf8d066e94b36a386e3dbab",
+    "legacy_probability_v34": "48fd04bd2ce8882ac4a8838b1dcd6f5f701b255c",
+    "legacy_v41": "85bfd892ef8cc8e36b434983945cf45ce9d7e070"
   },
   "railway_demo_verifier": {
     "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
@@ -387,13 +469,64 @@
   },
   "railway_runtime": {
     "service_id": "37902fde-ca05-43e0-bc76-278992bf7732",
-    "deployment_id": "a824af66-f8d0-4006-a7a1-49d4cd79e4f9",
+    "deployment_id": "eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00",
     "status": "SUCCESS",
-    "source_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
+    "source_pin": "8a68b01bca5d551d083ccda263df38d86fa54166",
     "replicas_running": 1,
     "replicas_crashed": 0,
     "configuration_disposition": "DEMO_CONFIGURATION_ONLY",
-    "execution_counts": null
+    "execution_counts": null,
+    "execution_ledger_disposition": "TABLE_MISSING",
+    "startup_reports": [
+      {
+        "at": "2026-10-05T20:36:35.505876612Z",
+        "report": {
+          "level": "info",
+          "broker_native_identity_columns_present": null,
+          "counts": null,
+          "database_mutation_attempted": false,
+          "empirical_sufficiency_assessed": false,
+          "genuine_live_provenance_verified": false,
+          "live_trading_authorized": false,
+          "mode": "READ_ONLY_EXECUTION_LEDGER_COUNTS",
+          "network_request_attempted": false,
+          "observations": null,
+          "sealed_holdout_read": false,
+          "status": "TABLE_MISSING"
+        }
+      },
+      {
+        "at": "2026-10-05T20:36:35.505885002Z",
+        "report": {
+          "level": "info",
+          "account_origin_authenticated": false,
+          "actual_ordering_switch_enforced": false,
+          "app_key_field_present": true,
+          "app_secret_field_present": true,
+          "broker_connectivity_verified": false,
+          "broker_request_sent": false,
+          "configuration_mutated": false,
+          "configured_environment": "DEMO",
+          "configured_host_class": "DEMO",
+          "credentials_validated": false,
+          "database_or_file_mutation_attempted": false,
+          "demo_configuration_preconditions_met": true,
+          "empirical_execution_blocker_closed": false,
+          "errors": [],
+          "execution_mode_attested": false,
+          "genuine_live_provenance_verified": false,
+          "live_trading_authorized": false,
+          "mode": "READ_ONLY_KIWOOM_CONFIGURATION_AUDIT",
+          "network_request_attempted": false,
+          "official_documentation_commit": "953e5dbff123f437ab4d11a78a95191a685eb51f",
+          "ordering_configuration": "DISABLED",
+          "required_execution_mode": "MASTER_OFF",
+          "sealed_holdout_authorized": false,
+          "secrets_or_accounts_emitted": false,
+          "status": "DEMO_CONFIGURATION_ONLY"
+        }
+      }
+    ]
   },
   "railway_demo_holdings": {
     "checked_at": "2026-10-05T19:28:34.446Z",
@@ -443,67 +576,88 @@
     "frozen_criteria_changed": false
   },
   "server_readiness_feature": {
+    "checked_at": "2026-10-05T20:38:00Z",
     "pr": 35,
     "branch": "index-alert-automation-readiness-v1",
-    "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
-    "merged": false,
-    "deployed": false,
+    "head": "52a900b0a6d174e2b8a1e8c25568ee2b2615b109",
+    "merge": "0f8bf39b0527548e10598a6c3ff1deee08404635",
+    "merged": true,
+    "deployed": true,
     "local_http_tests": 6,
     "local_full_server_tests": 199,
-    "local_full_server_seconds": 35.592,
     "actual_v32_route_smoke": "PASS_WITH_NETWORK_AND_SQLITE_FORBIDDEN",
-    "ci_run": 37364545547,
-    "ci_job": 111946502765,
-    "ci_status": "queued",
-    "current_server_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
-    "live_ordering_authorized": false
+    "ci_run": 37368494570,
+    "ci_job": 111959430409,
+    "ci_status": "success",
+    "current_server_pin": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "current_deployment": "eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00",
+    "current_deployment_status": "SUCCESS",
+    "live_ordering_authorized": false,
+    "broker_order_submission_implemented": false,
+    "automation_control_persistence_implemented": false,
+    "independent_gate_admission_evaluated": false,
+    "public_smoke": {
+      "run": 37369433070,
+      "job": 111962600050,
+      "status": "success",
+      "runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
+      "observed_at": "2026-10-05T20:29:09Z",
+      "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
+      "mode": "MASTER_OFF",
+      "get_only": true,
+      "all_authority_and_mutation_flags_false": true
+    },
+    "v32_smoke_dependency_failure": {
+      "run": 37369223920,
+      "job": 111961876601,
+      "reason": "missing test-only httpx dependency",
+      "public_step_executed": false,
+      "fix_pr": 41,
+      "fix_head": "f3b61aa91f8427412abf49d8a5b612dcb69c077c",
+      "fix_ci_run": 37369661577,
+      "fix_ci_job": 111963366131,
+      "fix_ci_tests": 199,
+      "fix_ci_status": "success",
+      "fix_merge": "8a68b01bca5d551d083ccda263df38d86fa54166"
+    },
+    "current_v32_smoke": {
+      "run": 37370547415,
+      "job": 111966304367,
+      "status": "queued",
+      "tests_or_public_get_observed": false
+    }
   },
   "pending_engineering": [
     {
-      "pr": 35,
-      "branch": "index-alert-automation-readiness-v1",
-      "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
-      "local_tests": 199,
-      "run": 37364545547,
+      "pr": 40,
+      "branch": "index-alert-physical-docs-retired-lineage-v1",
+      "head": "702b5fbbcac75e9e6ad0c4aff371c6b515114df2",
+      "local_tests": 72,
+      "run": 37368979054,
+      "first_job": 111961026486,
+      "first_status": "cancelled_before_steps",
       "attempt": 2,
-      "job": 111952842665,
-      "remote_status": "queued",
-      "merged": false,
-      "deployed": false
-    },
-    {
-      "pr": 37,
-      "branch": "index-alert-stop-claim-concurrency-v1",
-      "head": "2dff54057fc8e9479c9fc325074bbe1f8432830e",
-      "local_offline_tests": 234,
-      "local_durable_tests": 91,
-      "runs": [
-        37366906284,
-        37366906358
-      ],
-      "jobs": [
-        111954177592,
-        111954177861
-      ],
+      "job": 111966644515,
       "remote_status": "queued",
       "merged": false
     },
     {
-      "pr": 38,
-      "branch": "index-alert-research-strict-input-v1",
-      "head": "cf4782d64d590cf44491340f6030f4ed245cfb5e",
-      "local_tests": 25,
-      "run": 37367541069,
-      "job": 111956227569,
+      "pr": 43,
+      "branch": "index-alert-successor-exclusion-types-v1",
+      "head": "bf17231fe6e48aaf020ff0085c6781dec201bf6f",
+      "local_tests": 27,
+      "run": 37370827400,
+      "job": 111967221633,
       "remote_status": "queued",
       "merged": false
     },
     {
-      "pr": 39,
-      "branch": "index-alert-dev-strict-research-input-v1",
-      "head": "0bbc0f8a9d7219436566e2c72d4deec04794048a",
-      "local_tests": 25,
-      "run": 37367737970,
+      "pr": 44,
+      "branch": "index-alert-dev-successor-exclusion-types-v1",
+      "head": "54335d0637596664f33452795b2339229aaf8b2d",
+      "local_tests": 27,
+      "run": 37370834473,
+      "job": 111967248999,
       "remote_status": "queued",
       "merged": false
     }
@@ -518,14 +672,35 @@
     ],
     "prepared_remedy": "exact_JSON_types_and_nonempty_actual_references",
     "local_focused_tests": 25,
-    "canonical_fix_merged": false,
+    "canonical_fix_merged": true,
     "independent_empirical_candidate_adopted": false,
-    "promotion_authority": false
+    "promotion_authority": false,
+    "new_successor_veto_defect": {
+      "reproduced_on_both_canonical_branches": true,
+      "flags": [
+        "sealed_holdout_used",
+        "criteria_changed_after_results"
+      ],
+      "malformed_value": "string true",
+      "erroneous_result": "successor_build_eligible=true",
+      "remedy": "reject present non-boolean exclusion flags; preserve optional absence and exact booleans",
+      "local_governance_tests": 27,
+      "prs": [
+        43,
+        44
+      ],
+      "canonical_fix_merged": false
+    }
   },
   "public_http_capability_check": {
     "urllib_get_health": "proxy_timeout",
     "web_open_health": "inaccessible",
-    "new_public_smoke_observed": false,
-    "server_failure_inferred": false
-  }
+    "new_public_smoke_observed": true,
+    "server_failure_inferred": false,
+    "observed_run": 37369433070,
+    "observed_runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
+    "current_pin_v32_smoke": "queued"
+  },
+  "recorded_at": "2026-10-05T20:38:00Z",
+  "recorded_parent_head": "8c8c3a4998c6a47c9b9de85cea29a4a480d03952"
 }
