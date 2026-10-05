@@ -4,7 +4,9 @@ This is an offline diagnostic allocator, not the broker execution gateway.
 The baseline is caller-supplied capital excluding reservations managed here.
 Its account provenance is unverified. Reservations never auto-release on ACK,
 cancel, fill, timeout or baseline update; no expected sale proceeds are credited.
-An admitted settlement/account adapter is still needed for actual cash reuse.
+Explicit whole-batch-confirmed zero-fill terminal diagnostics may return only
+principal while retaining the fee buffer. Actual cash reuse still requires an
+independently admitted settlement/account adapter.
 """
 import json
 
@@ -28,6 +30,9 @@ class ShadowCapitalAllocator:
             journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_reservations (
                 key TEXT PRIMARY KEY, limit_price INTEGER NOT NULL,
                 fee_buffer INTEGER NOT NULL, reserve INTEGER NOT NULL)''')
+            journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_releases (
+                key TEXT PRIMARY KEY, released_principal INTEGER NOT NULL,
+                snapshot_revision INTEGER NOT NULL)''')
 
     def state(self):
         row = self.journal.db.execute(
@@ -99,3 +104,40 @@ class ShadowCapitalAllocator:
             network_request_attempted=False, broker_request_sent=False,
             account_capital_provenance_verified=False,
             genuine_live_evidence=False, live_ordering_authorized=False)
+
+    def release_zero_fill_principal(self, key, *, expected_epoch,
+                                    expected_capital_revision, expected_snapshot_revision):
+        """Local accounting only. Never credit partial fills or inferred sale cash."""
+        self.journal._text(key)
+        with self.journal._atomic():
+            state = self._revision(expected_capital_revision)
+            control = self.journal._check_epoch(expected_epoch)
+            if control['mode'] != 'MASTER_OFF':
+                raise OrderJournalError('principal release requires MASTER_OFF')
+            barrier = self.journal.db.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
+            if (type(expected_snapshot_revision) is not int or expected_snapshot_revision <= 0
+                or barrier is None or barrier != (expected_snapshot_revision, 0)):
+                raise OrderJournalError('complete fresh batch required for principal release')
+            binding = self.journal.db.execute('SELECT revision,epoch,payload FROM reconciled_snapshot_bindings WHERE key=?', (key,)).fetchone()
+            if binding is None or binding[:2] != (expected_snapshot_revision, expected_epoch):
+                raise OrderJournalError('snapshot binding stale or absent')
+            snapshot = json.loads(binding[2])
+            order = self.journal.get(key)
+            if (order['state'] not in ('CANCELLED', 'REJECTED')
+                or order['terminal_status'] != snapshot['status']
+                or order['filled_quantity'] != 0 or snapshot['filled_quantity'] != 0
+                or any(order[f] != snapshot[f] for f in ('symbol','side','quantity','broker_order_id'))):
+                raise OrderJournalError('only confirmed unchanged zero-fill terminal BUY can release principal')
+            reservation = self.journal.db.execute('SELECT fee_buffer,reserve FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
+            if reservation is None or self.journal.db.execute('SELECT 1 FROM shadow_capital_releases WHERE key=?', (key,)).fetchone():
+                raise OrderJournalError('reservation absent or principal already released')
+            fee, total = reservation
+            released = total - fee
+            self.journal.db.execute('UPDATE shadow_capital_reservations SET reserve=? WHERE key=?', (fee, key))
+            self.journal.db.execute('INSERT INTO shadow_capital_releases VALUES(?,?,?)', (key, released, expected_snapshot_revision))
+            self.journal.db.execute('UPDATE shadow_capital_config SET revision=revision+1 WHERE id=1')
+            self.journal._stop_shadow('ZERO_FILL_PRINCIPAL_RELEASED_OFF')
+        return dict(mode='OFFLINE_ZERO_FILL_PRINCIPAL_RELEASE', released_principal_krw=released,
+            retained_fee_buffer_krw=fee, network_request_attempted=False,
+            funds_movement_attempted=False, broker_request_sent=False,
+            account_capital_provenance_verified=False, live_ordering_authorized=False)

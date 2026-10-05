@@ -54,6 +54,9 @@ class OrderIntentJournal:
                 id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL,
                 blocked INTEGER NOT NULL CHECK(blocked IN (0,1)));
             INSERT OR IGNORE INTO reconciliation_barrier VALUES(1,0,0);
+            CREATE TABLE IF NOT EXISTS reconciled_snapshot_bindings (
+                key TEXT PRIMARY KEY, revision INTEGER NOT NULL,
+                epoch INTEGER NOT NULL, payload TEXT NOT NULL);
             CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
                 ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
         """)
