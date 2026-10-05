@@ -29,3 +29,7 @@ import production
 
 app = production_v31.app
 attach(app)
+
+# Read-only capability state; no broker execution or gate admission.
+import automation_readiness
+automation_readiness.attach(app)
