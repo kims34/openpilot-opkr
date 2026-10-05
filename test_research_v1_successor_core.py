@@ -33,6 +33,42 @@ def full_confirmation():
 
 
 class SuccessorCoreTest(unittest.TestCase):
+    def test_malformed_exclusion_flags_cannot_build_candidate(self):
+        for field in ("sealed_holdout_used", "criteria_changed_after_results"):
+            for value in ("true", "false", 1, 0, None, [], {}):
+                with self.subTest(field=field, value=value):
+                    state = gates()
+                    state[field] = value
+                    result = build_successor_artifact(
+                        trial={"classification": "ACCEPTED_CHALLENGER", "trial_id": "synthetic"},
+                        gates=state, current_core_version="v1",
+                        successor_version="v2", policy_payload={"fixture": True},
+                    )
+                    self.assertFalse(result["successor_build_eligible"])
+                    self.assertIsNone(result["artifact"])
+                    self.assertIn("INVALID_GATE_BOOLEAN:" + field, result["blockers"])
+                    self.assertFalse(result["production_core_replacement_allowed"])
+                    self.assertFalse(result["sealed_holdout_authorized"])
+                    self.assertFalse(result["live_order_authorized"])
+
+    def test_existing_optional_exclusion_flags_and_boolean_vetoes(self):
+        for field, veto in (("sealed_holdout_used", "SEALED_HOLDOUT_FORBIDDEN_AT_SUCCESSOR_BUILD"),
+                            ("criteria_changed_after_results", "POST_HOC_CHANGE_FORBIDDEN")):
+            for value in (True, False, "absent"):
+                with self.subTest(field=field, value=value):
+                    state = gates()
+                    if value == "absent":
+                        del state[field]
+                    else:
+                        state[field] = value
+                    result = assess_successor_eligibility(
+                        trial={"classification": "ACCEPTED_CHALLENGER"},
+                        gates=state, current_core_version="v1",
+                    )
+                    self.assertEqual(result["successor_build_eligible"], value is not True)
+                    if value is True:
+                        self.assertIn(veto, result["blockers"])
+
     def test_good_research_builds_shadow_candidate_not_production(self):
         trial = {"classification": "ACCEPTED_CHALLENGER", "trial_id": "T1"}
         result = build_successor_artifact(
