@@ -8,7 +8,8 @@ from typing import Any
 import hashlib, json
 import pandas as pd
 from research_v1_krx_historical_fetchers import parse_data_marketplace_raw
-from research_v1_krx_private_store import read_private_json, read_raw_object\nfrom research_v1_krx_acquisition_receipt import canonical_request_metadata
+from research_v1_krx_private_store import read_private_json, read_raw_object
+from research_v1_krx_acquisition_receipt import canonical_request_metadata
 from research_v1_krx_acquisition_batch import verify_receipt_fingerprint
 
 class KRXPrivateStatusMaterializerError(ValueError):
@@ -78,6 +79,10 @@ def materialize_private_status_events(root: str, *, git_worktree: str | None=Non
         starts=_yyyymmdd(frame[start_col]); ends=_yyyymmdd(frame[end_col]) if end_col else pd.Series(pd.NaT,index=frame.index)
         for start,resume in zip(starts,ends):
             if pd.isna(start): continue
-            end=start if pd.isna(resume) else resume-pd.Timedelta(days=1)
+            if pd.isna(resume):
+                raise KRXPrivateStatusMaterializerError("open-ended HALT requires independently attested resume/end date")
+            if resume <= start:
+                raise KRXPrivateStatusMaterializerError("HALT resume_date must be after halt_date")
+            end=resume-pd.Timedelta(days=1)
             rows.append({"symbol":symbol.zfill(6) if symbol.isdigit() else symbol,"event_type":"HALT","event_start":start,"event_end":end,"available_at":available})
     return pd.DataFrame(rows,columns=["symbol","event_type","event_start","event_end","available_at"])
