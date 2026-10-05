@@ -70,3 +70,9 @@ Therefore, until a separate trusted promotion-authority adapter is implemented a
 - `INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED` remains an explicit blocker.
 
 A future promotion-authority adapter must be separately reviewed. It may not trust a caller-supplied `all_external_blockers_closed`, `execution_blocker_closed`, `sealed_holdout_contract_passed`, `shadow_s1_passed` or `fresh_confirmation_s2_passed` boolean as evidence. It must verify immutable, provenance-bound outputs produced by the authoritative source/execution/holdout/confirmation auditors. Until then, no automatic Core mutation is authorized by this contract.
+
+## JSON input type boundary
+
+Declared data_roles must be a nonempty JSON list of nonempty strings; holdout aliases are matched after whitespace/case normalization. A scalar string is not a collection of declared roles. Result acceptance requires the exact JSON boolean true; strings, numeric1 and other truthy values invalidate the trial rather than admit a Challenger. Optional holdout-access/posthoc and protocol authority flags, when provided, must also be JSON booleans. False or missing acceptance remains REJECTED. This is structural fail-closed input validation, not independent evidence admission, a performance criterion change or promotion authority. All frozen numerical gates and the consumed invalid v1 holdout lineage remain unchanged.
+
+Diagnostic drift and holdout-access flags obey the same exact-boolean boundary. A malformed diagnostic or reference map produces INVALID_INPUT with no queue; a missing/nonstring/blank evidence reference cannot be stringified into evidence. Direct queue signals require observed=true and an actual nonempty reference. These are IDEA plumbing safeguards only; no candidate is executed or admitted.
