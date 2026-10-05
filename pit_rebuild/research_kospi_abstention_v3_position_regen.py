@@ -79,6 +79,12 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--pit-dir",required=True); ap.add_argument("--private-output",required=True); ap.add_argument("--from-date",default="2018-01-02"); ap.add_argument("--to-date",default="2026-09-25"); args=ap.parse_args()
     raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); obs=v2.engineer(clean); selected=regenerate(obs,clean[["day_idx","date"]])
     if selected.empty: raise ValueError("position regeneration produced no selections")
+    calendar_check=clean[["day_idx","date"]].drop_duplicates().set_index("day_idx")["date"]
+    expected_entry=selected["decision_idx"].add(1).map(calendar_check)
+    expected_exit=pd.Series([calendar_check.get(int(i)+int(h),pd.NaT) for i,h in zip(selected["decision_idx"],selected["horizon"])],index=selected.index)
+    if expected_entry.isna().any() or expected_exit.isna().any(): raise ValueError("selected position references missing session")
+    if not pd.to_datetime(selected["entry_day"]).reset_index(drop=True).equals(pd.to_datetime(expected_entry).reset_index(drop=True)): raise ValueError("entry_day failed exact-session invariant")
+    if not pd.to_datetime(selected["exit_day"]).reset_index(drop=True).equals(pd.to_datetime(expected_exit).reset_index(drop=True)): raise ValueError("exit_day failed exact-session invariant")
     entry_px=clean[["code","day_idx","open"]].rename(columns={"code":"symbol","day_idx":"entry_idx","open":"entry_price"})
     selected["entry_idx"]=selected["decision_idx"]+1
     selected=selected.merge(entry_px,on=["symbol","entry_idx"],how="left",validate="many_to_one")
