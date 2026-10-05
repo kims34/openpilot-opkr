@@ -5,6 +5,7 @@ on:
     paths:
       - 'production_v31.py'
       - 'production_v32.py'
+      - 'automation_readiness.py'
       - 'push_build_registration.py'
       - 'push_self_test.py'
       - 'test_push_build_registration.py'
@@ -31,7 +32,7 @@ jobs:
           cache: 'pip'
       - name: Full regression and v32 syntax
         run: |
-          pip install -r requirements.txt
+          pip install -r requirements.txt httpx==0.28.1
           python -m py_compile production_v31.py production_v32.py push_build_registration.py push_self_test.py test_push_build_registration.py test_production_v32.py verify_push_physical_e2e.py test_verify_push_physical_e2e.py
           python -m unittest discover -p 'test_*.py' -v
       - name: Wait for exact production revision and verify build-bound push contract
@@ -43,6 +44,7 @@ jobs:
             if curl -fsS --max-time 15 "$BASE/health" >/tmp/health.json && \
                curl -fsS --max-time 15 "$BASE/push-health" >/tmp/push-health.json && \
                curl -fsS --max-time 15 "$BASE/openapi.json" >/tmp/openapi.json && \
+               curl -fsS --max-time 15 "$BASE/automation/readiness" >/tmp/automation-readiness.json && \
                curl -fsS --max-time 30 "$BASE/status" >/tmp/status.json && \
                curl -fsS --max-time 30 "$BASE/laggards" >/tmp/laggards.json && \
                curl -fsS --max-time 30 "$BASE/next-day-probabilities" >/tmp/prob.json; then
@@ -69,6 +71,7 @@ jobs:
           health = json.load(open('/tmp/health.json'))
           push = json.load(open('/tmp/push-health.json'))
           openapi = json.load(open('/tmp/openapi.json'))
+          automation_readiness = json.load(open('/tmp/automation-readiness.json'))
           status = json.load(open('/tmp/status.json'))
           movers = json.load(open('/tmp/laggards.json'))
           probabilities = json.load(open('/tmp/prob.json'))
@@ -126,6 +129,16 @@ jobs:
               assert push.get('latest_self_test_receipt_confirmed') is True, push
 
           paths = openapi.get('paths') or {}
+          assert automation_readiness.get('status') == 'BROKER_AUTOMATION_UNAVAILABLE', automation_readiness
+          assert automation_readiness.get('mode') == 'MASTER_OFF', automation_readiness
+          for flag in ('live_ordering_authorized', 'broker_order_submission_implemented',
+                       'automation_control_persistence_implemented', 'independent_gate_admission_evaluated',
+                       'account_or_capital_snapshot_observed', 'orders_requested', 'funds_movement_attempted',
+                       'database_or_file_mutation_attempted', 'frozen_criteria_changed'):
+              assert automation_readiness.get(flag) is False, (flag, automation_readiness)
+          assert automation_readiness.get('required_user_control_fields') == [
+              'automation_enabled', 'max_automation_capital_krw'], automation_readiness
+          assert set(paths.get('/automation/readiness') or {}) == {'get'}, paths.get('/automation/readiness')
           assert '/register' in paths, paths
           assert '/push-self-test' in paths, paths
           assert '/push-ack' in paths, paths
@@ -143,6 +156,7 @@ jobs:
 
           print(json.dumps({
               'runtime_revision': status.get('runtime_revision'),
+              'automation_readiness': automation_readiness,
               'registration_build_contract': push.get('registration_build_contract'),
               'self_test_trigger_contract': push.get('self_test_trigger_contract'),
               'physical_e2e_binding_contract': push.get('physical_e2e_binding_contract'),
