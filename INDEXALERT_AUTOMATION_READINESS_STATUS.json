@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-05T20:38:00Z",
+  "checked_at": "2026-10-05T21:00:00Z",
   "pr": 35,
   "branch": "index-alert-automation-readiness-v1",
   "head": "52a900b0a6d174e2b8a1e8c25568ee2b2615b109",
@@ -45,8 +45,22 @@
   },
   "current_v32_smoke": {
     "run": 37370547415,
-    "job": 111966304367,
+    "first_job": 111966304367,
+    "first_status": "cancelled_before_steps",
+    "attempt": 2,
+    "job": 111971908806,
     "status": "queued",
     "tests_or_public_get_observed": false
+  },
+  "current_server_tests": {
+    "run": 37370547332,
+    "first_job": 111966304859,
+    "first_status": "cancelled_before_steps",
+    "attempt": 2,
+    "job": 111971912251,
+    "status": "success",
+    "tests": 199,
+    "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "observed_at": "2026-10-05T20:57:19Z"
   }
 }

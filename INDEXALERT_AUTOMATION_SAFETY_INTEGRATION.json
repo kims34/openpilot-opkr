@@ -3,7 +3,7 @@
   "phase": "OFFLINE_BROKER_SAFETY_AND_OBSERVED_DEMO_READONLY_DIAGNOSTICS",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "8c8c3a4998c6a47c9b9de85cea29a4a480d03952",
+  "implementation_head": "c0c05d485c2cba3f66cfb969af6c4a1309186269",
   "completed": [
     {
       "pr": 13,
@@ -233,17 +233,47 @@
         37370566261
       ],
       "behaviour": "Physical E2E docs require consumed failed v1 disposition and all3 preserved hashes, retain no research/trading authority guards."
+    },
+    {
+      "pr": 40,
+      "head": "702b5fbbcac75e9e6ad0c4aff371c6b515114df2",
+      "merge": "32fb10dbffb74f6fa82d88fa42e0d88d092c7159",
+      "ci_success": [
+        37368979054
+      ],
+      "behaviour": "Research canonical consumed-failed v1 lineage docs assertion repaired;72 actual CI tests passed on attempt3, prior cancellations/real failures preserved."
+    },
+    {
+      "pr": 44,
+      "head": "54335d0637596664f33452795b2339229aaf8b2d",
+      "merge": "827bfeb41abfe26a4ecc15fcb74214f6ea662a0e",
+      "ci_success": [
+        37370834473,
+        37372525361
+      ],
+      "behaviour": "Reject malformed successor exclusion flags;27 actual feature and postmerge CI tests, no empirical Challenger adoption."
+    },
+    {
+      "pr": 45,
+      "head": "e4709c85530bdb69b89e64fe0c84e0c93b8ad33d",
+      "merge": "c0c05d485c2cba3f66cfb969af6c4a1309186269",
+      "ci_success": [
+        37371364907,
+        37371364939,
+        37372530315
+      ],
+      "behaviour": "Cross-worker explicit capital disable/zero ceiling versus BUY claim: config-first rejects stale claim, claim-first preserves83 synthetic reserve and disabled controls across reconnect;236 full/93 durable feature CI and93 durable postmerge."
     }
   ],
   "tests": {
-    "local_offline_total": 234,
-    "github_offline_total": 234,
-    "github_job": 111959549313,
-    "github_run": 37366906284,
+    "local_offline_total": 236,
+    "github_offline_total": 236,
+    "github_job": 111969042298,
+    "github_run": 37371364907,
     "synthetic_offline_only": true,
-    "postmerge_run": 37369363304,
+    "postmerge_run": 37372530271,
     "postmerge_status": "queued",
-    "postmerge_job": 111968434689,
+    "postmerge_job": 111972964752,
     "pr33_postmerge_run": 37362836452,
     "pr33_postmerge_job": 111941283298,
     "durable_postmerge_retry": {
@@ -255,12 +285,10 @@
       "status": "success",
       "tests": 88
     },
-    "github_attempt": 2,
-    "first_attempt_job": 111954177592,
-    "first_attempt_status": "cancelled_before_steps",
-    "durable_total": 91,
-    "durable_run": 37366906358,
-    "durable_job": 111954177861,
+    "github_attempt": 1,
+    "durable_total": 93,
+    "durable_run": 37371364939,
+    "durable_job": 111969045356,
     "physical_docs_ci": {
       "run": 37369895620,
       "job": 111964163050,
@@ -273,18 +301,41 @@
       "status": "success",
       "tests": 76
     },
-    "governance_total": 25,
-    "postmerge_initial_job": 111962354872,
-    "postmerge_initial_status": "cancelled_before_steps",
-    "postmerge_attempt": 2,
+    "governance_total": 27,
+    "postmerge_attempt": 1,
     "current_durable_postmerge": {
-      "run": 37369363498,
-      "first_job": 111962355829,
-      "first_status": "cancelled_before_steps",
-      "attempt": 2,
-      "job": 111968441192,
-      "status": "queued",
-      "tests_executed_observed": false
+      "run": 37372530315,
+      "job": 111972964700,
+      "status": "success",
+      "tests": 93
+    },
+    "governance_feature_run": 37370834473,
+    "governance_feature_job": 111972554939,
+    "governance_postmerge_run": 37372525361,
+    "governance_postmerge_job": 111972948331,
+    "research_physical_docs_ci": {
+      "run": 37368979054,
+      "job": 111971913984,
+      "attempt": 3,
+      "status": "success",
+      "tests": 72
+    },
+    "synthetic_replay_artifact": {
+      "id": 11370942418,
+      "run": 37371364939,
+      "head": "e4709c85530bdb69b89e64fe0c84e0c93b8ad33d",
+      "zip_sha256": "65b6301dca275462e44932c5cbf6e53618085599b84d6c3e966b11deaf27926a",
+      "downloaded_and_parsed": true,
+      "shadow_scenarios": 8,
+      "protected_capital_scenarios": 6,
+      "passed": true,
+      "actual_cash_settlement_verified": false,
+      "genuine_live_evidence": false,
+      "production_promotion_authorized": false,
+      "live_ordering_authorized": false,
+      "sealed_holdout_read": false,
+      "strategy_evaluated": false,
+      "network_request_attempted": false
     }
   },
   "railway_pit_boundary_verification": {
@@ -386,10 +437,10 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T20:37:00Z",
+  "railway_rechecked_at": "2026-10-05T20:57:20Z",
   "railway_pending_work": [],
   "research_heads": {
-    "main": "1c2e907bf952d567b6b8db4b9d98692a0b5ac549",
+    "main": "32fb10dbffb74f6fa82d88fa42e0d88d092c7159",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
     "new_accepted_successor": false,
@@ -590,7 +641,7 @@
     "frozen_criteria_changed": false
   },
   "server_readiness_feature": {
-    "checked_at": "2026-10-05T20:38:00Z",
+    "checked_at": "2026-10-05T21:00:00Z",
     "pr": 35,
     "branch": "index-alert-automation-readiness-v1",
     "head": "52a900b0a6d174e2b8a1e8c25568ee2b2615b109",
@@ -636,57 +687,80 @@
     },
     "current_v32_smoke": {
       "run": 37370547415,
-      "job": 111966304367,
+      "first_job": 111966304367,
+      "first_status": "cancelled_before_steps",
+      "attempt": 2,
+      "job": 111971908806,
       "status": "queued",
       "tests_or_public_get_observed": false
+    },
+    "current_server_tests": {
+      "run": 37370547332,
+      "first_job": 111966304859,
+      "first_status": "cancelled_before_steps",
+      "attempt": 2,
+      "job": 111971912251,
+      "status": "success",
+      "tests": 199,
+      "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+      "observed_at": "2026-10-05T20:57:19Z"
     }
   },
   "pending_engineering": [
-    {
-      "pr": 40,
-      "branch": "index-alert-physical-docs-retired-lineage-v1",
-      "head": "702b5fbbcac75e9e6ad0c4aff371c6b515114df2",
-      "local_tests": 72,
-      "run": 37368979054,
-      "first_job": 111961026486,
-      "first_status": "cancelled_before_steps",
-      "attempt": 2,
-      "job": 111966644515,
-      "remote_status": "queued",
-      "merged": false
-    },
     {
       "pr": 43,
       "branch": "index-alert-successor-exclusion-types-v1",
       "head": "bf17231fe6e48aaf020ff0085c6781dec201bf6f",
       "local_tests": 27,
       "run": 37370827400,
-      "job": 111967221633,
+      "job": 111972553851,
       "remote_status": "queued",
-      "merged": false
+      "merged": false,
+      "first_job": 111967221633,
+      "first_status": "cancelled_before_steps",
+      "attempt": 2
     },
     {
-      "pr": 44,
-      "branch": "index-alert-dev-successor-exclusion-types-v1",
-      "head": "54335d0637596664f33452795b2339229aaf8b2d",
-      "local_tests": 27,
-      "run": 37370834473,
-      "job": 111967248999,
-      "remote_status": "queued",
-      "merged": false
-    },
-    {
-      "pr": 45,
-      "branch": "index-alert-capital-disable-claim-race-v1",
-      "head": "e4709c85530bdb69b89e64fe0c84e0c93b8ad33d",
-      "local_offline_tests": 236,
-      "local_durable_tests": 93,
-      "offline_run": 37371364907,
-      "offline_job": 111969042298,
-      "durable_run": 37371364939,
-      "durable_job": 111969045356,
-      "remote_status": "queued",
-      "merged": false
+      "checked_at": "2026-10-05T20:49:00Z",
+      "repository": "kims34/openpilot-opkr",
+      "base_branch": "index-alert-build",
+      "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
+      "current_canonical_version": "4.7",
+      "current_canonical_version_code": 47,
+      "pr": 46,
+      "feature_branch": "index-alert-android-readonly-readiness-v1",
+      "feature_head": "a0ddaab8ed93f4ae39c17140ff2aa94201a8f4ed",
+      "candidate_version": "4.8",
+      "candidate_version_code": 48,
+      "merged": false,
+      "feature_apk_available_observed": false,
+      "ci": {
+        "run": 37371912963,
+        "job": 111970897295,
+        "status": "queued",
+        "unit_test_methods": 4,
+        "unit_tests_executed_observed": false,
+        "debug_apk_built_observed": false,
+        "unsigned_release_apk_built_observed": false
+      },
+      "local_capabilities": {
+        "java_present": true,
+        "gradle_present": false,
+        "kotlin_compiler_present": false,
+        "android_compilation_or_tests_executed": false
+      },
+      "behaviour": "GET-only bounded readiness display. Exact unavailable/MASTER_OFF and false boolean authority flags display unavailable. Missing/malformed/unknown READY/LIVE or network errors display unknown; no activation/persistence/account/order path.",
+      "physical_e2e": {
+        "audited_version": "4.7",
+        "audited_version_code": 47,
+        "candidate4_8_e2e_observed": false,
+        "old_e2e_is_new_build_proof": false
+      },
+      "live_ordering_authorized": false,
+      "broker_order_submission_implemented": false,
+      "automation_control_persistence_implemented": false,
+      "frozen_criteria_changed": false,
+      "remote_status": "queued"
     }
   ],
   "research_governance_defects": {
@@ -716,7 +790,8 @@
         43,
         44
       ],
-      "canonical_fix_merged": false
+      "development_fix_merged": true,
+      "research_fix_merged": false
     }
   },
   "public_http_capability_check": {
@@ -728,8 +803,8 @@
     "observed_runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
     "current_pin_v32_smoke": "queued"
   },
-  "recorded_at": "2026-10-05T20:49:00Z",
-  "recorded_parent_head": "718de94e8cbda2706722d8ba98e9862482520455",
+  "recorded_at": "2026-10-05T21:00:00Z",
+  "recorded_parent_head": "c0c05d485c2cba3f66cfb969af6c4a1309186269",
   "android_readiness": {
     "checked_at": "2026-10-05T20:49:00Z",
     "repository": "kims34/openpilot-opkr",
