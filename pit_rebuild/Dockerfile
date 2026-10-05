@@ -17,4 +17,5 @@ COPY validation_stage_gate.py ./
 COPY prepare_sealed_holdout.py ./
 COPY acquire_sealed_holdout.py ./
 COPY evaluate_sealed_holdout.py ./
+COPY probe_pit_schema.py ./
 CMD ["python","verify_position_regen.py"]
