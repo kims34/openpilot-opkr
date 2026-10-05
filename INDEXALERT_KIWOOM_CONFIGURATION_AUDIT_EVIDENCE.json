@@ -1,0 +1,63 @@
+{
+  "disposition": "CONFIGURATION_OBSERVATION_ONLY",
+  "server_commit": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
+  "deployment_id": "a824af66-f8d0-4006-a7a1-49d4cd79e4f9",
+  "deployment_status": "SUCCESS",
+  "safe_startup_audits": [
+    {
+      "timestamp": "2026-10-05T14:41:02.600535841Z",
+      "report": {
+        "broker_native_identity_columns_present": null,
+        "counts": null,
+        "database_mutation_attempted": false,
+        "empirical_sufficiency_assessed": false,
+        "genuine_live_provenance_verified": false,
+        "live_trading_authorized": false,
+        "mode": "READ_ONLY_EXECUTION_LEDGER_COUNTS",
+        "network_request_attempted": false,
+        "observations": null,
+        "sealed_holdout_read": false,
+        "status": "TABLE_MISSING"
+      }
+    },
+    {
+      "timestamp": "2026-10-05T14:41:02.600540830Z",
+      "report": {
+        "account_origin_authenticated": false,
+        "actual_ordering_switch_enforced": false,
+        "app_key_field_present": true,
+        "app_secret_field_present": true,
+        "broker_connectivity_verified": false,
+        "broker_request_sent": false,
+        "configuration_mutated": false,
+        "configured_environment": "DEMO",
+        "configured_host_class": "DEMO",
+        "credentials_validated": false,
+        "database_or_file_mutation_attempted": false,
+        "demo_configuration_preconditions_met": true,
+        "empirical_execution_blocker_closed": false,
+        "errors": [],
+        "execution_mode_attested": false,
+        "genuine_live_provenance_verified": false,
+        "live_trading_authorized": false,
+        "mode": "READ_ONLY_KIWOOM_CONFIGURATION_AUDIT",
+        "network_request_attempted": false,
+        "official_documentation_commit": "953e5dbff123f437ab4d11a78a95191a685eb51f",
+        "ordering_configuration": "DISABLED",
+        "required_execution_mode": "MASTER_OFF",
+        "sealed_holdout_authorized": false,
+        "secrets_or_accounts_emitted": false,
+        "status": "DEMO_CONFIGURATION_ONLY"
+      }
+    }
+  ],
+  "ci_runs": [
+    37325285586,
+    37325648804
+  ],
+  "exact_sha_smoke_runs": [
+    37325648714,
+    37325648790
+  ],
+  "actual_trading_authorized": false
+}
