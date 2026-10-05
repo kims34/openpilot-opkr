@@ -43,6 +43,7 @@ def collect_demo_snapshot(transport,api_id,body,*,max_pages=10):
         for index in range(max_pages):
             if index:time.sleep(0.3)
             page=transport.query(api_id,deepcopy(request),continuation=continuation,next_key=key)
+            require(page.continuation_header_present is True)
             batch=page.body.get(TABLES[api_id])
             require(type(batch) is list and all(type(row) is dict for row in batch))
             for row in batch:

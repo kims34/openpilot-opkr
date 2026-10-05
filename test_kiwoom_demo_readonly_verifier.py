@@ -79,7 +79,18 @@ class VerifierTests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue())['status'],'NOT_REQUESTED')
 
 
-if __name__=='__main__':unittest.main()
+
+
+
+    def test_false_token_validation_blocks_before_account_request(self):
+        factory=self.factory
+        class InvalidToken(factory):
+            def authenticate(self):return {'demo_token_response_validated':False}
+        report=self.run_probe(InvalidToken)
+        self.assertEqual(self.calls,['construct'])
+        self.assertEqual(report['status'],'DEMO_READ_ONLY_CONNECTIVITY_BLOCKED')
+        self.assertFalse(report['account_field_present'])
+
 
 class PaginatedVerifierTests(unittest.TestCase):
     def probe(self, mode):
@@ -134,3 +145,6 @@ class PaginatedVerifierTests(unittest.TestCase):
                 return_value={'status':'NOT_REQUESTED'}) as mock,contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(main(args),0)
                 self.assertEqual(mock.call_args.kwargs,{'execute':execute,'paginated':paginated})
+
+
+if __name__=='__main__':unittest.main()

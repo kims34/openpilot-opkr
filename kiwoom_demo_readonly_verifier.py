@@ -29,6 +29,8 @@ def verify(configuration, *, execute=False, paginated=False, transport_factory=K
         report['request_attempted'] = True
         auth = transport.authenticate()
         report['demo_token_response_validated'] = auth['demo_token_response_validated'] is True
+        if not report['demo_token_response_validated']:
+            raise ValueError('blocked')
         time.sleep(0.3)
         account = transport.query('ka00001', {}).body.get('acctNo')
         report['account_field_present'] = type(account) is str and bool(account.strip())
