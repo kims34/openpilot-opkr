@@ -1,9 +1,9 @@
 {
-  "evidence_version": "2026-10-05.v1",
+  "evidence_version": "2026-10-05.v2",
   "phase": "OFFLINE_AUTOMATION_SAFETY_INTEGRATION",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "abe68ef62cdda0cfd8a28846b9b03c43a055598a",
+  "implementation_head": "04f6a0ffa3fddecc5d4484f1a27aed6153e1a9db",
   "completed": [
     {
       "pr": 13,
@@ -44,15 +44,41 @@
         37304013072
       ],
       "behaviour": "Fresh whole-batch/epoch-bound zero-fill terminal principal return; retain fee buffer and MASTER_OFF."
+    },
+    {
+      "pr": 17,
+      "head": "6f1debb46553c2a845b5ffea6dbe85196e6a95eb",
+      "merge": "ac552b2ffedc148acc433abdbba2962b2a39a1bb",
+      "ci_success": [
+        37309104813,
+        37309104770,
+        37309099814
+      ],
+      "behaviour": "Offline native execution identity and unit quantity/price binding in journal transaction; aggregate snapshots compare only."
+    },
+    {
+      "pr": 18,
+      "head": "e8844af95ce5cd826deea062409e843ae30be2bd",
+      "merge": "04f6a0ffa3fddecc5d4484f1a27aed6153e1a9db",
+      "ci_success": [
+        37310085407,
+        37310085449,
+        37310080797,
+        37310164674,
+        37310164689
+      ],
+      "behaviour": "Restore released principal exactly once on cancellation late fills; preserve fill and audit, block batch and claims, atomically with native binding."
     }
   ],
   "tests": {
-    "local_offline_safety_tests": 87,
-    "github_offline_safety_tests": 87,
-    "safety_job": 111743217387,
-    "local_holdout_protection_tests": 16,
-    "github_holdout_protection_tests": 16,
-    "holdout_job": 111740829506
+    "local_offline_total": 131,
+    "github_offline_total": 131,
+    "github_job": 111763063221,
+    "previous_safety": 87,
+    "native_normalizer": 16,
+    "native_journal_bridge": 20,
+    "late_fill_capital": 8,
+    "previous_holdout_boundary": 16
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -125,15 +151,27 @@
     "actual_cancel_or_kill_enforcement_implemented": false,
     "source_gates_closed": false,
     "prospective_validation_admitted": false,
-    "live_ordering_authorized": false
+    "live_ordering_authorized": false,
+    "normalized_native_journal_diagnostics_implemented": true,
+    "late_cancel_fill_release_revocation_implemented": true
   },
   "remaining": [
-    "Bind official broker-native normalized events and complete snapshots to a private single-account/order scope, preserving real execution IDs and rejecting aggregate-as-fill conversion.",
+    "Independently admit actual broker-native origin/account/day/side and whole-account snapshot scope; normalized offline bridge is implemented but cannot establish these.",
     "Implement independently admitted account valuation/nonzero-fill position/fee/sale settlement before actual cash reuse.",
     "Integrate frozen pretrade market/account freshness, NetEV, capacity/risk policy and actual cancel/reconnect enforcement.",
     "Resolve official historical expected-scope/PIT availability, affected-position economics and independent successor validation evidence without consumed holdout reuse."
   ],
   "frozen_criteria_changed": false,
   "cutoff_or_model_threshold_changed": false,
-  "real_orders_or_funds_movements_attempted": false
+  "real_orders_or_funds_movements_attempted": false,
+  "prior_checkpoint_tests": {
+    "local_offline_safety_tests": 87,
+    "github_offline_safety_tests": 87,
+    "safety_job": 111743217387,
+    "local_holdout_protection_tests": 16,
+    "github_holdout_protection_tests": 16,
+    "holdout_job": 111740829506
+  },
+  "railway_rechecked_at": "2026-10-05T12:32:26Z",
+  "railway_pending_work": []
 }

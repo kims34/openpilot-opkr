@@ -1,3 +1,52 @@
+# Latest continuation — 2026-10-05 21:33 KST
+
+Supersedes older current-state sections below. Offline development and integration verification progressed; **actual automated trading and prospective strategy admission remain blocked**. No background work continues after a response.
+
+## Authoritative branch and commits
+- Repository: `kims34/openpilot-opkr`; active development branch: `index-alert-position-regen-fix-v1`.
+- Latest verified implementation HEAD before this documentation checkpoint: **`04f6a0ffa3fddecc5d4484f1a27aed6153e1a9db`**. Resolve the current documentation HEAD with GitHub `GET /repos/kims34/openpilot-opkr/branches/index-alert-position-regen-fix-v1` on continuation; this file cannot contain the SHA of its own commit.
+- PR17 native Kiwoom execution/journal binding: feature `index-alert-kiwoom-journal-binding-v1`, head `6f1debb46553c2a845b5ffea6dbe85196e6a95eb`, merge `ac552b2ffedc148acc433abdbba2962b2a39a1bb`. CI 37309104813 / 37309104770 / 37309099814 success.
+- PR18 cancellation late-fill capital correction: feature `index-alert-late-fill-capital-restore-v1`, head `e8844af95ce5cd826deea062409e843ae30be2bd`, merge **`04f6a0ffa3fddecc5d4484f1a27aed6153e1a9db`**. CI 37310085407 / 37310085449 / 37310080797 success. Post-merge 37310164674 / 37310164689 success.
+- PR13 batch barrier `e3d49766770f17c1341b5f55afc50f41b245d00c`; PR14 durable allocator `d4ba166bd529da0f88109c9a6063ec1dd8c21b50`; PR15 retired gates `26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15`; PR16 zero-fill release `abe68ef62cdda0cfd8a28846b9b03c43a055598a`.
+- Server branch `index-alert-server` and runtime pin remain `d1c2a91ca46f754ac65ef94aa243e1ea9454b351`.
+- Research branch `index-alert-research-v1-krx-economics-audit` rechecked at **`5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e`**: no newly admitted successor evidence observed.
+- Historical execution branch `index-alert-krx-per-security-resume-v1` remains immutable at `585d763542b2fbbdc3f928621f679fb14c8c3bbf`.
+
+## Work completed and verification
+- Reconstructed source from GitHub after scratch loss; no local git checkout. GitHub connectors performed branch/tree/commit/PR mutations. Local stdlib code plus pytest 8.4.2.
+- PR17 binds one declared account fingerprint/day/order/native side to a journal. Realtime 00 native 909 ID and matching 911/915 unit quantity plus 910/914 price are committed with execution under one transaction. Duplicates persist across restart; identity/economic conflicts, scope mismatch, unit ambiguity, gaps/out-of-order data, fake source claims and amendments quarantine and stop. REST kt00007/ka10076 aggregates compare existing quantities only; never invent executions or clear batch barriers.
+- Reviewed official Kiwoom repository schema tree `953e5dbff123f437ab4d11a78a95191a685eb51f`, blob `81c1d7ea1900b092ea417c67bc42d019edf81255`, `examples/국내주식/실시간시세/subscribe_domestic_order_fill_async.py`. 938/939 are daily totals, NOT per-fill fees; 907 BUY/SELL mapping is not attested. Bridge explicitly reports these admissions false.
+- PR18 fixes a discovered accounting gap: a late fill after zero-fill cancellation/principal release restores previously released principal exactly once, retains the original release audit, advances capital revision, clears snapshot bindings, blocks reconciliation and stops SHADOW. Fill, native binding and restoration commit/rollback together. A full late fill retains terminal FILLED fact but remains uncertain until a newer complete matched batch. No funds moved. Exposure above ceiling is retained instead of concealing the fill; Python integer summation avoids aggregate SQLite int64 overflow.
+- **131 local offline tests passed**, and GitHub job **111763063221** reports **131 passed**. Composition: 87 previous safety tests +16 native-normalizer tests +20 bridge tests +8 late-fill capital regressions. Separate previously verified holdout boundary tests remain16; neither new PR changes holdout code.
+- New code remains offline-only and is not installed as a production order sender.
+
+## Actual Railway project, services, volumes and logs
+Rechecked environment/status and all three service descriptions/logs at approximately 2026-10-05 12:32 UTC. Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`; pendingWork empty, no staged changes.
+- Runtime service `37902fde-ca05-43e0-bc76-278992bf7732`: deployment `291dddd5-e957-4aab-ad25-e6a49c6bb007` SUCCESS,1 running/0 crashed, server pin `d1c2a91ca46f754ac65ef94aa243e1ea9454b351`. `/data` volume `f96f985a-8aba-41ef-88df-f76999c4ff0c`,500MB. Start `sh -lc 'python -S execution_evidence_readonly_audit.py && exec python -m uvicorn production_v32:app --host 0.0.0.0 --port ${PORT:-8080}'`. Public domain `indexalert-runtime-production.up.railway.app`. Actual startup audit `2026-10-05T10:45:03.257389429Z`: execution ledger TABLE_MISSING, observations/counts NULL/unknown, NOT verified zero. Credential variable names exist; values, DEMO/REAL environment and ordering switch were NOT read or inferred. Prior push4.7-47 handset receipt is preserved evidence, not a new test this turn.
+- PIT service `225f2279-d728-4e1a-a3f3-2447ff0f9dc1`: deployment `7021473a-d9a6-4711-b496-a359fd9bb0c8` SUCCESS,0 running/0 crashed; pin `26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15`; root `/pit_rebuild`; start `python -S -B audit_retired_validation.py`, restart NEVER. `/pit` volume `03f389e5-5030-46a9-bfa5-dd8aa3dc24fa`,5000MB. Actual report `2026-10-05T11:30:36.029162016Z`: three frozen hashes match, all four retired stages blocked, validation boundary preserved, no outcome parsing/model/order/private mutation. Historical FAILED deployment `93606b06-6779-4773-8a05-6cd905ba117b` remains reported; no new failure.
+- KRX worker `003812ee-102b-42b6-bda4-36925885b428`: deployment `e56cf101-15c5-478e-ae67-228585013ef0` SUCCESS,0 running/0 crashed; pin `ef95e7857f692fda3855390e918e165487624881`; start `python -S -B research_v1_krx_readonly_integrity_audit.py`, restart NEVER. `/data` volume `61610fae-dc0c-493e-9920-eb3cef4cea86`,5000MB. Actual report `2026-10-05T11:04:18.033555102Z`:14,495/14,495 observed checkpoints verified,14,425 unique raw objects, errors{}, storage integrity true, fingerprint `17ab461a78822b58b4026fe727d519aff992d200fabe036d905a20c99629a060`. This is stored byte integrity, not coverage/PIT/economics/strategy admission.
+- Legacy push/backend remain offline with existing warnings; do not delete them.
+
+## Unfinished work, blockers and exact next actions
+Real validation promotion is blocked by consumed FAILED holdout and absence of independently admitted successor protocol/source lineage. Account/day/side/native event declarations are diagnostic inputs, not authenticated real account provenance. Actual nonzero-fill positions/fee/tax/sale settlement, complete account-snapshot source admission, production pretrade freshness/NetEV/capacity integration, actual broker cancel/reconnect/Kill enforcement and a live sender remain unimplemented. Offline tests do not supply the600 real execution observations.
+
+Next development can continue without actual ordering:
+1. Refetch dev/server/research branches, exact HEAD and Railway environment/descriptions; inspect latest admitted research ledger changes before making a source/promotion claim.
+2. Reconstruct the17 root code/test files plus `test_shadow_late_fill_capital.py` from the latest GitHub HEAD, then run `python -m pytest -q` (expected131). Do not expect this scratch directory to persist. Check existing GitHub post-merge workflows rather than assuming tests cover a moved HEAD.
+3. Implement a private append-only normalized-event diagnostic inbox/replay, preserving arrival order, digest conflicts and restart/gap recovery. It must NOT claim raw broker origin/date/side admission or auto-clear the current batch barrier. Native event ID is authoritative only after independent source admission; do not manufacture IDs from REST aggregates.
+4. Establish independently reviewed official account/date/side semantics and complete snapshot/explicit fee-source contracts before implementing nonzero-fill position/sale accounting. Daily938/939 totals cannot be settled per fill. Until then keep full conservative reservations; never infer sale proceeds.
+5. Prepare a separately reviewed prospective protocol with all existing criteria unchanged. Do not rerun/relabel consumed holdout or grant admission by self-authored boolean. DEMO/read-only preparation is the currently frozen Kiwoom scope; REAL requests and actual orders need appropriate separate explicit permission and independent gate readiness.
+
+## Frozen items — never change to obtain a pass
+- Existing sealed result consumed/failed: `/pit/private/sealed_holdout_result.json`, passed=false, created2026-10-05T08:05:25.795261Z; cutoff2026-09-25, fresh2026-09-28..2026-10-01. Do not re-evaluate/delete/reset/reseal or parse results for tuning.
+- Result hash `30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82`; manifest `ff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907`; receipt `3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63`. Preserve manifest/outcome discrepancy and failed evaluator lineage; its historical future-label leakage and ignored rolling1260 are not rescued by a helper fix.
+- Existing H5 504/126/126 horizon purge/embargo, Top3/no-backfill/0..3/NO_TRADE, q25/cost/recent evidence; H1 separate1%25bp >=30 trades, meanNet>0, positivefraction>.5. H10 rejected/no-retune; H20 archive; no H6-H9 sweep.
+- Final execution criteria unchanged:600 genuine LIVE observations,200 distinct decision dates,400 fills,120 near-capacity >=80% capacity at ADV.0005, plus frozen latency/markout/tail/unknown/reconciliation/risk requirements. These are final admission requirements, not a reason to delay offline implementation.
+- Never backdate historical publication evidence or replace missing official actual economics with synthetic/demo/OHLC. Preserve earlier source/checkpoint/scope fingerprints below.
+- User `ㅇ` authorizes continuing development/tests/deploy/verification; actual stock orders, funds movement and broker account permission changes still need separate explicit authorization. No third-party messages authorized.
+
+---
+
 # Latest continuation — 2026-10-05 20:41 KST
 
 Supersedes older current-state sections. **Four additional development PRs are merged; actual automation-ready remains false.** This checkpoint is for immediate continuation, not a declaration that development is complete.
