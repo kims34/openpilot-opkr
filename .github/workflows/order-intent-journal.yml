@@ -14,6 +14,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: |
+            kiwoom_order_journal_bridge.py
+            kiwoom_execution_inbox.py
+            kiwoom_protected_execution_intake.py
+            research_v1_kiwoom_native_execution.py
             order_intent_journal.py
             order_snapshot_reconciliation.py
             test_order_snapshot_reconciliation.py
@@ -33,7 +37,10 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest test_order_intent_journal test_shadow_safety_control test_shadow_fault_replay test_order_snapshot_reconciliation test_shadow_capital_allocator test_indexalert_automation_control test_automation_risk_boundaries test_shadow_principal_release -v
       - run: python shadow_fault_replay.py > shadow_fault_replay.json
+      - run: python -S -B shadow_fault_replay.py --protected-capital > protected_capital_fault_replay.json
       - uses: actions/upload-artifact@v4
         with:
           name: offline-synthetic-shadow-fault-replay
-          path: shadow_fault_replay.json
+          path: |
+            shadow_fault_replay.json
+            protected_capital_fault_replay.json
