@@ -160,16 +160,29 @@ class OrderIntentJournal:
         """Exactly one local shadow claimant; this method sends nothing."""
         self._text(key)
         with self._atomic():
-            control = self._check_epoch(expected_epoch)
-            if control["mode"] != "SHADOW" or control["killed"]:
-                raise OrderJournalError("shadow claims disabled")
-            self._require_batch_reconciled()
-            if self.db.execute("SELECT 1 FROM intents WHERE state='RECONCILIATION_REQUIRED' OR (state='SUBMITTING' AND key!=?) LIMIT 1", (key,)).fetchone():
-                raise OrderJournalError("unresolved journal state blocks new submissions")
-            updated = self.db.execute("UPDATE intents SET state='SUBMITTING' WHERE key=? AND state='INTENT_CREATED'", (key,)).rowcount
-            if updated != 1:
-                raise OrderJournalError("submission already claimed or intent unknown; reconcile before retry")
+            self._claim_submission_locked(key, expected_epoch=expected_epoch)
         return self.get(key)
+
+    def _claim_submission_locked(self, key, *, expected_epoch):
+        """Use only inside the journal transaction, including capital reservation."""
+        control = self._check_epoch(expected_epoch)
+        if control["mode"] != "SHADOW" or control["killed"]:
+            raise OrderJournalError("shadow claims disabled")
+        self._require_batch_reconciled()
+        # Once the optional offline allocator is initialized, BUY claims must
+        # use its durable reservation path; the legacy entry cannot bypass it.
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_config'").fetchone():
+            order = self.get(key)
+            if order['side'] == 'BUY':
+                enabled = self.db.execute('SELECT enabled FROM shadow_capital_config WHERE id=1').fetchone()
+                reserved = self.db.execute('SELECT 1 FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
+                if enabled is None or not enabled[0] or not reserved:
+                    raise OrderJournalError('BUY requires enabled durable capital reservation')
+        if self.db.execute("SELECT 1 FROM intents WHERE state='RECONCILIATION_REQUIRED' OR (state='SUBMITTING' AND key!=?) LIMIT 1", (key,)).fetchone():
+            raise OrderJournalError("unresolved journal state blocks new submissions")
+        updated = self.db.execute("UPDATE intents SET state='SUBMITTING' WHERE key=? AND state='INTENT_CREATED'", (key,)).rowcount
+        if updated != 1:
+            raise OrderJournalError("submission already claimed or intent unknown; reconcile before retry")
 
     def mark_uncertain(self, key):
         with self._atomic():
