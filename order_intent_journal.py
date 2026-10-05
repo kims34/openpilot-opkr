@@ -279,6 +279,15 @@ class OrderIntentJournal:
         self.db.execute('UPDATE shadow_capital_config SET revision=revision+1 WHERE id=1')
 
     def _require_batch_reconciled(self):
+        # A caller-supplied matched batch cannot bypass durable unprocessed or
+        # conflicted normalized deliveries. No automatic discard/resolution.
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_inbox_receipts'").fetchone():
+            if self.db.execute('''SELECT 1 FROM native_inbox_receipts r
+                WHERE NOT EXISTS (SELECT 1 FROM native_inbox_attempts a WHERE
+                    a.receipt_sequence=r.sequence AND a.outcome IN ('APPLIED','DUPLICATE')) LIMIT 1''').fetchone():
+                raise OrderJournalError('unprocessed normalized inbox prevents shadow operation')
+            if self.db.execute('SELECT 1 FROM native_inbox_conflicts LIMIT 1').fetchone():
+                raise OrderJournalError('conflicted normalized inbox prevents shadow operation')
         row = self.db.execute("SELECT blocked FROM reconciliation_barrier WHERE id=1").fetchone()
         if row is None or row[0]:
             raise OrderJournalError("unresolved batch reconciliation prevents shadow operation")

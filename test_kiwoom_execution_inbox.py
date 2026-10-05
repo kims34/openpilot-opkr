@@ -1,0 +1,177 @@
+import json
+import sqlite3
+import unittest
+from unittest.mock import patch
+
+import test_kiwoom_order_journal_bridge as fixtures
+import test_shadow_principal_release as capital_fixtures
+from kiwoom_execution_inbox import KiwoomExecutionInbox, ExecutionInboxError
+from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
+from order_intent_journal import OrderIntentJournal, OrderJournalError
+from order_snapshot_reconciliation import reconcile_order_snapshot_batch
+
+
+class InboxTests(unittest.TestCase):
+    tearDown = fixtures.BridgeTests.tearDown
+
+    def setUp(self):
+        fixtures.BridgeTests.setUp(self)
+        self.i = KiwoomExecutionInbox(self.b)
+
+    def append(self, receipt='receipt-1', row=None, key='d1'):
+        return self.i.append(receipt,key,fixtures.fill() if row is None else row,trading_date=fixtures.DAY)
+
+    def batch(self, filled=4, status='OPEN', revision=1):
+        return reconcile_order_snapshot_batch(self.j,revision=revision,orders=[dict(
+            key='d1',broker_order_id='native-order',symbol='005930',side='BUY',
+            quantity=10,filled_quantity=filled,status=status)])
+
+    def denied_enable(self):
+        with self.assertRaises(OrderJournalError):
+            self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+
+    def test_persist_first_then_apply_without_network_and_no_auto_enable(self):
+        with patch('socket.socket',side_effect=AssertionError('network forbidden')):
+            self.append()
+            self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+            self.assertEqual(self.i.counts()['pending'],1)
+            self.denied_enable()
+            self.assertTrue(self.i.replay_next()['executions_created'])
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.i.counts()['pending'],0)
+        self.denied_enable()
+        self.assertTrue(self.batch()['matched'])
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
+    def test_exact_receipt_duplicate_keeps_one_arrival_and_one_execution(self):
+        self.append();self.append()
+        self.assertEqual(self.i.counts()['receipts'],1)
+        self.i.replay_next()
+        self.assertFalse(self.i.replay('receipt-1')['executions_created'])
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.i.replay_next()['result'],'NO_PENDING_RECEIPT')
+
+    def test_distinct_delivery_of_same_native_execution_is_still_idempotent(self):
+        self.append();self.append('receipt-2')
+        self.i.replay_next();self.i.replay_next()
+        self.assertEqual(self.i.counts()['receipts'],2)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+
+    def test_reconnect_retains_pending_payload_and_native_id(self):
+        self.append()
+        self.j.close()
+        self.j=OrderIntentJournal(self.path)
+        self.b=KiwoomOrderJournalBridge(self.j,account_fingerprint=fixtures.ACCOUNT,trading_date=fixtures.DAY)
+        self.i=KiwoomExecutionInbox(self.b)
+        self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.j.get('d1')['state'],'RECONCILIATION_REQUIRED')
+        self.denied_enable()
+
+    def test_gap_retained_in_arrival_order_requires_explicit_missing_first_replay(self):
+        self.append('second',fixtures.fill('fill-2',6,0,'091502'))
+        with self.assertRaises(ExecutionInboxError):self.i.replay_next()
+        self.append('first')
+        with self.assertRaises(ExecutionInboxError):self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+        self.i.replay('first');self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],10)
+        self.assertEqual(self.i.counts()['pending'],0)
+        self.assertEqual(self.j.get('d1')['state'],'RECONCILIATION_REQUIRED')
+        self.denied_enable()
+
+    def test_conflicting_receipt_preserves_both_copies_and_never_selects_winner(self):
+        self.append()
+        row=fixtures.fill();row.update(fill_price='101',unit_fill_price='101')
+        with self.assertRaises(ExecutionInboxError):self.append(row=row)
+        self.assertEqual(self.i.counts()['receipts'],1)
+        self.assertEqual(self.i.counts()['conflicts'],1)
+        with self.assertRaises(ExecutionInboxError):self.i.replay_next()
+        self.assertTrue(self.batch(filled=0)['matched'])
+        self.denied_enable()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+
+    def test_caller_batch_cannot_clear_pending_inbox(self):
+        self.append()
+        self.assertTrue(self.batch(filled=0)['matched'])
+        self.denied_enable()
+        self.j.register('d2',symbol='OTHER',side='BUY',quantity=1)
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('d2',expected_epoch=self.j.shadow_control()['epoch'])
+
+    def test_receipts_attempts_and_conflicts_are_append_only(self):
+        self.append();self.i.replay_next()
+        row=fixtures.fill();row['fee']='15'
+        with self.assertRaises(ExecutionInboxError):self.append(row=row)
+        for table in ('receipts','attempts','conflicts'):
+            for operation in (f'DELETE FROM native_inbox_{table}',f'UPDATE native_inbox_{table} SET sequence=sequence'):
+                with self.assertRaises(sqlite3.IntegrityError):self.j.db.execute(operation)
+
+    def test_raw_account_extras_aggregate_rows_and_self_authority_are_not_persisted(self):
+        for row in (dict(fixtures.fill(),account_no='private'),fixtures.rest(),
+            dict(fixtures.fill(),genuine_live_provenance_verified=True)):
+            with self.assertRaises(ExecutionInboxError):self.append(row=row)
+        self.assertEqual(self.i.counts()['receipts'],0)
+
+    def test_crash_window_after_native_commit_before_marker_replays_without_double_fill(self):
+        self.append()
+        self.j.db.execute("CREATE TRIGGER abort_marker BEFORE INSERT ON native_inbox_attempts WHEN NEW.outcome='APPLIED' BEGIN SELECT RAISE(ABORT,'synthetic crash'); END")
+        with self.assertRaises(ExecutionInboxError):self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.i.counts()['pending'],1)
+        self.j.db.execute('DROP TRIGGER abort_marker')
+        self.assertFalse(self.i.replay_next()['executions_created'])
+        self.assertEqual(self.i.counts()['pending'],0)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.denied_enable()
+
+    def test_unknown_receipt_failure_is_sanitized_and_stops(self):
+        with self.assertRaises(ExecutionInboxError) as raised:self.i.replay('secret-private-id')
+        self.assertNotIn('secret',str(raised.exception))
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
+    def test_counts_do_not_emit_private_record_or_provenance_claim(self):
+        self.append()
+        out=self.i.counts();serialized=json.dumps(out)
+        for private in ('native-order','receipt-1',fixtures.ACCOUNT,'005930'):
+            self.assertNotIn(private,serialized)
+        self.assertFalse(out['source_provenance_admitted'])
+        self.assertFalse(out['raw_broker_artifact_retained'])
+        self.assertFalse(out['live_ordering_authorized'])
+
+
+class InboxSettlementTests(unittest.TestCase):
+    tearDown = capital_fixtures.PrincipalReleaseTests.tearDown
+    batch = capital_fixtures.PrincipalReleaseTests.batch
+    release = capital_fixtures.PrincipalReleaseTests.release
+
+    def setUp(self):
+        capital_fixtures.PrincipalReleaseTests.setUp(self)
+        b=KiwoomOrderJournalBridge(self.j,account_fingerprint=fixtures.ACCOUNT,trading_date=fixtures.DAY)
+        b.bind_order('d1',broker_order_id='o1',native_side='2')
+        self.i=KiwoomExecutionInbox(b)
+        self.row=fixtures.fill(qty=1,remaining=9)
+        self.row.update(symbol='SYNTHETIC',broker_order_id='o1')
+
+    def append(self):
+        self.i.append('receipt','d1',self.row,trading_date=fixtures.DAY)
+
+    def test_zero_fill_snapshot_cannot_release_capital_with_unprocessed_fill(self):
+        self.append()
+        self.assertTrue(self.batch()['matched'])
+        with self.assertRaises(OrderJournalError):self.release()
+        self.assertEqual(self.a.state()['managed_reserve_krw'],83)
+        self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],1)
+        self.assertEqual(self.a.state()['managed_reserve_krw'],83)
+
+    def test_zero_fill_snapshot_cannot_release_capital_with_conflicted_delivery(self):
+        self.append()
+        self.row['fee']='999'
+        with self.assertRaises(ExecutionInboxError):self.append()
+        self.assertTrue(self.batch()['matched'])
+        with self.assertRaises(OrderJournalError):self.release()
+        self.assertEqual(self.a.state()['managed_reserve_krw'],83)
+
+
+if __name__=='__main__':unittest.main()

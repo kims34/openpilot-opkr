@@ -114,6 +114,7 @@ class ShadowCapitalAllocator:
         with self.journal._atomic():
             state = self._revision(expected_capital_revision)
             control = self.journal._check_epoch(expected_epoch)
+            self.journal._require_batch_reconciled()
             if control['mode'] != 'MASTER_OFF':
                 raise OrderJournalError('principal release requires MASTER_OFF')
             barrier = self.journal.db.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
