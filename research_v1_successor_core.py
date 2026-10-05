@@ -45,6 +45,9 @@ def assess_successor_eligibility(*, trial: dict, gates: dict, current_core_versi
     for gate in REQUIRED_GATES:
         if gates.get(gate) is not True:
             blockers.append("GATE_NOT_PASSED:" + gate)
+    for gate in ("sealed_holdout_used", "criteria_changed_after_results"):
+        if gate in gates and type(gates[gate]) is not bool:
+            blockers.append("INVALID_GATE_BOOLEAN:" + gate)
     if gates.get("sealed_holdout_used") is True:
         blockers.append("SEALED_HOLDOUT_FORBIDDEN_AT_SUCCESSOR_BUILD")
     if gates.get("criteria_changed_after_results") is True:
