@@ -1,4 +1,4 @@
-"""Explicit DEMO-only authentication and three read-only account APIs.
+"""Explicit DEMO-only authentication and reviewed read-only account APIs.
 
 No order/revoke/REAL paths, redirects, retries, automatic refresh, file cache,
 logging, source admission or runtime activation. Private pages stay in memory.
@@ -21,6 +21,8 @@ SCOPES = {
                 frozenset('qry_tp stk_bond_tp sell_tp dmst_stex_tp ord_dt stk_cd fr_ord_no'.split())),
     'ka10076': (frozenset('qry_tp sell_tp stex_tp'.split()),
                 frozenset('qry_tp sell_tp stex_tp stk_cd ord_no'.split())),
+    'kt00018': (frozenset('qry_tp dmst_stex_tp'.split()),
+                frozenset('qry_tp dmst_stex_tp'.split())),
 }
 
 
@@ -118,6 +120,8 @@ class KiwoomDemoReadOnlyTransport:
         require(type(body) is dict and required <= set(body) <= allowed)
         require(all(type(v) is str and len(v) <= 256 for v in body.values()))
         require(all(body[k].strip() for k in required))
+        if api_id == 'kt00018':
+            require(body == {'qry_tp': '2', 'dmst_stex_tp': 'KRX'})
         require(continuation in ('N', 'Y') and type(next_key) is str and len(next_key) <= 4096)
         require('\r' not in next_key and '\n' not in next_key)
         require((continuation == 'Y') == bool(next_key))
