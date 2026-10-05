@@ -215,32 +215,37 @@ class OrderIntentJournal:
 
     @quarantine_conflict
     def record_execution(self, key, *, broker_order_id, execution_id, quantity):
+        with self._atomic():
+            self._record_execution_locked(key, broker_order_id=broker_order_id,
+                execution_id=execution_id, quantity=quantity)
+        return self.get(key)
+
+    def _record_execution_locked(self, key, *, broker_order_id, execution_id, quantity):
+        """Called only inside a journal transaction, including source binding."""
         self._text(broker_order_id)
         self._text(execution_id)
         if type(quantity) is not int or quantity <= 0:
             raise OrderJournalError("execution quantity must be a positive integer")
-        with self._atomic():
-            row = self.get(key)
-            if row["broker_order_id"] != broker_order_id:
-                raise OrderJournalError("execution requires matching bound broker order")
-            if row["state"] in ("INTENT_CREATED", "REJECTED") or row["terminal_status"] == "REJECTED":
-                raise OrderJournalError("execution contradicts order state")
-            prior = self.db.execute("SELECT quantity FROM executions WHERE key=? AND execution_id=?", (key, execution_id)).fetchone()
-            if prior:
-                if prior[0] != quantity:
-                    raise OrderJournalError("conflicting duplicate execution")
-            else:
-                filled = row["filled_quantity"] + quantity
-                if filled > row["quantity"]:
-                    raise OrderJournalError("execution exceeds requested quantity")
-                self.db.execute("INSERT INTO executions VALUES(?,?,?)", (key, execution_id, quantity))
-                # A late fill may cross a cancellation. Never erase executions.
-                state = "RECONCILIATION_REQUIRED" if row["state"] == "RECONCILIATION_REQUIRED" else "FILLED" if filled == row["quantity"] else (
-                    row["state"] if row["state"] in ("CANCELLED", "RECONCILIATION_REQUIRED") else "PARTIALLY_FILLED")
-                self.db.execute("UPDATE intents SET filled=?,state=? WHERE key=?", (filled, state, key))
-                if filled == row["quantity"]:
-                    self.db.execute("UPDATE intents SET terminal_status='FILLED' WHERE key=?", (key,))
-        return self.get(key)
+        row = self.get(key)
+        if row["broker_order_id"] != broker_order_id:
+            raise OrderJournalError("execution requires matching bound broker order")
+        if row["state"] in ("INTENT_CREATED", "REJECTED") or row["terminal_status"] == "REJECTED":
+            raise OrderJournalError("execution contradicts order state")
+        prior = self.db.execute("SELECT quantity FROM executions WHERE key=? AND execution_id=?", (key, execution_id)).fetchone()
+        if prior:
+            if prior[0] != quantity:
+                raise OrderJournalError("conflicting duplicate execution")
+        else:
+            filled = row["filled_quantity"] + quantity
+            if filled > row["quantity"]:
+                raise OrderJournalError("execution exceeds requested quantity")
+            self.db.execute("INSERT INTO executions VALUES(?,?,?)", (key, execution_id, quantity))
+            # A late fill may cross a cancellation. Never erase executions.
+            state = "RECONCILIATION_REQUIRED" if row["state"] == "RECONCILIATION_REQUIRED" else "FILLED" if filled == row["quantity"] else (
+                row["state"] if row["state"] in ("CANCELLED", "RECONCILIATION_REQUIRED") else "PARTIALLY_FILLED")
+            self.db.execute("UPDATE intents SET filled=?,state=? WHERE key=?", (filled, state, key))
+            if filled == row["quantity"]:
+                self.db.execute("UPDATE intents SET terminal_status='FILLED' WHERE key=?", (key,))
 
     def _require_batch_reconciled(self):
         row = self.db.execute("SELECT blocked FROM reconciliation_barrier WHERE id=1").fetchone()
