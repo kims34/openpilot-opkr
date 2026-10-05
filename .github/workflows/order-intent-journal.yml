@@ -1,10 +1,10 @@
 name: Durable Order Intent Journal
 on:
   push:
-    branches: [index-alert-durable-shadow-capital-v1, index-alert-position-regen-fix-v1]
-    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', '.github/workflows/order-intent-journal.yml']
+    branches: [index-alert-zero-fill-principal-release-v1, index-alert-position-regen-fix-v1]
+    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', 'test_shadow_principal_release.py', '.github/workflows/order-intent-journal.yml']
   pull_request:
-    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', '.github/workflows/order-intent-journal.yml']
+    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', 'test_shadow_principal_release.py', '.github/workflows/order-intent-journal.yml']
 permissions:
   contents: read
 jobs:
@@ -26,11 +26,12 @@ jobs:
             test_automation_risk_boundaries.py
             shadow_capital_allocator.py
             test_shadow_capital_allocator.py
+            test_shadow_principal_release.py
           sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m unittest test_order_intent_journal test_shadow_safety_control test_shadow_fault_replay test_order_snapshot_reconciliation test_shadow_capital_allocator test_indexalert_automation_control test_automation_risk_boundaries -v
+      - run: python -m unittest test_order_intent_journal test_shadow_safety_control test_shadow_fault_replay test_order_snapshot_reconciliation test_shadow_capital_allocator test_indexalert_automation_control test_automation_risk_boundaries test_shadow_principal_release -v
       - run: python shadow_fault_replay.py > shadow_fault_replay.json
       - uses: actions/upload-artifact@v4
         with:

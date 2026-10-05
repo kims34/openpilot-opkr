@@ -5,6 +5,8 @@ snapshot's broker origin, account scope, completeness or freshness. A future
 independently admitted adapter must establish those before actual operation.
 No network, execution insertion, auto-enable, cancellation or submission.
 """
+import json
+
 from order_intent_journal import OrderJournalError
 
 
@@ -34,7 +36,7 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
             errors.add('STALE_OR_REPLAYED_SNAPSHOT')
         known = {row[0]: journal.get(row[0]) for row in journal.db.execute(
             "SELECT key FROM intents WHERE state!='INTENT_CREATED' ORDER BY key")}
-        seen, broker_ids, matched = set(), set(), []
+        seen, broker_ids, matched, snapshots = set(), set(), [], []
         for order in material:
             if not isinstance(order, dict) or set(order) != FIELDS:
                 errors.add('INVALID_SNAPSHOT_ROW')
@@ -69,6 +71,7 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
                 continue
             state = ('PARTIALLY_FILLED' if filled else 'ACKNOWLEDGED') if status == 'OPEN' else status
             matched.append((state, status if status != 'OPEN' else row['terminal_status'], key))
+            snapshots.append((key, json.dumps(order, sort_keys=True)))
         if seen != set(known):
             errors.add('ORDER_SCOPE_MISMATCH')
         if errors:
@@ -79,6 +82,13 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
         journal.db.execute('UPDATE reconciliation_barrier SET revision=?,blocked=? WHERE id=1',
             (max(last[0], revision) if valid_revision else last[0], int(bool(errors))))
         journal._stop_shadow('BATCH_SNAPSHOT_CONFLICT' if errors else 'BATCH_RECONCILED_OFF')
+        # A later event/startup/enable invalidates this snapshot's epoch binding.
+        # Failed batches cannot leave previously accepted settlement bindings.
+        journal.db.execute('DELETE FROM reconciled_snapshot_bindings')
+        if not errors:
+            epoch = journal.shadow_control()['epoch']
+            journal.db.executemany('INSERT INTO reconciled_snapshot_bindings VALUES(?,?,?,?)',
+                [(key, revision, epoch, payload) for key, payload in snapshots])
     return dict(mode='OFFLINE_ORDER_SNAPSHOT_RECONCILIATION', matched=not errors,
         errors=sorted(errors), observed_order_count=len(material), expected_order_count=len(known),
         network_request_attempted=False, broker_request_sent=False,
