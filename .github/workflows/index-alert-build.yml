@@ -33,6 +33,73 @@ jobs:
         run: gradle testDebugUnitTest --stacktrace
       - name: Build debug and unsigned release APKs
         run: gradle assembleDebug assembleRelease --stacktrace
+      - name: Verify candidate APK identity, signing and actual JUnit results
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,subprocess,xml.etree.ElementTree as ET
+          root=pathlib.Path(".")
+          reports=list((root/"app/build/test-results/testDebugUnitTest").glob("TEST-*.xml"))
+          suites=[ET.parse(p).getroot() for p in reports]
+          target=[s for s in suites if s.get("name")=="com.indexalert.app.AutomationReadinessTest"]
+          assert len(target)==1, "Readiness JUnit result required"
+          suite=target[0]
+          expected={"exactUnavailableReportIsRecognized",
+                    "everyAuthorityOrMutationFlagRequiresExactBooleanFalse",
+                    "unexpectedReadyOrLiveModesNeverEnableAutomation",
+                    "controlContractMustMatchAndCannotBeReplacedWithScalarOrExtraFields"}
+          cases=suite.findall("testcase")
+          assert {c.get("name") for c in cases}==expected, "All four readiness cases required"
+          assert len(cases)==4 and int(suite.get("tests","0"))==4
+          assert all(int(suite.get(k,"0"))==0 for k in ("errors","failures","skipped"))
+          assert all(not any(c.find(k) is not None for k in ("error","failure","skipped")) for c in cases)
+          sdk=pathlib.Path(os.environ["ANDROID_HOME"])/"build-tools"
+          tools=sorted(p for p in sdk.iterdir() if (p/"aapt2").is_file() and (p/"apksigner").is_file())
+          assert tools, "Installed SDK verification tools required"
+          tool=tools[-1]
+          artifact=[]
+          for variant,file in (("debug","app-debug.apk"),("release","app-release-unsigned.apk")):
+              directory=root/"app/build/outputs/apk"/variant
+              meta=json.loads((directory/"output-metadata.json").read_text())
+              assert meta["applicationId"]=="com.indexalert.app"
+              assert len(meta["elements"])==1
+              element=meta["elements"][0]
+              assert element["versionCode"]==48 and element["versionName"]=="4.8"
+              assert element["outputFile"]==file
+              apk=directory/file
+              badging=subprocess.check_output([str(tool/"aapt2"),"dump","badging",str(apk)],text=True)
+              package=next(x for x in badging.splitlines() if x.startswith("package:"))
+              assert "name='com.indexalert.app'" in package and "versionCode='48'" in package and "versionName='4.8'" in package
+              signature=subprocess.run([str(tool/"apksigner"),"verify","--verbose","--print-certs",str(apk)],capture_output=True,text=True)
+              signed=signature.returncode==0
+              assert signed==(variant=="debug"), "Debug must verify; release must remain unsigned"
+              certs=re.findall(r"certificate SHA-256 digest: ([0-9a-fA-F]{64})",signature.stdout)
+              if signed:
+                  assert certs, "Verified signer fingerprint required"
+              artifact.append({"variant":variant,"application_id":meta["applicationId"],
+                    "version_code":element["versionCode"],"version_name":element["versionName"],
+                    "apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),
+                    "size_bytes":apk.stat().st_size,"signature_verified":signed,
+                    "signer_sha256":certs,"expected_unsigned_release":variant=="release"})
+          event=json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+          source_head=event.get("pull_request",{}).get("head",{}).get("sha") or os.environ["GITHUB_SHA"]
+          result={"schema_version":"INDEXALERT_ANDROID_BUILD_VERIFICATION_v1",
+              "source_head":source_head,"checkout_sha":os.environ["GITHUB_SHA"],
+              "run_id":os.environ["GITHUB_RUN_ID"],"unit_test_class":suite.get("name"),
+              "tests":4,"failures":0,"errors":0,"skipped":0,"artifacts":artifact,
+              "installed_signing_continuity_verified":False,"physical_e2e_verified":False,
+              "broker_request_sent":False,"orders_requested":False,
+              "live_ordering_authorized":False,"frozen_criteria_changed":False}
+          pathlib.Path("../indexalert_android_build_verification.json").write_text(json.dumps(result,indent=2)+"\n")
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IndexAlert-v4.8-build-verification
+          path: |
+            indexalert_android_build_verification.json
+            index-alert/app/build/test-results/testDebugUnitTest/TEST-*.xml
+            index-alert/app/build/outputs/apk/debug/output-metadata.json
+            index-alert/app/build/outputs/apk/release/output-metadata.json
       - name: Collect Android APK signing tools
         run: |
           BT=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
