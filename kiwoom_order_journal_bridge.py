@@ -60,6 +60,10 @@ class KiwoomOrderJournalBridge:
             scope=journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
             require(scope is None or scope==(self.account,self.day))
             journal.db.execute('INSERT OR IGNORE INTO native_journal_scope VALUES(1,?,?)',(self.account,self.day))
+            for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
+                for operation in ('UPDATE','DELETE'):
+                    journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS {table}_{operation.lower()}_immutable
+                        BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT,'immutable native binding'); END''')
 
     @contextmanager
     def _guard(self):

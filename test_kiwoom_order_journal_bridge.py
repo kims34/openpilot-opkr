@@ -1,4 +1,5 @@
 import copy
+import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -73,6 +74,24 @@ class BridgeTests(unittest.TestCase):
         self.apply()
         self.assertFalse(self.apply()['executions_created'])
         self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+
+    def test_native_scope_order_fill_and_execution_rows_reject_mutation_and_replace(self):
+        self.apply()
+        for table,column in (('native_journal_scope','id'),('native_order_bindings','key'),
+            ('native_fill_bindings','key'),('executions','key')):
+            for statement in (f'DELETE FROM {table}',f'UPDATE {table} SET {column}={column}',
+                f'INSERT OR REPLACE INTO {table} SELECT * FROM {table}'):
+                with self.assertRaises(sqlite3.IntegrityError):self.j.db.execute(statement)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertFalse(self.apply()['executions_created'])
+
+    def test_reconnect_restores_recursive_replace_safeguards(self):
+        self.apply();self.j.close();self.j=OrderIntentJournal(self.path)
+        self.b=KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+        self.assertEqual(self.j.db.execute('PRAGMA recursive_triggers').fetchone(),(1,))
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.j.db.execute('INSERT OR REPLACE INTO native_fill_bindings SELECT * FROM native_fill_bindings')
+        self.assertFalse(self.apply()['executions_created'])
 
     def test_duplicate_is_idempotent_after_later_fills_and_restart(self):
         self.apply()

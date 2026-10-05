@@ -114,6 +114,16 @@ class InboxTests(unittest.TestCase):
             with self.assertRaises(ExecutionInboxError):self.append(row=row)
         self.assertEqual(self.i.counts()['receipts'],0)
 
+    def test_replace_cannot_bypass_append_only_receipt_attempt_or_conflict(self):
+        self.append();self.i.replay_next()
+        row=fixtures.fill();row['fee']='999'
+        with self.assertRaises(ExecutionInboxError):self.append(row=row)
+        before=self.i.counts()
+        for table in ('receipts','attempts','conflicts'):
+            with self.assertRaises(sqlite3.IntegrityError):
+                self.j.db.execute(f'INSERT OR REPLACE INTO native_inbox_{table} SELECT * FROM native_inbox_{table}')
+        self.assertEqual(self.i.counts(),before)
+
     def test_crash_window_after_native_commit_before_marker_replays_without_double_fill(self):
         self.append()
         self.j.db.execute("CREATE TRIGGER abort_marker BEFORE INSERT ON native_inbox_attempts WHEN NEW.outcome='APPLIED' BEGIN SELECT RAISE(ABORT,'synthetic crash'); END")

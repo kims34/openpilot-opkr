@@ -38,6 +38,9 @@ class OrderIntentJournal:
         self.db = sqlite3.connect(path, isolation_level=None, timeout=10)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
+        # REPLACE must execute DELETE triggers too; otherwise it can silently
+        # bypass append-only receipt/binding safeguards on this connection.
+        self.db.execute("PRAGMA recursive_triggers=ON")
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS intents (
                 key TEXT PRIMARY KEY, payload TEXT NOT NULL,
@@ -62,6 +65,9 @@ class OrderIntentJournal:
             CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
                 ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
         """)
+        for operation in ('UPDATE', 'DELETE'):
+            self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS executions_{operation.lower()}_immutable
+                BEFORE {operation} ON executions BEGIN SELECT RAISE(ABORT,'immutable execution'); END''')
         # Every new connection is treated conservatively as startup/reconnect.
         # An in-flight submission on another connection also becomes uncertain.
         self.recover()
