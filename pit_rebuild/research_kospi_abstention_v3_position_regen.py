@@ -41,10 +41,14 @@ def _legacy_clean(raw: pd.DataFrame) -> pd.DataFrame:
     out["day_idx"]=out.date.map(lambda x:date_to_idx[pd.Timestamp(x)]).astype(int)
     return out.reset_index(drop=True)
 
-def regenerate(obs: pd.DataFrame, n_days: int) -> pd.DataFrame:
+def regenerate(obs: pd.DataFrame, session_calendar: pd.DataFrame) -> pd.DataFrame:
     rows=[]; first_test=v2.TRAIN_DAYS+v2.PURGE_DAYS
-    # Exact market-session calendar used by v2 day_idx semantics.
-    idx_to_date={int(i):pd.Timestamp(d) for i,d in obs[["decision_idx","date"]].drop_duplicates().groupby("decision_idx")["date"].first().items()}
+    # IMPORTANT: session dates come from the full cleaned PIT universe, not engineered obs.
+    # engineer() intentionally drops rows/dates while forming rolling features and liquidity gates.
+    calendar=session_calendar[["day_idx","date"]].drop_duplicates().sort_values("day_idx")
+    if calendar.day_idx.duplicated().any(): raise ValueError("session calendar has duplicate day_idx")
+    idx_to_date={int(r.day_idx):pd.Timestamp(r.date) for r in calendar.itertuples(index=False)}
+    n_days=(max(idx_to_date)+1) if idx_to_date else 0
     for fold_no,test_start in enumerate(range(first_test,n_days-1,v2.TEST_DAYS),1):
         test_end=min(test_start+v2.TEST_DAYS,n_days-1)
         train_end=test_start-v2.PURGE_DAYS; train_start=max(0,train_end-v2.TRAIN_DAYS)
@@ -71,16 +75,19 @@ def regenerate(obs: pd.DataFrame, n_days: int) -> pd.DataFrame:
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--pit-dir",required=True); ap.add_argument("--private-output",required=True); ap.add_argument("--from-date",default="2018-01-02"); ap.add_argument("--to-date",default="2026-09-25"); args=ap.parse_args()
-    raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); dates=sorted(clean.date.unique()); obs=v2.engineer(clean); selected=regenerate(obs,len(dates))
+    raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); obs=v2.engineer(clean); selected=regenerate(obs,clean[["day_idx","date"]])
     entry_px=clean[["code","day_idx","open"]].rename(columns={"code":"symbol","day_idx":"entry_idx","open":"entry_price"})
     selected["entry_idx"]=selected["decision_idx"]+1
     selected=selected.merge(entry_px,on=["symbol","entry_idx"],how="left",validate="many_to_one")
     if selected["entry_price"].isna().any() or (selected["entry_price"]<=0).any(): raise ValueError("selected position missing exact next-session entry price")
     selected=selected.drop(columns=["entry_idx"])
     out=Path(args.private_output); out.parent.mkdir(parents=True,exist_ok=True); selected.to_parquet(out,index=False)
-    # Fingerprint includes private identifiers but emits only the digest.
-    canonical=selected.sort_values(["horizon","coverage","decision_idx","rank","symbol"]).to_csv(index=False).encode()
+    # Keep model-selection identity separate from expanded execution-position identity.
+    sort_cols=["horizon","coverage","decision_idx","rank","symbol"]
+    selection_cols=["fold","horizon","coverage","decision_idx","decision_date","symbol","rank","score","gross_return"]
+    selection_canonical=selected.sort_values(sort_cols)[selection_cols].to_csv(index=False).encode()
+    position_canonical=selected.sort_values(sort_cols).to_csv(index=False).encode()
     counts={str(int(h)):{f"top_{int(round(float(cov)*100))}pct_train_threshold":int(len(cg)) for cov,cg in hg.groupby("coverage")} for h,hg in selected.groupby("horizon")}
-    summary={"mode":"DEVELOPMENT_CONTAMINATED_POSITION_REGEN","rows":int(len(selected)),"decision_dates":int(selected.decision_date.nunique()) if len(selected) else 0,"counts":counts,"position_fingerprint_sha256":hashlib.sha256(canonical).hexdigest(),"research_status":"DEVELOPMENT_CONTAMINATED_NOT_SEALED","profitability_validated":False,"network_request_attempted":False,"security_identifiers_emitted":False,"sealed_holdout_authorized":False,"live_trading_authorized":False}
+    summary={"mode":"DEVELOPMENT_CONTAMINATED_POSITION_REGEN","rows":int(len(selected)),"decision_dates":int(selected.decision_date.nunique()) if len(selected) else 0,"counts":counts,"selection_fingerprint_sha256":hashlib.sha256(selection_canonical).hexdigest(),"position_fingerprint_sha256":hashlib.sha256(position_canonical).hexdigest(),"research_status":"DEVELOPMENT_CONTAMINATED_NOT_SEALED","profitability_validated":False,"network_request_attempted":False,"security_identifiers_emitted":False,"sealed_holdout_authorized":False,"live_trading_authorized":False}
     print("POSITION_REGEN="+json.dumps(summary,sort_keys=True))
 if __name__=="__main__": main()
