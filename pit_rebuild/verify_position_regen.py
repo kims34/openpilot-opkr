@@ -5,6 +5,14 @@ import pandas as pd
 
 P=Path("/pit/private/abstention_v3_positions.parquet")
 df=pd.read_parquet(P)
+required={"fold","horizon","coverage","decision_idx","decision_date","entry_day","exit_day","symbol","rank","score","gross_return","entry_price"}
+missing=required-set(df.columns)
+if missing: raise ValueError(f"position artifact missing columns: {sorted(missing)}")
+if df.empty: raise ValueError("position artifact is empty")
+if df[list(required)].isna().any().any(): raise ValueError("position artifact contains null required values")
+if (pd.to_datetime(df.entry_day)<=pd.to_datetime(df.decision_date)).any(): raise ValueError("entry_day must be after decision_date")
+if (pd.to_datetime(df.exit_day)<pd.to_datetime(df.entry_day)).any(): raise ValueError("exit_day must not precede entry_day")
+if (pd.to_numeric(df.entry_price,errors="coerce")<=0).any(): raise ValueError("entry_price must be positive")
 counts={}
 for h,g in df.groupby("horizon"):
     counts[str(int(h))]={}
