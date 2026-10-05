@@ -1,21 +1,21 @@
 {
   "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
-  "deployment_id": "018bd33b-b756-4a29-94d0-10eca7c741f2",
-  "status": "QUEUED",
+  "deployment_id": "d526c87e-2cc4-4b17-8922-69c34ebdc37a",
+  "status": "SUCCESS",
   "source_branch": "index-alert-demo-isolated-runtime-v1",
-  "source_pin": "e880a581b5cd556b16e776d8735bf98c9560df61",
+  "source_pin": "caee11d8232e435b19323e8b1bbcd3001fa1e13a",
   "no_volume": true,
   "restart_policy": "NEVER",
-  "provider_result_observed": false,
-  "actual_requests_attempted": null,
+  "provider_result_observed": true,
+  "actual_requests_attempted": true,
   "prior_wrong_image_deployment": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
   "prior_platform_status": "SUCCESS",
   "prior_verifier_execution": "MISSING_MODULE_FAILURE",
   "superseded_source_only_deployment": "f9cdd1de-f670-418a-8abe-8039c3fd8634",
   "config_file_setter_result": "INVALID_ARGUMENT",
   "canonical_worker_config_unchanged": true,
-  "checked_at": "2026-10-05T15:19:39.778Z",
-  "first_page_only": true,
+  "checked_at": "2026-10-05T19:28:34.446Z",
+  "first_page_only": false,
   "genuine_live_evidence": false,
   "live_ordering_authorized": false,
   "frozen_criteria_changed": false,
@@ -26,5 +26,58 @@
     "network_flow_entries": 0,
     "dns_entries": 0,
     "bounded_window_only": true
+  },
+  "report": {
+    "level": "info",
+    "account_field_present": true,
+    "broker_account_origin_authenticated": false,
+    "cursor_collection_terminated": true,
+    "database_or_file_mutation_attempted": false,
+    "demo_token_response_validated": true,
+    "empirical_execution_blocker_closed": false,
+    "fees_settled": false,
+    "genuine_live_provenance_verified": false,
+    "live_trading_authorized": false,
+    "mode": "ISOLATED_DEMO_READ_ONLY_CONNECTIVITY",
+    "orders_requested": false,
+    "paginated_readonly_requested": true,
+    "project_live_evidence_admitted": false,
+    "request_attempted": true,
+    "sealed_holdout_authorized": false,
+    "secrets_or_accounts_emitted": false,
+    "snapshot_completeness_attested": false,
+    "snapshot_page_counts": {
+      "ka10076": 1,
+      "kt00007": 1
+    },
+    "snapshot_pages_received": 2,
+    "snapshot_row_counts": {
+      "ka10076": 0,
+      "kt00007": 0
+    },
+    "status": "DEMO_READ_ONLY_CONNECTIVITY_ONLY",
+    "trading_date_origin_attested": false
+  },
+  "report_timestamp": "2026-10-05T19:16:56.139362462Z",
+  "current_service_task": "EXPLICIT_DEMO_INDIVIDUAL_KRX_HOLDINGS",
+  "current_service_source_pin": "c2d497c76cc43a1b59a17f04c5ffd1d67a88c02a",
+  "current_service_deployment_id": "cd47a5f0-709c-46cc-9b8f-ea0969ce2ba9",
+  "completed_first_page_evidence": {
+    "deployment_id": "018bd33b-b756-4a29-94d0-10eca7c741f2",
+    "source_pin": "e880a581b5cd556b16e776d8735bf98c9560df61",
+    "report_timestamp": "2026-10-05T15:29:16.297827921Z",
+    "status": "DEMO_READ_ONLY_CONNECTIVITY_ONLY",
+    "snapshot_pages_received": 2,
+    "snapshot_row_counts": {
+      "ka10076": 0,
+      "kt00007": 0
+    },
+    "snapshot_completeness_attested": false
+  },
+  "pre_header_hardening_evidence": {
+    "deployment_id": "a74aed2e-2210-4aad-ad2b-39f07a311b2c",
+    "source_pin": "092d86bc709710a059204abd027d2e9be6a19a13",
+    "status": "SUCCESS",
+    "cursor_flag_is_pre_hardening_diagnostic_only": true
   }
 }

@@ -1,9 +1,9 @@
 {
-  "evidence_version": "2026-10-05.v3",
-  "phase": "OFFLINE_BROKER_SAFETY_AND_DEMO_READONLY_PREPARATION",
+  "evidence_version": "2026-10-06.v1",
+  "phase": "OFFLINE_BROKER_SAFETY_AND_OBSERVED_DEMO_READONLY_DIAGNOSTICS",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "c3028467dd374116a41076125f808bdbd7c04af7",
+  "implementation_head": "ed3e0f2cbb2a30830aed452e01c7426545dfad05",
   "completed": [
     {
       "pr": 13,
@@ -131,16 +131,59 @@
       "pr": 30,
       "merge": "c3028467dd374116a41076125f808bdbd7c04af7",
       "behaviour": "Dedicated config documented; selector rejected, effective isolated runtime branch root-config fallback pending actual build/result."
+    },
+    {
+      "pr": 31,
+      "head": "cc122263cdeb7cb352d6841681f02c3b8a0abda7",
+      "merge": "e717a203d10621ce8890de582d28c9bcaa74bab0",
+      "ci_success": [
+        37361680444,
+        37361781215
+      ],
+      "behaviour": "Explicit bounded DEMO cursor collection with whole-result fail-closed counts."
+    },
+    {
+      "pr": 32,
+      "head": "c72e365782b2c31d5889021139461f5cd5c2d24a",
+      "merge": "3d1d4b29559aa7457366b3282534451ef8e96c79",
+      "ci_success": [
+        37362033445,
+        37362184027
+      ],
+      "behaviour": "Require real response cont-yn header; failed auth blocks before account query."
+    },
+    {
+      "pr": 33,
+      "head": "24ac61175e43054db5f889b9d687d60454cfe1a5",
+      "merge": "410f7015d3b867dd818130f4fec7a8a10acaedc4",
+      "ci_success": [
+        37362684071,
+        37362684087
+      ],
+      "behaviour": "Six synthetic protected-input/inbox/late-fill/capital/restart/conflict/day-rebind fault scenarios; 225 pytest and 88 unittest tests passed."
+    },
+    {
+      "pr": 34,
+      "head": "9d246d8d71a68d58f9e464b33d32dfd3b1c1efb5",
+      "merge": "ed3e0f2cbb2a30830aed452e01c7426545dfad05",
+      "ci_success": [
+        37363206567
+      ],
+      "behaviour": "Exact read-only DEMO individual KRX kt00018 collection; validate credit/loan identities and quantities, no cash/fee/ownership admission."
     }
   ],
   "tests": {
-    "local_offline_total": 218,
-    "github_offline_total": 218,
-    "github_job": 111830200907,
-    "github_run": 37329943727,
+    "local_offline_total": 231,
+    "github_offline_total": 231,
+    "github_job": 111942410106,
+    "github_run": 37363206567,
     "synthetic_offline_only": true,
-    "postmerge_run": 37330116472,
-    "postmerge_job": 111830787239
+    "postmerge_run": 37363363702,
+    "postmerge_status": "queued",
+    "prior_merged_post_runs_queued": [
+      37362836452,
+      37362836265
+    ]
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -217,7 +260,9 @@
     "normalized_native_journal_diagnostics_implemented": true,
     "late_cancel_fill_release_revocation_implemented": true,
     "normalized_execution_inbox_implemented": true,
-    "independent_inbox_conflict_resolution_implemented": false
+    "independent_inbox_conflict_resolution_implemented": false,
+    "demo_holdings_cursor_diagnostics_implemented": true,
+    "protected_capital_fault_replay_verified": true
   },
   "remaining": [
     "Independently admit actual broker-native origin/account/day/side and whole-account snapshot scope; normalized offline bridge is implemented but cannot establish these.",
@@ -239,7 +284,7 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T15:19:39.778Z",
+  "railway_rechecked_at": "2026-10-05T19:28:34.446Z",
   "railway_pending_work": [],
   "research_heads": {
     "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
@@ -249,20 +294,86 @@
   },
   "railway_demo_verifier": {
     "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
-    "deployment_id": "018bd33b-b756-4a29-94d0-10eca7c741f2",
-    "status": "QUEUED",
+    "deployment_id": "d526c87e-2cc4-4b17-8922-69c34ebdc37a",
+    "status": "SUCCESS",
     "source_branch": "index-alert-demo-isolated-runtime-v1",
-    "source_pin": "e880a581b5cd556b16e776d8735bf98c9560df61",
+    "source_pin": "caee11d8232e435b19323e8b1bbcd3001fa1e13a",
     "no_volume": true,
     "restart_policy": "NEVER",
-    "provider_result_observed": false,
-    "actual_requests_attempted": null,
+    "provider_result_observed": true,
+    "actual_requests_attempted": true,
     "prior_wrong_image_deployment": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
     "prior_platform_status": "SUCCESS",
     "prior_verifier_execution": "MISSING_MODULE_FAILURE",
     "superseded_source_only_deployment": "f9cdd1de-f670-418a-8abe-8039c3fd8634",
     "config_file_setter_result": "INVALID_ARGUMENT",
-    "canonical_worker_config_unchanged": true
+    "canonical_worker_config_unchanged": true,
+    "checked_at": "2026-10-05T19:28:34.446Z",
+    "first_page_only": false,
+    "genuine_live_evidence": false,
+    "live_ordering_authorized": false,
+    "frozen_criteria_changed": false,
+    "first_invocation_missing_module_timestamp": "2026-10-05T15:13:39.354727651Z",
+    "boot_network_observation": {
+      "window_start": "2026-10-05T15:13:35Z",
+      "window_end": "2026-10-05T15:13:45Z",
+      "network_flow_entries": 0,
+      "dns_entries": 0,
+      "bounded_window_only": true
+    },
+    "report": {
+      "level": "info",
+      "account_field_present": true,
+      "broker_account_origin_authenticated": false,
+      "cursor_collection_terminated": true,
+      "database_or_file_mutation_attempted": false,
+      "demo_token_response_validated": true,
+      "empirical_execution_blocker_closed": false,
+      "fees_settled": false,
+      "genuine_live_provenance_verified": false,
+      "live_trading_authorized": false,
+      "mode": "ISOLATED_DEMO_READ_ONLY_CONNECTIVITY",
+      "orders_requested": false,
+      "paginated_readonly_requested": true,
+      "project_live_evidence_admitted": false,
+      "request_attempted": true,
+      "sealed_holdout_authorized": false,
+      "secrets_or_accounts_emitted": false,
+      "snapshot_completeness_attested": false,
+      "snapshot_page_counts": {
+        "ka10076": 1,
+        "kt00007": 1
+      },
+      "snapshot_pages_received": 2,
+      "snapshot_row_counts": {
+        "ka10076": 0,
+        "kt00007": 0
+      },
+      "status": "DEMO_READ_ONLY_CONNECTIVITY_ONLY",
+      "trading_date_origin_attested": false
+    },
+    "report_timestamp": "2026-10-05T19:16:56.139362462Z",
+    "current_service_task": "EXPLICIT_DEMO_INDIVIDUAL_KRX_HOLDINGS",
+    "current_service_source_pin": "c2d497c76cc43a1b59a17f04c5ffd1d67a88c02a",
+    "current_service_deployment_id": "cd47a5f0-709c-46cc-9b8f-ea0969ce2ba9",
+    "completed_first_page_evidence": {
+      "deployment_id": "018bd33b-b756-4a29-94d0-10eca7c741f2",
+      "source_pin": "e880a581b5cd556b16e776d8735bf98c9560df61",
+      "report_timestamp": "2026-10-05T15:29:16.297827921Z",
+      "status": "DEMO_READ_ONLY_CONNECTIVITY_ONLY",
+      "snapshot_pages_received": 2,
+      "snapshot_row_counts": {
+        "ka10076": 0,
+        "kt00007": 0
+      },
+      "snapshot_completeness_attested": false
+    },
+    "pre_header_hardening_evidence": {
+      "deployment_id": "a74aed2e-2210-4aad-ad2b-39f07a311b2c",
+      "source_pin": "092d86bc709710a059204abd027d2e9be6a19a13",
+      "status": "SUCCESS",
+      "cursor_flag_is_pre_hardening_diagnostic_only": true
+    }
   },
   "railway_runtime": {
     "service_id": "37902fde-ca05-43e0-bc76-278992bf7732",
@@ -273,5 +384,52 @@
     "replicas_crashed": 0,
     "configuration_disposition": "DEMO_CONFIGURATION_ONLY",
     "execution_counts": null
+  },
+  "railway_demo_holdings": {
+    "checked_at": "2026-10-05T19:28:34.446Z",
+    "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
+    "deployment_id": "cd47a5f0-709c-46cc-9b8f-ea0969ce2ba9",
+    "status": "SUCCESS",
+    "source_branch": "index-alert-demo-isolated-runtime-v1",
+    "source_pin": "c2d497c76cc43a1b59a17f04c5ffd1d67a88c02a",
+    "no_volume": true,
+    "restart_policy": "NEVER",
+    "running_replicas": 0,
+    "crashed_replicas": 0,
+    "official_schema_commit": "953e5dbff123f437ab4d11a78a95191a685eb51f",
+    "query_scope": {
+      "api_id": "kt00018",
+      "qry_tp": "2",
+      "dmst_stex_tp": "KRX"
+    },
+    "report_timestamp": "2026-10-05T19:26:51.265407712Z",
+    "report": {
+      "level": "info",
+      "account_field_present": true,
+      "automation_ownership_attested": false,
+      "available_cash_attested": false,
+      "capital_release_authorized": false,
+      "cursor_collection_terminated": true,
+      "database_or_file_mutation_attempted": false,
+      "demo_token_response_validated": true,
+      "empirical_execution_blocker_closed": false,
+      "fees_settled": false,
+      "genuine_live_provenance_verified": false,
+      "holdings_row_count": 0,
+      "live_trading_authorized": false,
+      "mode": "ISOLATED_DEMO_READ_ONLY_HOLDINGS",
+      "orders_requested": false,
+      "project_live_evidence_admitted": false,
+      "request_attempted": true,
+      "sealed_holdout_authorized": false,
+      "secrets_or_accounts_emitted": false,
+      "snapshot_completeness_attested": false,
+      "snapshot_freshness_attested": false,
+      "snapshot_pages_received": 1,
+      "source_account_origin_authenticated": false,
+      "status": "DEMO_READ_ONLY_HOLDINGS_DIAGNOSTICS_ONLY",
+      "trading_date_origin_attested": false
+    },
+    "frozen_criteria_changed": false
   }
 }
