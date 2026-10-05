@@ -257,3 +257,19 @@ def test_rest_snapshot_reconciliation_rejects_account_mismatch_and_realtime_rows
     )
     with pytest.raises(KiwoomNativeExecutionError, match="only kt00007/ka10076"):
         reconcile_kiwoom_rest_order_snapshots([kt, realtime])
+
+
+@pytest.mark.parametrize("field,left,right", [
+    ("account_fingerprint", "sha256:"+"a"*64, "sha256:"+"b"*64),
+    ("broker_order_id", "private-left-order", "private-right-order"),
+    ("original_order_id", "private-left-parent", "private-right-parent"),
+    ("fill_price", "123456.789", "987654.321"),
+])
+def test_reconciliation_errors_name_fields_without_emitting_private_values(field,left,right):
+    kt=normalize_kt00007_order_fill_detail(_kt00007_record(),account_fingerprint=ACCOUNT_FP)
+    ka=normalize_ka10076_filled_order(_ka10076_record(),account_fingerprint=ACCOUNT_FP)
+    kt[field]=left;ka[field]=right
+    with pytest.raises(KiwoomNativeExecutionError,match=field) as raised:
+        reconcile_kiwoom_rest_order_snapshots([kt,ka])
+    assert left not in str(raised.value)
+    assert right not in str(raised.value)

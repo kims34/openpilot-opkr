@@ -348,7 +348,7 @@ def _assert_same_text(
     b = str(right.get(field, "") or "").strip()
     if a and b and a != b:
         raise KiwoomNativeExecutionError(
-            f"REST snapshot reconciliation mismatch for {field}: {a!r} != {b!r}"
+            f"REST snapshot reconciliation mismatch for {field}"
         )
 
 
@@ -363,7 +363,7 @@ def _assert_same_numeric(
         return
     if _as_decimal(a, field=field) != _as_decimal(b, field=field):
         raise KiwoomNativeExecutionError(
-            f"REST snapshot reconciliation mismatch for {field}: {a!r} != {b!r}"
+            f"REST snapshot reconciliation mismatch for {field}"
         )
 
 
