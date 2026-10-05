@@ -46,4 +46,4 @@ jobs:
       - run: python -m pip install pytest==8.4.2
       - run: python -m pytest -q
 
-# settlement-ci-retrigger: 1
+# settlement-ci-retrigger: 2
