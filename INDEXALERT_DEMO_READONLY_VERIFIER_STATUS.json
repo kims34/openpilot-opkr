@@ -1,15 +1,30 @@
 {
-  "source_pin": "309d16451214da2b088875d180af6585c42185a6",
   "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
-  "deployment_id": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
-  "deployment_status": "BUILDING",
+  "deployment_id": "018bd33b-b756-4a29-94d0-10eca7c741f2",
+  "status": "QUEUED",
+  "source_branch": "index-alert-demo-isolated-runtime-v1",
+  "source_pin": "e880a581b5cd556b16e776d8735bf98c9560df61",
+  "no_volume": true,
+  "restart_policy": "NEVER",
   "provider_result_observed": false,
-  "build_log_entries_observed": 0,
-  "runtime_log_entries_observed": 0,
   "actual_requests_attempted": null,
+  "prior_wrong_image_deployment": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
+  "prior_platform_status": "SUCCESS",
+  "prior_verifier_execution": "MISSING_MODULE_FAILURE",
+  "superseded_source_only_deployment": "f9cdd1de-f670-418a-8abe-8039c3fd8634",
+  "config_file_setter_result": "INVALID_ARGUMENT",
+  "canonical_worker_config_unchanged": true,
+  "checked_at": "2026-10-05T15:19:39.778Z",
   "first_page_only": true,
   "genuine_live_evidence": false,
   "live_ordering_authorized": false,
   "frozen_criteria_changed": false,
-  "checked_at": "2026-10-05T15:11:05.501Z"
+  "first_invocation_missing_module_timestamp": "2026-10-05T15:13:39.354727651Z",
+  "boot_network_observation": {
+    "window_start": "2026-10-05T15:13:35Z",
+    "window_end": "2026-10-05T15:13:45Z",
+    "network_flow_entries": 0,
+    "dns_entries": 0,
+    "bounded_window_only": true
+  }
 }

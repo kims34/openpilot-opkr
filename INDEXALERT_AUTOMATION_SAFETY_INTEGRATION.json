@@ -3,7 +3,7 @@
   "phase": "OFFLINE_BROKER_SAFETY_AND_DEMO_READONLY_PREPARATION",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "df868732d25cfe685dbff2e5d37167b655ac29a0",
+  "implementation_head": "c3028467dd374116a41076125f808bdbd7c04af7",
   "completed": [
     {
       "pr": 13,
@@ -126,6 +126,11 @@
       "pr": 29,
       "merge": "df868732d25cfe685dbff2e5d37167b655ac29a0",
       "behaviour": "Bounded explicit cursor collection; loop/duplicate/truncation blocking."
+    },
+    {
+      "pr": 30,
+      "merge": "c3028467dd374116a41076125f808bdbd7c04af7",
+      "behaviour": "Dedicated config documented; selector rejected, effective isolated runtime branch root-config fallback pending actual build/result."
     }
   ],
   "tests": {
@@ -234,7 +239,7 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T15:09:32.313Z",
+  "railway_rechecked_at": "2026-10-05T15:19:39.778Z",
   "railway_pending_work": [],
   "research_heads": {
     "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
@@ -244,13 +249,20 @@
   },
   "railway_demo_verifier": {
     "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
-    "deployment_id": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
-    "status": "BUILDING",
-    "source_pin": "309d16451214da2b088875d180af6585c42185a6",
+    "deployment_id": "018bd33b-b756-4a29-94d0-10eca7c741f2",
+    "status": "QUEUED",
+    "source_branch": "index-alert-demo-isolated-runtime-v1",
+    "source_pin": "e880a581b5cd556b16e776d8735bf98c9560df61",
     "no_volume": true,
     "restart_policy": "NEVER",
     "provider_result_observed": false,
-    "actual_requests_attempted": null
+    "actual_requests_attempted": null,
+    "prior_wrong_image_deployment": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
+    "prior_platform_status": "SUCCESS",
+    "prior_verifier_execution": "MISSING_MODULE_FAILURE",
+    "superseded_source_only_deployment": "f9cdd1de-f670-418a-8abe-8039c3fd8634",
+    "config_file_setter_result": "INVALID_ARGUMENT",
+    "canonical_worker_config_unchanged": true
   },
   "railway_runtime": {
     "service_id": "37902fde-ca05-43e0-bc76-278992bf7732",
