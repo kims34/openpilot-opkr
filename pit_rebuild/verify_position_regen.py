@@ -13,6 +13,10 @@ if df[list(required)].isna().any().any(): raise ValueError("position artifact co
 if (pd.to_datetime(df.entry_day)<=pd.to_datetime(df.decision_date)).any(): raise ValueError("entry_day must be after decision_date")
 if (pd.to_datetime(df.exit_day)<pd.to_datetime(df.entry_day)).any(): raise ValueError("exit_day must not precede entry_day")
 if (pd.to_numeric(df.entry_price,errors="coerce")<=0).any(): raise ValueError("entry_price must be positive")
+if df.duplicated(["horizon","coverage","decision_idx","rank"]).any(): raise ValueError("duplicate selection rank within decision bucket")
+rank_ok=df.groupby(["horizon","coverage","decision_idx"])["rank"].apply(lambda x: sorted(x.astype(int).tolist())==list(range(1,len(x)+1)))
+if not rank_ok.all(): raise ValueError("selection ranks are not contiguous from 1")
+if (df.groupby(["horizon","coverage","decision_idx"]).size()>3).any(): raise ValueError("selection bucket exceeds TOP_K=3")
 counts={}
 for h,g in df.groupby("horizon"):
     counts[str(int(h))]={}
