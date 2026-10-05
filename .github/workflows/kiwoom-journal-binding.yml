@@ -1,7 +1,7 @@
 name: Offline Kiwoom Journal Binding
 on:
   push:
-    branches: [index-alert-kiwoom-journal-binding-v1, index-alert-late-fill-capital-restore-v1, index-alert-native-execution-inbox-v1, index-alert-protected-account-intake-v1, index-alert-position-regen-fix-v1]
+    branches: [index-alert-kiwoom-journal-binding-v1, index-alert-late-fill-capital-restore-v1, index-alert-native-execution-inbox-v1, index-alert-protected-account-intake-v1, index-alert-official-intake-fields-v1, index-alert-position-regen-fix-v1]
     paths: [kiwoom_protected_execution_intake.py, test_kiwoom_protected_execution_intake.py, kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
   pull_request:
     branches: [index-alert-position-regen-fix-v1]

@@ -50,8 +50,9 @@ class ProtectedAccountBinding:
 
 # Official reviewed type00 fields only; unknown raw fields may contain private
 # account/credential material and must never reach normalized receipt storage.
-RAW_FIELDS = frozenset('''9201 9203 9001 900 901 902 903 904 905 906 907 908
+NORMALIZER_FIELDS = frozenset('''9201 9203 9001 900 901 902 903 904 905 906 907 908
 909 910 911 912 913 914 915 919 938 939 2134 2135 2136'''.split())
+RAW_FIELDS = NORMALIZER_FIELDS | frozenset('''9205 302 10 27 28 920 921 922 923 10010'''.split())
 
 
 class KiwoomProtectedExecutionIntake:
@@ -75,7 +76,11 @@ class KiwoomProtectedExecutionIntake:
                 require(self.binding.matches(raw_event.get('9201')))
                 require(self.binding.fingerprint == self.inbox.bridge.account)
                 self.inbox.bridge._context(trading_date)
-                row = normalize_realtime_order_fill_event(raw_event,
+                # Official extra fields (administrator/screen/terminal/loan/
+                # quotes) are recognized but not needed for this mapping. Drop
+                # them before retention or local identity hashing.
+                selected = {k:v for k,v in raw_event.items() if k in NORMALIZER_FIELDS}
+                row = normalize_realtime_order_fill_event(selected,
                     account_fingerprint=self.binding.fingerprint)
             result = self.inbox.append(receipt_id, key, row, trading_date=trading_date)
         except (NativeBridgeError, ValueError, TypeError, UnicodeError):
