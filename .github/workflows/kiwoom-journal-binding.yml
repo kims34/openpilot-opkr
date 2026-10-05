@@ -45,3 +45,5 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install pytest==8.4.2
       - run: python -m pytest -q
+
+# settlement-ci-retrigger: 1
