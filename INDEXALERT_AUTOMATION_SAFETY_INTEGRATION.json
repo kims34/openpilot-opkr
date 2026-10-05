@@ -179,11 +179,19 @@
     "github_run": 37363206567,
     "synthetic_offline_only": true,
     "postmerge_run": 37363363702,
-    "postmerge_status": "queued",
-    "prior_merged_post_runs_queued": [
-      37362836452,
-      37362836265
-    ]
+    "postmerge_status": "success",
+    "postmerge_job": 111942883570,
+    "pr33_postmerge_run": 37362836452,
+    "pr33_postmerge_job": 111941283298,
+    "durable_postmerge_retry": {
+      "run": 37362836265,
+      "first_attempt_job": 111941282693,
+      "first_job_status": "cancelled_before_steps",
+      "attempt": 2,
+      "job": 111946907032,
+      "status": "success",
+      "tests": 88
+    }
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -284,7 +292,7 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T19:28:34.446Z",
+  "railway_rechecked_at": "2026-10-05T19:45:22.210Z",
   "railway_pending_work": [],
   "research_heads": {
     "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
@@ -431,5 +439,21 @@
       "trading_date_origin_attested": false
     },
     "frozen_criteria_changed": false
+  },
+  "server_readiness_feature": {
+    "pr": 35,
+    "branch": "index-alert-automation-readiness-v1",
+    "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
+    "merged": false,
+    "deployed": false,
+    "local_http_tests": 6,
+    "local_full_server_tests": 199,
+    "local_full_server_seconds": 35.592,
+    "actual_v32_route_smoke": "PASS_WITH_NETWORK_AND_SQLITE_FORBIDDEN",
+    "ci_run": 37364545547,
+    "ci_job": 111946502765,
+    "ci_status": "queued",
+    "current_server_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
+    "live_ordering_authorized": false
   }
 }

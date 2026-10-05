@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-10-05T19:45:22.210Z",
+  "pr": 35,
+  "branch": "index-alert-automation-readiness-v1",
+  "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
+  "merged": false,
+  "deployed": false,
+  "local_http_tests": 6,
+  "local_full_server_tests": 199,
+  "local_full_server_seconds": 35.592,
+  "actual_v32_route_smoke": "PASS_WITH_NETWORK_AND_SQLITE_FORBIDDEN",
+  "ci_run": 37364545547,
+  "ci_job": 111946502765,
+  "ci_status": "queued",
+  "current_server_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
+  "live_ordering_authorized": false
+}

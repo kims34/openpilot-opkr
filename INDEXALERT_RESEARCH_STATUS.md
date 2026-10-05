@@ -1,3 +1,26 @@
+# Current exact resume — 2026-10-05T19:45:22.210Z
+
+Development branch `index-alert-position-regen-fix-v1` verified HEAD before this checkpoint **f7172db43106ff57e5cf78ffdd582379c0121075**, last implementation **ed3e0f2cbb2a30830aed452e01c7426545dfad05**. Previous completed DEMO and protected-capital evidence below remains authoritative. No private holdout, model/threshold, account, capital, sender or frozen admission changes.
+
+Postmerge verification resolved:
+- PR33 full offline run37362836452/job111941283298 **SUCCESS /225 passed**.
+- PR34 full offline run37363363702/job111942883570 **SUCCESS /231 passed**.
+- Durable PR33 run37362836265 attempt1 reported run failure, but its job111941282693 was cancelled before any step. No code-test failure was observed. A specific job retry was authorized and requested; **attempt2 SUCCESS /88 tests**, job111946907032. Do not repeat or hide the attempt1 interruption. Some earlier run-list reads remained queued while current job/run detail already completed; use fresh run/detail/job/log reads, not an old list snapshot.
+
+Next active server feature: **PR35 OPEN**, branch `index-alert-automation-readiness-v1`, final HEAD **62f7060727a0e27df2b99bbbd277ea1e9e7e183a** (initiala7afd7b7cd2c722d72123baf8097ed790233d5b6 superseded/cancelled). Adds only GET /automation/readiness to actual production_v32 wiring: unavailable broker automation / MASTER_OFF / no sender or persisted controls / no independent gate admission evaluated. It reads no account/capital, DB or private file, and cannot enable trading via query/env flags. Mutation methods405, duplicate attachment idempotent, conflicting route rejected, cached OpenAPI schema invalidated. Includes module in image and httpx0.28.1 in tests only. Existing market, probability, notification and startup audit behavior unchanged.
+
+**Validation:**6 local HTTP tests pass. All115 server Python sources were fetched at exactly final PR HEAD into an isolated local server-runtime-tests directory; installed exact current server requirements. **Full existing+new server suite199 tests PASS (35.592s)**. Actual v32 route smoke uses GET/read-only with broker-network/SQLite prohibited. This is implementation verification, not genuine broker/Alpha/holdout/promotion evidence.
+
+**Remote server CI37364545547 /job111946502765 remains QUEUED at this checkpoint**. PR35 is **not merged or deployed**. Public runtime service37902fde-ca05-43e0-bc76-278992bf7732 still pins serverb5d01da4bb1c3185de7959bd480fe71f46c8a4fc at deploymenta824af66-f8d0-4006-a7a1-49d4cd79e4f9; /data500MB volume unchanged. Do not claim /automation/readiness is already exposed publicly.
+
+Latest DEMO service confirmed live source `index-alert-demo-isolated-runtime-v1` atc2d497c76cc43a1b59a17f04c5ffd1d67a88c02a, deploymentcd47a5f0-709c-46cc-9b8f-ea0969ce2ba9 SUCCESS/0running0crashed, no volume/domain, no staged patch, NEVER restart. Actual holdings mode read-only profile and report remain as below. Public/PIT/KRX pins, volume mounts and frozen hashes unchanged.
+
+**Exact next action:** poll PR35 final-head run37364545547 via fresh run+job detail, then read actual job logs. If success (expected199 tests), verify latest PR head still62f706..., merge PR35 with expected_head_sha. Inspect Railway pending work is empty; stage only public runtime's source to new server merge SHA plus non-secret INDEXALERT_CODE_REV/INDEXALERT_DEPLOY_TRIGGER markers. Preserve existing start command running both read-only audits before uvicorn, /data volume, credentials and ordering settings. Inspect staged changes belong only to that runtime before accept_deploy. Then verify actual deployed SHA, startup safe audits,1running0crashed and real GET /automation/readiness plus existing operational smoke/parity checks. If CI fails, inspect failure and fix; never bypass CI or claim a queued run passed. No other pending/superseded DEMO job must be restarted.
+
+Research main/economics/early-LIVE draft heads unchanged; no admitted successor. Remaining independent source/PIT/affected-position economics, account/day/side/complete scope/ownership/settlement, actual reconnect/Kill and frozen pretrade integration remain unadmitted/unimplemented; actual broker ordering is prohibited in current frozen phase. Preserve consumed failed holdout and all numerical gates listed below. New cross-branch control-contract alignment question is recorded in Research Ledger, not applied as a strategy/threshold change.
+
+---
+
 # Latest verified continuation — 2026-10-05T19:28:34.446Z
 
 Development branch `index-alert-position-regen-fix-v1`: verified code HEAD **ed3e0f2cbb2a30830aed452e01c7426545dfad05** before this documentation checkpoint. Resolve the latest documentation HEAD from GitHub branch API; this checkpoint's own commit identifies its revision. Server branch/pin **b5d01da4bb1c3185de7959bd480fe71f46c8a4fc** unchanged. Research main **c490974ff6619bb978dc6f83f9c24f2c46622f85**, economics **5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e**, early-LIVE draft **1d81eb526f59b87c528d63be9e3883e0f76fedf6** actually rechecked. No new ACCEPTED successor; draft remains future-evidence-only, not current authority.
