@@ -20,6 +20,9 @@ if (df.groupby(["horizon","coverage","decision_idx"]).size()>3).any(): raise Val
 if not set(pd.to_numeric(df.horizon,errors="coerce").astype(int).unique()).issubset({1,2,3,5}): raise ValueError("unexpected horizon")
 if not set(pd.to_numeric(df.coverage,errors="coerce").round(8).unique()).issubset({0.01,0.05,0.1}): raise ValueError("unexpected coverage")
 if (pd.to_numeric(df.score,errors="coerce")<0).any() or (pd.to_numeric(df.score,errors="coerce")>1).any(): raise ValueError("score outside probability bounds")
+order=df.sort_values(["horizon","coverage","decision_idx","rank"])
+score_order_ok=order.groupby(["horizon","coverage","decision_idx"])["score"].apply(lambda x: x.astype(float).is_monotonic_decreasing)
+if not score_order_ok.all(): raise ValueError("rank order is inconsistent with descending score")
 counts={}
 for h,g in df.groupby("horizon"):
     counts[str(int(h))]={}
