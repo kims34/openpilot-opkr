@@ -1,11 +1,11 @@
 name: Offline Kiwoom Journal Binding
 on:
   push:
-    branches: [index-alert-kiwoom-journal-binding-v1, index-alert-position-regen-fix-v1]
-    paths: [order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
+    branches: [index-alert-kiwoom-journal-binding-v1, index-alert-late-fill-capital-restore-v1, index-alert-position-regen-fix-v1]
+    paths: [shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
-    paths: [order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
+    paths: [shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
 permissions:
   contents: read
 jobs:
@@ -24,6 +24,7 @@ jobs:
             test_order_snapshot_reconciliation.py
             test_shadow_capital_allocator.py
             test_shadow_principal_release.py
+            test_shadow_late_fill_capital.py
             test_shadow_safety_control.py
             test_indexalert_automation_control.py
             test_automation_risk_boundaries.py

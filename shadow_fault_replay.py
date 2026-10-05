@@ -83,7 +83,8 @@ def run_offline_fault_replay():
             journal.reconcile_snapshot('synthetic-decision', broker_order_id='synthetic-order', status='CANCELLED', filled_quantity=4)
             journal.record_execution('synthetic-decision', broker_order_id='synthetic-order', execution_id='synthetic-late-fill', quantity=6)
             _require(journal.get('synthetic-decision')['filled_quantity'] == 10, 'late fill lost')
-            _require(journal.get('synthetic-decision')['state'] == 'FILLED', 'crossed cancel/fill misclassified')
+            _require(journal.get('synthetic-decision')['state'] == 'RECONCILIATION_REQUIRED', 'crossed cancel/fill not blocked')
+            _require(journal.get('synthetic-decision')['terminal_status'] == 'FILLED', 'full fill fact lost')
             completed.append('cancel_late_fill_race_conserves_executed_quantity')
 
             _denied(lambda: journal.record_execution('synthetic-decision', broker_order_id='synthetic-order', execution_id='synthetic-late-fill', quantity=5), OrderJournalError)
