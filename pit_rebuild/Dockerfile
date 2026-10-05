@@ -14,4 +14,5 @@ COPY verify_position_regen.py ./
 COPY promote_position_candidate.py ./
 COPY test_fingerprint_semantics.py ./
 COPY validation_stage_gate.py ./
+COPY prepare_sealed_holdout.py ./
 CMD ["python","verify_position_regen.py"]
