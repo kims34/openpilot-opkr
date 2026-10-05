@@ -50,6 +50,10 @@ class OrderIntentJournal:
                 mode TEXT NOT NULL CHECK(mode IN ('MASTER_OFF','SHADOW')),
                 killed INTEGER NOT NULL CHECK(killed IN (0,1)), reason TEXT NOT NULL);
             INSERT OR IGNORE INTO shadow_control VALUES(1,0,'MASTER_OFF',0,'STARTUP');
+            CREATE TABLE IF NOT EXISTS reconciliation_barrier (
+                id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL,
+                blocked INTEGER NOT NULL CHECK(blocked IN (0,1)));
+            INSERT OR IGNORE INTO reconciliation_barrier VALUES(1,0,0);
             CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
                 ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
         """)
@@ -134,6 +138,7 @@ class OrderIntentJournal:
     def reset_kill_switch(self, *, expected_epoch):
         with self._atomic():
             self._check_epoch(expected_epoch)
+            self._require_batch_reconciled()
             if self.db.execute("SELECT 1 FROM intents WHERE state IN ('SUBMITTING','RECONCILIATION_REQUIRED') LIMIT 1").fetchone():
                 raise OrderJournalError("unresolved state prevents kill reset")
             self.db.execute("UPDATE shadow_control SET epoch=epoch+1,mode='MASTER_OFF',killed=0,reason='EXPLICIT_RESET' WHERE id=1")
@@ -145,6 +150,7 @@ class OrderIntentJournal:
             control = self._check_epoch(expected_epoch)
             if control["killed"]:
                 raise OrderJournalError("kill switch is latched")
+            self._require_batch_reconciled()
             if self.db.execute("SELECT 1 FROM intents WHERE state IN ('SUBMITTING','RECONCILIATION_REQUIRED') LIMIT 1").fetchone():
                 raise OrderJournalError("unresolved state prevents shadow enable")
             self.db.execute("UPDATE shadow_control SET epoch=epoch+1,mode='SHADOW',reason='EXPLICIT_SHADOW_ENABLE' WHERE id=1")
@@ -157,6 +163,7 @@ class OrderIntentJournal:
             control = self._check_epoch(expected_epoch)
             if control["mode"] != "SHADOW" or control["killed"]:
                 raise OrderJournalError("shadow claims disabled")
+            self._require_batch_reconciled()
             if self.db.execute("SELECT 1 FROM intents WHERE state='RECONCILIATION_REQUIRED' OR (state='SUBMITTING' AND key!=?) LIMIT 1", (key,)).fetchone():
                 raise OrderJournalError("unresolved journal state blocks new submissions")
             updated = self.db.execute("UPDATE intents SET state='SUBMITTING' WHERE key=? AND state='INTENT_CREATED'", (key,)).rowcount
@@ -212,12 +219,17 @@ class OrderIntentJournal:
                     raise OrderJournalError("execution exceeds requested quantity")
                 self.db.execute("INSERT INTO executions VALUES(?,?,?)", (key, execution_id, quantity))
                 # A late fill may cross a cancellation. Never erase executions.
-                state = "FILLED" if filled == row["quantity"] else (
+                state = "RECONCILIATION_REQUIRED" if row["state"] == "RECONCILIATION_REQUIRED" else "FILLED" if filled == row["quantity"] else (
                     row["state"] if row["state"] in ("CANCELLED", "RECONCILIATION_REQUIRED") else "PARTIALLY_FILLED")
                 self.db.execute("UPDATE intents SET filled=?,state=? WHERE key=?", (filled, state, key))
-                if state == "FILLED":
+                if filled == row["quantity"]:
                     self.db.execute("UPDATE intents SET terminal_status='FILLED' WHERE key=?", (key,))
         return self.get(key)
+
+    def _require_batch_reconciled(self):
+        row = self.db.execute("SELECT blocked FROM reconciliation_barrier WHERE id=1").fetchone()
+        if row is None or row[0]:
+            raise OrderJournalError("unresolved batch reconciliation prevents shadow operation")
 
     def mark_cancel_requested(self, key):
         with self._atomic():

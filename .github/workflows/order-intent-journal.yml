@@ -1,10 +1,10 @@
 name: Durable Order Intent Journal
 on:
   push:
-    branches: [index-alert-shadow-fault-replay-v1, index-alert-position-regen-fix-v1]
-    paths: ['order_intent_journal.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', '.github/workflows/order-intent-journal.yml']
+    branches: [index-alert-atomic-order-reconciliation-v1, index-alert-position-regen-fix-v1]
+    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', '.github/workflows/order-intent-journal.yml']
   pull_request:
-    paths: ['order_intent_journal.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', '.github/workflows/order-intent-journal.yml']
+    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', '.github/workflows/order-intent-journal.yml']
 jobs:
   offline-journal:
     runs-on: ubuntu-latest
@@ -13,6 +13,8 @@ jobs:
         with:
           sparse-checkout: |
             order_intent_journal.py
+            order_snapshot_reconciliation.py
+            test_order_snapshot_reconciliation.py
             test_order_intent_journal.py
             test_shadow_safety_control.py
             shadow_fault_replay.py
@@ -22,7 +24,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m unittest test_order_intent_journal test_shadow_safety_control test_shadow_fault_replay -v
+      - run: python -m unittest test_order_intent_journal test_shadow_safety_control test_shadow_fault_replay test_order_snapshot_reconciliation -v
       - run: python shadow_fault_replay.py > shadow_fault_replay.json
       - uses: actions/upload-artifact@v4
         with:
