@@ -1,11 +1,11 @@
 name: Offline Kiwoom Journal Binding
 on:
   push:
-    branches: [index-alert-kiwoom-journal-binding-v1, index-alert-late-fill-capital-restore-v1, index-alert-native-execution-inbox-v1, index-alert-protected-account-intake-v1, index-alert-official-intake-fields-v1, index-alert-position-regen-fix-v1, index-alert-demo-readonly-transport-v1, index-alert-demo-readonly-verifier-v1]
-    paths: [kiwoom_demo_readonly_verifier.py, test_kiwoom_demo_readonly_verifier.py, kiwoom_demo_readonly_transport.py, test_kiwoom_demo_readonly_transport.py, kiwoom_readonly_configuration_audit.py, test_kiwoom_readonly_configuration_audit.py, kiwoom_protected_execution_intake.py, test_kiwoom_protected_execution_intake.py, kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
+    branches: [index-alert-kiwoom-journal-binding-v1, index-alert-late-fill-capital-restore-v1, index-alert-native-execution-inbox-v1, index-alert-protected-account-intake-v1, index-alert-official-intake-fields-v1, index-alert-position-regen-fix-v1, index-alert-demo-readonly-transport-v1, index-alert-demo-readonly-verifier-v1, index-alert-holdings-diagnostics-v1]
+    paths: [kiwoom_holdings_diagnostics.py, test_kiwoom_holdings_diagnostics.py, kiwoom_demo_readonly_verifier.py, test_kiwoom_demo_readonly_verifier.py, kiwoom_demo_readonly_transport.py, test_kiwoom_demo_readonly_transport.py, kiwoom_readonly_configuration_audit.py, test_kiwoom_readonly_configuration_audit.py, kiwoom_protected_execution_intake.py, test_kiwoom_protected_execution_intake.py, kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
-    paths: [kiwoom_demo_readonly_verifier.py, test_kiwoom_demo_readonly_verifier.py, kiwoom_demo_readonly_transport.py, test_kiwoom_demo_readonly_transport.py, kiwoom_readonly_configuration_audit.py, test_kiwoom_readonly_configuration_audit.py, kiwoom_protected_execution_intake.py, test_kiwoom_protected_execution_intake.py, kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
+    paths: [kiwoom_holdings_diagnostics.py, test_kiwoom_holdings_diagnostics.py, kiwoom_demo_readonly_verifier.py, test_kiwoom_demo_readonly_verifier.py, kiwoom_demo_readonly_transport.py, test_kiwoom_demo_readonly_transport.py, kiwoom_readonly_configuration_audit.py, test_kiwoom_readonly_configuration_audit.py, kiwoom_protected_execution_intake.py, test_kiwoom_protected_execution_intake.py, kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
 permissions:
   contents: read
 jobs:
@@ -15,6 +15,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: |
+            kiwoom_holdings_diagnostics.py
+            test_kiwoom_holdings_diagnostics.py
             kiwoom_demo_readonly_verifier.py
             test_kiwoom_demo_readonly_verifier.py
             kiwoom_demo_readonly_transport.py
