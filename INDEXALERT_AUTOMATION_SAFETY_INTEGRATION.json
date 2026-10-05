@@ -1,9 +1,9 @@
 {
-  "evidence_version": "2026-10-05.v2",
+  "evidence_version": "2026-10-05.v3",
   "phase": "OFFLINE_AUTOMATION_SAFETY_INTEGRATION",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "04f6a0ffa3fddecc5d4484f1a27aed6153e1a9db",
+  "implementation_head": "d5ae0d51e826814f404939515ad67c9855f1478c",
   "completed": [
     {
       "pr": 13,
@@ -68,17 +68,31 @@
         37310164689
       ],
       "behaviour": "Restore released principal exactly once on cancellation late fills; preserve fill and audit, block batch and claims, atomically with native binding."
+    },
+    {
+      "pr": 19,
+      "head": "195be4e5d2b030deb359549be5c427b91d5986eb",
+      "merge": "d5ae0d51e826814f404939515ad67c9855f1478c",
+      "ci_success": [
+        37312580094,
+        37312579971,
+        37312573603,
+        37312681088,
+        37312681195
+      ],
+      "behaviour": "Append-only normalized receipt retention, arrival-order/idempotent replay; pending/conflicted inbox blocks enable/reset/claims and zero-fill principal release."
     }
   ],
   "tests": {
-    "local_offline_total": 131,
-    "github_offline_total": 131,
-    "github_job": 111763063221,
+    "local_offline_total": 145,
+    "github_offline_total": 145,
+    "github_job": 111771354226,
     "previous_safety": 87,
     "native_normalizer": 16,
     "native_journal_bridge": 20,
     "late_fill_capital": 8,
-    "previous_holdout_boundary": 16
+    "previous_holdout_boundary": 16,
+    "normalized_execution_inbox": 14
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -153,7 +167,9 @@
     "prospective_validation_admitted": false,
     "live_ordering_authorized": false,
     "normalized_native_journal_diagnostics_implemented": true,
-    "late_cancel_fill_release_revocation_implemented": true
+    "late_cancel_fill_release_revocation_implemented": true,
+    "normalized_execution_inbox_implemented": true,
+    "independent_inbox_conflict_resolution_implemented": false
   },
   "remaining": [
     "Independently admit actual broker-native origin/account/day/side and whole-account snapshot scope; normalized offline bridge is implemented but cannot establish these.",
@@ -173,5 +189,9 @@
     "holdout_job": 111740829506
   },
   "railway_rechecked_at": "2026-10-05T12:32:26Z",
-  "railway_pending_work": []
+  "railway_pending_work": [],
+  "research_heads": {
+    "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
+    "economics_audit": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e"
+  }
 }

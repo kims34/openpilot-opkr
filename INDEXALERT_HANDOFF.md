@@ -1,3 +1,35 @@
+# Latest continuation — 2026-10-05 21:54 KST
+
+Supersedes current-state sections below. **Native execution receipt recovery and capital safety are offline-verified; actual automated trading remains blocked.**
+
+## Current branch, HEAD and commits
+- Repository `kims34/openpilot-opkr`, branch `index-alert-position-regen-fix-v1`.
+- Verified implementation HEAD immediately before this checkpoint: **`d5ae0d51e826814f404939515ad67c9855f1478c`**. Resolve the documentation HEAD through GitHub branch API when resuming; this document cannot include its own commit SHA.
+- PR19 `index-alert-native-execution-inbox-v1`: original head `e74a0907ea4b405c20a6fff0f62319021dba36d4`, final head **`195be4e5d2b030deb359549be5c427b91d5986eb`**, merged **`d5ae0d51e826814f404939515ad67c9855f1478c`**. Final CI37312580094 /37312579971 /37312573603 SUCCESS; merged CI37312681088 /37312681195 SUCCESS. Job **111771354226** actually reports **145 passed**.
+- PR17 merge `ac552b2ffedc148acc433abdbba2962b2a39a1bb`; PR18 merge `04f6a0ffa3fddecc5d4484f1a27aed6153e1a9db`; previous documentation checkpoint `17d56beca77722f42863117a987b3093294d8efb`. Earlier major commit history below remains applicable.
+- Research main `index-alert-research-v1` actually rechecked at **`c490974ff6619bb978dc6f83f9c24f2c46622f85`**, full research ledger reviewed: no new ACCEPTED promotable successor. Economics audit branch remains `5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e`.
+
+## Completed in this continuation
+- `kiwoom_execution_inbox.py`: persists exact normalized realtime00 rows before applying; receipt arrivals/payloads, conflicting alternate deliveries and attempt records are append-only. No raw-account extras/REST-as-fill/self-authority accepted, no private identifiers in public counts/errors.
+- New receipt stops SHADOW, blocks batch barrier, clears old settlement bindings. Pending or conflicted receipts additionally block enable/reset/claims AND zero-fill principal release even after a caller-supplied matching batch. The latter bypass was found and fixed before merge.
+- Arrival-order default replay retains gaps; explicitly replaying a known missing-first receipt permits subsequent processing but never clears uncertainty automatically. Conflicting deliveries preserve both copies and select neither; independent conflict resolution is not implemented.
+- Crash after native fill commit but before the separate inbox attempt marker safely replays a duplicate. Do not claim atomic fill/attempt marker commit. Native fill/source binding/late-fill reservation restoration remain atomic in the bridge transaction.
+- **145 offline tests** =87 prior safety +16 normalizer +20 bridge +8 late-fill capital +14 inbox tests. GitHub verified the same count; no actual broker request, order, cancellation, sale, funds movement, source admission or new holdout evaluation.
+
+## Railway actual state
+Rechecked after PR19 merge: no pending/staged work. Runtime `291dddd5-e957-4aab-ad25-e6a49c6bb007` SUCCESS/1 running/0 crashed at server `d1c2a91ca46f754ac65ef94aa243e1ea9454b351`; PIT `7021473a-d9a6-4711-b496-a359fd9bb0c8` SUCCESS/completed0 running/0 crashed at `26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15`; KRX `e56cf101-15c5-478e-ae67-228585013ef0` SUCCESS/completed0 running/0 crashed at `ef95e7857f692fda3855390e918e165487624881`. Exact project/service/environment/volume IDs, mounts and read-only log results are in the immediately preceding checkpoint below, rechecked this turn. No production deployment of the offline inbox; runtime sender unchanged. TABLE_MISSING remains observation count unknown, not zero. All three holdout hashes still matched in the actual audit log; KRX14,495 checkpoints/14,425 objects remain byte-integrity evidence only.
+
+## Unfinished/blockers and next exact steps
+1. Refetch GitHub dev/server/both research branches and Railway descriptions/status/logs before continuation. Fetch root files named in `.github/workflows/kiwoom-journal-binding.yml` from the latest exact GitHub HEAD, install pytest8.4.2, run `python -m pytest -q` (expected145). Scratch may disappear; do not assume a local checkout.
+2. The previous next-step inbox implementation is DONE. Next implement/review the protected authenticated account/day/native-side and complete snapshot/fee-source contract before source admission or actual settlement. Never promote caller-declared fingerprints, numeric907 mapping, HHMMSS date or normalized hash to source proof. Never treat938/939 daily totals as per-fill fees.
+3. Independent append-only conflict resolution remains missing. Until supported by a separate evidence contract, conflicted/invalid deliveries stay blocked; never delete/edit receipts or add an arbitrary force-clear.
+4. Nonzero-fill positions/fees/taxes/sale settlement, actual broker sender/cancel/reconnect/Kill enforcement and production pretrade freshness/NetEV/capacity integration remain open. Current code is offline and conservative; no actual funds reused.
+5. Real strategy validation/promotion is blocked by the consumed failed holdout and absence of an independently admitted successor protocol/candidate. Research still lacks new ACCEPTED promotion evidence. Current Kiwoom phase permits DEMO/read-only preparation, not REAL requests or actual orders. These cannot be solved by lowering thresholds, resetting holdout or self-authorizing a gate.
+
+Frozen cutoff2026-09-25/fresh2026-09-28..10-01; consumed passed=false result; immutable hashes; H5/H1/H10/H20 policy; Top3/no-backfill/q25/cost/recency;600/200/400/120 final execution requirements all remain unchanged as specified below. `ㅇ` continues development/test/deploy approvals; actual stock orders, funds movement and broker account permissions require separate explicit approval. No background execution is promised after a response.
+
+---
+
 # Latest continuation — 2026-10-05 21:33 KST
 
 Supersedes older current-state sections below. Offline development and integration verification progressed; **actual automated trading and prospective strategy admission remain blocked**. No background work continues after a response.
