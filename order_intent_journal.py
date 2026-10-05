@@ -24,7 +24,9 @@ def quarantine_conflict(method):
         except OrderJournalError:
             # Persist after the failed event transaction rolled back.
             with self._atomic():
-                self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE key=? AND state!='INTENT_CREATED'", (key,))
+                if isinstance(key, str):
+                    self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE key=? AND state!='INTENT_CREATED'", (key,))
+                self._stop_shadow("EVENT_CONFLICT")
             raise
     return guarded
 
@@ -43,6 +45,13 @@ class OrderIntentJournal:
                 key TEXT NOT NULL, execution_id TEXT NOT NULL,
                 quantity INTEGER NOT NULL,
                 PRIMARY KEY(key, execution_id));
+            CREATE TABLE IF NOT EXISTS shadow_control (
+                id INTEGER PRIMARY KEY CHECK(id=1), epoch INTEGER NOT NULL,
+                mode TEXT NOT NULL CHECK(mode IN ('MASTER_OFF','SHADOW')),
+                killed INTEGER NOT NULL CHECK(killed IN (0,1)), reason TEXT NOT NULL);
+            INSERT OR IGNORE INTO shadow_control VALUES(1,0,'MASTER_OFF',0,'STARTUP');
+            CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
+                ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
         """)
         # Every new connection is treated conservatively as startup/reconnect.
         # An in-flight submission on another connection also becomes uncertain.
@@ -80,6 +89,7 @@ class OrderIntentJournal:
                     filled_quantity=row[3], remaining_quantity=payload["quantity"]-row[3],
                     terminal_status=row[4], live_ordering_authorized=False, genuine_live_evidence=False)
 
+    @quarantine_conflict
     def register(self, key, *, symbol, side, quantity):
         self._text(key)
         self._text(symbol)
@@ -93,10 +103,60 @@ class OrderIntentJournal:
             self.db.execute("INSERT OR IGNORE INTO intents(key,payload,state) VALUES(?,?,'INTENT_CREATED')", (key, payload))
         return self.get(key)
 
-    def claim_submission(self, key):
-        """Exactly one local claimant; this method itself sends nothing."""
+    def shadow_control(self):
+        row = self.db.execute("SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1").fetchone()
+        if row is None:
+            raise OrderJournalError("missing safety state")
+        return dict(epoch=row[0], mode=row[1], killed=bool(row[2]), reason=row[3], live_ordering_authorized=False)
+
+    def _check_epoch(self, expected_epoch):
+        if type(expected_epoch) is not int or expected_epoch < 0:
+            raise OrderJournalError("expected epoch must be a nonnegative integer")
+        control = self.shadow_control()
+        if expected_epoch != control["epoch"]:
+            raise OrderJournalError("stale safety epoch")
+        return control
+
+    def _stop_shadow(self, reason, *, kill=False):
+        self.db.execute("UPDATE shadow_control SET epoch=epoch+1,mode='MASTER_OFF',killed=MAX(killed,?),reason=? WHERE id=1", (int(kill), reason))
+
+    def disable_shadow(self):
+        with self._atomic():
+            self._stop_shadow("OPERATOR_OFF")
+        return self.shadow_control()
+
+    def trip_kill_switch(self):
+        """Latch local claims OFF. Never cancel, sell or send broker requests."""
+        with self._atomic():
+            self._stop_shadow("KILL_SWITCH", kill=True)
+        return self.shadow_control()
+
+    def reset_kill_switch(self, *, expected_epoch):
+        with self._atomic():
+            self._check_epoch(expected_epoch)
+            if self.db.execute("SELECT 1 FROM intents WHERE state IN ('SUBMITTING','RECONCILIATION_REQUIRED') LIMIT 1").fetchone():
+                raise OrderJournalError("unresolved state prevents kill reset")
+            self.db.execute("UPDATE shadow_control SET epoch=epoch+1,mode='MASTER_OFF',killed=0,reason='EXPLICIT_RESET' WHERE id=1")
+        return self.shadow_control()
+
+    def enable_shadow(self, *, expected_epoch):
+        """Enable offline diagnostics only; never PAPER or LIVE authority."""
+        with self._atomic():
+            control = self._check_epoch(expected_epoch)
+            if control["killed"]:
+                raise OrderJournalError("kill switch is latched")
+            if self.db.execute("SELECT 1 FROM intents WHERE state IN ('SUBMITTING','RECONCILIATION_REQUIRED') LIMIT 1").fetchone():
+                raise OrderJournalError("unresolved state prevents shadow enable")
+            self.db.execute("UPDATE shadow_control SET epoch=epoch+1,mode='SHADOW',reason='EXPLICIT_SHADOW_ENABLE' WHERE id=1")
+        return self.shadow_control()
+
+    def claim_submission(self, key, *, expected_epoch=None):
+        """Exactly one local shadow claimant; this method sends nothing."""
         self._text(key)
         with self._atomic():
+            control = self._check_epoch(expected_epoch)
+            if control["mode"] != "SHADOW" or control["killed"]:
+                raise OrderJournalError("shadow claims disabled")
             if self.db.execute("SELECT 1 FROM intents WHERE state='RECONCILIATION_REQUIRED' OR (state='SUBMITTING' AND key!=?) LIMIT 1", (key,)).fetchone():
                 raise OrderJournalError("unresolved journal state blocks new submissions")
             updated = self.db.execute("UPDATE intents SET state='SUBMITTING' WHERE key=? AND state='INTENT_CREATED'", (key,)).rowcount
@@ -110,6 +170,7 @@ class OrderIntentJournal:
             if row["state"] not in ("SUBMITTING", "ACKNOWLEDGED", "PARTIALLY_FILLED", "RECONCILIATION_REQUIRED"):
                 raise OrderJournalError("intent cannot become uncertain in this state")
             self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE key=?", (key,))
+            self._stop_shadow("UNCERTAIN_OUTCOME")
         return self.get(key)
 
     @quarantine_conflict
@@ -122,6 +183,8 @@ class OrderIntentJournal:
                 raise OrderJournalError("submission was not claimed")
             if row["broker_order_id"] not in (None, broker_order_id):
                 raise OrderJournalError("broker order identity conflict")
+            if self.db.execute("SELECT 1 FROM intents WHERE broker_order_id=? AND key!=?", (broker_order_id, key)).fetchone():
+                raise OrderJournalError("broker order already bound to another intent")
             self.db.execute("UPDATE intents SET broker_order_id=? WHERE key=?", (broker_order_id, key))
             if row["state"] == "SUBMITTING":
                 self.db.execute("UPDATE intents SET state='ACKNOWLEDGED' WHERE key=?", (key,))
@@ -137,7 +200,7 @@ class OrderIntentJournal:
             row = self.get(key)
             if row["broker_order_id"] != broker_order_id:
                 raise OrderJournalError("execution requires matching bound broker order")
-            if row["state"] in ("INTENT_CREATED", "REJECTED"):
+            if row["state"] in ("INTENT_CREATED", "REJECTED") or row["terminal_status"] == "REJECTED":
                 raise OrderJournalError("execution contradicts order state")
             prior = self.db.execute("SELECT quantity FROM executions WHERE key=? AND execution_id=?", (key, execution_id)).fetchone()
             if prior:
@@ -163,6 +226,7 @@ class OrderIntentJournal:
                 raise OrderJournalError("cancel requires a known open order")
             # A request is not evidence of successful cancellation.
             self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE key=?", (key,))
+            self._stop_shadow("CANCEL_OUTCOME_UNKNOWN")
         return self.get(key)
 
     def reconcile_snapshot(self, key, *, broker_order_id, status, filled_quantity):
@@ -188,10 +252,13 @@ class OrderIntentJournal:
             self.db.execute("UPDATE intents SET state=? WHERE key=?", (state if matched else "RECONCILIATION_REQUIRED", key))
             if matched and status in ("CANCELLED", "REJECTED", "FILLED"):
                 self.db.execute("UPDATE intents SET terminal_status=? WHERE key=?", (status, key))
+            if not matched:
+                self._stop_shadow("SNAPSHOT_CONFLICT")
         return self.get(key)
 
     def recover(self):
         """Startup/reconnect blocks every previously open or uncertain intent."""
         with self._atomic():
+            self._stop_shadow("STARTUP_OR_RECONNECT")
             self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE state IN ('SUBMITTING','ACKNOWLEDGED','PARTIALLY_FILLED')")
         return [self.get(row[0]) for row in self.db.execute("SELECT key FROM intents WHERE state='RECONCILIATION_REQUIRED' ORDER BY key")]
