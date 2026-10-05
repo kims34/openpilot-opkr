@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile.kiwoom-demo-readonly"
   },
   "deploy": {
-    "startCommand": "python -S -B kiwoom_demo_readonly_verifier.py --execute-demo-readonly",
+    "startCommand": "python -S -B kiwoom_demo_readonly_verifier.py --execute-demo-paginated-readonly",
     "restartPolicyType": "NEVER"
   }
 }
