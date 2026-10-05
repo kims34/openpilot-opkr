@@ -64,7 +64,11 @@ def main():
    ch=te[te.p>=th].groupby("decision_idx",sort=True).apply(lambda z:z.nlargest(v2.TOP_K,"p"),include_groups=False)
    vals=(ch[f"ret{h}"].astype(float)-v2.LABEL_COST).tolist() if len(ch) else []
    metrics[str(h)][str(cov)]={"trades":len(vals),"mean_net_25bp":float(np.mean(vals)) if vals else None,"positive_fraction":float(np.mean(np.array(vals)>0)) if vals else None}
- payload={"version":"sealed-holdout-v1","cutoff":"2026-09-25","baseline_selection_fingerprint":BASE_SEL,"baseline_position_fingerprint":BASE_POS,"fresh_source_sha256":hfile(freshp),"fresh_first":str(fs.date.min().date()),"fresh_last":str(fs.date.max().date()),"fresh_dates":int(fs.date.nunique()),"thresholds_from_frozen_history_only":thresholds,"metrics":metrics,"policy_changed_after_unseal":False,"passed":False,"pass_rule_status":"NOT_YET_PREDECLARED","created_at":datetime.now(timezone.utc).isoformat()}
+ primary=metrics.get("1",{}).get("0.01",{})
+ min_trades=30
+ pass_rule={"primary_horizon_days":1,"primary_coverage":0.01,"cost_bps":25,"minimum_trades":min_trades,"requirements":["trades >= 30","mean_net_25bp > 0","positive_fraction > 0.50"]}
+ passed=bool(primary.get("trades",0)>=min_trades and primary.get("mean_net_25bp") is not None and primary["mean_net_25bp"]>0 and primary.get("positive_fraction") is not None and primary["positive_fraction"]>0.50)
+ payload={"version":"sealed-holdout-v1","cutoff":"2026-09-25","baseline_selection_fingerprint":BASE_SEL,"baseline_position_fingerprint":BASE_POS,"fresh_source_sha256":hfile(freshp),"fresh_first":str(fs.date.min().date()),"fresh_last":str(fs.date.max().date()),"fresh_dates":int(fs.date.nunique()),"thresholds_from_frozen_history_only":thresholds,"metrics":metrics,"predeclared_pass_rule":pass_rule,"policy_changed_after_unseal":False,"passed":passed,"pass_rule_status":"PREDECLARED_BEFORE_EVALUATION","created_at":datetime.now(timezone.utc).isoformat()}
  tmp=RESULT.with_suffix(".json.tmp"); tmp.write_text(json.dumps(payload,sort_keys=True,indent=2)+"\n"); os.replace(tmp,RESULT)
- print(json.dumps({"sealed_evaluation":"COMPLETE","result_written":str(RESULT),"metrics_emitted":False,"passed":False,"pass_rule_status":"NOT_YET_PREDECLARED"},sort_keys=True))
+ print(json.dumps({"sealed_evaluation":"COMPLETE","result_written":str(RESULT),"metrics_emitted":False,"passed":passed,"pass_rule_status":"PREDECLARED_BEFORE_EVALUATION"},sort_keys=True))
 if __name__=="__main__":main()
