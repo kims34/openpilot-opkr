@@ -1,3 +1,53 @@
+# Latest authoritative continuation — 2026-10-05 19:46 KST
+
+Supersedes older current-state text below. Overall real automated-trading readiness remains **false**; do not claim all internal integration complete.
+
+## Current exact state
+- Development branch `index-alert-position-regen-fix-v1`; implementation HEAD **8e37c0e5ee2da03beff9d28502aabaaec61f4e8f** before this documentation checkpoint. Re-fetch GitHub for the latest containing checkpoint commit. Final reply links the exact containing SHA.
+- Server branch `index-alert-server`, HEAD and Railway pin **d1c2a91ca46f754ac65ef94aa243e1ea9454b351**.
+- Latest runtime deployment **291dddd5-e957-4aab-ad25-e6a49c6bb007 SUCCESS**, one running replica, zero crashed; pendingWork=[].
+- Runtime start: `sh -lc 'python -S execution_evidence_readonly_audit.py && exec python -m uvicorn production_v32:app --host 0.0.0.0 --port ${PORT:-8080}'`.
+- Runtime /data volume f96f985a-8aba-41ef-88df-f76999c4ff0c500MB retained. PIT /pit03f389e5-5030-46a9-bfa5-dd8aa3dc24fa5000MB and KRX /data61610fae-dc0c-493e-9920-eb3cef4cea865000MB retained.
+- PIT deploymenta2cd6b78-90d8-4a46-a140-642ba2edf86e SUCCESS, pin03140e9f9c5327bb79b1b0621dafa6e6908ca700, read-only completed batch, NEVER restart, zero running/crashed.
+- KRX deployment66439d6d-7a92-4f9e-9fde-eddb540bc954 SUCCESS, pinceb134a0a049363a34fbe2b59ef8a4d9c8997811, offline structure audit completed batch, NEVER restart, zero running/crashed. Research branch HEAD5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e unchanged; no fresh accepted result.
+- Legacy push/backend remain offline; no deletion or data movement occurred.
+
+## Work completed
+- PR9 https://github.com/kims34/openpilot-opkr/pull/9 merged: commit **ea83fc5b927d37815121bf4c36d7eaf78a8c539e**, merge **46bbcc7b254bee35d3f23a89500657f4069e3b1b**. Durable local MASTER_OFF default, explicit SHADOW-only enable, persistent Kill latch, fresh safety epoch, reset remaining OFF, startup/reconnect OFF. Uncertain/cancel/conflicting outcomes disarm. Unresolved orders prevent re-enable/reset.
+- Broker order identity cannot bind to two decisions; repeated fills cannot override a preserved rejection; intent payload conflicts stop claims.
+- PR9 CI37297072211 and37297068364 SUCCESS (29 journal/stop tests).
+- PR10 https://github.com/kims34/openpilot-opkr/pull/10 merged: commit **716d9c89a75df4ebd433d250182932f862a9310d**, merge **8e37c0e5ee2da03beff9d28502aabaaec61f4e8f**. Eight synthetic cross-component fault scenarios connect user capital control, journal, Kill, timeout/restart, duplicate fills and cancel/late-fill races. No network, model, broker or holdout path. Local development suite46 tests pass. CI37297419206/37297416184 and merged37297522354 SUCCESS; CI emits explicitly offline synthetic JSON.
+- PR11 https://github.com/kims34/openpilot-opkr/pull/11 merged: commit **527e31be6bcc82bf886b97cbd9520cddd723e18c**, merge/serverHEAD **d1c2a91ca46f754ac65ef94aa243e1ea9454b351**. Stdlib CLI opens the existing SQLite database with mode=ro/query_only and a consistent WAL-aware snapshot; no table creation/import of ledger initialization. Predefined aggregate counts only; no token, path, symbol, account, unknown source string or exception contents emitted. Missing/incompatible data remains UNKNOWN rather than fabricated zero.
+- Six new read-only audit tests; PR full server run37297875095 **179 tests SUCCESS**. Merged server tests37298019753, probability parity37298019677, server smoke37298019652 and v32 smoke37298019776 all SUCCESS on exact server SHA.
+- First read-only-audit deploymentcdaa893c-e0d7-49e5-8d43-968ac843fc4a was superseded after observing Python sitecustomize hooks before the audit. Final command uses **python -S** for the stdlib audit, then normal Python for the unchanged application. Final291dddd5... logs show audit before application hooks; no prior unisolated report is used as isolation proof.
+- Post-final-deployment health at2026-10-05T10:46:05Z ok=true; /status exactd1c2a91...; /push-health build4.7-47 and physical_e2e_blocker=CONFIRMED/current_build_physical_e2e_confirmed=true. This reuses existing receipt evidence, not a new handset event.
+
+## New authoritative evidence/blocker
+Final isolated startup audit at **2026-10-05T10:45:03.257389429Z** reports **TABLE_MISSING** for the configured runtime DB's execution_evidence table. observations/counts=null, not verified zero. See INDEXALERT_EXECUTION_LEDGER_READONLY_AUDIT.json for the exact deployment-bound diagnostic.
+This shows no usable execution ledger table at the audit snapshot. It does not claim every possible external broker account/source has no records. Protected API auth remains intact; no public audit endpoint or fake execution rows were created.
+The exact status-economics contract accepts actual prospective LIVE or broker-historical position execution records and official recovery records, not simulated/backtest/OHLC fills. Such a complete independently attested affected-position dataset is still absent.
+
+## Unfinished and blockers
+- Failed consumed holdout remains invalid for independent promotion; result hash **30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82**, passed=false, cutoff2026-09-25, fresh2026-09-28..2026-10-01. Re-read current audit log confirms unchanged. No deletion/reset/re-evaluation or cutoff/model/threshold retuning.
+- Independent accepted candidate and untouched admitted validation lineage still missing. Existing failed validation cannot be relabelled as passed or reused to select a replacement.
+- Official historical status available_at/PIT lineage, complete affected-position scope and actual fill/recovery economics remain missing. 56/83 source episodes lack cleanup-resolution records.
+- Genuine LIVE execution admission and frozen sufficiency600 observations/200 distinct decision dates/400 filled/120 near-capacity plus frozen quality/risk conditions remain open. TABLE_MISSING cannot be converted into a fabricated evidence count.
+- The implemented Kill latch stops **local offline claims only**, not actual broker orders/cancellations/liquidation. Missing integration remains: independently admitted broker/gate adapter, full pretrade market/account/freshness/NetEV/capacity/risk checks, actual Kill enforcement, amend/replace/reconnect reconciliation and PnL/provenance integration. No actual sender or public automation-control endpoint has been added.
+- No real order, funds movement or broker permission change occurred. These require separate explicit approval after applicable stage gates; general dev/deploy approval is insufficient.
+
+## Next exact steps
+1. Fetch current GitHub HEADs/Railway pin, config, deployments and logs. Verify final291dddd5.../d1c2a91..., isolated audit ordering, healthy replica and retained volumes. Keep PIT/worker pins intact.
+2. Run existing offline tests/replay only for changed code or unresolved failures. Do not represent synthetic replay as prospective Shadow stage admission, Paper fills or genuine LIVE evidence.
+3. Obtain existing authentic broker historical execution records if they exist through a permitted read-only source, and official historical publication/recovery records under approved KRX/source routes. Bind account/order/execution identities, immutable source artifacts, PIT availability and independently attested affected-position scope; never manufacture absent backtest fills.
+4. Supply an independently approved preregistered candidate/validation lineage under unchanged research governance before broader order integration. No new window/cutoff may be invented to rescue the consumed failed candidate.
+5. Only after the applicable gates are admitted, implement the remaining operational integration and verify then-current official broker docs; follow Research -> Shadow -> Paper -> explicitly authorized Tiny Live -> Limited Live -> Production. Do not ask for premature live activation to bypass missing research evidence.
+6. Continue within available authorized development scope; update this checkpoint with real source/CI/deployment results. No unattended execution is implied after an interactive turn ends.
+
+## Frozen invariants
+Keep H1 historical1%/25bp, >=30trades, mean net>0, positive fraction>0.5, cutoff and sealed artifacts. Preserve the distinct H5 Core504/126/126 horizon purge, Top3 no-backfill0..3/NO_TRADE, q25/cost/recency, capacity, tail/latency and execution-sufficiency rules. No rejected H10 revival, no outcome-driven price-only retuning, no merging distinct lineages. User `ㅇ` authorizes necessary dev/test/deploy/verify, excluding real orders/funds/broker permissions.
+
+---
+
 # Authoritative continuation update — 2026-10-05 19:23 KST
 
 This section supersedes older current-state claims below. Real automated trading readiness remains **false**.

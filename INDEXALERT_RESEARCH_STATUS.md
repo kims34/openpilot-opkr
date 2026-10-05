@@ -1,3 +1,9 @@
+# Latest continuation — 2026-10-05 19:46 KST
+
+Real automated-trading readiness remains false. PR9 persistent offline stop/Kill controls and PR10 eight-scenario fault replay merged;46 local development tests pass and CI succeeds. PR11 private read-only execution audit merged/deployed atd1c2a91ca46f754ac65ef94aa243e1ea9454b351;179 server tests and exact-SHA smokes pass. Final runtime291dddd5-e957-4aab-ad25-e6a49c6bb007 SUCCESS uses python -S audit isolation, then the established production_v32 app. Isolated startup audit2026-10-05T10:45:03Z: TABLE_MISSING, observation count unknown, not verified zero. No genuine execution, source/strategy/holdout admission or actual ordering authority is established. Consumed failed holdout and all frozen criteria remain unchanged. Canonical broker/pretrade/operational Kill/PnL integration and independent source/validation evidence remain open; see newest INDEXALERT_HANDOFF.md and INDEXALERT_EXECUTION_LEDGER_READONLY_AUDIT.json. This update supersedes older current-state claims below.
+
+---
+
 # Latest authoritative update — 2026-10-05 19:23 KST
 
 Real automated trading readiness: **false**. See INDEXALERT_HANDOFF.md latest section for exact blockers and next steps. Server PR7 merged/deployed at9515114c62b23c83610e53729514fc972760b6fa, runtime0287c97a-f645-4d33-82b4-5d62a490968d SUCCESS; full173 server tests and both production smoke workflows pass. Development PR8 merged at51829f29666d9613d2eed809e76bb7e91dd529cf with16 offline journal tests (32 total local automation suite) and passing CI. No actual order sender, LIVE admission, new holdout or frozen criteria change. Missing independent research/source/execution evidence and broader gate/broker/pretrade/Kill Switch integration still prevent real trading completion. This update supersedes older current-state statements below.

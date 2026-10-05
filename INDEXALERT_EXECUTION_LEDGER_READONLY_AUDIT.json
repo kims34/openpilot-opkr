@@ -1,0 +1,35 @@
+{
+  "audit_kind": "OPERATOR_READ_ONLY_EXECUTION_LEDGER_COUNTS_NOT_EXECUTION_ADMISSION",
+  "source": {
+    "repository": "kims34/openpilot-opkr",
+    "branch": "index-alert-server",
+    "commit_sha": "d1c2a91ca46f754ac65ef94aa243e1ea9454b351",
+    "railway_project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
+    "railway_service_id": "37902fde-ca05-43e0-bc76-278992bf7732",
+    "railway_deployment_id": "291dddd5-e957-4aab-ad25-e6a49c6bb007",
+    "deployment_status": "SUCCESS",
+    "isolated_audit_command": "python -S execution_evidence_readonly_audit.py"
+  },
+  "observed_startup_report": {
+    "timestamp": "2026-10-05T10:45:03.257389429Z",
+    "broker_native_identity_columns_present": null,
+    "counts": null,
+    "database_mutation_attempted": false,
+    "empirical_sufficiency_assessed": false,
+    "genuine_live_provenance_verified": false,
+    "live_trading_authorized": false,
+    "mode": "READ_ONLY_EXECUTION_LEDGER_COUNTS",
+    "network_request_attempted": false,
+    "observations": null,
+    "sealed_holdout_read": false,
+    "status": "TABLE_MISSING"
+  },
+  "interpretation": {
+    "execution_evidence_table_present_at_audit": false,
+    "observation_count_established": false,
+    "missing_table_must_not_be_labelled_verified_zero": true,
+    "genuine_live_evidence_admitted": false,
+    "production_or_holdout_authority_granted": false
+  },
+  "read_only": true
+}
