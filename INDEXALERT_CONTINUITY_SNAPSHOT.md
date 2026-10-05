@@ -1,3 +1,9 @@
+# Deployment progress — 2026-10-05T15:11:05.501Z
+
+Latest actual Railway verification: isolated DEMO service6be2d733-2a59-4a12-96e3-b6d869db3b97 deployment18870bde-7a8a-4bb9-8e69-a07f8dfd00e9 is **BUILDING**, superseding the prior QUEUED checkpoint. No provider result or build/runtime logs yet observed. Do not infer no requests or connectivity success. Existing runtime remains SUCCESS/1running0crashed. No duplicate deployment or scope change. PR29 postmerge Actions37330116472 SUCCESS, job111830787239 actually reports218 passed. Current checkpoint HEAD before this update98c10d92592903242c8fb684602c25ff3a3acdd4; implementationdf868732d25cfe685dbff2e5d37167b655ac29a0. Next: follow this existing deployment and preserve all frozen/admission limits below.
+
+---
+
 # Latest continuation — 2026-10-06 00:07 KST
 
 Supersedes older current-state entries. This is a continuation checkpoint, **not project completion or trading readiness**. Branch `index-alert-position-regen-fix-v1`, verified implementation HEAD **`df868732d25cfe685dbff2e5d37167b655ac29a0`**. Resolve the documentation HEAD through GitHub branch API on resume; the document cannot contain its own commit SHA. Previous checkpointe5ac1074d1a3696b083b9ba1746f3a1c9ee0a6c5.

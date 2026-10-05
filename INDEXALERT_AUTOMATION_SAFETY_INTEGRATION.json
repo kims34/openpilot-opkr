@@ -133,7 +133,9 @@
     "github_offline_total": 218,
     "github_job": 111830200907,
     "github_run": 37329943727,
-    "synthetic_offline_only": true
+    "synthetic_offline_only": true,
+    "postmerge_run": 37330116472,
+    "postmerge_job": 111830787239
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -232,7 +234,7 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T15:07:00Z",
+  "railway_rechecked_at": "2026-10-05T15:09:32.313Z",
   "railway_pending_work": [],
   "research_heads": {
     "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
@@ -243,7 +245,7 @@
   "railway_demo_verifier": {
     "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
     "deployment_id": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
-    "status": "QUEUED",
+    "status": "BUILDING",
     "source_pin": "309d16451214da2b088875d180af6585c42185a6",
     "no_volume": true,
     "restart_policy": "NEVER",

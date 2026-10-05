@@ -2,7 +2,7 @@
   "source_pin": "309d16451214da2b088875d180af6585c42185a6",
   "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
   "deployment_id": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
-  "deployment_status": "QUEUED",
+  "deployment_status": "BUILDING",
   "provider_result_observed": false,
   "build_log_entries_observed": 0,
   "runtime_log_entries_observed": 0,
@@ -10,5 +10,6 @@
   "first_page_only": true,
   "genuine_live_evidence": false,
   "live_ordering_authorized": false,
-  "frozen_criteria_changed": false
+  "frozen_criteria_changed": false,
+  "checked_at": "2026-10-05T15:11:05.501Z"
 }
