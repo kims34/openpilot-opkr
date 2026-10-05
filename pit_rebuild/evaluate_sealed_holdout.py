@@ -38,6 +38,7 @@ def raw_to_v2(df):
  return d.sort_values(["code","date"]).drop_duplicates(["code","date"],keep="last")
 
 def main():
+ raise SystemExit("EVAL_RETIRED: sealed-holdout-v1 was consumed; repair cannot authorise reuse. A separately admitted prospective protocol is required.")
  if RESULT.exists(): raise SystemExit("EVAL_BLOCKED: result already exists")
  freshp=SEALED/"eligible_raw.parquet"
  if not freshp.exists(): raise SystemExit("EVAL_BLOCKED: sealed data missing")
