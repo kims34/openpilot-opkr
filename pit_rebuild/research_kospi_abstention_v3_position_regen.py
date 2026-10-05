@@ -47,6 +47,8 @@ def regenerate(obs: pd.DataFrame, session_calendar: pd.DataFrame) -> pd.DataFram
     # engineer() intentionally drops rows/dates while forming rolling features and liquidity gates.
     calendar=session_calendar[["day_idx","date"]].drop_duplicates().sort_values("day_idx")
     if calendar.day_idx.duplicated().any(): raise ValueError("session calendar has duplicate day_idx")
+    if calendar.date.duplicated().any(): raise ValueError("session calendar has duplicate date")
+    if not calendar.empty and calendar.day_idx.astype(int).tolist()!=list(range(len(calendar))): raise ValueError("session calendar day_idx is not contiguous")
     idx_to_date={int(r.day_idx):pd.Timestamp(r.date) for r in calendar.itertuples(index=False)}
     n_days=(max(idx_to_date)+1) if idx_to_date else 0
     for fold_no,test_start in enumerate(range(first_test,n_days-1,v2.TEST_DAYS),1):
@@ -76,6 +78,7 @@ def regenerate(obs: pd.DataFrame, session_calendar: pd.DataFrame) -> pd.DataFram
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--pit-dir",required=True); ap.add_argument("--private-output",required=True); ap.add_argument("--from-date",default="2018-01-02"); ap.add_argument("--to-date",default="2026-09-25"); args=ap.parse_args()
     raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); obs=v2.engineer(clean); selected=regenerate(obs,clean[["day_idx","date"]])
+    if selected.empty: raise ValueError("position regeneration produced no selections")
     entry_px=clean[["code","day_idx","open"]].rename(columns={"code":"symbol","day_idx":"entry_idx","open":"entry_price"})
     selected["entry_idx"]=selected["decision_idx"]+1
     selected=selected.merge(entry_px,on=["symbol","entry_idx"],how="left",validate="many_to_one")
