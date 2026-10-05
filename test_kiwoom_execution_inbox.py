@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import unittest
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import test_kiwoom_order_journal_bridge as fixtures
@@ -129,6 +130,52 @@ class InboxTests(unittest.TestCase):
         with self.assertRaises(ExecutionInboxError) as raised:self.i.replay('secret-private-id')
         self.assertNotIn('secret',str(raised.exception))
         self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
+    def test_conflict_commit_already_quarantines_if_process_stops_before_error(self):
+        self.append();self.i.replay_next();self.batch()
+        self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+        original_guard=self.i._guard
+        @contextmanager
+        def stop_after_commit():
+            with original_guard():
+                yield
+            raise SystemExit('synthetic interruption after commit')
+        row=fixtures.fill();row['fee']='999'
+        with patch.object(self.i,'_guard',stop_after_commit),self.assertRaises(SystemExit):
+            self.append(row=row)
+        self.assertEqual(self.i.counts()['conflicts'],1)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+        self.assertEqual(self.j.get('d1')['state'],'RECONCILIATION_REQUIRED')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(),(1,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM reconciled_snapshot_bindings').fetchone(),(0,))
+
+    def test_competing_conflict_writer_cannot_enter_between_receipt_check_and_fill(self):
+        self.append()
+        competitor=sqlite3.connect(self.path,timeout=0,isolation_level=None)
+        original=self.b._apply_execution_locked
+        def attempted_interleave(*args,**kwargs):
+            self.assertTrue(self.j.db.in_transaction)
+            with self.assertRaisesRegex(sqlite3.OperationalError,'locked'):
+                competitor.execute("INSERT INTO native_inbox_conflicts(receipt_id,key,day,payload,digest) VALUES('receipt-1','d1','day','conflict','hash')")
+            return original(*args,**kwargs)
+        try:
+            with patch.object(self.b,'_apply_execution_locked',side_effect=attempted_interleave):
+                self.i.replay_next()
+        finally:
+            competitor.close()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.i.counts()['conflicts'],0)
+
+    def test_fill_binding_failure_rolls_back_inbox_replay_execution(self):
+        self.append()
+        self.j.db.execute("CREATE TRIGGER abort_native BEFORE INSERT ON native_fill_bindings BEGIN SELECT RAISE(ABORT,'synthetic binding failure'); END")
+        with self.assertRaises(ExecutionInboxError):self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+        self.assertEqual(self.i.counts()['pending'],1)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+        self.j.db.execute('DROP TRIGGER abort_native')
+        self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
 
     def test_counts_do_not_emit_private_record_or_provenance_claim(self):
         self.append()
