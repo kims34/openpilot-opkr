@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 WORKDIR /app
 COPY kiwoom_readonly_configuration_audit.py kiwoom_demo_readonly_transport.py kiwoom_demo_snapshot_collection.py kiwoom_demo_readonly_verifier.py ./
+COPY kiwoom_holdings_diagnostics.py kiwoom_demo_holdings_verifier.py ./
 ENV PYTHONDONTWRITEBYTECODE=1
 CMD ["python", "-S", "-B", "kiwoom_demo_readonly_verifier.py", "--execute-demo-readonly"]

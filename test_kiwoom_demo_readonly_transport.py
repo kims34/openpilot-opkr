@@ -166,4 +166,16 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(page.continuation,'N')
             self.assertEqual(page.continuation_header_present,present)
 
+    def test_individual_krx_holdings_is_the_only_new_allowed_scope(self):
+        self.authenticate();count=len(self.requests)
+        for body in ({'qry_tp':'1','dmst_stex_tp':'KRX'}, {'qry_tp':'2','dmst_stex_tp':'NXT'},
+            {'qry_tp':'2','dmst_stex_tp':'KRX','ord_no':'private'}):
+            with self.assertRaises(DemoReadOnlyError):self.transport.query('kt00018',body)
+        self.assertEqual(len(self.requests),count)
+        self.responses.append(Response({'return_code':0,'acnt_evlt_remn_indv_tot':[]},headers={'cont-yn':'N'}))
+        page=self.transport.query('kt00018',{'qry_tp':'2','dmst_stex_tp':'KRX'})
+        self.assertTrue(page.continuation_header_present)
+        self.assertEqual(self.requests[-1][1]['headers']['api-id'],'kt00018')
+
+
 if __name__=='__main__':unittest.main()
