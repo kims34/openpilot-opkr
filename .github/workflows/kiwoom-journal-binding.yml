@@ -2,7 +2,7 @@ name: Offline Kiwoom Journal Binding
 on:
   push:
     branches: [index-alert-kiwoom-journal-binding-v1, index-alert-late-fill-capital-restore-v1, index-alert-native-execution-inbox-v1, index-alert-position-regen-fix-v1, index-alert-early-live-v2-prereg]
-    paths: [kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, kiwoom_account_settlement_evidence.py, test_kiwoom_account_settlement_evidence.py, .github/workflows/kiwoom-journal-binding.yml]
+    paths: [kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, kiwoom_account_settlement_evidence.py, test_kiwoom_account_settlement_evidence.py, account_settlement_binding.py, test_account_settlement_binding.py, .github/workflows/kiwoom-journal-binding.yml]
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
     paths: [kiwoom_execution_inbox.py, test_kiwoom_execution_inbox.py, shadow_capital_allocator.py, test_shadow_late_fill_capital.py, shadow_fault_replay.py, test_order_intent_journal.py, order_intent_journal.py, kiwoom_order_journal_bridge.py, test_kiwoom_order_journal_bridge.py, research_v1_kiwoom_native_execution.py, .github/workflows/kiwoom-journal-binding.yml]
@@ -37,6 +37,8 @@ jobs:
             test_kiwoom_order_journal_bridge.py
             kiwoom_account_settlement_evidence.py
             test_kiwoom_account_settlement_evidence.py
+            account_settlement_binding.py
+            test_account_settlement_binding.py
           sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v6
         with:
