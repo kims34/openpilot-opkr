@@ -1,10 +1,10 @@
 name: Durable Order Intent Journal
 on:
   push:
-    branches: [index-alert-durable-order-journal-v1, index-alert-position-regen-fix-v1]
-    paths: ['order_intent_journal.py', 'test_order_intent_journal.py', '.github/workflows/order-intent-journal.yml']
+    branches: [index-alert-shadow-safety-latch-v1, index-alert-position-regen-fix-v1]
+    paths: ['order_intent_journal.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', '.github/workflows/order-intent-journal.yml']
   pull_request:
-    paths: ['order_intent_journal.py', 'test_order_intent_journal.py', '.github/workflows/order-intent-journal.yml']
+    paths: ['order_intent_journal.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', '.github/workflows/order-intent-journal.yml']
 jobs:
   offline-journal:
     runs-on: ubuntu-latest
@@ -14,8 +14,9 @@ jobs:
           sparse-checkout: |
             order_intent_journal.py
             test_order_intent_journal.py
+            test_shadow_safety_control.py
           sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m unittest test_order_intent_journal -v
+      - run: python -m unittest test_order_intent_journal test_shadow_safety_control -v

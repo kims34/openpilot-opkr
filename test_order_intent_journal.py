@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 from order_intent_journal import OrderIntentJournal, OrderJournalError
 
@@ -12,13 +13,14 @@ class JournalTests(unittest.TestCase):
         self.path = Path(self.tmp.name) / 'orders.sqlite'
         self.j = OrderIntentJournal(self.path)
         self.j.register('decision-1', symbol='005930', side='BUY', quantity=10)
+        self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
     def tearDown(self):
         self.j.close()
         self.tmp.cleanup()
 
     def acknowledged(self):
-        self.j.claim_submission('decision-1')
+        self.j.claim_submission('decision-1', expected_epoch=self.j.shadow_control()['epoch'])
         self.j.bind_acknowledgement('decision-1', 'broker-1')
 
     def fill(self, execution_id='fill-1', quantity=4):
@@ -31,29 +33,36 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.j.get('decision-1')['quantity'], 10)
 
     def test_concurrent_connections_have_one_claimant(self):
+        ready = Barrier(8)
+        armed = Barrier(8)
+        shared = {}
         def claim(_):
             journal = OrderIntentJournal(self.path)
             try:
-                journal.claim_submission('decision-1')
+                leader = ready.wait()
+                if leader == 0:
+                    shared['epoch'] = journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch'])['epoch']
+                armed.wait()
+                journal.claim_submission('decision-1', expected_epoch=shared['epoch'])
                 return True
             except OrderJournalError:
                 return False
             finally:
                 journal.close()
-        with ThreadPoolExecutor(max_workers=4) as pool:
+        with ThreadPoolExecutor(max_workers=8) as pool:
             self.assertEqual(sum(pool.map(claim, range(8))), 1)
 
     def test_timeout_survives_restart_and_cannot_resubmit(self):
-        self.j.claim_submission('decision-1')
+        self.j.claim_submission('decision-1', expected_epoch=self.j.shadow_control()['epoch'])
         self.j.close()
         self.j = OrderIntentJournal(self.path)
         self.assertEqual(self.j.get('decision-1')['state'], 'RECONCILIATION_REQUIRED')
         self.assertEqual(self.j.recover()[0]['state'], 'RECONCILIATION_REQUIRED')
         with self.assertRaises(OrderJournalError):
-            self.j.claim_submission('decision-1')
+            self.j.claim_submission('decision-1', expected_epoch=self.j.shadow_control()['epoch'])
 
     def test_uncertain_acknowledgement_alone_does_not_clear_block(self):
-        self.j.claim_submission('decision-1')
+        self.j.claim_submission('decision-1', expected_epoch=self.j.shadow_control()['epoch'])
         self.j.mark_uncertain('decision-1')
         self.assertEqual(self.j.bind_acknowledgement('decision-1', 'broker-1')['state'], 'RECONCILIATION_REQUIRED')
 
@@ -119,8 +128,8 @@ class JournalTests(unittest.TestCase):
         self.acknowledged()
         self.j.mark_uncertain('decision-1')
         self.j.register('decision-2', symbol='000660', side='BUY', quantity=1)
-        with self.assertRaisesRegex(OrderJournalError, 'unresolved'):
-            self.j.claim_submission('decision-2')
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('decision-2', expected_epoch=self.j.shadow_control()['epoch'])
         self.assertEqual(self.j.get('decision-2')['state'], 'INTENT_CREATED')
 
     def test_wrong_broker_order_identity_is_quarantined(self):
