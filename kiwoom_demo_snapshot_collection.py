@@ -36,6 +36,42 @@ def collect_demo_snapshot(transport,api_id,body,*,max_pages=10):
     No automatic auth/refresh/retry; transport retains the DEMO-only allowlist.
     """
     require(type(api_id) is str and api_id in TABLES)
+    return _collect_pages(transport,api_id,body,table=TABLES[api_id],
+        row_identity=_order_identity,max_pages=max_pages)
+
+
+def _order_identity(row):
+    order=row.get('ord_no')
+    require(type(order) is str and bool(order.strip()) and len(order)<=256)
+    return order
+
+
+def _holding_identity(row):
+    identity=tuple(row.get(k) for k in ('stk_cd','crd_tp','crd_loan_dt'))
+    require(all(type(value) is str and len(value)<=256 for value in identity))
+    require(bool(identity[0].strip()))
+    return identity
+
+
+def collect_demo_holdings_snapshot(transport,*,account_fingerprint,captured_at,max_pages=10):
+    """Individual KRX holdings only; no valuation-cost/cash/ownership admission."""
+    from kiwoom_holdings_diagnostics import normalize_holdings_rows
+    # Reject malformed declared scope before any provider request.
+    try:
+        normalize_holdings_rows([],account_fingerprint=account_fingerprint,captured_at=captured_at)
+    except Exception:
+        raise SnapshotCollectionError('DEMO_SNAPSHOT_COLLECTION_BLOCKED') from None
+    snapshot=_collect_pages(transport,'kt00018',{'qry_tp':'2','dmst_stex_tp':'KRX'},
+        table='acnt_evlt_remn_indv_tot',row_identity=_holding_identity,max_pages=max_pages)
+    try:
+        diagnostic=normalize_holdings_rows(snapshot.rows,
+            account_fingerprint=account_fingerprint,captured_at=captured_at)
+        return PrivateDemoSnapshot('kt00018',diagnostic.rows,snapshot.page_count)
+    except Exception:
+        raise SnapshotCollectionError('DEMO_SNAPSHOT_COLLECTION_BLOCKED') from None
+
+
+def _collect_pages(transport,api_id,body,*,table,row_identity,max_pages):
     require(type(body) is dict and type(max_pages) is int and 1<=max_pages<=10)
     require(all(type(k) is str and type(v) is str and len(v)<=256 for k,v in body.items()))
     request=dict(body);rows=[];orders=set();cursors=set();continuation='N';key=''
@@ -44,11 +80,11 @@ def collect_demo_snapshot(transport,api_id,body,*,max_pages=10):
             if index:time.sleep(0.3)
             page=transport.query(api_id,deepcopy(request),continuation=continuation,next_key=key)
             require(page.continuation_header_present is True)
-            batch=page.body.get(TABLES[api_id])
+            batch=page.body.get(table)
             require(type(batch) is list and all(type(row) is dict for row in batch))
             for row in batch:
-                order=row.get('ord_no')
-                require(type(order) is str and bool(order.strip()) and len(order)<=256 and order not in orders)
+                order=row_identity(row)
+                require(order not in orders)
                 orders.add(order);rows.append(deepcopy(row))
             require(page.continuation in ('N','Y'))
             if page.continuation=='N':return PrivateDemoSnapshot(api_id,rows,index+1)
