@@ -87,4 +87,14 @@ def test_physical_e2e_completion_does_not_grant_research_or_trading_authority():
     assert "sealed one-shot holdout" in audit
     assert "Real-account ordering remains disabled" in status
     assert "Real-account ordering remains disabled" in snapshot
-    assert "SEALED HOLDOUT — untouched" in snapshot
+    # Physical delivery cannot restore or reuse the consumed invalid v1 holdout.
+    # These are frozen public lineage identities, never private outcome parsing.
+    hashes=(
+        "30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82",
+        "ff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907",
+        "3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63",
+    )
+    for name,text in (("status",status),("snapshot",snapshot)):
+        assert "CONSUMED_FAILED_INVALID_V1_HOLDOUT" in text, f"{name} lost retired v1 disposition"
+        for identity in hashes:
+            assert identity in text, f"{name} lost frozen holdout identity"
