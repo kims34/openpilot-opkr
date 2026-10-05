@@ -50,6 +50,24 @@ class PlannedOrder:
     estimated_notional_krw: int
 
 
+@dataclass(frozen=True)
+class CommittedCapital:
+    """Conservative input snapshot; not broker reconciliation evidence."""
+    positions_krw: int = 0
+    reserved_buy_orders_krw: int = 0
+    uncertain_submissions_krw: int = 0
+    fee_buffer_krw: int = 0
+
+    def total(self) -> int:
+        amounts = (
+            self.positions_krw, self.reserved_buy_orders_krw,
+            self.uncertain_submissions_krw, self.fee_buffer_krw,
+        )
+        if any(type(value) is not int or value < 0 for value in amounts):
+            raise AutomationControlError("committed capital must contain nonnegative integer amounts")
+        return sum(amounts)
+
+
 def _strict_bool(value: Any, field: str) -> bool:
     if type(value) is not bool:  # bool only; do not silently accept 0/1 or strings.
         raise AutomationControlError(f"{field} must be a boolean")
@@ -101,17 +119,23 @@ def validate_engine_plan(
     *,
     decision: str,
     live_ordering_authorized: bool = False,
+    committed_capital: CommittedCapital | None = None,
 ) -> dict[str, Any]:
     """Apply user authority and capital ceiling to an engine-generated plan.
 
-    This is a pre-broker safety gate, not an order sender. LIVE ordering stays
-    disabled unless a later staged-release gate explicitly supplies the literal
-    boolean ``True`` after all research/operational controls have been satisfied.
-    Truthy strings/integers are rejected rather than coerced.
+    This is a structural pre-broker gate, not an order sender or admission adapter.
+    Caller flags never grant LIVE authority. New exposure requires an explicit
+    conservative capital snapshot including existing and uncertain commitments.
     """
-    live_authorized = _strict_bool(live_ordering_authorized, "live_ordering_authorized")
+    _strict_bool(live_ordering_authorized, "live_ordering_authorized")
     if not isinstance(control, AutomationControl):
         raise AutomationControlError("control must be a validated AutomationControl")
+    _strict_bool(control.automation_enabled, "automation_enabled")
+    if type(control.max_automation_capital_krw) is not int or control.max_automation_capital_krw <= 0:
+        raise AutomationControlError("control capital ceiling must be a positive integer amount")
+    if committed_capital is not None and not isinstance(committed_capital, CommittedCapital):
+        raise AutomationControlError("committed_capital must be a CommittedCapital snapshot")
+    committed = committed_capital.total() if committed_capital is not None else 0
     if isinstance(orders, (str, bytes)) or not isinstance(orders, Sequence):
         raise AutomationControlError("orders must be a sequence of PlannedOrder values")
 
@@ -141,13 +165,16 @@ def validate_engine_plan(
     if not orders:
         raise AutomationControlError("TRADE requires at least one planned order")
 
+    if committed_capital is None:
+        raise AutomationControlError("TRADE requires an explicit committed capital snapshot")
+
     total = 0
     for order in orders:
         if not isinstance(order, PlannedOrder):
             raise AutomationControlError("orders must contain only PlannedOrder values")
-        if str(order.side).upper() != "BUY":
+        if not isinstance(order.side, str) or order.side.upper() != "BUY":
             raise AutomationControlError("current automated-entry contract supports BUY plans only")
-        if not str(order.symbol).strip():
+        if not isinstance(order.symbol, str) or not order.symbol.strip():
             raise AutomationControlError("planned order symbol is required")
         if type(order.quantity) is not int or order.quantity <= 0:
             raise AutomationControlError("planned order quantity must be a positive integer")
@@ -155,9 +182,10 @@ def validate_engine_plan(
             raise AutomationControlError("estimated order notional must be a positive integer amount")
         total += order.estimated_notional_krw
 
-    if total > control.max_automation_capital_krw:
+    projected = committed + total
+    if projected > control.max_automation_capital_krw:
         raise AutomationControlError(
-            f"planned notional {total} exceeds automation capital ceiling {control.max_automation_capital_krw}"
+            f"projected committed capital {projected} exceeds automation capital ceiling {control.max_automation_capital_krw}"
         )
 
     # Deliberately do not require total == ceiling. The remainder stays cash.
@@ -165,7 +193,10 @@ def validate_engine_plan(
         "decision": "TRADE",
         "cash_allowed": True,
         "planned_notional_krw": total,
-        "uncommitted_cash_capacity_krw": control.max_automation_capital_krw - total,
+        "committed_capital_krw": committed,
+        "projected_committed_capital_krw": projected,
+        "uncommitted_cash_capacity_krw": control.max_automation_capital_krw - projected,
         "max_automation_capital_krw": control.max_automation_capital_krw,
-        "live_ordering_authorized": live_authorized,
+        "live_ordering_authorized": False,
+        "independent_gate_admission_verified": False,
     }

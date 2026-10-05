@@ -2,6 +2,7 @@ import unittest
 
 from automation_control import (
     AutomationControl,
+    CommittedCapital,
     AutomationControlError,
     PlannedOrder,
     parse_user_control,
@@ -55,7 +56,7 @@ class AutomationControlTests(unittest.TestCase):
 
     def test_disabled_automation_requires_empty_plan_and_forces_no_trade(self):
         control = AutomationControl(False, 100_000)
-        out = validate_engine_plan(control, [], decision="TRADE")
+        out = validate_engine_plan(control, [], decision="TRADE", committed_capital=CommittedCapital())
         self.assertEqual(out["decision"], "NO_TRADE")
         self.assertTrue(out["cash_allowed"])
         self.assertEqual(out["planned_notional_krw"], 0)
@@ -65,7 +66,7 @@ class AutomationControlTests(unittest.TestCase):
             validate_engine_plan(
                 control,
                 [PlannedOrder("005930", "BUY", 1, 70_000)],
-                decision="TRADE",
+                decision="TRADE", committed_capital=CommittedCapital(),
             )
 
     def test_no_trade_requires_empty_plan(self):
@@ -83,12 +84,12 @@ class AutomationControlTests(unittest.TestCase):
     def test_trade_requires_orders_and_buy_only(self):
         control = AutomationControl(True, 100_000)
         with self.assertRaisesRegex(AutomationControlError, "requires at least one"):
-            validate_engine_plan(control, [], decision="TRADE")
+            validate_engine_plan(control, [], decision="TRADE", committed_capital=CommittedCapital())
         with self.assertRaisesRegex(AutomationControlError, "BUY plans only"):
             validate_engine_plan(
                 control,
                 [PlannedOrder("005930", "SELL", 1, 70_000)],
-                decision="TRADE",
+                decision="TRADE", committed_capital=CommittedCapital(),
             )
 
     def test_plan_must_not_exceed_capital_ceiling(self):
@@ -100,7 +101,7 @@ class AutomationControlTests(unittest.TestCase):
                     PlannedOrder("005930", "BUY", 1, 70_000),
                     PlannedOrder("000660", "BUY", 1, 40_000),
                 ],
-                decision="TRADE",
+                decision="TRADE", committed_capital=CommittedCapital(),
             )
 
     def test_partial_capital_use_leaves_cash(self):
@@ -108,7 +109,7 @@ class AutomationControlTests(unittest.TestCase):
         out = validate_engine_plan(
             control,
             [PlannedOrder("005930", "BUY", 1, 70_000)],
-            decision="TRADE",
+            decision="TRADE", committed_capital=CommittedCapital(),
         )
         self.assertEqual(out["planned_notional_krw"], 70_000)
         self.assertEqual(out["uncommitted_cash_capacity_krw"], 30_000)
@@ -124,36 +125,75 @@ class AutomationControlTests(unittest.TestCase):
                     validate_engine_plan(
                         control,
                         order,
-                        decision="TRADE",
+                        decision="TRADE", committed_capital=CommittedCapital(),
                         live_ordering_authorized=value,
                     )
 
         out = validate_engine_plan(
             control,
             order,
-            decision="TRADE",
+            decision="TRADE", committed_capital=CommittedCapital(),
             live_ordering_authorized=True,
         )
-        self.assertTrue(out["live_ordering_authorized"])
+        self.assertFalse(out["live_ordering_authorized"])
+        self.assertFalse(out["independent_gate_admission_verified"])
 
     def test_orders_must_be_validated_planned_order_objects_with_strict_ints(self):
         control = AutomationControl(True, 100_000)
         with self.assertRaisesRegex(AutomationControlError, "sequence"):
-            validate_engine_plan(control, "not-orders", decision="TRADE")
+            validate_engine_plan(control, "not-orders", decision="TRADE", committed_capital=CommittedCapital())
         with self.assertRaisesRegex(AutomationControlError, "PlannedOrder"):
-            validate_engine_plan(control, [{"symbol": "005930"}], decision="TRADE")
+            validate_engine_plan(control, [{"symbol": "005930"}], decision="TRADE", committed_capital=CommittedCapital())
         with self.assertRaisesRegex(AutomationControlError, "quantity"):
             validate_engine_plan(
                 control,
                 [PlannedOrder("005930", "BUY", 1.0, 70_000)],
-                decision="TRADE",
+                decision="TRADE", committed_capital=CommittedCapital(),
             )
         with self.assertRaisesRegex(AutomationControlError, "notional"):
             validate_engine_plan(
                 control,
                 [PlannedOrder("005930", "BUY", 1, 70_000.0)],
-                decision="TRADE",
+                decision="TRADE", committed_capital=CommittedCapital(),
             )
+
+
+class CapitalBoundaryRegressionTests(unittest.TestCase):
+    def test_missing_snapshot_cannot_mean_empty_account(self):
+        with self.assertRaisesRegex(AutomationControlError, "explicit committed"):
+            validate_engine_plan(AutomationControl(True, 100), [PlannedOrder("x", "BUY", 1, 1)], decision="TRADE")
+
+    def test_every_existing_commitment_counts(self):
+        for snapshot in (CommittedCapital(91), CommittedCapital(0, 91), CommittedCapital(0, 0, 91), CommittedCapital(0, 0, 0, 91)):
+            with self.subTest(snapshot=snapshot):
+                with self.assertRaisesRegex(AutomationControlError, "exceeds"):
+                    validate_engine_plan(AutomationControl(True, 100), [PlannedOrder("x", "BUY", 1, 10)], decision="TRADE", committed_capital=snapshot)
+
+    def test_total_includes_all_components_and_accepts_exact_ceiling(self):
+        out = validate_engine_plan(AutomationControl(True, 100), [PlannedOrder("x", "BUY", 1, 60)], decision="TRADE", committed_capital=CommittedCapital(10, 10, 10, 10))
+        self.assertEqual(out["projected_committed_capital_krw"], 100)
+        self.assertEqual(out["uncommitted_cash_capacity_krw"], 0)
+        self.assertFalse(out["live_ordering_authorized"])
+
+    def test_malformed_direct_control_cannot_bypass_parser(self):
+        for control in (AutomationControl("false", 100), AutomationControl(True, True), AutomationControl(True, -1)):
+            with self.assertRaises(AutomationControlError):
+                validate_engine_plan(control, [], decision="NO_TRADE")
+
+    def test_invalid_snapshot_components_rejected(self):
+        for value in (True, -1, 0.5, "10"):
+            for snapshot in (CommittedCapital(value), CommittedCapital(0, value), CommittedCapital(0, 0, value), CommittedCapital(0, 0, 0, value)):
+                with self.assertRaises(AutomationControlError):
+                    validate_engine_plan(AutomationControl(True, 100), [], decision="NO_TRADE", committed_capital=snapshot)
+
+    def test_over_cap_account_can_remain_idle(self):
+        out = validate_engine_plan(AutomationControl(True, 100), [], decision="NO_TRADE", committed_capital=CommittedCapital(101))
+        self.assertEqual(out["decision"], "NO_TRADE")
+        self.assertFalse(out["live_ordering_authorized"])
+
+    def test_none_is_not_a_valid_symbol(self):
+        with self.assertRaisesRegex(AutomationControlError, "symbol"):
+            validate_engine_plan(AutomationControl(True, 100), [PlannedOrder(None, "BUY", 1, 1)], decision="TRADE", committed_capital=CommittedCapital())
 
 
 if __name__ == "__main__":
