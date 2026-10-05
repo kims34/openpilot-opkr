@@ -1,0 +1,13 @@
+# DEMO-only read-only transport preparation
+
+Current disposition: offline-tested preparation, not runtime activation, authentication evidence, source admission, account settlement or actual trading authority.
+
+`KiwoomDemoReadOnlyTransport` requires exact audited DEMO configuration with explicit ordering-disabled settings. It copies private configuration, uses verified TLS to the fixed mockapi.kiwoom.com:443 host, and permits explicit authentication at /oauth2/token plus only ka00001, kt00007 and ka10076 at /api/dostk/acnt. Query bodies have endpoint-specific allowlists and required filters. Arbitrary API IDs, order/cancel/amend IDs, REAL hosts, redirects, token revocation and unknown body fields are unavailable. No proxies, retry, auto-refresh or pagination loops. Token must be explicitly obtained and unexpired before each query.
+
+Responses/tokens/accounts remain process-private; default repr and exceptions expose no raw values. Provider/JSON/network failures invalidate the token. Pages include continuation markers, and caller must explicitly request a next page; a page does not establish full account completeness, trading-day origin, native side semantics or fee settlement. There is no file token cache or database writer. No actual request was made by the offline tests.
+
+Official primary sources were actually read at Kiwoom-Securities/Kiwoom-REST-API commit953e5dbff123f437ab4d11a78a95191a685eb51f: kiwoom/core/auth.py; examples/국내주식/계좌/list_domestic_accounts.py; get_domestic_account_order_fill_detail.py; get_domestic_filled_orders.py. Schema commit is a commit SHA, not a tree. Configuration audit is synchronized byte-for-byte from server PR22.
+
+Validation:14 synthetic transport tests cover explicit auth, verified TLS/fixed host, read-only API and parameter allowlists, private output/errors, expiry, invalid/oversized JSON, redirects, provider/network failures, invalid token headers/expiry, explicit continuation and configuration copy isolation. Fourteen configuration tests also run in the expanded offline CI. Full preceding development suite164 passed. None of these tests supplies actual broker evidence.
+
+Next authorized integration: independently review the code and exact DEMO-only request scope, then perform isolated DEMO read-only connectivity verification with existing protected credentials without logging raw tokens/accounts. Never attach automatic auth/query startup to the public service; a one-off verifier must stay separate from existing completed PIT/KRX jobs. Do not request REAL access or actual orders, reuse the consumed holdout, change frozen criteria, or infer authority from this module's existence.
