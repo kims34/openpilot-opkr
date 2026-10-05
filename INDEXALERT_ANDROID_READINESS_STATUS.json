@@ -1,0 +1,41 @@
+{
+  "checked_at": "2026-10-05T20:49:00Z",
+  "repository": "kims34/openpilot-opkr",
+  "base_branch": "index-alert-build",
+  "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
+  "current_canonical_version": "4.7",
+  "current_canonical_version_code": 47,
+  "pr": 46,
+  "feature_branch": "index-alert-android-readonly-readiness-v1",
+  "feature_head": "a0ddaab8ed93f4ae39c17140ff2aa94201a8f4ed",
+  "candidate_version": "4.8",
+  "candidate_version_code": 48,
+  "merged": false,
+  "feature_apk_available_observed": false,
+  "ci": {
+    "run": 37371912963,
+    "job": 111970897295,
+    "status": "queued",
+    "unit_test_methods": 4,
+    "unit_tests_executed_observed": false,
+    "debug_apk_built_observed": false,
+    "unsigned_release_apk_built_observed": false
+  },
+  "local_capabilities": {
+    "java_present": true,
+    "gradle_present": false,
+    "kotlin_compiler_present": false,
+    "android_compilation_or_tests_executed": false
+  },
+  "behaviour": "GET-only bounded readiness display. Exact unavailable/MASTER_OFF and false boolean authority flags display unavailable. Missing/malformed/unknown READY/LIVE or network errors display unknown; no activation/persistence/account/order path.",
+  "physical_e2e": {
+    "audited_version": "4.7",
+    "audited_version_code": 47,
+    "candidate4_8_e2e_observed": false,
+    "old_e2e_is_new_build_proof": false
+  },
+  "live_ordering_authorized": false,
+  "broker_order_submission_implemented": false,
+  "automation_control_persistence_implemented": false,
+  "frozen_criteria_changed": false
+}
