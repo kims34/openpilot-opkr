@@ -94,7 +94,7 @@ def main():
     out=Path(args.private_output); out.parent.mkdir(parents=True,exist_ok=True); selected.to_parquet(out,index=False)
     # Keep model-selection identity separate from expanded execution-position identity.
     sort_cols=["horizon","coverage","decision_idx","rank","symbol"]
-    selection_cols=["fold","horizon","coverage","decision_idx","decision_date","symbol","rank","score","gross_return"]
+    selection_cols=["fold","horizon","coverage","decision_idx","decision_date","symbol","rank","score"]
     selection_canonical=selected.sort_values(sort_cols)[selection_cols].to_csv(index=False).encode()
     position_canonical=selected.sort_values(sort_cols).to_csv(index=False).encode()
     counts={str(int(h)):{f"top_{int(round(float(cov)*100))}pct_train_threshold":int(len(cg)) for cov,cg in hg.groupby("coverage")} for h,hg in selected.groupby("horizon")}
