@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 import test_kiwoom_order_journal_bridge as fixtures
+import test_shadow_principal_release as capital_fixtures
 from kiwoom_execution_inbox import KiwoomExecutionInbox, ExecutionInboxError
 from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
 from order_intent_journal import OrderIntentJournal, OrderJournalError
@@ -137,6 +138,40 @@ class InboxTests(unittest.TestCase):
         self.assertFalse(out['source_provenance_admitted'])
         self.assertFalse(out['raw_broker_artifact_retained'])
         self.assertFalse(out['live_ordering_authorized'])
+
+
+class InboxSettlementTests(unittest.TestCase):
+    tearDown = capital_fixtures.PrincipalReleaseTests.tearDown
+    batch = capital_fixtures.PrincipalReleaseTests.batch
+    release = capital_fixtures.PrincipalReleaseTests.release
+
+    def setUp(self):
+        capital_fixtures.PrincipalReleaseTests.setUp(self)
+        b=KiwoomOrderJournalBridge(self.j,account_fingerprint=fixtures.ACCOUNT,trading_date=fixtures.DAY)
+        b.bind_order('d1',broker_order_id='o1',native_side='2')
+        self.i=KiwoomExecutionInbox(b)
+        self.row=fixtures.fill(qty=1,remaining=9)
+        self.row.update(symbol='SYNTHETIC',broker_order_id='o1')
+
+    def append(self):
+        self.i.append('receipt','d1',self.row,trading_date=fixtures.DAY)
+
+    def test_zero_fill_snapshot_cannot_release_capital_with_unprocessed_fill(self):
+        self.append()
+        self.assertTrue(self.batch()['matched'])
+        with self.assertRaises(OrderJournalError):self.release()
+        self.assertEqual(self.a.state()['managed_reserve_krw'],83)
+        self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'],1)
+        self.assertEqual(self.a.state()['managed_reserve_krw'],83)
+
+    def test_zero_fill_snapshot_cannot_release_capital_with_conflicted_delivery(self):
+        self.append()
+        self.row['fee']='999'
+        with self.assertRaises(ExecutionInboxError):self.append()
+        self.assertTrue(self.batch()['matched'])
+        with self.assertRaises(OrderJournalError):self.release()
+        self.assertEqual(self.a.state()['managed_reserve_krw'],83)
 
 
 if __name__=='__main__':unittest.main()
