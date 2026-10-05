@@ -31,6 +31,7 @@ on:
       - 'test_*.py'
       - 'requirements.txt'
       - '.github/workflows/index-alert-physical-e2e-verify.yml'
+      - '.github/workflows/index-alert-server-smoke.yml'
       - '.github/workflows/index-alert-server-test.yml'
   pull_request:
     branches: [ index-alert-server ]
@@ -41,6 +42,7 @@ on:
       - 'test_automation_control.py'
       - 'kiwoom_readonly_configuration_audit.py'
       - 'test_kiwoom_readonly_configuration_audit.py'
+      - '.github/workflows/index-alert-server-smoke.yml'
       - '.github/workflows/index-alert-server-test.yml'
   workflow_dispatch:
 concurrency:
