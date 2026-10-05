@@ -29,6 +29,15 @@ def check(stage):
         require(m.get("never_inspected_by_development") is True,"holdout is not attested as never inspected")
         require(m.get("frozen_before_data_access") is True,"model/policy was not attested frozen before data access")
         require(m.get("network_collection_authorized") is True,"fresh holdout acquisition authorization not recorded")
+        require(m.get("data_acquired") is True,"fresh holdout data has not been acquired")
+        require(m.get("outcomes_unsealed") is False,"holdout outcomes were already unsealed")
+        receipt_path=m.get("acquisition_receipt")
+        require(bool(receipt_path),"acquisition receipt missing from manifest")
+        receipt=load_json(Path("/pit/private") / receipt_path)
+        require(receipt is not None,"acquisition receipt file missing")
+        require(receipt.get("cutoff")=="2026-09-25","acquisition cutoff mismatch")
+        require(receipt.get("model_executed") is False,"model executed during acquisition")
+        require(receipt.get("outcomes_unsealed") is False,"outcomes unsealed during acquisition")
         return {"stage":stage,"ready":True}
     if stage=="shadow_s1":
         r=load_json(SEALED_RESULT)
