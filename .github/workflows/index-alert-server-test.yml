@@ -11,6 +11,7 @@ on:
       - 'krx_readonly_probe.py'
       - 'automation_control.py'
       - 'execution_evidence_readonly_audit.py'
+      - 'kiwoom_readonly_configuration_audit.py'
       - 'test_execution_evidence_readonly_audit.py'
       - 'push_receipts.py'
       - 'push_self_test.py'
@@ -34,6 +35,8 @@ on:
     paths:
       - 'automation_control.py'
       - 'test_automation_control.py'
+      - 'kiwoom_readonly_configuration_audit.py'
+      - 'test_kiwoom_readonly_configuration_audit.py'
       - '.github/workflows/index-alert-server-test.yml'
   workflow_dispatch:
 concurrency:
@@ -49,5 +52,5 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -r requirements.txt
-      - run: python -m py_compile production_v30.py production_v31.py production_v32.py execution_evidence_ledger.py krx_readonly_probe.py automation_control.py execution_evidence_readonly_audit.py push_receipts.py push_self_test.py push_health.py push_build_registration.py verify_push_physical_e2e.py corporate_action_registry.py laggards.py
+      - run: python -m py_compile production_v30.py production_v31.py production_v32.py execution_evidence_ledger.py krx_readonly_probe.py automation_control.py execution_evidence_readonly_audit.py kiwoom_readonly_configuration_audit.py push_receipts.py push_self_test.py push_health.py push_build_registration.py verify_push_physical_e2e.py corporate_action_registry.py laggards.py
       - run: python -m unittest discover -p 'test_*.py' -v

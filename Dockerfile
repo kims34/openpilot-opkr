@@ -29,6 +29,7 @@ COPY krx_readonly_probe.py .
 COPY execution_evidence_ledger.py .
 COPY automation_control.py .
 COPY execution_evidence_readonly_audit.py .
+COPY kiwoom_readonly_configuration_audit.py .
 COPY push_receipts.py .
 COPY push_self_test.py .
 COPY push_health.py .
