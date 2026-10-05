@@ -17,6 +17,9 @@ if df.duplicated(["horizon","coverage","decision_idx","rank"]).any(): raise Valu
 rank_ok=df.groupby(["horizon","coverage","decision_idx"])["rank"].apply(lambda x: sorted(x.astype(int).tolist())==list(range(1,len(x)+1)))
 if not rank_ok.all(): raise ValueError("selection ranks are not contiguous from 1")
 if (df.groupby(["horizon","coverage","decision_idx"]).size()>3).any(): raise ValueError("selection bucket exceeds TOP_K=3")
+if not set(pd.to_numeric(df.horizon,errors="coerce").astype(int).unique()).issubset({1,2,3,5}): raise ValueError("unexpected horizon")
+if not set(pd.to_numeric(df.coverage,errors="coerce").round(8).unique()).issubset({0.01,0.05,0.1}): raise ValueError("unexpected coverage")
+if (pd.to_numeric(df.score,errors="coerce")<0).any() or (pd.to_numeric(df.score,errors="coerce")>1).any(): raise ValueError("score outside probability bounds")
 counts={}
 for h,g in df.groupby("horizon"):
     counts[str(int(h))]={}
