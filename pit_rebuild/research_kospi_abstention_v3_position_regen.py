@@ -76,8 +76,9 @@ def regenerate(obs: pd.DataFrame, session_calendar: pd.DataFrame) -> pd.DataFram
     return pd.DataFrame(rows)
 
 def main():
+    print("POSITION_REGEN_START="+json.dumps({"mode":"OFFLINE_POSITION_REGEN","network_request_attempted":False,"sealed_holdout_authorized":False,"live_trading_authorized":False},sort_keys=True),flush=True)
     ap=argparse.ArgumentParser(); ap.add_argument("--pit-dir",required=True); ap.add_argument("--private-output",required=True); ap.add_argument("--from-date",default="2018-01-02"); ap.add_argument("--to-date",default="2026-09-25"); args=ap.parse_args()
-    raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); clean=_legacy_clean(raw); obs=v2.engineer(clean); selected=regenerate(obs,clean[["day_idx","date"]])
+    raw=load_legacy_compatible_pit(args.pit_dir,args.from_date,args.to_date); print("POSITION_REGEN_STAGE=pit_loaded",flush=True); clean=_legacy_clean(raw); print("POSITION_REGEN_STAGE=pit_cleaned",flush=True); obs=v2.engineer(clean); print("POSITION_REGEN_STAGE=features_engineered",flush=True); selected=regenerate(obs,clean[["day_idx","date"]]); print("POSITION_REGEN_STAGE=selections_regenerated",flush=True)
     if selected.empty: raise ValueError("position regeneration produced no selections")
     calendar_check=clean[["day_idx","date"]].drop_duplicates().set_index("day_idx")["date"]
     expected_entry=selected["decision_idx"].add(1).map(calendar_check)
@@ -98,5 +99,5 @@ def main():
     position_canonical=selected.sort_values(sort_cols).to_csv(index=False).encode()
     counts={str(int(h)):{f"top_{int(round(float(cov)*100))}pct_train_threshold":int(len(cg)) for cov,cg in hg.groupby("coverage")} for h,hg in selected.groupby("horizon")}
     summary={"mode":"DEVELOPMENT_CONTAMINATED_POSITION_REGEN","rows":int(len(selected)),"decision_dates":int(selected.decision_date.nunique()) if len(selected) else 0,"counts":counts,"selection_fingerprint_sha256":hashlib.sha256(selection_canonical).hexdigest(),"position_fingerprint_sha256":hashlib.sha256(position_canonical).hexdigest(),"research_status":"DEVELOPMENT_CONTAMINATED_NOT_SEALED","profitability_validated":False,"network_request_attempted":False,"security_identifiers_emitted":False,"sealed_holdout_authorized":False,"live_trading_authorized":False}
-    print("POSITION_REGEN="+json.dumps(summary,sort_keys=True))
+    print("POSITION_REGEN="+json.dumps(summary,sort_keys=True),flush=True)
 if __name__=="__main__": main()
