@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-05T19:45:22.210Z",
+  "checked_at": "2026-10-05T20:09:16.979Z",
   "pr": 35,
   "branch": "index-alert-automation-readiness-v1",
   "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
@@ -13,5 +13,15 @@
   "ci_job": 111946502765,
   "ci_status": "queued",
   "current_server_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
-  "live_ordering_authorized": false
+  "live_ordering_authorized": false,
+  "remote_ci": {
+    "run": 37364545547,
+    "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
+    "first_job": 111946502765,
+    "first_job_status": "cancelled_before_steps",
+    "attempt": 2,
+    "job": 111952842665,
+    "status": "queued",
+    "tests_executed_observed": false
+  }
 }

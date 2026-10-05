@@ -292,13 +292,15 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T19:45:22.210Z",
+  "railway_rechecked_at": "2026-10-05T20:09:16.979Z",
   "railway_pending_work": [],
   "research_heads": {
-    "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
+    "main": "b1d4b3480035da10b0f30c6082a27b5b2509015e",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
-    "new_accepted_successor": false
+    "new_accepted_successor": false,
+    "documentation_sync_pr": 36,
+    "documentation_sync_feature": "51292b03fc439a641cf8d066e94b36a386e3dbab"
   },
   "railway_demo_verifier": {
     "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
@@ -455,5 +457,75 @@
     "ci_status": "queued",
     "current_server_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
     "live_ordering_authorized": false
+  },
+  "pending_engineering": [
+    {
+      "pr": 35,
+      "branch": "index-alert-automation-readiness-v1",
+      "head": "62f7060727a0e27df2b99bbbd277ea1e9e7e183a",
+      "local_tests": 199,
+      "run": 37364545547,
+      "attempt": 2,
+      "job": 111952842665,
+      "remote_status": "queued",
+      "merged": false,
+      "deployed": false
+    },
+    {
+      "pr": 37,
+      "branch": "index-alert-stop-claim-concurrency-v1",
+      "head": "2dff54057fc8e9479c9fc325074bbe1f8432830e",
+      "local_offline_tests": 234,
+      "local_durable_tests": 91,
+      "runs": [
+        37366906284,
+        37366906358
+      ],
+      "jobs": [
+        111954177592,
+        111954177861
+      ],
+      "remote_status": "queued",
+      "merged": false
+    },
+    {
+      "pr": 38,
+      "branch": "index-alert-research-strict-input-v1",
+      "head": "cf4782d64d590cf44491340f6030f4ed245cfb5e",
+      "local_tests": 25,
+      "run": 37367541069,
+      "job": 111956227569,
+      "remote_status": "queued",
+      "merged": false
+    },
+    {
+      "pr": 39,
+      "branch": "index-alert-dev-strict-research-input-v1",
+      "head": "0bbc0f8a9d7219436566e2c72d4deec04794048a",
+      "local_tests": 25,
+      "run": 37367737970,
+      "remote_status": "queued",
+      "merged": false
+    }
+  ],
+  "research_governance_defects": {
+    "reproduced_on_both_canonical_branches": true,
+    "defects": [
+      "truthy_string_acceptance",
+      "scalar_holdout_roles",
+      "truthy_string_drift",
+      "null_reference_stringified"
+    ],
+    "prepared_remedy": "exact_JSON_types_and_nonempty_actual_references",
+    "local_focused_tests": 25,
+    "canonical_fix_merged": false,
+    "independent_empirical_candidate_adopted": false,
+    "promotion_authority": false
+  },
+  "public_http_capability_check": {
+    "urllib_get_health": "proxy_timeout",
+    "web_open_health": "inaccessible",
+    "new_public_smoke_observed": false,
+    "server_failure_inferred": false
   }
 }
