@@ -35,7 +35,7 @@ class StopClaimConcurrencyTests(unittest.TestCase):
         return allocator.reserve_and_claim_buy('synthetic', limit_price_krw=8,
             fee_buffer_krw=3, expected_epoch=epoch, expected_capital_revision=1)
 
-    def race(self, *, kill_first):
+    def race(self, *, kill_first, capital_change=False):
         ready, armed = Barrier(2, timeout=5), Barrier(2, timeout=5)
         locked, attempted = Event(), Event()
         shared = {}
@@ -44,6 +44,12 @@ class StopClaimConcurrencyTests(unittest.TestCase):
             journal = OrderIntentJournal(self.path)
             try:
                 allocator = ShadowCapitalAllocator(journal)
+                def stop():
+                    if capital_change:
+                        return allocator.configure(
+                            controls=AutomationUserControls(False, 0),
+                            baseline=AutomationCapitalState(0, 0), expected_revision=1)
+                    return journal.trip_kill_switch()
                 if ready.wait() == 0:
                     shared['epoch'] = journal.enable_shadow(
                         expected_epoch=journal.shadow_control()['epoch'])['epoch']
@@ -60,7 +66,7 @@ class StopClaimConcurrencyTests(unittest.TestCase):
                         return original(*args, **kwargs)
 
                     with patch.object(journal, method, held):
-                        return journal.trip_kill_switch() if is_kill else self.claim(
+                        return stop() if is_kill else self.claim(
                             journal, allocator, shared['epoch'])
                 self.wait(locked)
                 original_atomic = journal._atomic
@@ -73,7 +79,7 @@ class StopClaimConcurrencyTests(unittest.TestCase):
 
                 with patch.object(journal, '_atomic', competing_atomic):
                     if is_kill:
-                        return journal.trip_kill_switch()
+                        return stop()
                     try:
                         return self.claim(journal, allocator, shared['epoch'])
                     except OrderJournalError:
@@ -132,6 +138,40 @@ class StopClaimConcurrencyTests(unittest.TestCase):
                     fee_buffer_krw=0, expected_epoch=epoch, expected_capital_revision=1)
             self.assertEqual(self.journal.get('next')['state'], 'INTENT_CREATED')
             self.assertEqual(self.allocator.state()['managed_reserve_krw'], 83)
+            with self.assertRaises(OrderJournalError):
+                reopened.enable_shadow(expected_epoch=reopened.shadow_control()['epoch'])
+        finally:
+            reopened.close()
+
+    def test_capital_disable_commits_first_and_stale_claim_cannot_reserve(self):
+        configured, claim = self.race(kill_first=True, capital_change=True)
+        self.assertEqual(claim, 'CLAIM_DENIED')
+        self.assertEqual(configured['revision'], 2)
+        self.assertFalse(configured['controls'].automation_enabled)
+        self.assertEqual(configured['controls'].max_automation_capital_krw, 0)
+        self.assertEqual(self.journal.get('synthetic')['state'], 'INTENT_CREATED')
+        self.assertEqual(self.allocator.state()['managed_reserve_krw'], 0)
+        self.assertEqual(self.journal.shadow_control()['mode'], 'MASTER_OFF')
+
+    def test_claim_commits_first_then_capital_disable_preserves_reserve(self):
+        configured, claim = self.race(kill_first=False, capital_change=True)
+        self.assertEqual(claim['reservation_krw'], 83)
+        self.assertFalse(claim['broker_request_sent'])
+        self.assertFalse(claim['live_ordering_authorized'])
+        state = self.allocator.state()
+        self.assertEqual(state['revision'], 2)
+        self.assertFalse(state['controls'].automation_enabled)
+        self.assertEqual(state['controls'].max_automation_capital_krw, 0)
+        self.assertEqual(state['managed_reserve_krw'], 83)
+        self.assertEqual(self.journal.get('synthetic')['state'], 'SUBMITTING')
+        self.assertEqual(self.journal.shadow_control()['mode'], 'MASTER_OFF')
+        reopened = OrderIntentJournal(self.path)
+        try:
+            self.assertEqual(reopened.get('synthetic')['state'], 'RECONCILIATION_REQUIRED')
+            restored = ShadowCapitalAllocator(reopened).state()
+            self.assertEqual(restored['revision'], 2)
+            self.assertEqual(restored['managed_reserve_krw'], 83)
+            self.assertFalse(restored['controls'].automation_enabled)
             with self.assertRaises(OrderJournalError):
                 reopened.enable_shadow(expected_epoch=reopened.shadow_control()['epoch'])
         finally:
