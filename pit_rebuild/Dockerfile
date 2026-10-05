@@ -12,4 +12,5 @@ COPY research_v1_pit_legacy_adapter.py ./
 COPY research_kospi_abstention_v3_position_regen.py ./
 COPY verify_position_regen.py ./
 COPY promote_position_candidate.py ./
+COPY test_fingerprint_semantics.py ./
 CMD ["python","verify_position_regen.py"]
