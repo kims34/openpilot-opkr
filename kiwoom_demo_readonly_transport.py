@@ -34,10 +34,11 @@ def require(condition):
 
 
 class PrivateDemoPage:
-    __slots__ = ('body', 'continuation', 'next_key')
+    __slots__ = ('body', 'continuation', 'next_key', 'continuation_header_present')
 
-    def __init__(self, body, continuation, next_key):
+    def __init__(self, body, continuation, next_key, *, continuation_header_present=True):
         self.body, self.continuation, self.next_key = body, continuation, next_key
+        self.continuation_header_present = continuation_header_present
 
     def __repr__(self):
         return '<PrivateDemoPage redacted; DEMO only; no evidence admission>'
@@ -70,12 +71,14 @@ class KiwoomDemoReadOnlyTransport:
             require(len(raw) <= MAX_RESPONSE_BYTES)
             data = json.loads(raw)
             require(type(data) is dict and type(data.get('return_code')) is int and data['return_code'] == 0)
-            continuation = response.getheader('cont-yn') or 'N'
+            raw_continuation = response.getheader('cont-yn')
+            continuation = raw_continuation or 'N'
             next_key = response.getheader('next-key') or ''
             require(continuation in ('N', 'Y'))
             require(type(next_key) is str and len(next_key) <= 4096 and '\r' not in next_key and '\n' not in next_key)
             require(continuation != 'Y' or bool(next_key))
-            return PrivateDemoPage(data, continuation, next_key)
+            return PrivateDemoPage(data, continuation, next_key,
+                continuation_header_present=raw_continuation in ('N', 'Y'))
         except Exception:
             # Network/provider/JSON errors may contain private request bodies.
             self._token = self._expiry = None
