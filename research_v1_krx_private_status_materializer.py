@@ -11,6 +11,8 @@ from research_v1_krx_historical_fetchers import parse_data_marketplace_raw
 from research_v1_krx_private_store import read_private_json, read_raw_object
 from research_v1_krx_acquisition_receipt import canonical_request_metadata
 from research_v1_krx_acquisition_batch import verify_receipt_fingerprint
+from research_v1_krx_historical_request_executor import validate_request_spec
+from research_v1_krx_auth_preflight import DATA_MARKETPLACE_ROUTE
 
 class KRXPrivateStatusMaterializerError(ValueError):
     pass
@@ -25,13 +27,16 @@ def _safe_component(value):
 
 def _retrieved_at_from_checkpoint(root, *, task, completion, git_worktree=None):
     spec=task.get("request_spec") or {}
-    request_metadata=task.get("request_metadata") or spec.get("request_metadata") or spec
+    resolved=validate_request_spec(spec)
+    if resolved.get("access_route") != DATA_MARKETPLACE_ROUTE:
+        raise KRXPrivateStatusMaterializerError("halt request did not resolve to data-marketplace route")
+    request_metadata={"bld":resolved["bld"],"method":resolved["method"],"menu_id":resolved["menu_id"],"params":resolved["params"],"pinned_client_commit":resolved.get("pinned_client_commit")}
     request_sha=_sha256(canonical_request_metadata(request_metadata))
     expected=str(completion.get("request_metadata_sha256") or "").lower()
     if request_sha != expected: raise KRXPrivateStatusMaterializerError("request metadata fingerprint mismatch")
-    family=_safe_component(task.get("source_family") or "KRX_SECURITY_STATUS")
-    route=_safe_component(task.get("access_route") or "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION")
-    dataset=_safe_component(task.get("dataset_identifier") or spec.get("dataset_identifier") or "")
+    family=_safe_component(resolved["source_family"])
+    route=_safe_component(resolved["access_route"])
+    dataset=_safe_component(resolved["dataset_identifier"])
     rel=f"checkpoints/{family}/{route}/{dataset}/{request_sha}.json"
     cp=read_private_json(root,rel,git_worktree=git_worktree)["value"]
     if cp.get("state")!="COMPLETE": raise KRXPrivateStatusMaterializerError("checkpoint is not COMPLETE")
@@ -67,7 +72,8 @@ def materialize_private_status_events(root: str, *, git_worktree: str | None=Non
         if not task or spec.get("kind")!="trading_halt":
             continue
         raw=read_raw_object(root,completion["raw_object_sha256"],expected_size=int(completion["raw_bytes_size"]),git_worktree=git_worktree)
-        frame=parse_data_marketplace_raw(str(spec.get("method") or "csv"),raw)
+        resolved=validate_request_spec(spec)
+        frame=parse_data_marketplace_raw(str(resolved["method"]),raw)
         if frame.empty:
             continue
         symbol=str(spec.get("params",{}).get("isuCd2") or "").strip().upper()
