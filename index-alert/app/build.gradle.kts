@@ -13,8 +13,8 @@ android {
         applicationId = "com.indexalert.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 47
-        versionName = "4.7"
+        versionCode = 48
+        versionName = "4.8"
 
         val backendUrl = envString("INDEXALERT_BACKEND_URL").ifBlank { "https://indexalert-runtime-production.up.railway.app" }
         val firebaseAppId = envString("FIREBASE_APP_ID").ifBlank { "1:610381086978:android:ae3fe34164da421b0e821b" }
@@ -37,6 +37,7 @@ android {
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("androidx.fragment:fragment-ktx:1.8.5")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.10.0")
