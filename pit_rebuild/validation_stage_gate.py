@@ -24,6 +24,7 @@ def require(cond,msg):
 def check(stage):
     require(BASELINE.exists(),"official baseline missing")
     if stage=="sealed_holdout":
+        require(not SEALED_RESULT.exists(),"holdout result already exists; this window is consumed and cannot be reused")
         m=load_json(SEALED_MANIFEST)
         require(m is not None,"sealed holdout manifest missing; fresh never-inspected data window must be provisioned first")
         require(m.get("never_inspected_by_development") is True,"holdout is not attested as never inspected")
