@@ -1,3 +1,59 @@
+# Latest continuation — 2026-10-05 20:41 KST
+
+Supersedes older current-state sections. **Four additional development PRs are merged; actual automation-ready remains false.** This checkpoint is for immediate continuation, not a declaration that development is complete.
+
+## Branch, HEAD and major commits
+- Active branch `index-alert-position-regen-fix-v1`, authoritative implementation HEAD **abe68ef62cdda0cfd8a28846b9b03c43a055598a** before the containing evidence checkpoint commit. Re-fetch branch for the containing/latest HEAD; final response links the exact containing SHA.
+- PR13 head **a10c9f5cf5a7116697258cf17470fe19b6939790**, merge **e3d49766770f17c1341b5f55afc50f41b245d00c**.
+- PR14 head **7f83fd6137e29ea84fa9a92c19825ff393230463**, merge **d4ba166bd529da0f88109c9a6063ec1dd8c21b50**.
+- PR15 head **c6ac6575c67f8305a75e7eec0e11264ef9aa4812**, merge **26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15**.
+- PR16 head **373bf16f5f7a860974ac5963df12b4ef00aa0102**, merge **abe68ef62cdda0cfd8a28846b9b03c43a055598a**.
+- Server HEAD/pin **d1c2a91ca46f754ac65ef94aa243e1ea9454b351**. Research branch HEAD **5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e** unchanged; no new independently ACCEPTED result observed.
+- Immutable historical execution source `index-alert-krx-per-security-resume-v1` @ **585d763542b2fbbdc3f928621f679fb14c8c3bbf** remains frozen.
+
+## Railway latest actual deployment state
+Project d1c1a050-b7d6-41ce-b300-13c20f82a20a / production83d5840b-270e-4d3f-a941-a37fd4a55ff7:
+- PIT service225f2279-d728-4e1a-a3f3-2447ff0f9dc1: **7021473a-d9a6-4711-b496-a359fd9bb0c8 SUCCESS**, pin **26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15**, root/pit_rebuild, start `python -S -B audit_retired_validation.py`, NEVER restart, completed running0/crashed0. /pit volume03f389e5-5030-46a9-bfa5-dd8aa3dc24fa5000MB retained.
+- Real PIT audit **2026-10-05T11:30:36.029162016Z**: all three preserved hashes match; all four v1 stages blocked; validation_boundary_preserved=true; no outcome metrics parsing/model execution/private mutation/network request/order. Interval11:30:35..11:30:50Z telemetry returned0flow/0DNS entries. No universal network-proof claim.
+- Runtime37902fde-ca05-43e0-bc76-278992bf7732: **291dddd5-e957-4aab-ad25-e6a49c6bb007 SUCCESS**, pind1c2a91..., running1/crashed0; /data volumef96f985a-8aba-41ef-88df-f76999c4ff0c500MB preserved. New offline safety modules are **not** a deployed live runtime loop.
+- KRX003812ee-102b-42b6-bda4-36925885b428: **e56cf101-15c5-478e-ae67-228585013ef0 SUCCESS**, pinef95e7857f692fda3855390e918e165487624881, start `python -S -B research_v1_krx_readonly_integrity_audit.py`, NEVER restart, completed0running/crashed. /data volume61610fae-dc0c-493e-9920-eb3cef4cea865000MB preserved. Verified14,495checkpoints/14,425rawobjects, errors0; see stored integrity JSON.
+- pendingWork=[]; old PIT failure remains historical; legacy push/backend offline unchanged. Do not restart completed acquisition/evaluation batches.
+
+## Completed work
+1. **Atomic whole-order diagnostics**: detect missing/unknown/duplicate/binding/quantity/terminal conflicts in one transaction. Persistent batch barrier survives restart and individual order reconciliation. Successful newer complete batch remains MASTER_OFF/Kill unchanged. A full fill cannot auto-clear prior RECONCILIATION_REQUIRED.
+2. **Atomic synthetic BUY capital reservation**: existing user ceiling and positions/external pending/uncertain/fee accounting are combined with managed reservations and claim in BEGIN IMMEDIATE. Revision/epoch/Kill checks; concurrent workers cannot reuse cached cash. Default disabled/zero ceiling; configuration changes leave OFF. Legacy BUY entry cannot bypass the allocator after initialization; unreserved legacy open BUY blocks.
+3. **Retired v1 authority boundary**: existing v1 sealed/Shadow/S2/live gate cannot return ready from self-labelled JSON or absent result. An independently admitted successor needs separate lineage/gates. No accepted criterion/cutoff changes.
+4. **Explicit zero-fill principal diagnostics**: successful whole-batch per-order revision/epoch binding, unchanged terminal CANCELLED/REJECTED and zero fills required. Return only principal; retain fee buffer; capital revision increments/OFF retained atomically. Failed batch deletes accepted bindings; restart/enable/configuration/stale snapshot/late fill/repeat release block. No fee release, partial/full-fill settlement or inferred EXIT/REPLACE cash.
+5. Full local/CI offline safety suite **87 tests PASS**; GitHub job **111743217387**. Holdout protection **16 tests PASS**, merged job **111740829506**. PR13 Actions37301880128/37301878143; PR1437302622824/37302618750; PR1537303169387/37303164750; PR1637304018416/37304013072. All SUCCESS.
+6. Deployment-bound progress: `INDEXALERT_AUTOMATION_SAFETY_INTEGRATION.json`; allocator limits and remaining integration in `INDEXALERT_SHADOW_CAPITAL_ALLOCATION.md`.
+
+## Unfinished / blockers — do not claim complete
+- Offline supplied snapshots/revisions/baseline are not actual broker origin, completeness, account scope or freshness attestation. No LIVE evidence admission.
+- Real broker sender, market/account/freshness/NetEV/capacity/risk pretrade gates, actual Kill/cancel/amend/reconnect enforcement and runtime integration remain unfinished.
+- Actual partial/full-fill asset valuation, fee/tax/sale proceeds settlement requires broker/account source evidence and strict conservation; the zero-fill diagnostic cannot implement real recurring trading by itself.
+- Runtime execution evidence audit still TABLE_MISSING, counts UNKNOWN. Do not fabricate0 or insert synthetic rows as LIVE.
+- Full independent expected historical scope/PIT availability and actual affected-position fill/recovery economics remain missing;56/83 terminal episodes unresolved.
+- Consumed failed/invalid v1 holdout cannot supply independent promotion; no independently accepted successor or admitted prospective validation lineage observed.
+- Genuine LIVE600observations/200decisiondates/400filled/120near-capacity + all frozen quality/risk gates remain for eventual promotion, not a delay before data/code testing.
+- Real stock orders/funds movement/broker permission changes require separate explicit approval. None attempted.
+
+## Next exact execution steps
+1. Fetch current dev/server/research HEADs, Actions, Railway describe/status; retain exact deployment pins and all volumes. Read the two deployment-bound evidence JSONs.
+2. Continue safe broker-neutral integration on active dev: bridge existing `research_v1_kiwoom_native_execution.py` to journal using explicit account/day/order identity scope and exact execution IDs. Its kt00007/ka10076 aggregate snapshots lack execution IDs: never invent fills or cast aggregates as execution events. Query official pinned schema for ambiguous semantics; reject rather than guess.
+3. Add independently source-bound event ordering/complete snapshot provenance and nonzero-fill settlement accounting. Test stale account/symbol/day mismatch, missing native fills, fees, amend/cancel chains, duplicated/late fills, cash/quantity conservation and restart/concurrency. Keep input self-attestation from granting LIVE authority.
+4. Run the87test safety suite and16synthetic holdout tests as applicable; extend meaningful integration/fault replay; CI/PR merge. Do not integrate an actual order sender into runtime before independent gate/broker admission and separate actual-order authority.
+5. Obtain/validate official historical availability, complete affected-position execution/recovery scope and independently admitted successor validation protocol. Do not re-run or rescue consumed v1. Existing retired gate stays retired.
+6. Update this checkpoint with new exact SHA/deployments/results; use original chat for continuation if Work ends. There is no evidence of a separately established background development worker.
+
+## Frozen invariants and immutable artifacts
+- Cutoff2026-09-25; model/threshold/acceptance rules, H5 504/126/126 horizon purge/embargo, Top3no-backfill0..3/NO_TRADE, q25/cost/recency unchanged. H1 1%25bp>=30trades meanNet>0 positivefraction>.5; rejectedH10/H20 and unsweptH6-H9 not retuned.
+- Sealed result SHA **30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82**, passed=false, fresh2026-09-28..2026-10-01. Manifestshaff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907; receiptsha3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63.
+- Preserve historical files, including stale manifest outcomes_unsealed=false discrepancy; no delete/reset/re-evaluation/new-window rescue/cutoff shift.
+- Historical task fingerprints fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38 andb3738dca89ab5cb6966a1e3158f995b75cbf6e2ae2cd4c199f02c95a8ba4c1d8 unchanged.
+- Storage/PIT/source A-F/statistics/execution/live authority are separate. No synthetic/demo/boolean PASS can replace independent canonical admissions.
+
+---
+
 # Latest authoritative continuation — 2026-10-05 20:07 KST
 
 Supersedes older current-state sections below. **Data storage integrity validation has actually run and passed. Strategy/Shadow/live validation readiness remains false.**

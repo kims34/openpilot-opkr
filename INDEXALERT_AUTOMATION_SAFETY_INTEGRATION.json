@@ -1,0 +1,139 @@
+{
+  "evidence_version": "2026-10-05.v1",
+  "phase": "OFFLINE_AUTOMATION_SAFETY_INTEGRATION",
+  "repository": "kims34/openpilot-opkr",
+  "branch": "index-alert-position-regen-fix-v1",
+  "implementation_head": "abe68ef62cdda0cfd8a28846b9b03c43a055598a",
+  "completed": [
+    {
+      "pr": 13,
+      "head": "a10c9f5cf5a7116697258cf17470fe19b6939790",
+      "merge": "e3d49766770f17c1341b5f55afc50f41b245d00c",
+      "ci_success": [
+        37301880128,
+        37301878143
+      ],
+      "behaviour": "Whole-journal atomic snapshot diagnostics with durable barrier; full fill cannot clear prior uncertainty."
+    },
+    {
+      "pr": 14,
+      "head": "7f83fd6137e29ea84fa9a92c19825ff393230463",
+      "merge": "d4ba166bd529da0f88109c9a6063ec1dd8c21b50",
+      "ci_success": [
+        37302622824,
+        37302618750
+      ],
+      "behaviour": "Persistent synthetic capital configuration/reservations coupled atomically to local BUY claims; concurrent ceiling enforcement."
+    },
+    {
+      "pr": 15,
+      "head": "c6ac6575c67f8305a75e7eec0e11264ef9aa4812",
+      "merge": "26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15",
+      "ci_success": [
+        37303169387,
+        37303164750
+      ],
+      "behaviour": "All retired v1 validation stages reject readiness without parsing outcomes or trusting self-authority booleans."
+    },
+    {
+      "pr": 16,
+      "head": "373bf16f5f7a860974ac5963df12b4ef00aa0102",
+      "merge": "abe68ef62cdda0cfd8a28846b9b03c43a055598a",
+      "ci_success": [
+        37304018416,
+        37304013072
+      ],
+      "behaviour": "Fresh whole-batch/epoch-bound zero-fill terminal principal return; retain fee buffer and MASTER_OFF."
+    }
+  ],
+  "tests": {
+    "local_offline_safety_tests": 87,
+    "github_offline_safety_tests": 87,
+    "safety_job": 111743217387,
+    "local_holdout_protection_tests": 16,
+    "github_holdout_protection_tests": 16,
+    "holdout_job": 111740829506
+  },
+  "railway_pit_boundary_verification": {
+    "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
+    "deployment_id": "7021473a-d9a6-4711-b496-a359fd9bb0c8",
+    "status": "SUCCESS",
+    "pin": "26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15",
+    "start_command": "python -S -B audit_retired_validation.py",
+    "restart_policy": "NEVER",
+    "running_replicas": 0,
+    "crashed_replicas": 0,
+    "volume_id": "03f389e5-5030-46a9-bfa5-dd8aa3dc24fa",
+    "mount_path": "/pit",
+    "report_timestamp": "2026-10-05T11:30:36.029162016Z",
+    "report": {
+      "artifacts": {
+        "sealed_holdout/acquisition_receipt.json": {
+          "matches_preserved_hash": true,
+          "sha256": "3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63"
+        },
+        "sealed_holdout_manifest.json": {
+          "matches_preserved_hash": true,
+          "sha256": "ff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907"
+        },
+        "sealed_holdout_result.json": {
+          "matches_preserved_hash": true,
+          "sha256": "30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82"
+        }
+      },
+      "live_trading_authorized": false,
+      "mode": "READ_ONLY_RETIRED_VALIDATION_GATE_AUDIT",
+      "model_executed": false,
+      "network_request_attempted": false,
+      "outcome_metrics_parsed": false,
+      "private_artifacts_mutated": false,
+      "real_orders_sent": false,
+      "stages": {
+        "fresh_confirmation_s2": {
+          "blocked": true,
+          "reason": "RETIRED_LINEAGE"
+        },
+        "live": {
+          "blocked": true,
+          "reason": "RETIRED_LINEAGE"
+        },
+        "sealed_holdout": {
+          "blocked": true,
+          "reason": "CONSUMED_WINDOW"
+        },
+        "shadow_s1": {
+          "blocked": true,
+          "reason": "RETIRED_LINEAGE"
+        }
+      },
+      "validation_boundary_preserved": true
+    },
+    "network_observation": {
+      "start": "2026-10-05T11:30:35Z",
+      "end": "2026-10-05T11:30:50Z",
+      "returned_flow_count": 0,
+      "returned_dns_count": 0,
+      "scope": "deployment observation only"
+    }
+  },
+  "capability_boundaries": {
+    "offline_diagnostics_only": true,
+    "production_runtime_integration_complete": false,
+    "live_connector_implemented": false,
+    "real_account_provenance_admitted": false,
+    "nonzero_fill_position_or_sale_settlement_implemented": false,
+    "actual_cancel_or_kill_enforcement_implemented": false,
+    "source_gates_closed": false,
+    "prospective_validation_admitted": false,
+    "live_ordering_authorized": false
+  },
+  "remaining": [
+    "Bind official broker-native normalized events and complete snapshots to a private single-account/order scope, preserving real execution IDs and rejecting aggregate-as-fill conversion.",
+    "Implement independently admitted account valuation/nonzero-fill position/fee/sale settlement before actual cash reuse.",
+    "Integrate frozen pretrade market/account freshness, NetEV, capacity/risk policy and actual cancel/reconnect enforcement.",
+    "Resolve official historical expected-scope/PIT availability, affected-position economics and independent successor validation evidence without consumed holdout reuse."
+  ],
+  "frozen_criteria_changed": false,
+  "cutoff_or_model_threshold_changed": false,
+  "real_orders_or_funds_movements_attempted": false
+}
