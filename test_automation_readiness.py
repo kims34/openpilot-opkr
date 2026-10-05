@@ -53,5 +53,9 @@ class ReadinessTests(unittest.TestCase):
         app=FastAPI();app.add_api_route(PATH,lambda:{'live_ordering_authorized':True},methods=['GET'])
         with self.assertRaisesRegex(RuntimeError,'conflicting'):attach(app)
 
+    def test_previously_cached_schema_includes_new_readonly_route(self):
+        app=FastAPI();app.openapi();attach(app)
+        self.assertEqual(set(app.openapi()['paths'][PATH]),{'get'})
+
 
 if __name__=='__main__':unittest.main()

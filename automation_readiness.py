@@ -25,3 +25,4 @@ def attach(app):
                 return
             raise RuntimeError('conflicting automation readiness route')
     app.add_api_route(PATH,readiness,methods=['GET'],tags=['automation'])
+    app.openapi_schema = None
