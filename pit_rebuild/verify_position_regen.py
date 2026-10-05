@@ -29,7 +29,7 @@ for h,g in df.groupby("horizon"):
     for cov,cg in g.groupby("coverage"):
         counts[str(int(h))][f"top_{int(round(float(cov)*100))}pct_train_threshold"]=int(len(cg))
 sort_cols=["horizon","coverage","decision_idx","rank","symbol"]
-selection_cols=["fold","horizon","coverage","decision_idx","decision_date","symbol","rank","score","gross_return"]
+selection_cols=["fold","horizon","coverage","decision_idx","decision_date","symbol","rank","score"]
 selection_canonical=df.sort_values(sort_cols)[selection_cols].to_csv(index=False).encode()
 position_canonical=df.sort_values(sort_cols).to_csv(index=False).encode()
 print("POSITION_VERIFY="+json.dumps({
