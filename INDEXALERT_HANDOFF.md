@@ -127,3 +127,50 @@ eab6bd53f9395f22e177196f09dca3e0a5e709ff: fingerprint regression included in ima
 5. A genuinely new prospective trial needs an independently preregistered ID/protocol/freeze, source/execution prerequisite admission and data not already inspected. Do not select a new cutoff/window to rescue this candidate from observed failure.
 6. Continue official source/PIT/status evidence work that is independent of consumed outcomes. Accept researcher proposals only with exact trial/protocol/OOS evidence; no direct Core replacement.
 No additional user approval can turn the consumed invalid window into valid holdout evidence.
+
+## 2026-10-05 19:02 KST — automatic-trading preparation continuation
+User goal: continue until a result suitable for real automated trading; development,
+testing and deployment approved, real orders/funds/account permissions excluded.
+
+Completed:
+- Rejected unknown/string actions and malformed engine payloads.
+- BUY/REPLACE require positive conservative reservation and symbol identity.
+- HOLD/EXIT/NO_TRADE cannot disguise added exposure.
+- Aggregate reservation accounts for positions, open buys, uncertain submissions and fee buffer.
+- Lowering the user capital ceiling no longer blocks zero-exposure exits/idle plans;
+  new exposure still fails closed.
+- Existing 8 and new 8 tests: 16 PASS locally; Actions 37293705791 and 37293711189 SUCCESS.
+- PR #6 merged; implementation commit 9f7a0249e4f21a86dada4cf0bb1a33d12ca3fa14
+  (repair head 555b3c29e596cbf6218fc1fab0ccdc2c19c7c191).
+This broker-neutral module is research/development code, not a deployed live broker loop.
+No strategy/model/threshold/holdout change and no broker request/order occurred.
+
+Live platform verification:
+runtime /health at 2026-10-05T10:01:11Z: ok=true, firebase=true, poll_seconds=60;
+runtime deployment 2ae60f51-720c-463f-96cb-c9ef98fc449b remains SUCCESS.
+PIT deployment a2cd6b78-90d8-4a46-a140-642ba2edf86e remains SUCCESS;
+source pin 03140e9f9c5327bb79b1b0621dafa6e6908ca700 and read-only audit unchanged.
+Environment pending work none. Brokerage credential names exist, but connector
+redacts values: current KIWOOM_ENV and KIWOOM_ORDERING_ENABLED values were not
+verified; never infer live configuration from variable presence.
+
+Actual completion blockers:
+1. Consumed v1 failed/invalid holdout is immutable. No rescue rerun or cutoff change.
+2. Historical terminal-status materializer emits available_at=NaT intentionally:
+   archived historical publication/availability evidence is missing. Do not backdate
+   current retrieval times or substitute event dates as availability.
+3. Realized affected-position fills/recovery cashflows and 56 no-cleanup terminal
+   episode resolutions remain independent evidence requirements.
+4. Frozen EXEC-SUFFICIENCY-v1 requires 600 genuine LIVE observations, 200 distinct
+   decision dates, 400 fills and 120 near-capacity observations; demo/synthetic
+   results and programming effort cannot manufacture these samples. The 200 dates
+   require observation time; immediate full completion is not evidenced.
+5. A validated independent candidate, source/execution admissions, prospective
+   validation and permitted release-stage progression are still required.
+6. No broker-capable live release or account permission change is authorised here.
+
+Next exact executable work: verify new HEAD and CI, keep deployed read-only pin;
+resolve actual archival source/availability and official terminal-economics evidence
+through permitted evidence sources. Only independently preregistered research can
+create an accepted successor; do not weaken frozen sample or promotion gates.
+Current real-trading-ready=false. These are evidence/authority blockers, not CI failures.
