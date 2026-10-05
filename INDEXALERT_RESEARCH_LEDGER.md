@@ -225,3 +225,13 @@ Source/PIT/status-economics and genuine broker execution evidence remain indepen
 No new ACCEPTED challenger was established; no production alpha/live authority granted.
 Next: resolve freeze/access lineage and independent source/execution admissions; a separate
 prospective protocol requires independent preregistration/admission and cannot reuse this window.
+
+
+### 2026-10-05 broker snapshot/settlement lineage research request
+Status: **RESEARCH REQUIRED / NO SOURCE OR STRATEGY ADMISSION**.
+
+Official Kiwoom commit953e5dbff123f437ab4d11a78a95191a685eb51f examples kt00018(account evaluation balance),kt00008(next-day expected settlement),ka10075(unfilled orders) were actually reviewed during development. kt00018 describes sell_cmsn as valuation commission and includes estimated valuation/tax fields: do not treat them as actual per-execution settled costs or reusable cash. kt00008 provides trading/settlement dates and aggregate settlement rows, but the reviewed row columns lack broker order/execution IDs; no proportional or synthetic allocation to fills is admitted. ka10075 exposes cntr_no/unit fill fields on an unfilled-order query; its complete-history/per-execution semantics and immutable provenance need independent review before any evidence use.
+
+Required future research: establish actual source/account/day scope; complete pagination and acquisition timestamps; stable credit/loan and automation ownership lot identity; exact native-execution-to-official-cash/fee/tax/settlement linkage with quantity conservation. Document unsupported mappings as unknown rather than estimated actual evidence. Current private offline holdings diagnostics and DEMO connectivity cannot close these blockers. No candidate/model/threshold/cutoff/holdout/promotability change. This request is not ACCEPTED or a CHALLENGER CANDIDATE.
+
+Cross-day integration constraint: do not reset conservative capital/automation ownership by creating a new day journal or silently rebinding native scope. Define durable cross-day ownership and independently admitted source/settlement linkage before actual cash reuse.

@@ -1,9 +1,9 @@
 {
   "evidence_version": "2026-10-05.v3",
-  "phase": "OFFLINE_AUTOMATION_SAFETY_INTEGRATION",
+  "phase": "OFFLINE_BROKER_SAFETY_AND_DEMO_READONLY_PREPARATION",
   "repository": "kims34/openpilot-opkr",
   "branch": "index-alert-position-regen-fix-v1",
-  "implementation_head": "d5ae0d51e826814f404939515ad67c9855f1478c",
+  "implementation_head": "df868732d25cfe685dbff2e5d37167b655ac29a0",
   "completed": [
     {
       "pr": 13,
@@ -81,18 +81,59 @@
         37312681195
       ],
       "behaviour": "Append-only normalized receipt retention, arrival-order/idempotent replay; pending/conflicted inbox blocks enable/reset/claims and zero-fill principal release."
+    },
+    {
+      "pr": 20,
+      "merge": "fb2eb97195f15dad013b3a3a14b13267dc56997e",
+      "behaviour": "Protected HMAC account equality before normalized receipt retention."
+    },
+    {
+      "pr": 21,
+      "merge": "673434f24aeb69c6a33d0af9e5ff9d9cc9f74599",
+      "behaviour": "Recognize official35 fields; drop unused metadata before retention."
+    },
+    {
+      "pr": 23,
+      "merge": "2c4bb04c52a306a2afcf3d9b6400763875ac9abe",
+      "behaviour": "Atomic conflict quarantine and serialized receipt-check/fill binding."
+    },
+    {
+      "pr": 24,
+      "merge": "da7725584e9f0ffb9b07b37d6ab8cc5a5fe152ea",
+      "behaviour": "Redact private values from REST mismatch exceptions."
+    },
+    {
+      "pr": 25,
+      "merge": "5019fe5cced59039908ece646c2d771ab1fd4ec2",
+      "behaviour": "Explicit DEMO-only TLS authentication and3 read-only API preparation."
+    },
+    {
+      "pr": 26,
+      "merge": "309d16451214da2b088875d180af6585c42185a6",
+      "behaviour": "Isolated explicit DEMO verifier; actual deployment QUEUED, no result observed."
+    },
+    {
+      "pr": 27,
+      "merge": "f4d46826cc4210b5dd93b855acab074eb2bd8b73",
+      "behaviour": "Private offline quantities, distinct credit/loan lots; no cash/fee/ownership admission."
+    },
+    {
+      "pr": 28,
+      "merge": "4a9c691d51f5b4183c4d621b8875d61d8c09c53d",
+      "behaviour": "Immutable scope/order/fill/execution records and recursive REPLACE guards."
+    },
+    {
+      "pr": 29,
+      "merge": "df868732d25cfe685dbff2e5d37167b655ac29a0",
+      "behaviour": "Bounded explicit cursor collection; loop/duplicate/truncation blocking."
     }
   ],
   "tests": {
-    "local_offline_total": 145,
-    "github_offline_total": 145,
-    "github_job": 111771354226,
-    "previous_safety": 87,
-    "native_normalizer": 16,
-    "native_journal_bridge": 20,
-    "late_fill_capital": 8,
-    "previous_holdout_boundary": 16,
-    "normalized_execution_inbox": 14
+    "local_offline_total": 218,
+    "github_offline_total": 218,
+    "github_job": 111830200907,
+    "github_run": 37329943727,
+    "synthetic_offline_only": true
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -181,17 +222,42 @@
   "cutoff_or_model_threshold_changed": false,
   "real_orders_or_funds_movements_attempted": false,
   "prior_checkpoint_tests": {
-    "local_offline_safety_tests": 87,
-    "github_offline_safety_tests": 87,
-    "safety_job": 111743217387,
-    "local_holdout_protection_tests": 16,
-    "github_holdout_protection_tests": 16,
-    "holdout_job": 111740829506
+    "local_offline_total": 145,
+    "github_offline_total": 145,
+    "github_job": 111771354226,
+    "previous_safety": 87,
+    "native_normalizer": 16,
+    "native_journal_bridge": 20,
+    "late_fill_capital": 8,
+    "previous_holdout_boundary": 16,
+    "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T12:32:26Z",
+  "railway_rechecked_at": "2026-10-05T15:07:00Z",
   "railway_pending_work": [],
   "research_heads": {
     "main": "c490974ff6619bb978dc6f83f9c24f2c46622f85",
-    "economics_audit": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e"
+    "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
+    "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
+    "new_accepted_successor": false
+  },
+  "railway_demo_verifier": {
+    "service_id": "6be2d733-2a59-4a12-96e3-b6d869db3b97",
+    "deployment_id": "18870bde-7a8a-4bb9-8e69-a07f8dfd00e9",
+    "status": "QUEUED",
+    "source_pin": "309d16451214da2b088875d180af6585c42185a6",
+    "no_volume": true,
+    "restart_policy": "NEVER",
+    "provider_result_observed": false,
+    "actual_requests_attempted": null
+  },
+  "railway_runtime": {
+    "service_id": "37902fde-ca05-43e0-bc76-278992bf7732",
+    "deployment_id": "a824af66-f8d0-4006-a7a1-49d4cd79e4f9",
+    "status": "SUCCESS",
+    "source_pin": "b5d01da4bb1c3185de7959bd480fe71f46c8a4fc",
+    "replicas_running": 1,
+    "replicas_crashed": 0,
+    "configuration_disposition": "DEMO_CONFIGURATION_ONLY",
+    "execution_counts": null
   }
 }
