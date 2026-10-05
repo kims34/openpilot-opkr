@@ -1,3 +1,54 @@
+# Authoritative continuation update — 2026-10-05 19:23 KST
+
+This section supersedes older current-state claims below. Real automated trading readiness remains **false**.
+
+## Latest branches and commits
+- Development: `index-alert-position-regen-fix-v1`; code HEAD `51829f29666d9613d2eed809e76bb7e91dd529cf` before this handoff documentation commit. Fetch the branch again for the latest containing documentation HEAD; never assume the previous HEAD.
+- Server: `index-alert-server` HEAD/deployed pin `9515114c62b23c83610e53729514fc972760b6fa`.
+- PR7 https://github.com/kims34/openpilot-opkr/pull/7 merged: server repair commits `5a8ea3d04646143979ed59bb940cc14ed50785ff`, `7fc4d23a829251f5b586865d0d9eb400aabd1056`, merge `9515114c62b23c83610e53729514fc972760b6fa`.
+- PR8 https://github.com/kims34/openpilot-opkr/pull/8 merged: journal commits `bdce5d82f95c6ca17ec1247181eb7838fe4b1b6c`, `495524ed72f5b930ad42bef3dc47bcfd6f3be5b8`, merge `51829f29666d9613d2eed809e76bb7e91dd529cf`.
+- Previous repair merges: holdout integrity `03140e9f9c5327bb79b1b0621dafa6e6908ca700`, development capital/risk `9f7a0249e4f21a86dada4cf0bb1a33d12ca3fa14`.
+
+## Completed this continuation
+- Server helper no longer echoes caller LIVE approval; always false until independent admission exists.
+- New BUY exposure requires an explicit conservative capital snapshot (positions, reserved buys, uncertain submissions, fee buffer). Missing/malformed snapshots and direct malformed controls fail closed.
+- Runtime Dockerfile now includes automation_control.py; no sender or automatic order loop is added.
+- 19 server automation tests; full server CI 173 tests; PR run37295010894 SUCCESS and merged server tests37295132502 SUCCESS.
+- Merged-server probability parity37295132349, server smoke37295132340 and v32 build smoke37295132523 all SUCCESS.
+- Standalone offline SQLite intent journal: atomic identity/submission claims, durable unknown-outcome recovery on each connection, execution deduplication, conflict quarantine, cancel/fill race handling, terminal-state memory, global uncertainty block.
+- Journal 16 synthetic tests; 32 tests with existing development automation suite. Journal CI37296093343 and37296087345 SUCCESS. This journal is development-only, not wired to a production sender.
+- Read-only production checks: /health ok=true (2026-10-05T10:21:04Z), /status runtime_revision equals deployed9515114..., /push-health exact build4.7-47 retains physical_e2e_blocker=CONFIRMED and current_build_physical_e2e_confirmed=true. No new handset receipt is claimed.
+
+## Railway actual state
+Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`.
+- runtime37902fde-ca05-43e0-bc76-278992bf7732: deployment **0287c97a-f645-4d33-82b4-5d62a490968d SUCCESS**, pinned9515114..., one running replica/zero crashes, /data volume f96f985a-8aba-41ef-88df-f76999c4ff0c500MB. Start production_v32:app and /health retained. INDEXALERT_DEPLOY_TRIGGER/CODE_REV updated to exact pin. Broker env/order flag values remain redacted/unverified; no broker request/order was sent by this work.
+- PIT225f2279-d728-4e1a-a3f3-2447ff0f9dc1: deploymenta2cd6b78-90d8-4a46-a140-642ba2edf86e SUCCESS, pin03140e9..., read-only lineage audit, NEVER restart, zero running/crashed completed batch, /pit volume03f389e5-5030-46a9-bfa5-dd8aa3dc24fa5000MB. Historical failed deployment93606b06-6779-4773-8a05-6cd905ba117b remains in recent history, not the current batch.
+- KRX003812ee-102b-42b6-bda4-36925885b428: deployment66439d6d-7a92-4f9e-9fde-eddb540bc954 SUCCESS, pinceb134a0a049363a34fbe2b59ef8a4d9c8997811, offline structure audit, NEVER restart, zero running/crashed completed batch, /data volume61610fae-dc0c-493e-9920-eb3cef4cea86.
+- Legacy indexalert-push/backend remain offline with warnings. They are not the public runtime and have not been deleted.
+- Final environment pendingWork=[].
+- Initial staged source commit applied configuration but created no deployment; direct connect_service_source with the same exact pin then created the verified deployment above. Do not equate accept-deploy acknowledgement with a live deployment.
+
+## Blockers and incomplete work
+- Consumed holdout failed and is not a valid independent promotion window. Result hash remains **30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82**; cutoff2026-09-25; fresh2026-09-28..2026-10-01. No reset, re-evaluation, metric-based retuning, or cutoff shift is permitted.
+- Official historical status publication/availability evidence is missing; event dates cannot be substituted for PIT available_at. Exact delisting/cleanup affected-position fills/recovery remain missing; 56/83 episodes have no collected cleanup-resolution source.
+- No independently admitted accepted challenger/valid untouched validation establishes profitable production strategy readiness.
+- Genuine LIVE provenance/execution sufficiency remains open: frozen600 observations,200 distinct decision dates,400 filled,120 near-capacity plus all frozen quality/risk conditions. Synthetic/demo observations and code tests cannot satisfy these.
+- Internal broader integration is **also incomplete**, not purely external: canonical independent gate-admission adapter, actual broker environment/schema validation and authorized staged rollout, full pretrade freshness/session/NetEV/status/account checks, independent operational risk/Kill Switch actuation, amend/replace reconciliation and execution/PnL integration. Standalone journal/control tests do not close these. Existing broker contract prohibits starting real-order implementation before appropriate research/promotion gates; no sender has been added.
+- Real orders/funds movement/broker-account permission changes require separate explicit user approval. General “all dev approvals” and `ㅇ` do not override this.
+
+## Next exact execution steps
+1. Re-fetch GitHub branch HEADs and Railway config/deployment/replicas/logs; verify runtime9515114... and consumed-result hash unchanged. Keep existing private volumes and pins.
+2. Review INDEXALERT_ORDER_JOURNAL_PREPARATION.md and frozen broker/automation/execution contracts. New journal stays offline; do not mistake diagnostic snapshots for broker provenance or wire it to an order sender.
+3. Obtain provenance-bound official historical status availability timestamps and affected-position actual fill/recovery evidence via already approved source routes. Validate existing source C/D/E, coverage/PIT and economics auditors. If the available approved route cannot supply the evidence, require that source/evidence from the user; do not infer it.
+4. Only an independently preregistered candidate/validation lineage approved under the frozen research governance can continue promotion. Do not relabel the failed consumed candidate, open a new window by changing cutoff, recycle current holdout, or revive rejected H10/price-only tuning.
+5. After the appropriate admitted research stage exists, implement/integrate the missing independent gate and operational controls, validate then-current official broker API, and execute the prescribed Shadow -> Paper -> explicitly authorized Tiny Live -> Limited Live -> Production sequence. No stage shortcuts.
+6. Persist any subsequent changes to GitHub and update this handoff with actual CI/deployment evidence. Do not promise unattended progress after the interactive turn ends.
+
+## Frozen invariants
+Retain H1 historical1%/25bp, >=30trades, mean net>0 and positive fraction>0.5. Retain respective H5 Core504/126/126 horizon purge, Top3 no-backfill0..3/NO_TRADE, q25/cost/recency, capacity and execution-tail rules. Distinct lineages must not be conflated. Models, thresholds, acceptance criteria, cutoff and sealed records are not mutable implementation choices.
+
+---
+
 # Current handoff update — 2026-10-05 18:53 KST
 Active branch: index-alert-position-regen-fix-v1.
 Implementation/deployment pin: 03140e9f9c5327bb79b1b0621dafa6e6908ca700.

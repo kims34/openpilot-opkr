@@ -1,3 +1,9 @@
+# Latest authoritative update — 2026-10-05 19:23 KST
+
+Real automated trading readiness: **false**. See INDEXALERT_HANDOFF.md latest section for exact blockers and next steps. Server PR7 merged/deployed at9515114c62b23c83610e53729514fc972760b6fa, runtime0287c97a-f645-4d33-82b4-5d62a490968d SUCCESS; full173 server tests and both production smoke workflows pass. Development PR8 merged at51829f29666d9613d2eed809e76bb7e91dd529cf with16 offline journal tests (32 total local automation suite) and passing CI. No actual order sender, LIVE admission, new holdout or frozen criteria change. Missing independent research/source/execution evidence and broader gate/broker/pretrade/Kill Switch integration still prevent real trading completion. This update supersedes older current-state statements below.
+
+---
+
 # IndexAlert Research Status
 
 Updated: 2026-10-04 KST  
