@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-05T20:49:00Z",
+  "checked_at": "2026-10-05T21:12:00Z",
   "repository": "kims34/openpilot-opkr",
   "base_branch": "index-alert-build",
   "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
@@ -14,12 +14,15 @@
   "feature_apk_available_observed": false,
   "ci": {
     "run": 37371912963,
-    "job": 111970897295,
+    "job": 111976296312,
     "status": "queued",
     "unit_test_methods": 4,
     "unit_tests_executed_observed": false,
     "debug_apk_built_observed": false,
-    "unsigned_release_apk_built_observed": false
+    "unsigned_release_apk_built_observed": false,
+    "attempt": 2,
+    "first_job": 111970897295,
+    "first_status": "cancelled_before_steps"
   },
   "local_capabilities": {
     "java_present": true,

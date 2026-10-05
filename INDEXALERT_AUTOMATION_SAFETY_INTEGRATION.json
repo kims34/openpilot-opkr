@@ -272,7 +272,7 @@
     "github_run": 37371364907,
     "synthetic_offline_only": true,
     "postmerge_run": 37372530271,
-    "postmerge_status": "queued",
+    "postmerge_status": "success",
     "postmerge_job": 111972964752,
     "pr33_postmerge_run": 37362836452,
     "pr33_postmerge_job": 111941283298,
@@ -336,7 +336,8 @@
       "sealed_holdout_read": false,
       "strategy_evaluated": false,
       "network_request_attempted": false
-    }
+    },
+    "postmerge_tests": 236
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -440,7 +441,7 @@
   "railway_rechecked_at": "2026-10-05T20:57:20Z",
   "railway_pending_work": [],
   "research_heads": {
-    "main": "32fb10dbffb74f6fa82d88fa42e0d88d092c7159",
+    "main": "f20848576a11bbf2ff276b1b7e385514fcf13ef0",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
     "new_accepted_successor": false,
@@ -641,7 +642,7 @@
     "frozen_criteria_changed": false
   },
   "server_readiness_feature": {
-    "checked_at": "2026-10-05T21:00:00Z",
+    "checked_at": "2026-10-05T21:09:00Z",
     "pr": 35,
     "branch": "index-alert-automation-readiness-v1",
     "head": "52a900b0a6d174e2b8a1e8c25568ee2b2615b109",
@@ -662,15 +663,28 @@
     "automation_control_persistence_implemented": false,
     "independent_gate_admission_evaluated": false,
     "public_smoke": {
-      "run": 37369433070,
-      "job": 111962600050,
+      "run": 37370547415,
+      "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+      "attempt": 3,
+      "job": 111977030114,
       "status": "success",
-      "runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
-      "observed_at": "2026-10-05T20:29:09Z",
+      "tests": 199,
+      "observed_at": "2026-10-05T21:07:45Z",
+      "public_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
       "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
       "mode": "MASTER_OFF",
       "get_only": true,
-      "all_authority_and_mutation_flags_false": true
+      "all_authority_and_mutation_flags_false": true,
+      "prior_jobs": [
+        {
+          "job": 111966304367,
+          "status": "cancelled_before_steps"
+        },
+        {
+          "job": 111971908806,
+          "status": "cancelled_before_steps"
+        }
+      ]
     },
     "v32_smoke_dependency_failure": {
       "run": 37369223920,
@@ -687,12 +701,27 @@
     },
     "current_v32_smoke": {
       "run": 37370547415,
-      "first_job": 111966304367,
-      "first_status": "cancelled_before_steps",
-      "attempt": 2,
-      "job": 111971908806,
-      "status": "queued",
-      "tests_or_public_get_observed": false
+      "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+      "attempt": 3,
+      "job": 111977030114,
+      "status": "success",
+      "tests": 199,
+      "observed_at": "2026-10-05T21:07:45Z",
+      "public_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
+      "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
+      "mode": "MASTER_OFF",
+      "get_only": true,
+      "all_authority_and_mutation_flags_false": true,
+      "prior_jobs": [
+        {
+          "job": 111966304367,
+          "status": "cancelled_before_steps"
+        },
+        {
+          "job": 111971908806,
+          "status": "cancelled_before_steps"
+        }
+      ]
     },
     "current_server_tests": {
       "run": 37370547332,
@@ -704,7 +733,20 @@
       "tests": 199,
       "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
       "observed_at": "2026-10-05T20:57:19Z"
-    }
+    },
+    "public_smoke_history": [
+      {
+        "run": 37369433070,
+        "job": 111962600050,
+        "status": "success",
+        "runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
+        "observed_at": "2026-10-05T20:29:09Z",
+        "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
+        "mode": "MASTER_OFF",
+        "get_only": true,
+        "all_authority_and_mutation_flags_false": true
+      }
+    ]
   },
   "pending_engineering": [
     {
@@ -713,15 +755,25 @@
       "head": "bf17231fe6e48aaf020ff0085c6781dec201bf6f",
       "local_tests": 27,
       "run": 37370827400,
-      "job": 111972553851,
+      "job": 111978033282,
       "remote_status": "queued",
       "merged": false,
       "first_job": 111967221633,
       "first_status": "cancelled_before_steps",
-      "attempt": 2
+      "attempt": 3,
+      "prior_jobs": [
+        {
+          "job": 111967221633,
+          "status": "cancelled_before_steps"
+        },
+        {
+          "job": 111972553851,
+          "status": "cancelled_before_steps"
+        }
+      ]
     },
     {
-      "checked_at": "2026-10-05T20:49:00Z",
+      "checked_at": "2026-10-05T21:12:00Z",
       "repository": "kims34/openpilot-opkr",
       "base_branch": "index-alert-build",
       "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
@@ -736,12 +788,15 @@
       "feature_apk_available_observed": false,
       "ci": {
         "run": 37371912963,
-        "job": 111970897295,
+        "job": 111976296312,
         "status": "queued",
         "unit_test_methods": 4,
         "unit_tests_executed_observed": false,
         "debug_apk_built_observed": false,
-        "unsigned_release_apk_built_observed": false
+        "unsigned_release_apk_built_observed": false,
+        "attempt": 2,
+        "first_job": 111970897295,
+        "first_status": "cancelled_before_steps"
       },
       "local_capabilities": {
         "java_present": true,
@@ -799,14 +854,14 @@
     "web_open_health": "inaccessible",
     "new_public_smoke_observed": true,
     "server_failure_inferred": false,
-    "observed_run": 37369433070,
-    "observed_runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
-    "current_pin_v32_smoke": "queued"
+    "observed_run": 37370547415,
+    "observed_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "current_pin_v32_smoke": "success"
   },
-  "recorded_at": "2026-10-05T21:00:00Z",
-  "recorded_parent_head": "c0c05d485c2cba3f66cfb969af6c4a1309186269",
+  "recorded_at": "2026-10-05T21:12:00Z",
+  "recorded_parent_head": "98b008561abac0ea69283b62179cc96dcb1e47cb",
   "android_readiness": {
-    "checked_at": "2026-10-05T20:49:00Z",
+    "checked_at": "2026-10-05T21:12:00Z",
     "repository": "kims34/openpilot-opkr",
     "base_branch": "index-alert-build",
     "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
@@ -821,12 +876,15 @@
     "feature_apk_available_observed": false,
     "ci": {
       "run": 37371912963,
-      "job": 111970897295,
+      "job": 111976296312,
       "status": "queued",
       "unit_test_methods": 4,
       "unit_tests_executed_observed": false,
       "debug_apk_built_observed": false,
-      "unsigned_release_apk_built_observed": false
+      "unsigned_release_apk_built_observed": false,
+      "attempt": 2,
+      "first_job": 111970897295,
+      "first_status": "cancelled_before_steps"
     },
     "local_capabilities": {
       "java_present": true,
@@ -845,5 +903,15 @@
     "broker_order_submission_implemented": false,
     "automation_control_persistence_implemented": false,
     "frozen_criteria_changed": false
+  },
+  "research_source_gate_ci": {
+    "run": 37373429847,
+    "job": 111975967124,
+    "head": "f20848576a11bbf2ff276b1b7e385514fcf13ef0",
+    "status": "success",
+    "tests": 548,
+    "warnings": 5,
+    "observed_at": "2026-10-05T21:03:15Z",
+    "source_or_empirical_gate_credit": false
   }
 }

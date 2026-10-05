@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-05T21:00:00Z",
+  "checked_at": "2026-10-05T21:09:00Z",
   "pr": 35,
   "branch": "index-alert-automation-readiness-v1",
   "head": "52a900b0a6d174e2b8a1e8c25568ee2b2615b109",
@@ -20,15 +20,28 @@
   "automation_control_persistence_implemented": false,
   "independent_gate_admission_evaluated": false,
   "public_smoke": {
-    "run": 37369433070,
-    "job": 111962600050,
+    "run": 37370547415,
+    "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "attempt": 3,
+    "job": 111977030114,
     "status": "success",
-    "runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
-    "observed_at": "2026-10-05T20:29:09Z",
+    "tests": 199,
+    "observed_at": "2026-10-05T21:07:45Z",
+    "public_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
     "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
     "mode": "MASTER_OFF",
     "get_only": true,
-    "all_authority_and_mutation_flags_false": true
+    "all_authority_and_mutation_flags_false": true,
+    "prior_jobs": [
+      {
+        "job": 111966304367,
+        "status": "cancelled_before_steps"
+      },
+      {
+        "job": 111971908806,
+        "status": "cancelled_before_steps"
+      }
+    ]
   },
   "v32_smoke_dependency_failure": {
     "run": 37369223920,
@@ -45,12 +58,27 @@
   },
   "current_v32_smoke": {
     "run": 37370547415,
-    "first_job": 111966304367,
-    "first_status": "cancelled_before_steps",
-    "attempt": 2,
-    "job": 111971908806,
-    "status": "queued",
-    "tests_or_public_get_observed": false
+    "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "attempt": 3,
+    "job": 111977030114,
+    "status": "success",
+    "tests": 199,
+    "observed_at": "2026-10-05T21:07:45Z",
+    "public_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
+    "mode": "MASTER_OFF",
+    "get_only": true,
+    "all_authority_and_mutation_flags_false": true,
+    "prior_jobs": [
+      {
+        "job": 111966304367,
+        "status": "cancelled_before_steps"
+      },
+      {
+        "job": 111971908806,
+        "status": "cancelled_before_steps"
+      }
+    ]
   },
   "current_server_tests": {
     "run": 37370547332,
@@ -62,5 +90,18 @@
     "tests": 199,
     "head": "8a68b01bca5d551d083ccda263df38d86fa54166",
     "observed_at": "2026-10-05T20:57:19Z"
-  }
+  },
+  "public_smoke_history": [
+    {
+      "run": 37369433070,
+      "job": 111962600050,
+      "status": "success",
+      "runtime_revision": "0f8bf39b0527548e10598a6c3ff1deee08404635",
+      "observed_at": "2026-10-05T20:29:09Z",
+      "readiness_status": "BROKER_AUTOMATION_UNAVAILABLE",
+      "mode": "MASTER_OFF",
+      "get_only": true,
+      "all_authority_and_mutation_flags_false": true
+    }
+  ]
 }
