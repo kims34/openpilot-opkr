@@ -1,3 +1,56 @@
+# Current handoff update — 2026-10-05 18:53 KST
+Active branch: index-alert-position-regen-fix-v1.
+Implementation/deployment pin: 03140e9f9c5327bb79b1b0621dafa6e6908ca700.
+Latest branch HEAD is the commit containing this update; re-fetch before continuation.
+Repair branch: index-alert-holdout-integrity-repair-v1 @ b1d5bb3bfd8f15ee74076a8e67b84d8fb7d1c3dc.
+PR #5 merged; GitHub Actions 37292632806 and 37292636269 both SUCCESS (9 tests).
+Current Railway PIT deployment a2cd6b78-90d8-4a46-a140-642ba2edf86e SUCCESS.
+Source/config now uses the implementation pin above, read-only lineage audit start, NEVER restart.
+This update overrides the older implementation pin/deployment below; all other preservation rules apply.
+
+Completed after the first handoff: reproduced label leakage on synthetic data; tested a safe
+boundary helper; retired consumed evaluator; blocked consumed standalone gate; CI verified;
+merged and deployed the safeguards; inspected only private manifest/receipt/result metadata.
+No actual outcomes used for tuning; immutable result hash unchanged.
+Immediate blocker: consumed invalid v1 window cannot become an independent holdout through
+further approval or rerun. Manifest false-unseal claim is historical evidence, not authority.
+No user manual step is required for the completed repair. Remaining evidence admissions
+must be resolved before a separately registered untouched prospective protocol can advance.
+
+## 2026-10-05 18:53 KST — consumed v1 holdout integrity correction
+This entry supersedes any older claim that the current v1 window is unopened or ready for evaluation.
+Observed result: passed=false; result SHA-256 30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82.
+Outcome-free lineage audit verified first/last eligible dates 2026-09-28/2026-10-01;
+manifest created 2026-10-05T07:37:48Z, acquisition 07:42:41Z, result 08:05:25Z.
+The manifest still claims outcomes_unsealed=false although a result exists.
+Do not rewrite those historical files to erase the discrepancy.
+
+Synthetic tests using actual v2.engineer reproduced boundary leakage: changing only fresh
+returns changes pre-cutoff ret1/ret5 labels under the original evaluator date split.
+Disposition: CONSUMED_WINDOW_INVALID_FOR_INDEPENDENT_PROMOTION; failed result retained;
+no repair-and-rerun, candidate retune, new-window rescue or downstream promotion.
+
+Repair commit b1d5bb3bfd8f15ee74076a8e67b84d8fb7d1c3dc:
+- Retire sealed-holdout-v1 evaluator at entry before private data reads/model execution.
+- Reject existing result in standalone sealed gate, even if manifest claims unopened.
+- Add synthetic-tested training-boundary helper preserving v2 training length/purge;
+  it is not an admitted successor evaluator.
+- Nine tests PASS locally and remotely with production dependency versions.
+GitHub push Action 37292632806 SUCCESS and PR Action 37292636269 SUCCESS.
+PR #5 merged as 03140e9f9c5327bb79b1b0621dafa6e6908ca700.
+Railway PIT deployment a2cd6b78-90d8-4a46-a140-642ba2edf86e SUCCESS at that exact pin,
+start READ_ONLY_LINEAGE_AUDIT, restart NEVER; no modeling, market collection or score output.
+Result/manifest/receipt hashes remain unchanged. Operational server and all volumes remain intact.
+
+Frozen Core criteria and v3 historical cutoff/pass rule/baseline fingerprints unchanged.
+Source/PIT/status-economics and genuine broker execution evidence remain independent blockers.
+No new ACCEPTED challenger was established; no production alpha/live authority granted.
+Next: resolve freeze/access lineage and independent source/execution admissions; a separate
+prospective protocol requires independent preregistration/admission and cannot reuse this window.
+
+
+---
+
 # INDEXALERT_HANDOFF
 Verified: 2026-10-05 18:17 KST (GitHub and Railway live queries; older chats are discovery aids only).
 

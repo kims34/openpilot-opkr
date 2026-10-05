@@ -341,3 +341,34 @@ Network-free preparation is complete. The frozen prepared scope contains **27** 
 
 ### STATUS_ECONOMICS acquisition completion — 2026-10-04
 The frozen cleanup-price-context acquisition is **COMPLETE: 27/27, failed=0**. After an initial parser interruption, the official CSV adapter was hardened to preserve raw bytes while accepting the observed UTF-8 response fallback; Official KRX Status Integrity is SUCCESS at revision `a27ef4cdbdadfab4d44ce3d4dcde87039dcd8a6e`. Re-authorized deployment `64311852-0e38-46b4-8d06-c8f5d5bc31b0` resumed **21** already-persisted tasks and made **6** remaining network request attempts. Frozen task-set SHA-256 remained `b3738dca89ab5cb6966a1e3158f995b75cbf6e2ae2cd4c199f02c95a8ba4c1d8`; finalized private-batch metadata SHA-256 is `6b81db555f6a8a709e2d38801f8ca88647cc80ad960687f229fbf89a05c0b97d`. Network-free finalizer deployment `6b9e51eb-9785-4de2-9696-d5ddee776d58` independently verified COMPLETE, 27/27, failed=0, with zero DNS/network-flow observations during finalization. Execution consents were disabled immediately after completion and the worker was returned to preflight-only with restart `NEVER`. This closes cleanup-price-context acquisition only: `exact_status_economics_ready=false`; realized fill economics and recovery cashflows remain unproven; source gates C/D/E, feature-performance testing, sealed holdout, Shadow S1, genuine LIVE and live trading remain unauthorized.
+
+## 2026-10-05 18:53 KST — consumed v1 holdout integrity correction
+This entry supersedes any older claim that the current v1 window is unopened or ready for evaluation.
+Observed result: passed=false; result SHA-256 30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82.
+Outcome-free lineage audit verified first/last eligible dates 2026-09-28/2026-10-01;
+manifest created 2026-10-05T07:37:48Z, acquisition 07:42:41Z, result 08:05:25Z.
+The manifest still claims outcomes_unsealed=false although a result exists.
+Do not rewrite those historical files to erase the discrepancy.
+
+Synthetic tests using actual v2.engineer reproduced boundary leakage: changing only fresh
+returns changes pre-cutoff ret1/ret5 labels under the original evaluator date split.
+Disposition: CONSUMED_WINDOW_INVALID_FOR_INDEPENDENT_PROMOTION; failed result retained;
+no repair-and-rerun, candidate retune, new-window rescue or downstream promotion.
+
+Repair commit b1d5bb3bfd8f15ee74076a8e67b84d8fb7d1c3dc:
+- Retire sealed-holdout-v1 evaluator at entry before private data reads/model execution.
+- Reject existing result in standalone sealed gate, even if manifest claims unopened.
+- Add synthetic-tested training-boundary helper preserving v2 training length/purge;
+  it is not an admitted successor evaluator.
+- Nine tests PASS locally and remotely with production dependency versions.
+GitHub push Action 37292632806 SUCCESS and PR Action 37292636269 SUCCESS.
+PR #5 merged as 03140e9f9c5327bb79b1b0621dafa6e6908ca700.
+Railway PIT deployment a2cd6b78-90d8-4a46-a140-642ba2edf86e SUCCESS at that exact pin,
+start READ_ONLY_LINEAGE_AUDIT, restart NEVER; no modeling, market collection or score output.
+Result/manifest/receipt hashes remain unchanged. Operational server and all volumes remain intact.
+
+Frozen Core criteria and v3 historical cutoff/pass rule/baseline fingerprints unchanged.
+Source/PIT/status-economics and genuine broker execution evidence remain independent blockers.
+No new ACCEPTED challenger was established; no production alpha/live authority granted.
+Next: resolve freeze/access lineage and independent source/execution admissions; a separate
+prospective protocol requires independent preregistration/admission and cannot reuse this window.
