@@ -93,10 +93,18 @@ def _verify_batch(batch: Mapping[str, Any]) -> bool:
         raise KRXSourceDataAdmissionError(
             "batch authorization evidence fingerprint is missing or malformed"
         )
-    if int(batch["receipt_count"]) <= 0:
-        raise KRXSourceDataAdmissionError("batch must contain at least one receipt")
-    fps = list(batch["receipt_fingerprints_sha256"])
-    if len(fps) != int(batch["receipt_count"]) or len(fps) != len(set(fps)):
+    count = batch["receipt_count"]
+    if type(count) is not int or count <= 0:
+        raise KRXSourceDataAdmissionError("batch receipt_count must be a positive integer")
+    rows = batch["total_response_rows"]
+    if type(rows) is not int or rows < 0:
+        raise KRXSourceDataAdmissionError("batch total_response_rows must be a non-negative integer")
+    fps = batch["receipt_fingerprints_sha256"]
+    if not isinstance(fps, list) or any(
+        not isinstance(fp, str) or not SHA256_RE.fullmatch(fp) for fp in fps
+    ):
+        raise KRXSourceDataAdmissionError("batch receipt fingerprints must be a list of SHA-256 strings")
+    if len(fps) != count or len(fps) != len(set(fps)):
         raise KRXSourceDataAdmissionError("batch receipt fingerprints are incomplete or duplicated")
     for forbidden in (
         "alpha_or_final_judge_promotion_authorized",
