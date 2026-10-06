@@ -1,3 +1,23 @@
+# Read-only operator toolkit checkpoint — 2026-10-06
+
+Latest verified code HEAD: `941f7c7f51009dc19e3439682998e24a31f5ccc6` on `index-alert-position-regen-fix-v1`. This continuation restored `3ff26b3a4d7972d92c544701ebdbba1d9bb38327`, with no open PRs. Five implementation cycles completed without stopping at two PRs.
+
+- [PR168](https://github.com/kims34/openpilot-opkr/pull/168), merge `3fed613688b0c86c0e96a63e953f67ea0e794dfc`: aggregate read-only SQLite/WAL operational status without constructing a recovery-performing journal. Controls, unresolved intents, stale bindings, native inbox and conservative capital are read in one snapshot. Seven local tests; feature `8e65f9713270b2112ce574d8ff90eb0280cfb96e`, CI37454015509 and37454015518 SUCCESS.
+- [PR169](https://github.com/kims34/openpilot-opkr/pull/169), merge `5a5e32a56aef2ca55bd505f71d68a0b9c9e41b3a`: Korean local-only read-only dashboard, fixed journal path, private no-store output, foreign Host/write requests rejected. 12 affected tests and JS syntax check; feature `9d7d5b6e068702e2e36c6443554e6473e8f5356c`, CI37454367962 and37454368186 SUCCESS.
+- [PR170](https://github.com/kims34/openpilot-opkr/pull/170), merge `952144576b3c53fb781986ec148f4772608d6b82`: dedicated SQLite mode=ro journal inspection connection and one-command native JSON settlement review. No initialization, recovery, imported admissions or write permissions; normal worker transactions stay BEGIN IMMEDIATE. Duplicate JSON keys and extra admission fields rejected. 60 affected local tests; feature `14ef5d3469162f2dec6904e709c744524f3037f1`, CI37454662311/37454662251/37454662312/37454662238 SUCCESS.
+- [PR171](https://github.com/kims34/openpilot-opkr/pull/171), merge `1d57c4f454154ae0e91f97981a5d8a4269ce77e1`: optional fixed settlement file endpoint/display; separate epoch/revision observations, explicit missing/malformed input and external admission gaps. 14 affected local HTTP/CLI tests and JS syntax check; feature `d5e69448cea6aa58958edbafb0f0e1ac2ba512f4`, CI37455064597 and37455064581 SUCCESS.
+- [PR172](https://github.com/kims34/openpilot-opkr/pull/172), merge `941f7c7f51009dc19e3439682998e24a31f5ccc6`: deterministic allowlisted portable operator ZIP, exact feature SHA/file hashes, concise usage and Windows timezone dependency. Four packaging tests; feature `4189a4bfd352e40c9230fc98664e676865a41df6`, CI37455641630 and37455641745 SUCCESS.
+
+Actual CI artifact11408893083, run37455641745: `indexalert-shadow-operator-4189a4bfd352e40c9230fc98664e676865a41df6`, expires2026-10-20. Downloaded and verified outer digest `447a4a03d879fc478d9f859fa61e85ddad1c1f9ffd213db0406a10594c803169`; inner operator ZIP SHA256 `54686039bbb2fa965dd0c99da2a161066ccf1731162a8a438947bd79ee7402d7`. All17 source file hashes verified. Four legacy local read copies differed only in terminal newlines; their actual artifact bytes were separately checked against GitHub feature-head blob SHAs. Extracted native review ran outside the repository against a temporary synthetic journal and preserved its state. This is engineering evidence only, not real settlement or LIVE.
+
+Browser rendering was attempted with Playwright but Chromium was absent; only HTTP behavior, JS syntax and extracted CLI execution are established. Temporary local server was stopped. No Android update, signer continuity/notification proof or Railway deployment occurred.
+
+No Core/frozen change, feature-performance test, sealed holdout access, genuine LIVE, real orders, funds movement or account/API order-permission changes. `real_orders_authorized=false`; external account/date/freshness/source, correct native settlement mapping/completeness, actual exact-policy Shadow and successor/LIVE admission gaps remain open. Existing preview install evidence is not production signing or notification proof.
+
+Resume at PR172's completed operator toolkit. Fetch only latest HEAD/open PR/changed files/relevant CI. Do not repeat successful packaging, old device setup or the intake/review/journal glue absent new changes. No claim all independent engineering is exhausted, automatic background continuation or project completion.
+
+---
+
 # Integrated native readiness checkpoint — 2026-10-06
 
 Latest verified code HEAD: `d2dbc1448e30a1f1f4b20d8ef2963af1100689fb` on `index-alert-position-regen-fix-v1`. Restore was `c875ff2e89fa5e90adcc24dbe45776b87650e81b`, with no open PRs.
