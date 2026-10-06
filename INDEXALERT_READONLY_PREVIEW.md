@@ -1,4 +1,4 @@
-# Latest readiness transport verification — 2026-10-07 00:43 KST
+# Latest readiness transport verification — 2026-10-07 00:42 KST
 
 PR186 feature22d5851bb377cc81532812bb110e36caf4f92604 merged as cd9b349ced4958eba478744b680e8074db4c2f28 on index-alert-build. The original readiness GET inherited automatic redirects. The connection now disables them, retaining only configured GET /automation/readiness, UNKNOWN for non200, existing8192-character cap and5000ms connect/read timeouts. It exposes no new endpoint, controls, account access or orders. Production and preview copies are byte-identical.
 
@@ -8,7 +8,7 @@ Downloaded preview-verification artifact11424935000 ZIPsha256f373f1bf186881fbc8c
 
 These are fresh CI candidates; they have not been owner installed and do not establish signing continuity, new production push/device E2E or empirical KRX/LIVE/Alpha evidence. The owner observation below remains tied to its older dated APK, not this new one. Do not reinstall merely to repeat that already completed UI observation. Preserve installed com.indexalert.app4.7 and data. No real order, broker request, funds movement, production token or Frozen/PIT/holdout gate change.
 
-Merge-push Actions37489030714(preview)/37489030742(app) were in progress at this documentation write; do not call them successful until exact run/job evidence is retrieved. Development Status/Continuity/Handoff on index-alert-position-regen-fix-v1 hold the authoritative cross-branch resume checkpoint.
+Merge-push exact code HEADcd9b349ced4958eba478744b680e8074db4c2f28 Actions37489030714/job112356536839(preview) and37489030742/job112356536289(app) both SUCCESS. Their actual verification JSON confirms9JUnit cases at that merge head. This is a second checkout/build of the same implementation, not independent empirical evidence. Development Status/Continuity/Handoff on index-alert-position-regen-fix-v1 hold the authoritative cross-branch resume checkpoint.
 
 ---
 
