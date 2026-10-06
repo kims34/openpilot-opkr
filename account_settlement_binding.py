@@ -11,6 +11,7 @@ import json
 import re
 from kiwoom_account_settlement_evidence import AccountSettlementSnapshot
 from order_intent_journal import OrderIntentJournal, OrderJournalError
+from order_snapshot_reconciliation import FIELDS, STATUS
 from early_live_admission_gate import EarlyLiveAdmissionEvidence, assess_early_live_readiness
 class SettlementBindingError(ValueError): pass
 @dataclass(frozen=True)
@@ -99,6 +100,12 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
                 continue
             try:
                 source = json.loads(bound[2])
+                if (type(source) is not dict or set(source) != FIELDS
+                    or type(source['quantity']) is not int or source['quantity'] <= 0
+                    or type(source['filled_quantity']) is not int
+                    or not 0 <= source['filled_quantity'] <= source['quantity']
+                    or type(source['status']) is not str or source['status'] not in STATUS):
+                    raise ValueError
                 if any(source[f] != order[f] for f in ('key','broker_order_id','symbol','side','quantity','filled_quantity')):
                     raise ValueError
                 state = ('PARTIALLY_FILLED' if order['filled_quantity'] else 'ACKNOWLEDGED') if source['status'] == 'OPEN' else source['status']
