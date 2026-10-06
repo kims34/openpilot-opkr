@@ -100,6 +100,8 @@ def _ts(series: pd.Series) -> pd.Series:
 
 
 def _timezone_aware_scalar(value) -> bool:
+    if not pd.api.types.is_scalar(value):
+        return False
     if pd.isna(value):
         return True
     if isinstance(value, (bool, np.bool_, int, float, np.integer, np.floating)):
