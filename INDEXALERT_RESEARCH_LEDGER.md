@@ -1,3 +1,15 @@
+# Dynamic 0-N rank-aware follow-up — 2026-10-06T13:56Z / 22:56 KST
+
+EXP-2026-10-06-DYNAMIC-0N-RANKAWARE-01, exact Actions run 37473983749 SUCCESS at 32b934be6544043ed1a6f700ceeeeef7c9bffcf7. First run 37473222075 failed only because selector plumbing lacked the score alias; no research threshold/criterion was changed. Rank bands were preregistered structurally as 1-3 / 4-5 / 6-10 / 11+, calibration-only predicted-mean rank, fold-local rank-band x volatility-bucket residual q25 with rank-band fallback. No test outcome thresholding/search and no sealed holdout.
+
+Rank-aware economic gate selected 5,806 records on only 38/2,105 OOS sessions. Aggregate trade mean NetReturn +1.776%, PF 1.509, but date-cluster 95% LCB deteriorated to -2.413%. Trade ES95/99 were -29.94%/-37.80%. Portfolio end return was only +0.444%, CAGR +0.053%, MDD -17.31%, daily ES95/99 -0.352%/-1.504%, Sharpe 0.038. Remove-best-3-days mean fell to -1.572% / PF 0.622; remove-best-5 mean -1.593% / PF 0.617. Therefore the apparent average is highly event/day concentrated and not robust.
+
+Selection remained operationally implausible: mean N 152.8 on active days, median 10.5, p90 431, max 722, max concurrent positions 731, with 30 insufficient-cash entries in the normalized portfolio simulator. Rank 4-5 selected only 10 trades (mean +10.65%, PF 2.60) and rank 6-10 only 28 (mean +7.03%, PF 2.25), far too few and too concentrated to establish a stable marginal rank benefit. The 11+ band supplied 5,747 trades and dominates the result, so its outcome cannot be interpreted as proof that deep ranks add independent alpha.
+
+Updated verdict: ④ INCONCLUSIVE for Top3 versus a genuine marginal-utility Dynamic 0-N. The initial unconditioned Dynamic result is not promotable, and rank-aware follow-up removes any basis for claiming superiority. Top3 remains the frozen operational/Champion reference by default, not because optimality has been proven. A valid next Dynamic challenger requires preregistered capital-aware marginal utility plus PIT sector/factor/dependence controls and realistic minimum-order/capacity/execution uncertainty. No Champion/development/operating-code change; sealed holdout remains untouched.
+
+---
+
 # Dynamic 0-N Challenger diagnostic — 2026-10-06T13:34Z / 22:34 KST
 
 Experiment EXP-2026-10-06-DYNAMIC-0N-01; exact GitHub Actions run 37471348547 SUCCESS at f8596644b3740eb796c48ca6f5dbea4b792c8e9c. Developmental/preregistered diagnostic only; sealed holdout untouched; Champion/Core unchanged. Same H5 model/features/PIT universe/labels/costs, 504/126/126 anchored WF, purge=5, q25 admission netev_low>0, participation=0.0005 and commission assumptions were reused. B/C are diagnostic fixed-N comparators only.
