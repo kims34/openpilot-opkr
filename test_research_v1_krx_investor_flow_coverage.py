@@ -146,3 +146,32 @@ def test_symbol_issue_mapping_mismatch_appears_as_missing_and_extra():
     assert out["coverage_structurally_complete"] is False
     assert out["missing_key_count"] == 1
     assert out["extra_key_count"] == 1
+
+@pytest.mark.parametrize("marker", ["false", "True", 1, 0, None, False, 1.0])
+def test_coverage_rejects_forged_validation_markers(marker):
+    scope = pd.DataFrame([_scope_row()])
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_lineage_row()]))
+    lineage["lineage_validated"] = marker
+    with pytest.raises(KRXInvestorFlowCoverageError, match="unvalidated"):
+        audit_investor_flow_coverage(scope, lineage)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("available_at", pd.Timestamp("2026-09-23T19:00:00+09:00")),
+    ("published_at", pd.Timestamp("2026-09-23T19:59:59+09:00")),
+    ("public_contract_evidence_fingerprint_sha256", "f" * 64),
+])
+def test_coverage_revalidates_mutated_lineage(field, value):
+    scope = pd.DataFrame([_scope_row()])
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_lineage_row()]))
+    lineage[field] = value
+    with pytest.raises(KRXInvestorFlowCoverageError):
+        audit_investor_flow_coverage(scope, lineage)
+
+
+def test_coverage_rejects_missing_publication_lineage_even_with_valid_marker():
+    scope = pd.DataFrame([_scope_row()])
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_lineage_row()]))
+    lineage = lineage.drop(columns=["published_at"])
+    with pytest.raises(KRXInvestorFlowCoverageError, match="missing required columns"):
+        audit_investor_flow_coverage(scope, lineage)
