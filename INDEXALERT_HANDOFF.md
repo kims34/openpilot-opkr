@@ -1,3 +1,13 @@
+# Unclaimed durable intent status integrity — 2026-10-06T16:20Z / 2026-10-07 01:20 KST
+
+Latest development code HEAD73283e4d168f7502e03fd00dc4e3a50158fde42f. Documentation HEAD2ea64031642012662e983b540d3fe1c09c382890 passed overlapping execution-integrity runs37494435779/job112375205874(98passed,2warnings) and37494541580/job112375574010(98passed,2warnings); duplicate same-head CI is not independent evidence.
+
+PR191 MERGED: feature60e52fa21d02322011acf7f1d15b19f66ddf894c → merge73283e4d168f7502e03fd00dc4e3a50158fde42f. Reproduced a corrupt unclaimed INTENT_CREATED payload being excluded from read-only row validation and reconciliation scope, returning diagnostics_complete=true/local_blockers=[] even though a later journal claim would fail. Operational status now validates every durable intent row in the same read snapshot while keeping only claimed rows in reconciled snapshot scope. Corrupt unclaimed rows return private OPERATIONAL_SNAPSHOT_UNAVAILABLE with no recovery/mutation. Local toolkit/status/dashboard39 and status/dashboard22 passed. Exact-head CI status37494648047/job112375945115 SUCCESS22; account37494648379/job112375947592 SUCCESS82; toolkit37494647969 Ubuntu112375945341 SUCCESS39/Windows112375945110 SUCCESS39/browser112375944872 SUCCESS2.
+
+No external evidence, broker/account/order/funds/token/Railway/signing/holdout action or Frozen/PIT/research/promotion change. Remaining external prerequisites and all prohibitions are unchanged below. Exact resume: verify this record's own newer execution-integrity push if not recorded, resolve live refs/open PRs, skip completed PR182–191, and continue only concrete reproduced integrity gaps or newly supplied independent evidence.
+
+---
+
 # Prior checkpoint CI verified — 2026-10-06T16:16Z / 2026-10-07 01:16 KST
 
 Documentation checkpoint be51b92e783399e625fcbac400e82fd6915898c0 passed IndexAlert Research v1 Execution Evidence Integrity run37494290619/job112374705880:98passed,2warnings in4.23s. Underlying latest code remains0698882bb9cf59ad61b9e10a05cc42878dcd8652; PR187–190 remain merged and no open PR was observed. Resolve the live development ref for this record's own documentation SHA and verify only its newer push CI on resume. No safety, research, execution, evidence or external-blocker state changed from the exact checkpoint below.
