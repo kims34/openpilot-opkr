@@ -213,6 +213,15 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
+    def test_fractional_share_quantities_are_rejected(self):
+        for field, value in (("requested_qty", 10.5), ("filled_qty", 9.5)):
+            with self.subTest(field=field):
+                rows = self._rows()
+                rows[field] = rows[field].astype(float)
+                rows.loc[0, field] = value
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
