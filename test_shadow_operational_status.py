@@ -126,6 +126,17 @@ class OperationalStatusTests(unittest.TestCase):
             self.assertNotIn('PRIVATE',json.dumps(result))
             self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
 
+    def test_duplicate_bound_snapshot_fields_are_changed_without_mutation(self):
+        row = self.reconcile_claimed()
+        payload = '{"filled_quantity":9,' + json.dumps(row)[1:]
+        self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?', (payload,))
+        before = self.journal.db.total_changes
+        result = self.inspect()
+        self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED', result['local_blockers'])
+        self.assertEqual(result['changed_binding_count'], 1)
+        self.assertEqual(self.journal.db.total_changes, before)
+        self.assertNotIn('PRIVATE', json.dumps(result))
+
     def test_unknown_binding_scope_and_decoder_exhaustion_are_private(self):
         row = self.reconcile_claimed()
         revision,epoch,payload = self.journal.db.execute(
