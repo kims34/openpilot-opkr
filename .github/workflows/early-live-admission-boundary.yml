@@ -1,0 +1,25 @@
+name: Early Live Admission Boundary
+on:
+  push:
+    branches: [index-alert-early-live-ci-v1]
+    paths: [early_live_admission_gate.py, test_early_live_admission_gate.py, .github/workflows/early-live-admission-boundary.yml]
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths: [early_live_admission_gate.py, test_early_live_admission_gate.py, .github/workflows/early-live-admission-boundary.yml]
+permissions:
+  contents: read
+jobs:
+  admission-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            early_live_admission_gate.py
+            test_early_live_admission_gate.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest -v test_early_live_admission_gate
