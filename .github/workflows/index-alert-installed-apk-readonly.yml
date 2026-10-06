@@ -1,0 +1,30 @@
+name: IndexAlert installed APK read-only audit integrity
+on:
+  pull_request:
+    branches: [ index-alert-position-regen-fix-v1 ]
+    paths:
+      - 'verify_indexalert_installed_apk.py'
+      - 'test_verify_indexalert_installed_apk.py'
+      - 'INDEXALERT_ANDROID_UPDATE_VERIFICATION.md'
+      - '.github/workflows/index-alert-installed-apk-readonly.yml'
+  push:
+    branches: [ index-alert-position-regen-fix-v1 ]
+    paths:
+      - 'verify_indexalert_installed_apk.py'
+      - 'test_verify_indexalert_installed_apk.py'
+      - 'INDEXALERT_ANDROID_UPDATE_VERIFICATION.md'
+      - '.github/workflows/index-alert-installed-apk-readonly.yml'
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test privacy-safe inspection and no handset mutation
+        run: |
+          python -m py_compile verify_indexalert_installed_apk.py test_verify_indexalert_installed_apk.py
+          python -m unittest -v test_verify_indexalert_installed_apk.py
