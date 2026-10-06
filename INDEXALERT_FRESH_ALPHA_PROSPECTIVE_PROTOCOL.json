@@ -26,5 +26,6 @@
   "fresh_confirmation_s2": false,
   "promotion_authority": false,
   "live_order_authorized": false,
-  "terminal_disposition": "CONTINUE VALIDATION"
+  "terminal_disposition": "CONTINUE VALIDATION",
+  "freeze_anchor_committed_at_utc": "2026-10-06T22:54:26Z"
 }
