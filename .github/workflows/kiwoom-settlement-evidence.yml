@@ -1,0 +1,25 @@
+name: Kiwoom Settlement Evidence
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - kiwoom_account_settlement_evidence.py
+      - test_kiwoom_account_settlement_evidence.py
+      - .github/workflows/kiwoom-settlement-evidence.yml
+permissions:
+  contents: read
+jobs:
+  settlement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            kiwoom_account_settlement_evidence.py
+            test_kiwoom_account_settlement_evidence.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest -v test_kiwoom_account_settlement_evidence
