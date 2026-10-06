@@ -10,10 +10,11 @@ class OfflineFaultReplayTests(unittest.TestCase):
         with patch.object(socket.socket, 'connect', side_effect=AssertionError('network forbidden')):
             result = run_protected_capital_fault_replay()
         self.assertTrue(result['passed'])
-        self.assertEqual(result['scenario_count'], 8)
-        self.assertEqual(len(set(result['scenarios'])), 8)
+        self.assertEqual(result['scenario_count'], 9)
+        self.assertEqual(len(set(result['scenarios'])), 9)
         self.assertIn('type00_frame_extracts_before_protected_routing', result['scenarios'])
         self.assertIn('kill_latches_before_late_type00_fill', result['scenarios'])
+        self.assertIn('nonfill_type00_lifecycle_precedes_fill_without_poisoning_inbox', result['scenarios'])
         self.assertNotIn('synthetic-private-account', str(result))
         for field in ('network_request_attempted','broker_request_sent','sealed_holdout_read',
             'strategy_evaluated','actual_cash_settlement_verified','genuine_live_evidence',
