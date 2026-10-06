@@ -90,3 +90,57 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertEqual(result['local_blockers'],[])
         self.assertFalse(result['exact_policy_shadow_admitted'])
         self.assertFalse(result['genuine_live_provenance_verified'])
+
+    def reconcile_claimed(self):
+        self.claim()
+        self.journal.bind_acknowledgement('PRIVATE-INTENT','PRIVATE-ORDER')
+        row = dict(key='PRIVATE-INTENT',broker_order_id='PRIVATE-ORDER',symbol='PRIVATE-SYMBOL',
+            side='BUY',quantity=10,filled_quantity=0,status='OPEN')
+        reconcile_order_snapshot_batch(self.journal,revision=2,orders=[row])
+        return row
+
+    def test_current_epoch_revision_cannot_hide_changed_snapshot_content(self):
+        row = self.reconcile_claimed()
+        self.assertEqual(self.inspect()['local_blockers'],[])
+        for field,value in (('filled_quantity',1),('quantity',True),('symbol','OTHER-PRIVATE'),
+                            ('status','FILLED'),('key','OTHER-PRIVATE')):
+            self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?',
+                (json.dumps({**row,field:value}),))
+            before = self.journal.shadow_control(),self.journal.db.total_changes
+            result = self.inspect()
+            self.assertTrue(result['diagnostics_complete'])
+            self.assertEqual(result['stale_binding_count'],0)
+            self.assertEqual(result['changed_binding_count'],1)
+            self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED',result['local_blockers'])
+            self.assertFalse(result['real_orders_authorized'])
+            self.assertNotIn('PRIVATE',json.dumps(result))
+            self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+
+    def test_unknown_binding_scope_and_decoder_exhaustion_are_private(self):
+        row = self.reconcile_claimed()
+        revision,epoch,payload = self.journal.db.execute(
+            'SELECT revision,epoch,payload FROM reconciled_snapshot_bindings').fetchone()
+        self.journal.db.execute('INSERT INTO reconciled_snapshot_bindings VALUES(?,?,?,?)',
+            ('UNKNOWN-PRIVATE',revision,epoch,payload))
+        result = self.inspect()
+        self.assertIn('ORDER_SNAPSHOT_SCOPE_CHANGED',result['local_blockers'])
+        self.assertNotIn('PRIVATE',json.dumps(result))
+        self.journal.db.execute('DELETE FROM reconciled_snapshot_bindings WHERE key=?',('UNKNOWN-PRIVATE',))
+        for payload in ('invalid private JSON','['*20000+'0'+']'*20000):
+            self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?',(payload,))
+            result = self.inspect()
+            self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED',result['local_blockers'])
+            self.assertEqual(result['changed_binding_count'],1)
+        self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?',(json.dumps(row),))
+        self.assertEqual(self.inspect()['local_blockers'],[])
+
+    def test_corrupt_identity_is_unavailable_without_recovery_or_private_output(self):
+        self.reconcile_claimed()
+        for payload in ('{}','['*20000+'0'+']'*20000):
+            self.journal.db.execute('UPDATE intents SET payload=?',(payload,))
+            before = self.journal.shadow_control(),self.journal.db.total_changes
+            result = self.inspect()
+            self.assertFalse(result['diagnostics_complete'])
+            self.assertEqual(result['local_blockers'],['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+            self.assertNotIn('PRIVATE',json.dumps(result))
+            self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))

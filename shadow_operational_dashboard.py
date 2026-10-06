@@ -32,6 +32,7 @@ SCRIPT = ''''use strict';
 const byId=id=>document.getElementById(id);
 const labels={KILL_SWITCH_LATCHED:'Kill Switch가 잠겨 있습니다',BATCH_RECONCILIATION_REQUIRED:'전체 주문 내역 대조가 필요합니다',
 UNRESOLVED_DURABLE_INTENTS:'처리 여부가 확인되지 않은 주문이 있습니다',ORDER_SNAPSHOT_BINDING_STALE:'주문 대조 결과가 현재 상태와 맞지 않습니다',
+ORDER_SNAPSHOT_CONTENT_CHANGED:'주문 내용이 대조 이후 변경됐습니다',ORDER_SNAPSHOT_SCOPE_CHANGED:'주문 대조 범위가 변경됐습니다',
 NATIVE_INBOX_PENDING:'미처리 체결 수신 내역이 있습니다',NATIVE_INBOX_CONFLICTED:'서로 충돌하는 체결 수신 내역이 있습니다',
 CAPITAL_NOT_CONFIGURED:'Shadow 자금 설정이 없습니다',CAPITAL_CONTROL_DISABLED:'Shadow 자금 사용이 꺼져 있습니다',
 CAPITAL_CEILING_EXCEEDED:'현재 예약 자금이 설정 한도를 넘었습니다',OPERATIONAL_SNAPSHOT_UNAVAILABLE:'저널을 읽을 수 없거나 필수 정보가 없습니다'};
@@ -144,4 +145,3 @@ def main(argv=None):
 
 
 if __name__ == '__main__': main()
-
