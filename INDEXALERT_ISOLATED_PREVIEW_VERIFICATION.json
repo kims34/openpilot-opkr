@@ -11,11 +11,91 @@
   "canonical_android_runs": [
     {
       "id": 37402569974,
-      "status": "IN_PROGRESS"
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "job": 112072791477,
+      "proof": {
+        "apk_sha256": "3e873425ce04cee59e10c0886fc61695d7e91d3b39610108b4874dd672a18379",
+        "application_id": "com.indexalert.preview",
+        "broker_request_sent": false,
+        "checkout_sha": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "errors": 0,
+        "failures": 0,
+        "firebase_dependency_present": false,
+        "frozen_criteria_changed": false,
+        "installed_signing_continuity_verified": false,
+        "live_ordering_authorized": false,
+        "orders_requested": false,
+        "permissions": [
+          "android.permission.INTERNET"
+        ],
+        "physical_e2e_verified": false,
+        "production_app_updated": false,
+        "production_push_e2e_verified": false,
+        "readiness_source_byte_identical": true,
+        "run_id": "37402569974",
+        "schema_version": "INDEXALERT_ISOLATED_READINESS_PREVIEW_v1",
+        "signature_verified": true,
+        "signer_sha256": [
+          "0433c8bd6aae2706ee3193d937dccb97f39dac10c264ee8399ac3011ad39bfea"
+        ],
+        "size_bytes": 820613,
+        "skipped": 0,
+        "source_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "tests": 4,
+        "version_code": 48,
+        "version_name": "4.8-preview",
+        "workmanager_dependency_present": false
+      }
     },
     {
       "id": 37402570020,
-      "status": "IN_PROGRESS"
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "job": 112072791464,
+      "proof": {
+        "artifacts": [
+          {
+            "apk_sha256": "95cd2910e2cb2cd8d90298ac2348ac840e4ebc298b66fc1d1eff2f038427f51d",
+            "application_id": "com.indexalert.app",
+            "expected_unsigned_release": false,
+            "signature_verified": true,
+            "signer_sha256": [
+              "d2e51fff1451c60de5e7f8ce1a54afff0cab274747e1da978b310f07d9d969fc"
+            ],
+            "size_bytes": 11835131,
+            "variant": "debug",
+            "version_code": 48,
+            "version_name": "4.8"
+          },
+          {
+            "apk_sha256": "f8e3c9e32355355ea412a0a4a55ddd8db9afff41ea9f6399ed617ceec6370e4b",
+            "application_id": "com.indexalert.app",
+            "expected_unsigned_release": true,
+            "signature_verified": false,
+            "signer_sha256": [],
+            "size_bytes": 8362877,
+            "variant": "release",
+            "version_code": 48,
+            "version_name": "4.8"
+          }
+        ],
+        "broker_request_sent": false,
+        "checkout_sha": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "errors": 0,
+        "failures": 0,
+        "frozen_criteria_changed": false,
+        "installed_signing_continuity_verified": false,
+        "live_ordering_authorized": false,
+        "orders_requested": false,
+        "physical_e2e_verified": false,
+        "run_id": "37402570020",
+        "schema_version": "INDEXALERT_ANDROID_BUILD_VERIFICATION_v1",
+        "skipped": 0,
+        "source_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "tests": 4,
+        "unit_test_class": "com.indexalert.app.AutomationReadinessTest"
+      }
     }
   ],
   "application_id": "com.indexalert.preview",
