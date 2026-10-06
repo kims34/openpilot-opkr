@@ -263,6 +263,7 @@ def audit_investor_flow_lineage(lineage: pd.DataFrame) -> dict:
         sealed_holdout_authorized=False,
     )
     out = asdict(audit)
+    out["source_contract_fingerprint_sha256"] = next(iter(source_fps))
     out["guardrail"] = (
         "PIT lineage validity does not close the KRX source contract, does not "
         "authorize investor-flow performance research, and does not consume the sealed holdout."
