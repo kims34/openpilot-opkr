@@ -23,7 +23,7 @@ class EarlyLiveAdmissionGateTests(unittest.TestCase):
             out=assess_early_live_readiness(EarlyLiveAdmissionEvidence(**base, **{key:1}))
             self.assertFalse(out["ready_for_final_user_authorization"])
 
-    def test_invalid_counts_fail_closed(self):
+    def test_non_boolean_gate_values_fail_closed(self):\n        for value in (1, 0, "true", None):\n            with self.assertRaises(ValueError):\n                assess_early_live_readiness(EarlyLiveAdmissionEvidence(successor_alpha_admitted=value))\n\n    def test_invalid_counts_fail_closed(self):
         for value in (True,-1,1.5,"0"):
             with self.assertRaises(ValueError):
                 assess_early_live_readiness(EarlyLiveAdmissionEvidence(unresolved_reconciliation_count=value))
