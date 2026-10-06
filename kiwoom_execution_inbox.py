@@ -75,14 +75,15 @@ class KiwoomExecutionInbox:
 
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
-        receipts = set()
+        receipts = {}
         for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
             self._text(receipt_id); self._text(key); self.bridge._context(day)
             require(isinstance(payload, str) and isinstance(digest, str))
             require(hashlib.sha256(payload.encode()).hexdigest() == digest)
-            self._validate_row(json.loads(payload))
-            receipts.add(sequence)
+            row = json.loads(payload)
+            self._validate_row(row)
+            receipts[sequence] = (key, row)
         for receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT receipt_id,key,day,payload,digest FROM native_inbox_conflicts'):
             self._text(receipt_id); self._text(key); self.bridge._context(day)
@@ -94,6 +95,18 @@ class KiwoomExecutionInbox:
         for receipt_sequence, outcome in self.journal.db.execute(
                 'SELECT receipt_sequence,outcome FROM native_inbox_attempts'):
             require(receipt_sequence in receipts and outcome in ('APPLIED', 'DUPLICATE', 'BLOCKED'))
+            if outcome in ('APPLIED', 'DUPLICATE'):
+                key, row = receipts[receipt_sequence]
+                execution_id = row.get('broker_execution_id')
+                require(isinstance(execution_id, str) and bool(execution_id.strip()))
+                # A terminal attempt marker must never hide a receipt whose
+                # durable native binding/execution disappeared or never existed.
+                require(self.journal.db.execute(
+                    'SELECT 1 FROM native_fill_bindings WHERE key=? AND execution_id=?',
+                    (key, execution_id)).fetchone() is not None)
+                require(self.journal.db.execute(
+                    'SELECT 1 FROM executions WHERE key=? AND execution_id=?',
+                    (key, execution_id)).fetchone() is not None)
 
     def append(self, receipt_id, key, row, *, trading_date):
         """Persist a normalized copy before any execution-journal mutation."""
