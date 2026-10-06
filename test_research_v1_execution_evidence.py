@@ -240,6 +240,23 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
+    def test_naive_or_numeric_execution_timestamps_are_rejected(self):
+        for field in ("recommendation_at", "order_submitted_at", "ingested_at"):
+            for value in ("2026-09-29T00:00:00", 1234567890):
+                with self.subTest(field=field, value=value):
+                    rows = self._rows()
+                    rows[field] = rows[field].astype(object)
+                    rows.loc[0, field] = value
+                    with self.assertRaises(ExecutionEvidenceError):
+                        validate_execution_observations(rows)
+
+    def test_nonscalar_execution_timestamp_is_rejected(self):
+        rows = self._rows()
+        rows["recommendation_at"] = rows["recommendation_at"].astype(object)
+        rows.at[0, "recommendation_at"] = ["2026-09-29T00:00:00Z"]
+        with self.assertRaises(ExecutionEvidenceError):
+            validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -62,6 +62,20 @@ def _ts(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce", utc=True)
 
 
+def _timezone_aware_scalar(value) -> bool:
+    if not pd.api.types.is_scalar(value):
+        return False
+    if pd.isna(value):
+        return False
+    if isinstance(value, (bool, np.bool_, int, float, np.integer, np.floating)):
+        return False
+    try:
+        ts = pd.Timestamp(value)
+    except (TypeError, ValueError):
+        return False
+    return ts.tzinfo is not None and ts.utcoffset() is not None
+
+
 def _bool_series(series: pd.Series, field: str) -> pd.Series:
     if not series.map(lambda v: isinstance(v, (bool, np.bool_))).all():
         raise ExecutionSufficiencyAssessmentError(f"{field} must contain booleans only")
@@ -173,6 +187,8 @@ def prepare_live_execution_sufficiency_evidence(
         "capacity_reference_available_at",
         "cost_budget_at",
     ]:
+        if not table[field].map(_timezone_aware_scalar).all():
+            raise ExecutionSufficiencyAssessmentError(f"{field} must preserve an explicit timezone")
         x[field] = _ts(table[field])
         if x[field].isna().any():
             raise ExecutionSufficiencyAssessmentError(f"{field} must be timezone-aware/parseable")
