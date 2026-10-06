@@ -103,7 +103,7 @@ def _verify_batch(batch: Mapping[str, Any]) -> bool:
         "sealed_holdout_authorized",
         "live_trading_authorized",
     ):
-        if bool(batch[forbidden]):
+        if batch[forbidden] is not False:
             raise KRXSourceDataAdmissionError(f"batch illegally claims authority: {forbidden}")
     return True
 

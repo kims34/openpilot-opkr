@@ -4,9 +4,10 @@ import pandas as pd
 import pytest
 
 from research_v1_krx_acquisition_batch import build_acquisition_batch_manifest
-from research_v1_krx_acquisition_receipt import build_acquisition_receipt
+from research_v1_krx_acquisition_receipt import build_acquisition_receipt, _sha256
 from research_v1_krx_public_evidence import public_evidence_fingerprint_sha256
 from research_v1_krx_source_data_admission import (
+    BATCH_BODY_FIELDS,
     KRXSourceDataAdmissionError,
     assess_investor_flow_source_data_admission,
 )
@@ -171,4 +172,24 @@ def test_wrong_source_family_is_rejected():
             acquisition_batch_manifest=_batch(),
             lineage_audit=_lineage(True, True),
             coverage_audit=_coverage(True),
+        )
+
+
+@pytest.mark.parametrize("field", [
+    "alpha_or_final_judge_promotion_authorized",
+    "sealed_holdout_authorized",
+    "live_trading_authorized",
+])
+@pytest.mark.parametrize("value", [None, 0, "", [], {}, 1, "false"])
+def test_rehashed_batch_requires_exact_false_authority_flags(field, value):
+    # A valid fingerprint must not turn malformed authority values into evidence.
+    batch = _batch()
+    batch[field] = value
+    batch["batch_fingerprint_sha256"] = _sha256(
+        {name: batch[name] for name in BATCH_BODY_FIELDS}
+    )
+    with pytest.raises(KRXSourceDataAdmissionError, match="illegally claims authority"):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
+            lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
         )
