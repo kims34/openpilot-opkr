@@ -224,3 +224,36 @@ def test_rehashed_receipt_requires_metadata_schema_payload_digest_formats(field,
         verify_receipt_fingerprint(forged)
     with pytest.raises(KRXAcquisitionBatchError, match=field):
         build_acquisition_batch_manifest([forged])
+
+@pytest.mark.parametrize("field", [
+    "source_family", "intended_use_scope", "access_route", "dataset_identifier",
+    "authorization_evidence_reference", "client_revision", "retrieved_at",
+])
+@pytest.mark.parametrize("value", [None, 0, True, [], {}, "", " "])
+def test_rehashed_receipt_requires_string_contract_fields(field, value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+    forged = copy.deepcopy(_receipt())
+    forged[field] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match=field):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match=field):
+        build_acquisition_batch_manifest([forged])
+
+
+@pytest.mark.parametrize("value", [int("1" * 64), None, True, [], {}])
+def test_rehashed_receipt_authorization_digest_must_be_a_string(value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+    forged = copy.deepcopy(_receipt())
+    forged["authorization_evidence_fingerprint_sha256"] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match="authorization evidence fingerprint"):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match="authorization evidence fingerprint"):
+        build_acquisition_batch_manifest([forged])
