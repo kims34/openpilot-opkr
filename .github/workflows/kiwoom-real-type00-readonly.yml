@@ -1,0 +1,26 @@
+name: Kiwoom REAL Type00 Read-Only Boundary
+on:
+  pull_request:
+    paths:
+      - 'kiwoom_real_type00_readonly_smoke.ps1'
+      - 'test_kiwoom_real_type00_readonly_smoke_ps1.py'
+      - 'deferred_user_validations.py'
+      - 'test_deferred_user_validations.py'
+      - '.github/workflows/kiwoom-real-type00-readonly.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'kiwoom_real_type00_readonly_smoke.ps1'
+      - 'test_kiwoom_real_type00_readonly_smoke_ps1.py'
+      - 'deferred_user_validations.py'
+      - 'test_deferred_user_validations.py'
+      - '.github/workflows/kiwoom-real-type00-readonly.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest -v test_kiwoom_real_type00_readonly_smoke_ps1.py test_deferred_user_validations.py test_kiwoom_realtime_order_fill_subscription_contract.py test_kiwoom_type00_frame_extractor.py
