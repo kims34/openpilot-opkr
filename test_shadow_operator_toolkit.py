@@ -23,6 +23,9 @@ class OperatorToolkitTests(unittest.TestCase):
         result = build_operator_toolkit(self.root,self.output,source_commit=self.commit)
         with zipfile.ZipFile(self.output) as archive:
             self.assertEqual(set(archive.namelist()),set(ARTIFACTS)|{'toolkit-manifest.json'})
+            for entry in archive.infolist():
+                self.assertEqual(entry.create_system, 3)
+                self.assertEqual(entry.date_time, (1980,1,1,0,0,0))
             manifest = json.loads(archive.read('toolkit-manifest.json'))
             self.assertEqual(manifest['source_commit'],self.commit)
             self.assertFalse(manifest['real_orders_authorized'])

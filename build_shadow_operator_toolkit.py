@@ -44,6 +44,8 @@ def build_operator_toolkit(root, output, *, source_commit):
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_DEFLATED) as archive:
         for name,data in sorted(files.items()):
             info = zipfile.ZipInfo(name,date_time=(1980,1,1,0,0,0))
+            # Fixed creator metadata keeps the archive identical on Windows/Unix.
+            info.create_system = 3
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
             archive.writestr(info,data)
