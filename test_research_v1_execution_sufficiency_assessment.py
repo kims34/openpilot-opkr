@@ -187,3 +187,12 @@ def test_identifier_fields_reject_non_string_coercion():
         rows.at[0, field] = value
         with pytest.raises(ExecutionSufficiencyAssessmentError):
             prepare_live_execution_sufficiency_evidence(rows, p)
+
+
+def test_identifier_fields_reject_surrounding_whitespace_normalization():
+    p, _ = load_frozen_project_protocol(ROOT)
+    for field in ("observation_id", "decision_policy_id", "execution_policy_id"):
+        rows = _evidence(3)
+        rows.loc[0, field] = " " + str(rows.loc[0, field])
+        with pytest.raises(ExecutionSufficiencyAssessmentError):
+            prepare_live_execution_sufficiency_evidence(rows, p)
