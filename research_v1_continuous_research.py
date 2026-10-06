@@ -1,6 +1,7 @@
 """Fail-closed governance primitives for continuous IndexAlert research."""
 from __future__ import annotations
 import hashlib, json
+from datetime import datetime
 
 REQUIRED = ("schema_version","trial_id","core_version","hypothesis","dataset_window","pit_contract","target_horizon","primary_metrics","acceptance_criteria","cost_assumptions","evaluation_protocol","preregistered_at")
 FORBIDDEN_DATA_ROLES = {"sealed_holdout","holdout","final_holdout"}
@@ -12,9 +13,21 @@ def canonical_protocol(protocol: dict) -> str:
 def protocol_fingerprint(protocol: dict) -> str:
     return hashlib.sha256(canonical_protocol(protocol).encode()).hexdigest()
 
+def valid_preregistration_time(value) -> bool:
+    # Syntax only: this cannot attest independent registration chronology.
+    if type(value) is not str:
+        return False
+    try:
+        moment = datetime.fromisoformat(value)
+    except ValueError:
+        return False
+    return moment.tzinfo is not None and moment.utcoffset() is not None
+
 def validate_preregistration(protocol: dict) -> dict:
     missing=[k for k in REQUIRED if not protocol.get(k)]
     blockers=[]
+    if not valid_preregistration_time(protocol.get("preregistered_at")):
+        blockers.append("INVALID_PREREGISTRATION_TIMESTAMP")
     declared_roles=protocol.get("data_roles")
     if (type(declared_roles) is not list or not declared_roles
         or any(type(x) is not str or not x.strip() for x in declared_roles)):
