@@ -30,6 +30,12 @@ def current_deferred_validations() -> dict:
             "kiwoom_real_account_scope_readonly_smoke.ps1",
             completed=True,
         ),
+        DeferredUserValidation(
+            "KIWOOM_REAL_TYPE00_READONLY_v1",
+            "Verify REAL WebSocket LOGIN and type00 read-only registration; capture remains optional unless an execution event exists",
+            "kiwoom_real_type00_readonly_smoke.ps1",
+            completed=False,
+        ),
     )
     material = tuple(item.validate() for item in items)
     return {
