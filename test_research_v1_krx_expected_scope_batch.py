@@ -423,3 +423,61 @@ def test_completed_scope_noncanonical_directory_rejected_before_private_read(tmp
             root=str(tmp_path / "private"), requested_date="20260927",
             completion={"private_scope_relpath": relpath}, git_worktree=str(tmp_path / "repo"),
         )
+
+
+@pytest.mark.parametrize("field", [
+    "source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+    "feature_performance_testing_authorized", "sealed_holdout_authorized", "live_trading_authorized",
+])
+def test_rehashed_private_scope_authority_claim_fails_before_refetch(tmp_path, field):
+    from pathlib import Path
+    from research_v1_krx_private_store import write_private_json
+    import research_v1_krx_expected_scope_batch as batch
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    state_path = root / batch.CHECKPOINT_REL
+    state = json.loads(state_path.read_text())
+    entry = state["completed"]["20150615"]
+    scope = json.loads((root / entry["private_scope_relpath"]).read_text())
+    scope[field] = True
+    rel = str(Path(entry["private_scope_relpath"]).parent / (batch._sha256(scope) + ".json"))
+    written = write_private_json(str(root), rel, scope, git_worktree=str(worktree))
+    entry["private_scope_relpath"] = rel
+    entry["private_scope_metadata_sha256"] = written["metadata_sha256"]
+    state_path.write_text(json.dumps(state) + "\n")
+    state_path.chmod(0o600)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="private scope illegally claims authority"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("official_trading_date_observed", True), ("official_trading_date_observed", 0),
+    ("investor_expected_key_count", 1), ("investor_expected_key_count", "0"),
+    ("investor_expected_key_count", False),
+    ("status_expected_key_count", 1), ("status_expected_key_count", "0"),
+    ("status_expected_key_count", False),
+])
+def test_completion_summary_drift_fails_before_refetch(tmp_path, field, value):
+    import research_v1_krx_expected_scope_batch as batch
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    state_path = tmp_path / "private" / batch.CHECKPOINT_REL
+    state = json.loads(state_path.read_text())
+    state["completed"]["20150615"][field] = value
+    state_path.write_text(json.dumps(state) + "\n")
+    state_path.chmod(0o600)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="completion"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []

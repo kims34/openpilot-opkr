@@ -246,6 +246,13 @@ def _verify_completed_date(
         raise KRXExpectedScopeBatchError("private scope metadata checksum drift")
 
     scope = wrapped["value"]
+    if scope.get("network_request_attempted") is not True:
+        raise KRXExpectedScopeBatchError("private scope network attempt must be exact true")
+    for field in ("source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+                  "feature_performance_testing_authorized", "sealed_holdout_authorized",
+                  "live_trading_authorized"):
+        if scope.get(field) is not False:
+            raise KRXExpectedScopeBatchError(f"private scope illegally claims authority: {field}")
     if scope.get("contract_id") != CONTRACT_ID:
         raise KRXExpectedScopeBatchError("private scope contract drift")
     if scope.get("requested_date") != requested_date:
@@ -289,6 +296,12 @@ def _verify_completed_date(
         expected_records = reconstructed[key].to_dict(orient="records")
         if not isinstance(scope.get(key), list) or scope[key] != expected_records:
             raise KRXExpectedScopeBatchError("private scope keys differ from verified raw responses")
+    if completion.get("official_trading_date_observed") is not reconstructed["official_trading_date_observed"]:
+        raise KRXExpectedScopeBatchError("completion trading-date flag differs from verified raw response")
+    for field, key in (("investor_expected_key_count", "investor_expected_scope"),
+                       ("status_expected_key_count", "status_expected_scope")):
+        if type(completion.get(field)) is not int or completion[field] != len(reconstructed[key]):
+            raise KRXExpectedScopeBatchError(f"completion key count differs from verified raw response: {field}")
     return {
         "requested_date": requested_date,
         "official_trading_date_observed": reconstructed["official_trading_date_observed"],
@@ -374,10 +387,11 @@ def execute_expected_scope_batch(
             raise KRXExpectedScopeBatchError(
                 "date executor did not report network request"
             )
-        if result.get("source_gate_c_closed") is not False:
-            raise KRXExpectedScopeBatchError(
-                "date executor illegally closed Gate C"
-            )
+        for field in ("source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+                      "feature_performance_testing_authorized", "sealed_holdout_authorized",
+                      "live_trading_authorized"):
+            if result.get(field) is not False:
+                raise KRXExpectedScopeBatchError(f"date executor illegally claims authority: {field}")
 
         completion = {
             "private_scope_relpath": result["private_scope_relpath"],
