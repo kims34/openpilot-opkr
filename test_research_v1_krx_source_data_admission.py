@@ -219,3 +219,17 @@ def test_rehashed_batch_rejects_malformed_counts_and_receipt_digests(field, valu
             source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
             lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
         )
+
+@pytest.mark.parametrize("field", ["coverage_validated", "pit_lineage_validated"])
+@pytest.mark.parametrize("value", [None, 0, 0.0, "", [], {}, True, "false"])
+def test_rehashed_batch_cannot_claim_coverage_or_pit_authority(field, value):
+    batch = _batch()
+    batch[field] = value
+    batch["batch_fingerprint_sha256"] = _sha256(
+        {name: batch[name] for name in BATCH_BODY_FIELDS}
+    )
+    with pytest.raises(KRXSourceDataAdmissionError, match="illegally claims authority"):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
+            lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
+        )
