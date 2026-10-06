@@ -350,3 +350,74 @@ def test_raw_frame_mismatch_or_error_envelope_fails_before_private_write(tmp_pat
         )
     assert len(calls) == 1
     assert not (tmp_path / "private" / "expected_scope").exists()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("receipt_version", "wrong"), ("contract_id", "wrong"),
+    ("dataset_identifier", "wrong"), ("requested_date", "20260926"),
+    ("request_metadata_sha256", "f" * 64),
+    ("network_request_attempted", "true"), ("raw_rows_emitted", "false"),
+    ("source_gate_c_closed", True), ("source_gate_d_closed", True),
+    ("source_gate_e_closed", True),
+    ("feature_performance_testing_authorized", True),
+    ("sealed_holdout_authorized", True), ("live_trading_authorized", True),
+    ("retrieved_at", "2026-10-02T12:45:00"),
+    ("transport_status", False), ("response_rows", False),
+    ("raw_bytes_size", "18"),
+])
+def test_existing_rehashed_receipt_cannot_bypass_reuse_validation(tmp_path, field, value):
+    from research_v1_krx_expected_scope_executor import _sha256
+    from research_v1_krx_private_store import read_private_json, write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    calls = []
+    def fetcher(**kwargs):
+        calls.append(kwargs)
+        return _result(pd.DataFrame())
+    first = execute_expected_scope_date(
+        requested_date="20260927", environment=env, git_worktree=str(worktree),
+        fetcher=fetcher, evaluation_time=EVAL,
+    )
+    receipt_dir = tmp_path / "private" / "expected_scope" / "receipts" / "20260927" / "stk_bydd_trd"
+    original = next(receipt_dir.glob("*.json"))
+    rel = str(original.relative_to(tmp_path / "private"))
+    body = read_private_json(env["KRX_PRIVATE_RAW_DIR"], rel, git_worktree=str(worktree))["value"]
+    body[field] = value
+    # Fully rehashed corruption in a disposable synthetic fixture only.
+    corrupt_rel = str(Path(rel).parent / (_sha256(body) + ".json"))
+    write_private_json(env["KRX_PRIVATE_RAW_DIR"], corrupt_rel, body, git_worktree=str(worktree))
+    original.unlink()
+    corrupt = tmp_path / "private" / corrupt_rel
+    before = corrupt.read_bytes()
+    scope = tmp_path / "private" / first["private_scope_relpath"]
+    scope_before = scope.read_bytes()
+    with pytest.raises(KRXExpectedScopeExecutorError):
+        execute_expected_scope_date(
+            requested_date="20260927", environment=env, git_worktree=str(worktree),
+            fetcher=fetcher, evaluation_time=EVAL,
+        )
+    assert len(calls) == 2
+    assert corrupt.read_bytes() == before
+    assert scope.read_bytes() == scope_before
+
+
+def test_existing_receipt_relocated_under_wrong_digest_is_not_reused(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    def fetcher(**kwargs):
+        return _result(pd.DataFrame())
+    first = execute_expected_scope_date(
+        requested_date="20260927", environment=env, git_worktree=str(worktree),
+        fetcher=fetcher, evaluation_time=EVAL,
+    )
+    receipt_dir = tmp_path / "private" / "expected_scope" / "receipts" / "20260927" / "stk_bydd_trd"
+    original = next(receipt_dir.glob("*.json"))
+    original.rename(receipt_dir / ("f" * 64 + ".json"))
+    with pytest.raises(KRXExpectedScopeExecutorError, match="content address"):
+        execute_expected_scope_date(
+            requested_date="20260927", environment=env, git_worktree=str(worktree),
+            fetcher=fetcher, evaluation_time=EVAL,
+        )
+    assert (tmp_path / "private" / first["private_scope_relpath"]).is_file()
