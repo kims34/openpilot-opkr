@@ -138,8 +138,8 @@ class KiwoomOrderJournalBridge:
         with self._guard():
             return self._apply_execution_locked(key,row,trading_date=trading_date)
 
-    def _apply_execution_locked(self,key,row,*,trading_date):
-        """Caller holds the journal write transaction, including receipt checks."""
+    def _execution_material_locked(self,key,row,*,trading_date):
+        """Derive execution identity without applying a fill or trusting markers."""
         require(self.journal.db.in_transaction)
         order,binding=self._row(key,row,trading_date,SOURCE_CONTRACT,'broker_execution_event')
         require(row.get('source_api')=='domestic_realtime_order_fill_00')
@@ -162,12 +162,28 @@ class KiwoomOrderJournalBridge:
             price=exact_decimal_identity(price),time=time,remaining=remaining)
         serialized=json.dumps(payload,sort_keys=True,separators=(',',':'))
         digest=hashlib.sha256(serialized.encode()).hexdigest()
+        return order,binding,execution,qty,remaining,serialized,digest
+
+    def _verify_existing_execution_locked(self,key,row,*,trading_date):
+        """Compare receipt, native binding and execution in the same snapshot."""
+        _,_,execution,qty,_,serialized,digest=self._execution_material_locked(
+            key,row,trading_date=trading_date)
+        stored=self.journal.db.execute(
+            'SELECT digest,payload FROM native_fill_bindings WHERE key=? AND execution_id=?',
+            (key,execution)).fetchone()
+        require(stored==(digest,serialized))
+        require(self.journal.db.execute(
+            'SELECT quantity FROM executions WHERE key=? AND execution_id=?',
+            (key,execution)).fetchone()==(qty,))
+
+    def _apply_execution_locked(self,key,row,*,trading_date):
+        """Caller holds the journal write transaction, including receipt checks."""
+        order,binding,execution,qty,remaining,serialized,digest=self._execution_material_locked(
+            key,row,trading_date=trading_date)
         old=self.journal.db.execute('SELECT digest FROM native_fill_bindings WHERE key=? AND execution_id=?',(key,execution)).fetchone()
         if old:
-            require(old[0]==digest)
             # Replay remains idempotent even after later fills or restart.
-            prior=self.journal.db.execute('SELECT quantity FROM executions WHERE key=? AND execution_id=?',(key,execution)).fetchone()
-            require(prior==(qty,))
+            self._verify_existing_execution_locked(key,row,trading_date=trading_date)
             created=False
         else:
             require(not self.journal.db.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?',(key,execution)).fetchone())

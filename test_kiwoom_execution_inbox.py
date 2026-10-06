@@ -1,4 +1,5 @@
 import json
+import hashlib
 from decimal import localcontext
 import sqlite3
 import unittest
@@ -120,6 +121,70 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
         self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(),(1,))
         self.assertEqual(self.j.get('d1')['state'],'RECONCILIATION_REQUIRED')
+
+    def test_restart_rejects_rehashed_processed_receipt_changed_price(self):
+        self.append(); self.i.replay_next()
+        self.j.close()
+        raw = sqlite3.connect(self.path, isolation_level=None)
+        try:
+            raw.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+            row = fixtures.fill()
+            row.update(fill_price='101', unit_fill_price='101')
+            payload = json.dumps(row, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+            raw.execute('UPDATE native_inbox_receipts SET payload=?,digest=?',
+                (payload, hashlib.sha256(payload.encode()).hexdigest()))
+        finally:
+            raw.close()
+        self.j = OrderIntentJournal(self.path)
+        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
+        with self.assertRaises(ExecutionInboxError):
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 4)
+
+    def test_restart_rejects_changed_execution_quantity_under_terminal_marker(self):
+        self.append(); self.i.replay_next()
+        self.j.close()
+        raw = sqlite3.connect(self.path, isolation_level=None)
+        try:
+            raw.execute('DROP TRIGGER executions_update_immutable')
+            raw.execute('UPDATE executions SET quantity=3')
+        finally:
+            raw.close()
+        self.j = OrderIntentJournal(self.path)
+        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
+        with self.assertRaises(ExecutionInboxError):
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
+    def test_restart_rejects_binding_payload_changed_with_digest_untouched(self):
+        self.append(); self.i.replay_next()
+        self.j.close()
+        raw = sqlite3.connect(self.path, isolation_level=None)
+        try:
+            raw.execute('DROP TRIGGER native_fill_bindings_update_immutable')
+            raw.execute("UPDATE native_fill_bindings SET payload=payload || ' '")
+        finally:
+            raw.close()
+        self.j = OrderIntentJournal(self.path)
+        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
+        with self.assertRaises(ExecutionInboxError):
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
+    def test_restart_after_later_fill_preserves_processed_receipt_identity(self):
+        self.append(); self.i.replay_next()
+        self.append('second', fixtures.fill('fill-2', 6, 0, '091502')); self.i.replay_next()
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
+        self.i = KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.i.counts()['pending'], 0)
+        self.assertFalse(self.i.replay('receipt-1')['executions_created'])
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 10)
 
     def test_gap_retained_in_arrival_order_requires_explicit_missing_first_replay(self):
         self.append('second',fixtures.fill('fill-2',6,0,'091502'))
