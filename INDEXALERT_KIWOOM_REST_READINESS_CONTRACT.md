@@ -74,7 +74,7 @@ Rules:
 - demo/paper observations must never set `genuine_live_provenance_verified=true`;
 - demo/paper observations cannot satisfy the frozen execution-sufficiency sample or metric gates;
 - a successful token, account query, quote query or websocket connection is technical connectivity only;
-- possession of REAL credentials alone does not authorize a REAL request or any order submission.
+- possession of REAL credentials alone does not authorize any request; REAL requests are limited to the separately reviewed fixed-host read-only allowlist, and no order submission is authorized.
 
 Observed demo plumbing is recorded separately in `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md`. The observed `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FILLS_OK` sequence confirms only demo/read-only connectivity and does not change any project promotion or execution gate.
 
