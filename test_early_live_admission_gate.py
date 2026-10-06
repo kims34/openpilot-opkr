@@ -4,13 +4,19 @@ from early_live_admission_gate import EarlyLiveAdmissionEvidence, assess_early_l
 class EarlyLiveAdmissionGateTests(unittest.TestCase):
     def test_default_fails_closed(self):
         out = assess_early_live_readiness(EarlyLiveAdmissionEvidence())
+        self.assertFalse(out["preconditions_structurally_satisfied"])
+        self.assertFalse(out["independent_gate_admission_verified"])
         self.assertFalse(out["ready_for_final_user_authorization"])
+        self.assertIn("INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED", out["blockers"])
         self.assertFalse(out["real_orders_authorized"])
 
-    def test_all_preconditions_only_reach_final_authorization_boundary(self):
+    def test_all_caller_preconditions_are_structural_only_without_independent_admission(self):
         e = EarlyLiveAdmissionEvidence(True, True, True, 0, 0, True, True, True, True, True, True)
         out = assess_early_live_readiness(e)
-        self.assertTrue(out["ready_for_final_user_authorization"])
+        self.assertTrue(out["preconditions_structurally_satisfied"])
+        self.assertFalse(out["independent_gate_admission_verified"])
+        self.assertFalse(out["ready_for_final_user_authorization"])
+        self.assertEqual(out["blockers"], ("INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED",))
         self.assertFalse(out["early_live_authorized"])
         self.assertFalse(out["real_orders_authorized"])
 
@@ -28,7 +34,19 @@ class EarlyLiveAdmissionGateTests(unittest.TestCase):
         )
         for key in ("unresolved_reconciliation_count", "risk_breach_count"):
             out = assess_early_live_readiness(EarlyLiveAdmissionEvidence(**base, **{key: 1}))
+            self.assertFalse(out["preconditions_structurally_satisfied"])
             self.assertFalse(out["ready_for_final_user_authorization"])
+            self.assertIn("INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED", out["blockers"])
+
+    def test_structural_blockers_name_missing_gates_without_granting_authority(self):
+        out = assess_early_live_readiness(EarlyLiveAdmissionEvidence(
+            successor_alpha_admitted=True,
+            source_pit_status_economics_pass=True,
+        ))
+        self.assertIn("exact_policy_shadow_complete", out["blockers"])
+        self.assertIn("broker_native_provenance_capture_tested", out["blockers"])
+        self.assertIn("INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED", out["blockers"])
+        self.assertFalse(out["ready_for_final_user_authorization"])
 
     def test_non_boolean_gate_values_fail_closed(self):
         for value in (1, 0, "true", None):
