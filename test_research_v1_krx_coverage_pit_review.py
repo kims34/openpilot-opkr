@@ -120,3 +120,39 @@ def test_contract_cannot_be_weakened_to_write_gate_pass():
     data["decision_boundary"]["composer_may_set_source_gate_pass"] = True
     with pytest.raises(KRXCoveragePITReviewError, match="may not set gate PASS"):
         validate_contract(data)
+
+
+@pytest.mark.parametrize("key", ["identity_seed_complete","identity_standard_code_binding_complete","per_security_history_complete","status_economics_phase_complete","expected_scope_attestation_complete","all_private_raw_objects_verified","all_request_receipts_verified","all_rows_within_preregistered_request_windows"])
+@pytest.mark.parametrize("value", [False, None, 1, "true"])
+def test_contract_rejects_removed_or_non_boolean_prerequisite_requirements(key, value):
+    import json
+    from pathlib import Path
+    data = json.loads(Path("INDEXALERT_KRX_COVERAGE_PIT_AUDIT_CONTRACT.json").read_text())
+    data["prerequisites"][key] = value
+    with pytest.raises(KRXCoveragePITReviewError, match="prerequisite requirement lost"):
+        validate_contract(data)
+
+
+@pytest.mark.parametrize("key", ["identity_seed_complete","identity_standard_code_binding_complete","per_security_history_complete","status_economics_phase_complete","expected_scope_attestation_complete","all_private_raw_objects_verified","all_request_receipts_verified","all_rows_within_preregistered_request_windows"])
+def test_contract_rejects_missing_prerequisite_requirements(key):
+    import json
+    from pathlib import Path
+    data = json.loads(Path("INDEXALERT_KRX_COVERAGE_PIT_AUDIT_CONTRACT.json").read_text())
+    del data["prerequisites"][key]
+    with pytest.raises(KRXCoveragePITReviewError, match="prerequisite requirement lost"):
+        validate_contract(data)
+
+
+@pytest.mark.parametrize("section,key", [
+    ("status_review", "gate_c_candidate_requires"),
+    ("status_review", "gate_d_candidate_requires"),
+    ("investor_flow_review", "gate_c_candidate_requires"),
+    ("investor_flow_review", "gate_d_candidate_requires"),
+])
+def test_contract_rejects_removed_frozen_review_requirement(section, key):
+    import json
+    from pathlib import Path
+    data = json.loads(Path("INDEXALERT_KRX_COVERAGE_PIT_AUDIT_CONTRACT.json").read_text())
+    data[section][key] = data[section][key][:-1]
+    with pytest.raises(KRXCoveragePITReviewError, match="requirements drift"):
+        validate_contract(data)
