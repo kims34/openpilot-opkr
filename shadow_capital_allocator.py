@@ -14,7 +14,8 @@ from indexalert_automation_control import (
     AutomationCapitalState, AutomationUserControls, DecisionAction,
     EngineOrderIntent, validate_engine_plan,
 )
-from order_intent_journal import OrderJournalError
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals
+from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 
 
 class ShadowCapitalAllocator:
@@ -115,6 +116,8 @@ class ShadowCapitalAllocator:
             state = self._revision(expected_capital_revision)
             control = self.journal._check_epoch(expected_epoch)
             self.journal._require_batch_reconciled()
+            validate_stored_execution_totals(self.journal.db,
+                dict(self.journal.db.execute('SELECT key,filled FROM intents')))
             if control['mode'] != 'MASTER_OFF':
                 raise OrderJournalError('principal release requires MASTER_OFF')
             barrier = self.journal.db.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
@@ -124,9 +127,17 @@ class ShadowCapitalAllocator:
             binding = self.journal.db.execute('SELECT revision,epoch,payload FROM reconciled_snapshot_bindings WHERE key=?', (key,)).fetchone()
             if binding is None or binding[:2] != (expected_snapshot_revision, expected_epoch):
                 raise OrderJournalError('snapshot binding stale or absent')
-            snapshot = json.loads(binding[2])
+            snapshot = load_stored_order_snapshot(binding[2])
+            if (type(snapshot) is not dict or set(snapshot) != FIELDS
+                or any(type(snapshot[field]) is not str or not snapshot[field].strip()
+                    for field in ('key','broker_order_id','symbol','side','status'))
+                or snapshot['key'] != key or snapshot['status'] not in STATUS
+                or type(snapshot['quantity']) is not int or snapshot['quantity'] <= 0
+                or type(snapshot['filled_quantity']) is not int
+                or not 0 <= snapshot['filled_quantity'] <= snapshot['quantity']):
+                raise OrderJournalError('invalid principal release snapshot')
             order = self.journal.get(key)
-            if (order['state'] not in ('CANCELLED', 'REJECTED')
+            if (order['side'] != 'BUY' or order['state'] not in ('CANCELLED', 'REJECTED')
                 or order['terminal_status'] != snapshot['status']
                 or order['filled_quantity'] != 0 or snapshot['filled_quantity'] != 0
                 or any(order[f] != snapshot[f] for f in ('symbol','side','quantity','broker_order_id'))):

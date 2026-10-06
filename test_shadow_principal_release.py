@@ -1,4 +1,5 @@
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -71,6 +72,33 @@ class PrincipalReleaseTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError): self.release()
         self.assertEqual(self.a.state()['managed_reserve_krw'],83)
         self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+
+    def test_corrupt_matching_zero_fill_view_cannot_release_retained_execution_principal(self):
+        self.j.record_execution('d1', broker_order_id='o1', execution_id='e1', quantity=4)
+        self.assertTrue(self.batch(filled=4)['matched'])
+        self.j.db.execute('UPDATE intents SET filled=0')
+        row = json.loads(self.j.db.execute('SELECT payload FROM reconciled_snapshot_bindings').fetchone()[0])
+        row['filled_quantity'] = 0
+        self.j.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?', (json.dumps(row),))
+        with self.assertRaises(OrderJournalError):
+            self.release()
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_capital_releases').fetchone(), (0,))
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+
+    def test_malformed_stored_release_snapshot_cannot_credit_principal(self):
+        self.assertTrue(self.batch()['matched'])
+        snapshot = json.loads(self.j.db.execute('SELECT payload FROM reconciled_snapshot_bindings').fetchone()[0])
+        malformed = [json.dumps(dict(snapshot, filled_quantity=False)),
+            json.dumps(dict(snapshot, quantity=10.0)), json.dumps(dict(snapshot, key='other')),
+            '{"filled_quantity":9,' + json.dumps(snapshot)[1:], '[' * 20000 + '0' + ']' * 20000]
+        for payload in malformed:
+            with self.subTest(kind='depth' if payload.startswith('[') else 'object'):
+                self.j.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?', (payload,))
+                with self.assertRaises(OrderJournalError):
+                    self.release()
+                self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+                self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_capital_releases').fetchone(), (0,))
 
     def test_full_fill_cannot_be_treated_as_zero_fill_release(self):
         self.j.record_execution('d1',broker_order_id='o1',execution_id='e1',quantity=10)
