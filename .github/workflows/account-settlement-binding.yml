@@ -1,0 +1,15 @@
+name: Account Settlement Binding
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+permissions:
+  contents: read
+jobs:
+  binding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest -v test_account_settlement_binding
