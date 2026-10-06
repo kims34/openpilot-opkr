@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "protocol_id": "IA-FRESH-ALPHA-H5-TOP3-20261007",
+  "classification": "FROZEN_PROSPECTIVE_DIAGNOSTIC_NOT_SHADOW_S1",
+  "freeze_anchor_commit": "5f19026e320ed8aec49f61b5273d03467d7437aa",
+  "eligible_chronology": "decision_timestamp_strictly_after_freeze_anchor_commit",
+  "data_role": "FUTURE_PROSPECTIVE_DIAGNOSTIC_ONLY",
+  "horizon_sessions": 5,
+  "anchored_walk_forward_reference": {
+    "train_sessions": 504,
+    "calibration_sessions": 126,
+    "test_sessions": 126,
+    "purge_sessions": 5,
+    "embargo_sessions": 5
+  },
+  "selection_policy": "FROZEN_H5_0_TO_3_SELECTION_CONDITIONED_Q25_NORMAL_MARKET_STRICT_TOP3_NO_BACKFILL",
+  "no_trade_valid": true,
+  "checkpoints_completed_krx_sessions": [
+    126,
+    504
+  ],
+  "historical_backfill_forbidden": true,
+  "consumed_v1_holdout_forbidden": true,
+  "parameter_retuning_within_protocol_forbidden": true,
+  "formal_shadow_s1": false,
+  "fresh_confirmation_s2": false,
+  "promotion_authority": false,
+  "live_order_authorized": false,
+  "terminal_disposition": "CONTINUE VALIDATION"
+}
