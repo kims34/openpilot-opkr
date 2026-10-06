@@ -1,3 +1,36 @@
+# Failure diagnosis & next-evidence triage — 2026-10-07 KST
+
+Disposition: **NEW EVIDENCE REQUIRED**.
+
+This cycle performed research triage only. No new feature/threshold/horizon/N/model sweep was run.
+
+## Dominant failure diagnosis
+
+1. **Alpha persistence / regime + calibration-selection uncertainty is the leading unresolved failure class.** The frozen H5 developmental reference has positive historical selected mean/PF but a negative date-cluster LCB, admissions concentrated in older periods, and no admissions in the latest 504 OOS sessions. Corrected CPCV is weak (H5 median PF 0.381; positive NetEV 43.3%; positive date-cluster LCB 11.7%). This pattern is inconsistent with a robust, current, broadly persistent edge.
+
+2. **Selection/concentration fragility is material.** Existing uncertainty and Dynamic diagnostics show strong dependence on a small number of dates and unstable extension beyond the frozen Top3 selection. Rank-aware Dynamic 0-N remains INCONCLUSIVE with negative LCB and severe date/concentration dependence.
+
+3. **Execution/cost is a hard promotion blocker but is not yet the best explanation for the historical statistical failure.** The established H5 selected sample remains positive under the existing 2x-cost sensitivity, while the more immediate problem is weak stability/current coverage. Genuine broker-native LIVE execution evidence is still absent.
+
+4. **Capacity/dependence is especially blocking for Dynamic 0-N, not a reason to alter the current Top3 Champion.** The Dynamic diagnostics selected operationally implausible portfolio breadth and require PIT sector/factor/dependence plus capital/minimum-order/fill/slippage/capacity evidence before any marginal-utility claim.
+
+## Highest-value next evidence
+
+Two evidence tracks have highest expected research value and should precede more same-history parameter work:
+
+- **Fresh alpha track:** prospective exact-policy Shadow/Fresh Confirmation under the frozen Top3/NO_TRADE policy, with no threshold/model/horizon changes after outcomes begin. This directly tests whether the historical edge persists in the current regime.
+- **Data-trust track:** independently admitted official KRX availability/PIT/security-status and affected-position fill/recovery economics. This determines whether future Alpha/Shadow evidence is grounded in trustworthy executable data.
+
+PIT sector/factor/dependence evidence is next specifically for any future Dynamic 0-N marginal-utility study. Genuine LIVE fill/slippage/capacity evidence remains necessary later in the promotion path, but should not be used to justify repeated Alpha mining now.
+
+## New repository state reviewed
+
+Research HEAD before this note was 266e9b6a0c2a15229cf76176929c832cf52b9225 with no open PRs and latest research integrity Actions green. Development has since produced REAL account-scope/read-only and type00 transport/device-auth evidence, but those are execution-readiness observations, not new profitability evidence and do not change Champion/Challenger research disposition.
+
+No Champion/Frozen/operating-code change. Consumed project-v1 holdout state unchanged and not accessed.
+
+---
+
 # Research triage checkpoint — 2026-10-07 KST
 
 Disposition: **NEW EVIDENCE REQUIRED**.
