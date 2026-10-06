@@ -145,6 +145,12 @@ def _verify_receipt(
     dataset_identifier: str,
     git_worktree: str,
 ) -> dict[str, Any]:
+    if not isinstance(relpath, str):
+        raise KRXExpectedScopeBatchError("receipt relpath must be a string")
+    path = Path(relpath)
+    expected_parent = Path("expected_scope") / "receipts" / requested_date / dataset_identifier
+    if path.parent != expected_parent or path.suffix != ".json" or not re.fullmatch(r"[0-9a-f]{64}", path.stem):
+        raise KRXExpectedScopeBatchError("receipt content-address path drift")
     wrapped = read_private_json(
         root,
         relpath,
@@ -202,6 +208,8 @@ def _verify_receipt(
         raise KRXExpectedScopeBatchError("receipt payload does not match verified raw response")
     if receipt.get("response_schema_sha256") != schema_fingerprint(list(frame.columns), [str(x) for x in frame.dtypes]):
         raise KRXExpectedScopeBatchError("receipt schema does not match verified raw response")
+    if path.stem != _sha256(receipt):
+        raise KRXExpectedScopeBatchError("receipt content-address checksum drift")
     return {
         "metadata_sha256": wrapped["metadata_sha256"],
         "raw_object_sha256": receipt["raw_object_sha256"],
