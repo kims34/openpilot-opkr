@@ -276,6 +276,15 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
+    def test_symbol_rejects_float_and_non_numeric_coercion(self):
+        for value in (5930.0, "005930.0", "ABC", ["005930"]):
+            with self.subTest(value=value):
+                rows = self._rows()
+                rows["symbol"] = rows["symbol"].astype(object)
+                rows.at[0, "symbol"] = value
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
