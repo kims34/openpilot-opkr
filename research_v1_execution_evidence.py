@@ -201,6 +201,9 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         x[c] = _ts(x[c])
     if x[["recommendation_at", "order_submitted_at", "ingested_at"]].isna().any().any():
         raise ExecutionEvidenceError("recommendation/order/ingested timestamps are mandatory")
+    recommendation_utc_date = x["recommendation_at"].dt.tz_convert("UTC").dt.tz_localize(None).dt.normalize()
+    if not x["decision_date"].eq(recommendation_utc_date).all():
+        raise ExecutionEvidenceError("decision_date must match the UTC recommendation date")
     if (x["order_submitted_at"] < x["recommendation_at"]).any():
         raise ExecutionEvidenceError("order_submitted_at cannot precede recommendation_at")
     if (x["ingested_at"] < x["recommendation_at"]).any():
