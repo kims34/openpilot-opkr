@@ -52,7 +52,10 @@ def test_verified_official_recovery_fully_closes_position_economics_only():
         economics_evidence=_evidence(),
         expected_scope_attested=True,
     )
-    assert out["exact_status_economics_ready"] is True
+    assert out["structural_status_economics_satisfied"] is True
+    assert out["independent_economics_provenance_admission_verified"] is False
+    assert out["exact_status_economics_ready"] is False
+    assert "INDEPENDENT_ECONOMICS_PROVENANCE_ADMISSION_NOT_IMPLEMENTED" in out["blocking_conditions"]
     assert out["unresolved_positions"] == 0
     assert out["unsupported_recovery_evidence_positions"] == 0
     assert out["resolved_position_economics"][0]["verified_recovery_cash"] == "300"
@@ -77,7 +80,9 @@ def test_live_fill_plus_official_recovery_can_close_split_quantity():
         ),
         expected_scope_attested=True,
     )
-    assert out["exact_status_economics_ready"] is True
+    assert out["structural_status_economics_satisfied"] is True
+    assert out["exact_status_economics_ready"] is False
+    assert out["independent_economics_provenance_admission_verified"] is False
     row = out["resolved_position_economics"][0]
     assert row["verified_fill_cash"] == "200"
     assert row["verified_recovery_cash"] == "120"
@@ -174,6 +179,16 @@ def test_missing_or_extra_position_evidence_blocks_exact_scope():
     assert extra["extra_position_evidence"] == 1
 
 
+@pytest.mark.parametrize("value", [1, 0, "true", None, [], {}])
+def test_expected_scope_attestation_requires_exact_boolean(value):
+    with pytest.raises(KRXStatusEconomicsError, match="exact boolean"):
+        audit_exact_status_economics(
+            expected_positions=_expected(),
+            economics_evidence=_evidence(),
+            expected_scope_attested=value,
+        )
+
+
 def test_expected_scope_must_be_independently_attested_even_when_rows_match():
     out = audit_exact_status_economics(
         expected_positions=_expected(),
@@ -201,7 +216,9 @@ def test_empty_attested_expected_scope_can_pass_without_inventing_rows():
         economics_evidence=evidence,
         expected_scope_attested=True,
     )
-    assert out["exact_status_economics_ready"] is True
+    assert out["structural_status_economics_satisfied"] is True
+    assert out["exact_status_economics_ready"] is False
+    assert out["independent_economics_provenance_admission_verified"] is False
     assert out["expected_affected_positions"] == 0
     assert out["observed_positions"] == 0
 
@@ -212,7 +229,8 @@ def test_zero_recovery_value_is_allowed_only_with_verified_recovery_record():
         economics_evidence=_evidence(verified_recovery_cash_per_share=0),
         expected_scope_attested=True,
     )
-    assert out["exact_status_economics_ready"] is True
+    assert out["structural_status_economics_satisfied"] is True
+    assert out["exact_status_economics_ready"] is False
     assert out["resolved_position_economics"][0]["verified_recovery_cash"] == "0"
 
 

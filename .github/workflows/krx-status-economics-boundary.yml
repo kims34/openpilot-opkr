@@ -1,0 +1,37 @@
+name: KRX Status Economics Boundary
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1, index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_status_economics.py'
+      - 'test_research_v1_krx_status_economics.py'
+      - 'INDEXALERT_KRX_STATUS_ECONOMICS_CONTRACT.md'
+      - '.github/workflows/krx-status-economics-boundary.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1, index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_status_economics.py'
+      - 'test_research_v1_krx_status_economics.py'
+      - 'INDEXALERT_KRX_STATUS_ECONOMICS_CONTRACT.md'
+      - '.github/workflows/krx-status-economics-boundary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  status-economics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            research_v1_krx_status_economics.py
+            test_research_v1_krx_status_economics.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pandas==2.3.3 pytest==8.4.2
+      - run: python -m pytest -q test_research_v1_krx_status_economics.py
