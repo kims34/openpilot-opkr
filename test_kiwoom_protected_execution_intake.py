@@ -1,4 +1,5 @@
 import json
+from decimal import InvalidOperation, localcontext
 import tempfile
 import unittest
 from pathlib import Path
@@ -66,6 +67,16 @@ class ProtectedIntakeTests(unittest.TestCase):
                     self.assertEqual(self.j.get('intent')['filled_quantity'], 0)
                     self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
                     self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
+    def test_disabled_decimal_traps_cannot_retain_undecodable_nonfill_signal(self):
+        row = self.nonfill()
+        row['910'] = '\u00b2'
+        with localcontext() as context:
+            context.traps[InvalidOperation] = False
+            with self.assertRaises(ProtectedIntakeError):
+                self.append_bound(row)
+        self.assertEqual(self.inbox.counts()['receipts'], 0)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
 
     def test_fill_like_event_cannot_be_downgraded_to_nonfill_ignore(self):
         row=self.nonfill()

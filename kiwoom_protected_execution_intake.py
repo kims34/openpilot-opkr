@@ -99,6 +99,7 @@ class KiwoomProtectedExecutionIntake:
                     amount = Decimal(value.replace(',', ''))
                 except InvalidOperation:
                     require(False)
+                require(amount.is_finite())
                 if amount != 0:
                     return True
         return False
