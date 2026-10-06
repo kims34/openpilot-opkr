@@ -21,11 +21,15 @@ from research_v1_krx_expected_scope_attestation import (
 from research_v1_krx_expected_scope_executor import (
     execute_expected_scope_date,
 )
+from research_v1_krx_acquisition_receipt import dataframe_payload_fingerprint, schema_fingerprint
+from research_v1_krx_historical_fetchers import parse_openapi_raw
+from research_v1_krx_expected_scope_materializer import materialize_one_date
 from research_v1_krx_expected_scope_preflight import (
     evaluate_expected_scope_preflight,
 )
 from research_v1_krx_private_store import (
     read_private_json,
+    read_raw_object,
     verify_raw_object,
     write_private_json,
 )
@@ -148,16 +152,24 @@ def _verify_receipt(
         raise KRXExpectedScopeBatchError("receipt date drift")
     if receipt.get("dataset_identifier") != dataset_identifier:
         raise KRXExpectedScopeBatchError("receipt dataset drift")
-    verify_raw_object(
-        root,
-        str(receipt.get("raw_object_sha256") or ""),
-        expected_size=int(receipt.get("raw_bytes_size", -1)),
-        git_worktree=git_worktree,
+    if type(receipt.get("raw_bytes_size")) is not int or receipt["raw_bytes_size"] < 0:
+        raise KRXExpectedScopeBatchError("receipt raw byte count must be a non-negative integer")
+    raw = read_raw_object(
+        root, str(receipt.get("raw_object_sha256") or ""),
+        expected_size=receipt["raw_bytes_size"], git_worktree=git_worktree,
     )
+    frame = parse_openapi_raw(raw)
+    if type(receipt.get("response_rows")) is not int or receipt["response_rows"] != len(frame):
+        raise KRXExpectedScopeBatchError("receipt row count does not match verified raw response")
+    if receipt.get("response_payload_sha256") != dataframe_payload_fingerprint(frame):
+        raise KRXExpectedScopeBatchError("receipt payload does not match verified raw response")
+    if receipt.get("response_schema_sha256") != schema_fingerprint(list(frame.columns), [str(x) for x in frame.dtypes]):
+        raise KRXExpectedScopeBatchError("receipt schema does not match verified raw response")
     return {
         "metadata_sha256": wrapped["metadata_sha256"],
         "raw_object_sha256": receipt["raw_object_sha256"],
-        "response_rows": int(receipt.get("response_rows", 0)),
+        "response_rows": receipt["response_rows"],
+        "response_frame": frame,
     }
 
 
@@ -218,11 +230,21 @@ def _verify_completed_date(
             "trading date completion missing same-date master receipt"
         )
 
+    if _sha256(scope) != scope_digest:
+        raise KRXExpectedScopeBatchError("private scope content-address checksum drift")
+    reconstructed = materialize_one_date(
+        requested_date=requested_date, daily_trade=daily["response_frame"],
+        security_master=None if master is None else master["response_frame"],
+    )
+    if scope.get("official_trading_date_observed") is not reconstructed["official_trading_date_observed"]:
+        raise KRXExpectedScopeBatchError("private scope trading-date flag differs from verified raw response")
+    for key in ("investor_expected_scope", "status_expected_scope"):
+        expected_records = reconstructed[key].to_dict(orient="records")
+        if not isinstance(scope.get(key), list) or scope[key] != expected_records:
+            raise KRXExpectedScopeBatchError("private scope keys differ from verified raw responses")
     return {
         "requested_date": requested_date,
-        "official_trading_date_observed": bool(
-            scope.get("official_trading_date_observed")
-        ),
+        "official_trading_date_observed": reconstructed["official_trading_date_observed"],
         "daily_receipt_metadata_sha256": daily["metadata_sha256"],
         "master_receipt_metadata_sha256": (
             None if master is None else master["metadata_sha256"]
