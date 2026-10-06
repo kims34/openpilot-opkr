@@ -69,6 +69,11 @@ class AccountSettlementSnapshot:
 def normalize_kt00001_settlement(row, *, account_fingerprint, captured_at):
     """Normalize reviewed kt00001 cash/settlement fields without admitting origin."""
     _require(type(row) is dict)
+    # Pure field-only normalization remains supported. If a native response
+    # code is supplied, an explicit failed/ambiguous response cannot be used
+    # as cash evidence. Success here still does not authenticate the source.
+    if 'return_code' in row:
+        _require(type(row['return_code']) is int and row['return_code']==0)
     _require(type(account_fingerprint) is str and
              re.fullmatch(r'(?:sha256:)?[0-9a-f]{64}', account_fingerprint) is not None)
     _require(type(captured_at) is str and captured_at.strip() == captured_at)

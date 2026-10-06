@@ -121,3 +121,22 @@ class NativeReviewCLITests(unittest.TestCase):
         self.assertNotIn('cashflow_reconciliation',result)
         self.assertNotIn(str(self.input),output.getvalue())
         self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+
+    def test_explicit_failed_opening_or_closing_response_never_reports_cash_match(self):
+        before = self.journal.shadow_control(),self.journal.db.total_changes
+        for name in ('opening','closing'):
+            for code in (1,'0',False,None):
+                self.payload[name]['body']['return_code'] = code
+                self.write()
+                result = self.assess()
+                self.assertFalse(result['assessment_completed'])
+                self.assertNotIn('cashflow_reconciliation',result)
+                self.assertFalse(result['real_orders_authorized'])
+                self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+            self.payload[name]['body'].pop('return_code')
+        self.payload['opening']['body']['return_code'] = 0
+        self.payload['closing']['body']['return_code'] = 0
+        self.write()
+        result = self.assess()
+        self.assertTrue(result['assessment_completed'])
+        self.assertFalse(result['ready_for_final_user_authorization'])
