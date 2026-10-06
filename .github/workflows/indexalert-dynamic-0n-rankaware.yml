@@ -1,0 +1,26 @@
+name: IndexAlert Dynamic 0-N Rank-Aware
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths: ['research_v1_dynamic_0n_rankaware.py','.github/workflows/indexalert-dynamic-0n-rankaware.yml']
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: 'pip'}
+      - run: |
+          pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+          python -m py_compile research_v1_dynamic_0n_rankaware.py
+      - uses: actions/cache@v4
+        with: {path: research_data/marcap_raw_long, key: marcap-long-v1-2015-06-15-2026-09-28}
+      - uses: actions/cache@v4
+        with: {path: research_data/pit_supervised_long_v3_ca_fp, key: pit-supervised-long-v3-ca-fp-2015-06-15-2026-09-28-h5-c3}
+      - run: python research_v1_marcap.py --start 2015-06-15 --end 2026-09-28 --out research_data/marcap_kospi_pit_long --raw research_data/marcap_raw_long
+      - run: python research_v1_dynamic_0n_rankaware.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: indexalert-dynamic-0n-rankaware, path: research_results/dynamic_0n_rankaware/, retention-days: 30}
