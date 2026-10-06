@@ -1,6 +1,6 @@
 # IndexAlert 독립 신규정보 연구 — Work 2026-10-05~06
 
-이 문서는 공개 근거·source feasibility 연구다. 아래 10개 항목은 모두 IDEA 단계이며 실제 PREREGISTERED/RUNNING/EVALUATED trial이나 ACCEPTED_CHALLENGER가 아니다. “조건부 사전등록 후보”는 다음 자료 gate를 통과했을 때 사전등록을 고려한다는 정성적 판정이다. 성과 수치·부호·순위를 확인한 것이 아니다.
+이 문서는 공개 근거·source feasibility 연구다. 아래 11개 항목은 모두 IDEA 단계이며 실제 PREREGISTERED/RUNNING/EVALUATED trial이나 ACCEPTED_CHALLENGER가 아니다. “조건부 사전등록 후보”는 다음 자료 gate를 통과했을 때 사전등록을 고려한다는 정성적 판정이다. 성과 수치·부호·순위를 확인한 것이 아니다.
 
 ## 실제 GitHub 복구 기준
 
@@ -45,7 +45,7 @@ Veto 연구는 원래 Top3를 줄이는 방식이므로 최근 Core admissions=0
 
 시험이 별도로 허가되면 immutable 독립 사전등록 → PIT/leakage validation → frozen costs → anchored Walk-Forward → Purged validation → CPCV60 순서. 필요조건이 없는 후보는 시험하지 않는다. 본 문서를 immutable trial receipt로 내세우지 않는다.
 
-## 이번 실행의 10개 평가
+## 이번 실행의 11개 평가
 
 ### REGISTERED-LOCKUP-EXPIRY-H5-01 — 의무보유등록 해제
 
@@ -123,7 +123,7 @@ Veto 연구는 원래 Top3를 줄이는 방식이므로 최근 Core admissions=0
 
 5. **Look-ahead/leakage:** 정정공시가 원공시를 덮어쓰지 않도록 한다. 사후 처분결과·최종 수량으로 최초 결정을 바꾸지 않는다.
 
-6. **Historical data 현실성:** 10개 후보 중 공식 구조화 schema 확보 현실성이 비교적 높다. API 실제 전체 자료·최초 timestamp·rights·보통주 연결 admission은 수행하지 않았다.
+6. **Historical data 현실성:** 11개 후보 중 공식 구조화 schema 확보 현실성이 비교적 높다. API 실제 전체 자료·최초 timestamp·rights·보통주 연결 admission은 수행하지 않았다.
 
 7. **H5 연결:** dp_m_mkt의 양수 여부는 거래방식 분류이며 성과 최적화 threshold가 아니다. 임직원 지급·장외 전략투자·시간외 block은 다른 구조로 사전 제외.
 
@@ -367,6 +367,38 @@ Veto 연구는 원래 Top3를 줄이는 방식이므로 최근 Core admissions=0
 
 15. **최종 판정·다음 gate:** HOLD. 다음 gate: 실제 원공시-철회공시 쌍과 법적 상태를 확인하는 수익률 없는 event census. 사례가 없으면 시험하지 않는다.
 
+### FIRST-PUBLIC-COVENANT-BREACH-NO-CASH-DEFAULT-H5-01 — 현금 default 전 최초 공개 재무약정 위반
+
+1. **아이디어/가설:** 실제 이자/원금 지급불이행이 없는 상태에서 issuer가 처음 공개한 실제 financial covenant 위반과 채권자 권리변화를 조사했다. 위반 가능성·순수 유동부채 재분류는 이벤트가 아니다.
+
+2. **기존 연구와 독립성·중복성:** cash default/회생/워크아웃과 법적·정보 상태는 다르다. 그러나 같은 financing distress episode의 선행 transition이며 going-concern/credit watch보다 추가정보가 있어야 한다. 전체 두 Ledger에서 covenant/재무약정 연구항목은 찾지 못했다.
+
+3. **공식·학술·시장 근거:** IFRS 공식 IAS1 covenant 개정 설명은 조기상환 위험에 관한 공시정보를 구분한다. Nini/Smith/Sufi(2012)의 논문 공개초록은 payment default 밖의 creditor control뿐 아니라 위반 이후 기업성과·주가 개선도 보고한다. 단순 negative veto의 반증이며 한국 H5 효과가 아니다. [S17,S18]
+
+4. **PIT availability:** 실제 최초 공시 available_at에 이미 알려진 위반·면제·재협상 상태를 함께 기록. 회계기간 말의 위반일은 시장 공개시각이 아니다.
+
+5. **Look-ahead/leakage:** 사후 waiver·기한이익상실·추후 현금 default를 최초 위반 신호에 소급하지 않는다. 수정된 재무비율로 예전 covenant breach를 역산하지 않는다.
+
+6. **Historical data 현실성:** 공시 footnote 경로는 있지만 전기간 한국 상장 보통주 실제 위반 원문 census/PIT pair는 검증하지 못했다. 검색의 비상장기업 보도·가정사례·generic 약정은 실제 적격 event로 세지 않았다.
+
+7. **H5 연결:** H5 내 financing constraint 신호 가능성이 있지만 연차보고서 공개 때에는 위반과 면제가 이미 오래됐을 수 있다.
+
+8. **NetEV/PF 개선 mechanism:** 조기상환 권리·추가 제약은 부정적, creditor discipline/면제·재협상은 긍정적일 수 있다. signed NetEV/PF 개선을 선언하지 않는다.
+
+9. **MDD·ES95/99:** 급격한 refinancing tail 위험 가능성은 기존 부실 정보 조건부. 포괄 veto는 개선기업까지 제외할 수 있어 MDD/ES95/99 순효과 미상.
+
+10. **Date-cluster uncertainty:** 동일 issuer/loan의 반복 covenant test와 정정공시는 같은 episode. 분기보고서 공시일 및 lender 공통 shock cluster도 연결한다.
+
+11. **Recent-period stability:** IFRS covenant 공시 개정이 2024년 이후 적용돼 과거와 최근 발견가능성 비교가 어렵다. 한국 적용범위·원문 completeness는 별도 확인.
+
+12. **Coverage/capacity:** 원문 중 loan 주체가 issuer·연결자회사·최대주주 SPC인지 식별 필요. 비상장 borrower 보도를 상장 issuer exposure로 자동 이전하지 않는다. Core overlap 미측정.
+
+13. **Core 대비 incremental effect:** 기존 going-concern/financing/credit state 대비 최초 공개 약정위반의 추가정보만 미래 평가 대상. 수익률 확인 후 ratio/waiver subtype 최적화 금지.
+
+14. **Event family/episode:** 약정 준수→위반→waiver/재협상 또는 실제 acceleration→cash default→workout/회생. 알려진 상태를 조건으로 marginal transition만 관리; default 이후 위반 재서술은 상위 family 흡수.
+
+15. **최종 판정·다음 gate:** HOLD. 다음 gate: 실제 상장 issuer 원문·최초 공개시각·waiver 현재상태와 loan identity를 수익률 없이 검증. generic covenant-risk disclosure를 성능시험하지 않는다.
+
 ## 전체 판정표
 
 | 아이디어 | 독립성 | PIT 가능성 | 데이터 현실성 | H5 적합성 | 예상효과 | 주요위험 | 판정 | 다음 gate |
@@ -381,8 +413,9 @@ Veto 연구는 원래 Top3를 줄이는 방식이므로 최근 Core admissions=0
 | 태풍예보×시설 | 피해전 transition | 초도예보+기존 시설 | forecast/시설 이력 필요 | 조건부 | 피해전 위험정보 가설 | best-track leakage·오경보 | HOLD | forecast·facility audit |
 | 공개 투자의견 하향 | equity 정보; 공시 echo 위험 | 최초 public 배포시각 | 전기간/rights 어려움 | 미확인 | 새 분석정보 가설 | 선배포·동일정보 중복 | HOLD | 시각·권리·독립정보 |
 | 발표된 배당 철회 | default 이전 transition | 원발표/철회 pair | 실제 사례 census 미확인 | 약함 | 신뢰도/현금정보 가설 | 현금보존 반대효과·희소 | HOLD | 원공시 pair·상태 audit |
+| 최초 재무약정 위반 | default 전 financing transition | 최초공시+waiver 상태 | 적격 원문 census 미확인 | 조건부 | 새 채권자 권리정보 가설 | 공시지연·면제·반대효과 | HOLD | 원문·waiver·loan identity |
 
-조건부 사전등록 후보3, HOLD6, 기존 family 흡수1. 고우선 사전등록 후보·검증된 유망 Alpha·accepted challenger는 없음. 장내 자기주식 처분은 공식 구조화 schema가 있어 source audit 착수 현실성이 상대적으로 높다는 뜻이지 투자효과가 우월하다는 뜻이 아니다.
+조건부 사전등록 후보3, HOLD7, 기존 family 흡수1. 고우선 사전등록 후보·검증된 유망 Alpha·accepted challenger는 없음. 장내 자기주식 처분은 공식 구조화 schema가 있어 source audit 착수 현실성이 상대적으로 높다는 뜻이지 투자효과가 우월하다는 뜻이 아니다.
 
 ## 기존 인계 연구의 보존과 반복 방지
 
@@ -416,6 +449,9 @@ Veto 연구는 원래 Top3를 줄이는 방식이므로 최근 Core admissions=0
 - [S14] [미래에셋증권 발행 research 공개 목록](https://securities.miraeasset.com/bbs/board/message/list.do?categoryId=1521&curPage=4&direction=1&listType=1&searchEndDay=01&searchEndMonth=01&searchEndYear=2026&searchStartDay=01&searchStartMonth=01&searchStartYear=2025&searchType=2&startId=zzzzz~&startPage=1)
 - [S15] [Michaely/Thaler/Womack(1995), Dividend Initiations and Omissions](https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1995.tb04796.x)
 - [S16] [KIND 실제 보고서: 배당 결의/승인 상태 구분용, 철회 확정사례 아님](https://kind.krx.co.kr/external/2026/06/01/001444/20260601002355/11011.htm)
+
+- [S17] [IFRS 공식 non-current liabilities with covenants 개정 설명](https://www.ifrs.org/news-and-events/news/2022/10/iasb-amends-accounting-standard-to-improve-information-about-long-term-debt-with-covenants/)
+- [S18] [Nini/Smith/Sufi(2012), 저자 소속 대학의 논문 기록·초록](https://researchdiscovery.drexel.edu/esploro/outputs/journalArticle/Creditor-Control-Rights-Corporate-Governance-and/991021873115004721)
 
 ## 이번 Work 실행 여부
 
