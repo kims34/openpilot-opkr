@@ -171,3 +171,38 @@ def test_canonical_source_docs_freeze_structured_authorization_evidence_boundary
     assert "Investor flow: A PARTIAL" in handoff
     assert "Gate A" in status and "PARTIAL" in status
     assert "Gate A" in handoff and "PARTIAL" in handoff
+
+
+@pytest.mark.parametrize("gate", list("ABCDEF"))
+@pytest.mark.parametrize("value", [None, False, 0, {}, []])
+def test_nonstring_evidence_cannot_become_a_source_gate_pass(gate, value):
+    evidence = _evidence()
+    evidence[gate] = value
+    with pytest.raises(ValueError, match="non-empty evidence"):
+        audit_source_gates(
+            source_family="KRX_INVESTOR_FLOW", intended_use_scope="INTERNAL_RESEARCH",
+            statuses={key: "PASS" for key in "ABCDEF"}, evidence=evidence,
+        )
+
+
+@pytest.mark.parametrize("field", ["source_family", "intended_use_scope"])
+@pytest.mark.parametrize("value", [None, False, 0, {}, []])
+def test_missing_or_nonstring_declared_scope_is_not_stringified(field, value):
+    kwargs = dict(source_family="KRX_INVESTOR_FLOW", intended_use_scope="INTERNAL_RESEARCH",
+                  statuses={gate: "PASS" for gate in "ABCDEF"}, evidence=_evidence())
+    kwargs[field] = value
+    with pytest.raises(ValueError, match=field):
+        audit_source_gates(**kwargs)
+
+
+def test_valid_string_normalization_preserves_source_only_boundary():
+    out = audit_source_gates(
+        source_family=" KRX_INVESTOR_FLOW ", intended_use_scope=" INTERNAL_RESEARCH ",
+        statuses={gate: " pass " for gate in "ABCDEF"},
+        evidence={gate: " fixture-only justification " for gate in "ABCDEF"},
+    )
+    assert out["source_family"] == "KRX_INVESTOR_FLOW"
+    assert out["intended_use_scope"] == "INTERNAL_RESEARCH"
+    assert out["all_source_gates_pass"] is True
+    assert out["alpha_or_final_judge_promotion_authorized"] is False
+    assert out["live_trading_authorized_by_source_audit_alone"] is False

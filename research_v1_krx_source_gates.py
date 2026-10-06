@@ -104,20 +104,24 @@ def audit_source_gates(
         raise ValueError(
             f"source-gate evidence must contain exactly A-F; got={sorted(evidence_keys)}"
         )
-    if not str(source_family).strip():
+    if not isinstance(source_family, str) or not source_family.strip():
         raise ValueError("source_family is required")
-    if not str(intended_use_scope).strip():
+    if not isinstance(intended_use_scope, str) or not intended_use_scope.strip():
         raise ValueError("intended_use_scope is required")
 
     results: dict[str, dict] = {}
     for gate in "ABCDEF":
-        status = str(statuses[gate]).strip().upper()
+        if not isinstance(statuses[gate], str):
+            raise ValueError(f"invalid status for gate {gate}: original string required")
+        status = statuses[gate].strip().upper()
         if status not in VALID_GATE_STATUSES:
             raise ValueError(
                 f"invalid status for gate {gate}: {status!r}; "
                 f"allowed={sorted(VALID_GATE_STATUSES)}"
             )
-        note = str(evidence[gate]).strip()
+        if not isinstance(evidence[gate], str):
+            raise ValueError(f"gate {gate} requires non-empty evidence string")
+        note = evidence[gate].strip()
         if not note:
             raise ValueError(f"gate {gate} requires non-empty evidence/justification")
         definition = SOURCE_GATE_DEFINITIONS[gate]
@@ -138,8 +142,8 @@ def audit_source_gates(
     all_pass = all(results[g]["status"] == "PASS" for g in "ABCDEF")
     return {
         "contract": "INDEXALERT_KRX_SOURCE_GATES_A_TO_F",
-        "source_family": str(source_family).strip(),
-        "intended_use_scope": str(intended_use_scope).strip(),
+        "source_family": source_family.strip(),
+        "intended_use_scope": intended_use_scope.strip(),
         "gates": results,
         "all_source_gates_pass": all_pass,
         "source_contract_closed_for_declared_scope": all_pass,
