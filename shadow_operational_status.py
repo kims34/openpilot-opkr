@@ -10,7 +10,7 @@ from pathlib import Path
 import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
-from order_snapshot_reconciliation import FIELDS, STATUS
+from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 from order_intent_journal import OrderJournalError, validate_stored_intent_row
 
 
@@ -85,7 +85,7 @@ def inspect_shadow_operational_status(path):
             if key not in known or (binding_revision,binding_epoch) != (revision,epoch):
                 continue  # Scope/stale diagnostics remain separate.
             try:
-                source = _load_json(payload)
+                source = load_stored_order_snapshot(payload)
                 _require(type(source) is dict and set(source)==FIELDS)
                 _require(type(source['quantity']) is int and source['quantity']>0
                     and type(source['filled_quantity']) is int

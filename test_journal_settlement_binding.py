@@ -73,6 +73,19 @@ class JournalSettlementBindingTests(unittest.TestCase):
                      'genuine_live_provenance_verified','funds_movement_authorized'):
             self.assertFalse(out[flag])
 
+    def test_ambiguous_or_exhausted_stored_snapshot_cannot_be_admitted(self):
+        self.acknowledged()
+        for payload in ('{"filled_quantity":9,' + json.dumps(self.rows[0])[1:],
+                        '[' * 20000 + '0' + ']' * 20000):
+            with self.subTest(kind='duplicate' if payload.startswith('{') else 'depth'):
+                self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?', (payload,))
+                before = self.journal.db.total_changes
+                out = self.assess()
+                self.assertFalse(out['account_settlement_admitted'])
+                self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED', out['local_reconciliation_errors'])
+                self.assertFalse(out['ready_for_final_user_authorization'])
+                self.assertEqual(self.journal.db.total_changes, before)
+
     def test_declared_zero_cannot_hide_durable_unknown_submission(self):
         self.claimed()
         out = self.assess()

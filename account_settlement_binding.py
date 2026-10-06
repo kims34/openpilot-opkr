@@ -13,7 +13,7 @@ import json
 import re
 from kiwoom_account_settlement_evidence import AccountSettlementSnapshot
 from order_intent_journal import OrderIntentJournal, OrderJournalError
-from order_snapshot_reconciliation import FIELDS, STATUS
+from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 from early_live_admission_gate import EarlyLiveAdmissionEvidence, assess_early_live_readiness
 class SettlementBindingError(ValueError): pass
 @dataclass(frozen=True)
@@ -106,7 +106,7 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
                 errors.add('ORDER_SNAPSHOT_BINDING_STALE')
                 continue
             try:
-                source = json.loads(bound[2])
+                source = load_stored_order_snapshot(bound[2])
                 if (type(source) is not dict or set(source) != FIELDS
                     or type(source['quantity']) is not int or source['quantity'] <= 0
                     or type(source['filled_quantity']) is not int

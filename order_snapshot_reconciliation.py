@@ -14,6 +14,26 @@ FIELDS = {'key', 'broker_order_id', 'symbol', 'side', 'quantity', 'filled_quanti
 STATUS = {'OPEN', 'CANCELLED', 'FILLED', 'REJECTED'}
 
 
+def load_stored_order_snapshot(raw_payload):
+    """Decode durable snapshot JSON without accepting ambiguous fields."""
+    def unique_fields(pairs):
+        fields = {}
+        for key, value in pairs:
+            if key in fields:
+                raise OrderJournalError('invalid stored order snapshot')
+            fields[key] = value
+        return fields
+
+    def reject_constant(_value):
+        raise OrderJournalError('invalid stored order snapshot')
+
+    try:
+        return json.loads(raw_payload, object_pairs_hook=unique_fields,
+            parse_constant=reject_constant)
+    except (json.JSONDecodeError, RecursionError, TypeError):
+        raise OrderJournalError('invalid stored order snapshot') from None
+
+
 def reconcile_order_snapshot_batch(journal, *, revision, orders):
     """Compare every claimed intent under one SQLite write transaction.
 
