@@ -1,3 +1,15 @@
+# Research triage checkpoint — 2026-10-07 KST
+
+Disposition: **NEW EVIDENCE REQUIRED**.
+
+Value-gate review against current Master/Ledger/Status found no justified new same-history performance Challenger to launch in this cycle. Dynamic 0-N is already INCONCLUSIVE and explicitly paused; further N/rank/threshold changes would be parameter mining. Existing repository already contains feature-family ablation, liquidity-universe sensitivity, volatility-veto and cross-asset regime research, so repeating those themes is not new information. Current H5 reference remains developmental/not promotable, with no admissions in the latest 504 OOS sessions and negative date-cluster LCB in the established evidence.
+
+The highest-value unresolved evidence is independent rather than another historical variant: genuine official KRX availability/PIT/security-status and exact affected-position fill/recovery economics; prospective exact-policy Shadow/Fresh Confirmation under a valid successor chronology; and eventually genuine broker-native LIVE execution evidence under the frozen sufficiency contract. Missing PIT sector/factor/dependence and capital/execution inputs also block a valid marginal-utility Dynamic 0-N test.
+
+No Champion/Frozen/operating-code change. No sealed/consumed holdout access. No new feature/threshold/horizon/N/model sweep was run merely to increase experiment count.
+
+---
+
 # Research Value & Evidence Policy — 2026-10-07 KST
 
 ## Primary objective
