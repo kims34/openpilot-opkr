@@ -92,6 +92,34 @@ class OperatorToolkitTests(unittest.TestCase):
                 self.assertFalse(result['assessment_completed'])
                 self.assertNotIn('cashflow_reconciliation',result)
                 self.assertFalse(result['real_orders_authorized'])
+
+            # Exercise decoder exhaustion in the extracted CLI, including its
+            # process exit/stderr boundary rather than only an in-process call.
+            fixture.input.write_text('['*20000+'0'+']'*20000,encoding='utf-8')
+            code,result = review()
+            self.assertEqual(code,2)
+            self.assertFalse(result['assessment_completed'])
+            self.assertNotIn('cashflow_reconciliation',result)
+            self.assertFalse(result['real_orders_authorized'])
+
+            # A structurally bound empty history must not hide conversion
+            # overflow in the cash window's Korean calendar date.
+            fixture.payload['closing']['body']['entr'] = '8999'
+            fixture.payload['opening']['captured_at'] = '9999-12-31T01:00:00Z'
+            fixture.payload['closing']['captured_at'] = '9999-12-31T23:00:00Z'
+            history = fixture.payload['history']
+            history['captured_at'] = '9999-12-31T23:30:00Z'
+            history['request'].update(strt_dt='99991231',end_dt='99991231')
+            history['pages'][0]['body']['trst_ovrl_trde_prps_array'] = []
+            manifest = fixture.payload['review_manifest']
+            manifest.update(history_captured_at=history['captured_at'],
+                history_request=dict(history['request']),rows=[])
+            fixture.write()
+            code,result = review()
+            self.assertEqual(code,2)
+            self.assertFalse(result['assessment_completed'])
+            self.assertNotIn('cashflow_reconciliation',result)
+            self.assertFalse(result['real_orders_authorized'])
             self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
         finally:
             fixture.tearDown()
