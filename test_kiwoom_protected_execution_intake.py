@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from kiwoom_execution_inbox import KiwoomExecutionInbox
+from kiwoom_execution_inbox import KiwoomExecutionInbox, ExecutionInboxError
 from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
 from kiwoom_protected_execution_intake import (
     ProtectedAccountBinding, KiwoomProtectedExecutionIntake, ProtectedIntakeError,
@@ -37,6 +37,38 @@ class ProtectedIntakeTests(unittest.TestCase):
 
     def append_bound(self, row=None, day='2026-10-05'):
         return self.intake.append_for_bound_order('receipt',self.raw if row is None else row,trading_date=day)
+
+    def nonfill(self):
+        row=dict(self.raw)
+        row.update({'902':'10','909':'','910':'','911':'','914':'','915':'','913':'접수'})
+        return row
+
+    def test_known_nonfill_lifecycle_is_ignored_without_poisoning_execution_inbox(self):
+        before=self.j.get('intent')['state']
+        out=self.append_bound(self.nonfill())
+        self.assertEqual(out['result'],'NON_FILL_EVENT_IGNORED')
+        self.assertTrue(out['broker_order_binding_resolved'])
+        self.assertEqual(self.inbox.counts()['receipts'],0)
+        self.assertEqual(self.inbox.counts()['pending'],0)
+        self.assertEqual(self.j.get('intent')['state'],before)
+        self.assertEqual(self.j.get('intent')['filled_quantity'],0)
+
+    def test_fill_like_event_cannot_be_downgraded_to_nonfill_ignore(self):
+        row=self.nonfill()
+        row.update({'909':'execution','910':'100','911':'4','914':'100','915':'4'})
+        out=self.append_bound(row)
+        self.assertEqual(out['result'],'RECEIPT_PERSISTED')
+        self.assertEqual(self.inbox.counts()['pending'],1)
+        with self.assertRaises(ExecutionInboxError):
+            self.inbox.replay_next()
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
+    def test_unknown_nonfill_order_still_fails_closed_before_ignore(self):
+        row=self.nonfill(); row['9203']='unbound-order'
+        with self.assertRaises(ProtectedIntakeError):
+            self.append_bound(row)
+        self.assertEqual(self.inbox.counts()['receipts'],0)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
 
     def test_bound_order_resolution_routes_without_caller_decision_key(self):
         with patch('socket.socket',side_effect=AssertionError('network forbidden')):
