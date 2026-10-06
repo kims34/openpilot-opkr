@@ -176,3 +176,77 @@ def test_expected_scope_batch_resume_rejects_scope_path_drift(tmp_path):
             evaluation_time=EVAL,
             max_new_dates=0,
         )
+
+
+@pytest.mark.parametrize("field,value", [
+    ("expected_task_count", "1"), ("expected_task_count", 1.0), ("expected_task_count", True),
+    ("completed_task_count", 0), ("completed_task_count", "1"), ("completed_task_count", 1.0), ("completed_task_count", True),
+    ("batch_complete", False), ("batch_complete", 1), ("batch_complete", "true"),
+    ("status", "PENDING"), ("status", "IN_PROGRESS"),
+])
+def test_resume_rejects_inconsistent_completion_metadata(monkeypatch, field, value):
+    import research_v1_krx_expected_scope_batch as batch
+    tasks = [{"task_id": "task", "request": {"params": {"basDd": "20150615"}}}]
+    state = {
+        "state_version": batch.STATE_VERSION, "contract_id": batch.CONTRACT_ID,
+        "expected_task_count": 1, "task_set_fingerprint_sha256": batch._task_fingerprint(tasks),
+        "completed": {"20150615": {}}, "completed_task_count": 1,
+        "batch_complete": True, "status": "COMPLETE",
+        **{key: False for key in ("source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+                                  "feature_performance_testing_authorized", "sealed_holdout_authorized", "live_trading_authorized")},
+    }
+    state[field] = value
+    monkeypatch.setattr(batch, "read_private_json", lambda *args, **kwargs: {"value": state})
+    with pytest.raises(KRXExpectedScopeBatchError):
+        batch._load_or_init_state(root="unused", git_worktree="unused", tasks=tasks)
+
+
+@pytest.mark.parametrize("field", [
+    "source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+    "feature_performance_testing_authorized", "sealed_holdout_authorized", "live_trading_authorized",
+])
+@pytest.mark.parametrize("value", [True, 0, None, "false"])
+def test_resume_rejects_non_false_authority_claims(monkeypatch, field, value):
+    import research_v1_krx_expected_scope_batch as batch
+    tasks = [{"task_id": "task", "request": {"params": {"basDd": "20150615"}}}]
+    state = {
+        "state_version": batch.STATE_VERSION, "contract_id": batch.CONTRACT_ID,
+        "expected_task_count": 1, "task_set_fingerprint_sha256": batch._task_fingerprint(tasks),
+        "completed": {}, "completed_task_count": 0, "batch_complete": False, "status": "PENDING",
+        **{key: False for key in ("source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+                                  "feature_performance_testing_authorized", "sealed_holdout_authorized", "live_trading_authorized")},
+    }
+    state[field] = value
+    monkeypatch.setattr(batch, "read_private_json", lambda *args, **kwargs: {"value": state})
+    with pytest.raises(KRXExpectedScopeBatchError, match="illegally claims authority"):
+        batch._load_or_init_state(root="unused", git_worktree="unused", tasks=tasks)
+
+
+def test_paused_resume_verifies_completion_beyond_first_missing_date(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    execute_expected_scope_batch(
+        environment=_env(tmp_path), git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=2,
+    )
+    root = tmp_path / "private"
+    state_path = root / "expected_scope" / "batch_state-v1.json"
+    state = json.loads(state_path.read_text())
+    del state["completed"]["20150615"]
+    state["completed_task_count"] = 1
+    state_path.write_text(json.dumps(state) + "\n")
+    state_path.chmod(0o600)
+    scope_path = next((root / "expected_scope" / "dates" / "20150616").glob("*.json"))
+    scope = json.loads(scope_path.read_text())
+    receipt = json.loads((root / scope["daily_receipt_relpath"]).read_text())
+    digest = receipt["raw_object_sha256"]
+    obj = root / "objects/sha256" / digest[:2] / f"{digest}.bin"
+    obj.write_bytes(b"tampered")
+    obj.chmod(0o600)
+    calls = []
+    with pytest.raises(Exception, match="checksum mismatch"):
+        execute_expected_scope_batch(
+            environment=_env(tmp_path), git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0,
+        )
+    assert calls == []

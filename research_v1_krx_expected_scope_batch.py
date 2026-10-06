@@ -100,12 +100,31 @@ def _load_or_init_state(
         raise KRXExpectedScopeBatchError("checkpoint state_version drift")
     if state.get("contract_id") != CONTRACT_ID:
         raise KRXExpectedScopeBatchError("checkpoint contract_id drift")
-    if int(state.get("expected_task_count", -1)) != len(tasks):
+    if type(state.get("expected_task_count")) is not int or state["expected_task_count"] != len(tasks):
         raise KRXExpectedScopeBatchError("checkpoint task-count drift")
     if state.get("task_set_fingerprint_sha256") != expected_fp:
         raise KRXExpectedScopeBatchError("checkpoint task-set fingerprint drift")
     if not isinstance(state.get("completed"), Mapping):
         raise KRXExpectedScopeBatchError("checkpoint completed map invalid")
+    completed = state["completed"]
+    expected_dates = {str(task["request"]["params"]["basDd"]) for task in tasks}
+    if any(not isinstance(day, str) or day not in expected_dates for day in completed):
+        raise KRXExpectedScopeBatchError("checkpoint completed date outside frozen task set")
+    if any(not isinstance(value, Mapping) for value in completed.values()):
+        raise KRXExpectedScopeBatchError("checkpoint completion entry must be a mapping")
+    if type(state.get("completed_task_count")) is not int or state["completed_task_count"] != len(completed):
+        raise KRXExpectedScopeBatchError("checkpoint completed count does not match completed map")
+    complete = len(completed) == len(tasks)
+    if state.get("batch_complete") is not complete:
+        raise KRXExpectedScopeBatchError("checkpoint completion flag does not match completed map")
+    expected_status = "COMPLETE" if complete else ("IN_PROGRESS" if completed else "PENDING")
+    if state.get("status") != expected_status:
+        raise KRXExpectedScopeBatchError("checkpoint status does not match completed map")
+    for field in ("source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+                  "feature_performance_testing_authorized", "sealed_holdout_authorized",
+                  "live_trading_authorized"):
+        if state.get(field) is not False:
+            raise KRXExpectedScopeBatchError(f"checkpoint illegally claims authority: {field}")
     return state
 
 
@@ -247,6 +266,15 @@ def execute_expected_scope_batch(
         tasks=tasks,
     )
     completed = dict(state.get("completed") or {})
+    # Verify every stored completion before fetching any missing date, including
+    # completions beyond a gap that an operational pause would otherwise skip.
+    verified_completed = {
+        day: _verify_completed_date(
+            root=root, requested_date=day, completion=completion,
+            git_worktree=git_worktree,
+        )
+        for day, completion in completed.items()
+    }
 
     resumed_count = 0
     executed_count = 0
@@ -254,12 +282,7 @@ def execute_expected_scope_batch(
     for task in tasks:
         day = str(task["request"]["params"]["basDd"])
         if day in completed:
-            verified = _verify_completed_date(
-                root=root,
-                requested_date=day,
-                completion=completed[day],
-                git_worktree=git_worktree,
-            )
+            verified = verified_completed[day]
             resumed_count += 1
             trading_date_count += int(
                 verified["official_trading_date_observed"]
