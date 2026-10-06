@@ -24,7 +24,7 @@ class JournalSettlementBindingTests(unittest.TestCase):
         self.base = EarlyLiveAdmissionEvidence(True,True,True,0,0,True,True,True,True,True,True)
         self.admission = SettlementAdmission(True,True,True,True,0)
         self.snapshot = normalize_kt00001_settlement(
-            {'entr':'100000','pymn_alow_amt':'90000','d2_entra':'95000'},
+            {'entr':'100000','pymn_alow_amt':'90000','d2_entra':'95000','ord_alow_amt':'50000'},
             account_fingerprint='a'*64, captured_at='2026-10-06T10:00:00+09:00')
         self.rows = []
         self.reconcile()
