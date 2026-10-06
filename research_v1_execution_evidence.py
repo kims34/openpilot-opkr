@@ -113,6 +113,19 @@ def _timezone_aware_scalar(value) -> bool:
     return ts.tzinfo is not None and ts.utcoffset() is not None
 
 
+def _date_only_scalar(value) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if len(text) != 10 or text[4] != "-" or text[7] != "-":
+        return False
+    try:
+        ts = pd.Timestamp(text)
+    except (TypeError, ValueError):
+        return False
+    return ts.strftime("%Y-%m-%d") == text
+
+
 def _finite_median(series: pd.Series) -> float | None:
     x = pd.to_numeric(series, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
     return None if x.empty else float(x.median())
@@ -148,7 +161,9 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         "first_fill_at", "final_fill_at", "avg_fill_price",
         "markout_5m_price", "markout_30m_price", "markout_close_price",
     ]].copy()
-    x["decision_date"] = pd.to_datetime(x["decision_date"], errors="coerce").dt.normalize()
+    if not table["decision_date"].map(_date_only_scalar).all():
+        raise ExecutionEvidenceError("decision_date must be an exact YYYY-MM-DD date string")
+    x["decision_date"] = pd.to_datetime(x["decision_date"], format="%Y-%m-%d", errors="coerce").dt.normalize()
     if x["symbol"].isna().any():
         raise ExecutionEvidenceError("symbol must not be missing")
     x["symbol"] = x["symbol"].astype(str).str.strip().str.upper().str.replace(r"\.0$", "", regex=True)
