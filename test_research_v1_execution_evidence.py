@@ -267,6 +267,15 @@ class TestExecutionEvidence(unittest.TestCase):
         with self.assertRaises(ExecutionEvidenceError):
             validate_execution_observations(rows)
 
+    def test_decision_date_rejects_datetime_and_numeric_coercion(self):
+        for value in ("2026-09-28T23:59:59Z", 20260928, 0):
+            with self.subTest(value=value):
+                rows = self._rows()
+                rows["decision_date"] = rows["decision_date"].astype(object)
+                rows.at[0, "decision_date"] = value
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
