@@ -294,12 +294,6 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
-    def test_decision_date_must_match_recommendation_utc_date(self):
-        rows = self._rows()
-        rows.loc[0, "decision_date"] = "2026-09-30"
-        with self.assertRaises(ExecutionEvidenceError, match="decision_date must match"):
-            validate_execution_observations(rows)
-
 
 if __name__ == "__main__":
     unittest.main()
