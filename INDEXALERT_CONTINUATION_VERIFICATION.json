@@ -1,11 +1,11 @@
 {
   "schema_version": "INDEXALERT_CONTINUATION_VERIFICATION_v1",
-  "checked_at": "2026-10-06T00:37:52Z",
+  "checked_at": "2026-10-06T02:14:25.782Z",
   "observed_heads": {
-    "development": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
-    "research": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
+    "development": "7bbc3dda222b12a3eb0c29200ae8534566a99f2e",
+    "research": "99d52d3d1b59656f6850c77d9c6e11d18fd1178e",
     "server": "8a68b01bca5d551d083ccda263df38d86fa54166",
-    "android": "aaac565a7dc99f36b369b36cadabaf4e2faf1bf5",
+    "android": "52377357c0c5260673fc823be3e8a0451abbea72",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
     "immutable_history": "585d763542b2fbbdc3f928621f679fb14c8c3bbf"
@@ -507,7 +507,7 @@
     "broker_order_submission_implemented": false,
     "automation_control_persistence_implemented": false,
     "frozen_criteria_changed": false,
-    "current_canonical_head": "aaac565a7dc99f36b369b36cadabaf4e2faf1bf5",
+    "current_canonical_head": "52377357c0c5260673fc823be3e8a0451abbea72",
     "merge": "6cefecd758da3f35be2f99d5c55d7e38fd589473",
     "remote_status": "success",
     "build_proof": {
@@ -801,7 +801,126 @@
       }
     },
     "build_proof_application_code_unchanged_at_current_head": true,
-    "build_proof_application_compare": "f772ce57..aaac565a changes only .github/workflows/index-alert-apk-reference-signing.yml"
+    "build_proof_application_compare": "PR53 adds only separate preview module/settings/task scoping; original unsigned release SHA remains f8e3c9e32355355ea412a0a4a55ddd8db9afff41ea9f6399ed617ceec6370e4b in actual canonical regression.",
+    "owner_installed_apk_observation": {
+      "observed_at": "2026-10-06T10:50:03+09:00",
+      "provenance": "OWNER_EXECUTED_SDK_POWERSHELL_OUTPUT",
+      "application_id": "com.indexalert.app",
+      "version_name": "4.7",
+      "version_code": 47,
+      "apk_sha256": "9e1b72432b44f41a04c7f502d98502d3c77d69ec451718b8da34a260269eca01",
+      "signer_sha256": "ecb7486e3ce65fba42f6bf55ff8359abd0ee7d8268c8305e248340c84443c6fa",
+      "standard_local_debug_keystore_exists": false,
+      "all_custom_signing_keys_searched": false,
+      "original_app_updated": false,
+      "app_data_accessed": false
+    },
+    "isolated_preview": {
+      "pr": 53,
+      "merge": "52377357c0c5260673fc823be3e8a0451abbea72",
+      "canonical": {
+        "apk_sha256": "3e873425ce04cee59e10c0886fc61695d7e91d3b39610108b4874dd672a18379",
+        "application_id": "com.indexalert.preview",
+        "broker_request_sent": false,
+        "checkout_sha": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "errors": 0,
+        "failures": 0,
+        "firebase_dependency_present": false,
+        "frozen_criteria_changed": false,
+        "installed_signing_continuity_verified": false,
+        "live_ordering_authorized": false,
+        "orders_requested": false,
+        "permissions": [
+          "android.permission.INTERNET"
+        ],
+        "physical_e2e_verified": false,
+        "production_app_updated": false,
+        "production_push_e2e_verified": false,
+        "readiness_source_byte_identical": true,
+        "run_id": "37402569974",
+        "schema_version": "INDEXALERT_ISOLATED_READINESS_PREVIEW_v1",
+        "signature_verified": true,
+        "signer_sha256": [
+          "0433c8bd6aae2706ee3193d937dccb97f39dac10c264ee8399ac3011ad39bfea"
+        ],
+        "size_bytes": 820613,
+        "skipped": 0,
+        "source_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "tests": 4,
+        "version_code": 48,
+        "version_name": "4.8-preview",
+        "workmanager_dependency_present": false
+      },
+      "run": 37402569974,
+      "job": 112072791477,
+      "artifact_id": 11385867401,
+      "archive_sha256": "95d29b53f759e3b2df24dbcb87a2c1057c2939155077fb2e656724f06cf9b3ef",
+      "downloaded_archive_and_apk_verified": true,
+      "user_download_file": "IndexAlert-4.8-preview.apk",
+      "physical_preview_ui_verified": false,
+      "production_push_e2e_verified": false
+    },
+    "latest_original_app_regression": {
+      "run": 37402570020,
+      "job": 112072791464,
+      "proof": {
+        "artifacts": [
+          {
+            "apk_sha256": "95cd2910e2cb2cd8d90298ac2348ac840e4ebc298b66fc1d1eff2f038427f51d",
+            "application_id": "com.indexalert.app",
+            "expected_unsigned_release": false,
+            "signature_verified": true,
+            "signer_sha256": [
+              "d2e51fff1451c60de5e7f8ce1a54afff0cab274747e1da978b310f07d9d969fc"
+            ],
+            "size_bytes": 11835131,
+            "variant": "debug",
+            "version_code": 48,
+            "version_name": "4.8"
+          },
+          {
+            "apk_sha256": "f8e3c9e32355355ea412a0a4a55ddd8db9afff41ea9f6399ed617ceec6370e4b",
+            "application_id": "com.indexalert.app",
+            "expected_unsigned_release": true,
+            "signature_verified": false,
+            "signer_sha256": [],
+            "size_bytes": 8362877,
+            "variant": "release",
+            "version_code": 48,
+            "version_name": "4.8"
+          }
+        ],
+        "broker_request_sent": false,
+        "checkout_sha": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "errors": 0,
+        "failures": 0,
+        "frozen_criteria_changed": false,
+        "installed_signing_continuity_verified": false,
+        "live_ordering_authorized": false,
+        "orders_requested": false,
+        "physical_e2e_verified": false,
+        "run_id": "37402570020",
+        "schema_version": "INDEXALERT_ANDROID_BUILD_VERIFICATION_v1",
+        "skipped": 0,
+        "source_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+        "tests": 4,
+        "unit_test_class": "com.indexalert.app.AutomationReadinessTest"
+      }
+    },
+    "wireless_inspection_revision": {
+      "pr": 54,
+      "feature": "94daa6f9fd4ab6c309e0e20edb6f0c5b899ce7a6",
+      "merge": "be589692fd4e38f4f6292d77b0f2773af4469b5c",
+      "canonical_run": 37402515132,
+      "canonical_job": 112072617582,
+      "synthetic_tests": 10,
+      "status": "success",
+      "identifier_output": false,
+      "automatic_pairing_or_connection": false,
+      "private_key_accessed": false,
+      "installation_performed": false
+    },
+    "previous_application_compare": "f772ce57..aaac565a changes only .github/workflows/index-alert-apk-reference-signing.yml"
   },
   "gate_authority": {
     "physical4_8_verified": false,
@@ -821,11 +940,11 @@
     "reset_re_evaluation_reseal_relabel_retune_forbidden": true
   },
   "next_execution": [
-    "Fetch current authoritative refs/docs/Actions; do not repeat completed work or restart active jobs.",
-    "Confirm latest checkpoint execution/source docs checks on exact observed commit.",
-    "Review independent registration/admission and official source/native-account evidence under frozen contracts; syntax is not independent chronology.",
-    "Keep runtime pin and completed workers. Owner-only public installed APK observation precedes any compatible signed update; no key/password upload or default uninstall.",
-    "Preserve failed consumed v1 lineage and all statistical/execution/promotion gates; no real orders/funds/broker permissions."
+    "Owner installs exact canonical com.indexalert.preview APK alongside retained original4.7 and reports actual readiness screen; no uninstall/data-clear/key upload.",
+    "Record isolated preview UI only. Do not infer original-package4.8 signing/push E2E or broker/Alpha authority.",
+    "Restore actual refs/Actions/Status/Continuity/Handoff before new work; last implementation commits PR53/PR54 and last tested docs recorded here. JSON-only evidence write does not claim another CI run.",
+    "Continue only contract-justified independent source/native-account/preregistration engineering; empirical evidence and original frozen gates remain external prerequisites.",
+    "Preserve all Railway pins/volumes and completed readonly PIT/KRX/DEMO workers. No orders/funds/broker-account permission changes, no holdout/model/threshold/cutoff changes."
   ],
   "final_document_checkpoints": {
     "development": "5032563074c3697031a7d4bf62be4351757dfa48",
@@ -861,5 +980,53 @@
     }
   ],
   "document_checkpoint_ci_checked_at": "2026-10-06T00:42:10Z",
-  "application_and_frozen_contract_changes_in_this_verification_record": false
+  "application_and_frozen_contract_changes_in_this_verification_record": false,
+  "implementation_heads": {
+    "development_wireless": "be589692fd4e38f4f6292d77b0f2773af4469b5c",
+    "android": "52377357c0c5260673fc823be3e8a0451abbea72",
+    "server_railway_pin": "8a68b01bca5d551d083ccda263df38d86fa54166"
+  },
+  "latest_document_ci": {
+    "development": {
+      "head": "7bbc3dda222b12a3eb0c29200ae8534566a99f2e",
+      "run": 37402974916,
+      "job": 112074089800,
+      "status": "SUCCESS",
+      "proof": [
+        "2026-10-06T02:12:29.2050225Z 76 passed in 3.87s"
+      ]
+    },
+    "research": [
+      {
+        "run": 37403055616,
+        "name": "IndexAlert Research v1 Execution Evidence Integrity",
+        "head": "99d52d3d1b59656f6850c77d9c6e11d18fd1178e",
+        "jobs": [
+          {
+            "job": 112074341825,
+            "status": "completed",
+            "conclusion": "success",
+            "proof": [
+              "2026-10-06T02:13:28.9036896Z 72 passed in 2.92s"
+            ]
+          }
+        ]
+      },
+      {
+        "run": 37403055610,
+        "name": "IndexAlert Research v1 Official KRX Status Integrity",
+        "head": "99d52d3d1b59656f6850c77d9c6e11d18fd1178e",
+        "jobs": [
+          {
+            "job": 112074341550,
+            "status": "completed",
+            "conclusion": "success",
+            "proof": [
+              "2026-10-06T02:13:37.3949961Z 548 passed, 5 warnings in 6.55s"
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }
