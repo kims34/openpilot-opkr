@@ -97,3 +97,14 @@ class NativeReviewCLITests(unittest.TestCase):
         with redirect_stdout(output):
             self.assertEqual(main(['--input',str(self.input),'--journal',str(self.path)]),2)
         self.assertNotIn('invalid private JSON',output.getvalue())
+
+    def test_cash_aliases_cannot_create_matching_balance_review(self):
+        before = self.journal.shadow_control(), self.journal.db.total_changes
+        for text in ('8_999', '８９９９', '٨٩٩٩'):
+            self.payload['closing']['body']['entr'] = text
+            self.write()
+            result = self.assess()
+            self.assertFalse(result['assessment_completed'])
+            self.assertNotIn('cashflow_reconciliation', result)
+            self.assertFalse(result['real_orders_authorized'])
+            self.assertEqual(before, (self.journal.shadow_control(), self.journal.db.total_changes))
