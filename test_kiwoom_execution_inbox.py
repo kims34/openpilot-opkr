@@ -1,4 +1,5 @@
 import json
+from decimal import localcontext
 import sqlite3
 import unittest
 from contextlib import contextmanager
@@ -57,6 +58,21 @@ class InboxTests(unittest.TestCase):
         self.i.replay_next();self.i.replay_next()
         self.assertEqual(self.i.counts()['receipts'],2)
         self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+
+    def test_distinct_receipt_cannot_hide_changed_price_under_low_precision(self):
+        first=fixtures.fill();first.update(fill_price='100001',unit_fill_price='100001')
+        changed=fixtures.fill();changed.update(fill_price='100002',unit_fill_price='100002')
+        with localcontext() as context:
+            context.prec=3
+            self.append('first',first);self.i.replay_next()
+            self.append('changed',changed)
+            with self.assertRaises(ExecutionInboxError):self.i.replay_next()
+        self.assertEqual(self.i.counts()['receipts'],2)
+        self.assertEqual(self.i.counts()['pending'],1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_fill_bindings').fetchone()[0],1)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+        self.denied_enable()
 
     def test_reconnect_retains_pending_payload_and_native_id(self):
         self.append()
