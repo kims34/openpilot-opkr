@@ -138,3 +138,33 @@ def test_missing_observation_id_cannot_become_text_identity(missing_id):
     rows.loc[0, "observation_id"] = missing_id
     with pytest.raises(ExecutionSufficiencyAssessmentError, match="observation_id must not be missing"):
         prepare_live_execution_sufficiency_evidence(rows, p)
+
+
+def test_boolean_observation_id_and_numeric_inputs_are_rejected():
+    p, _ = load_frozen_project_protocol(ROOT)
+    for field in ("observation_id", "reference_adv20_krw", "entry_slippage_budget_bps", "modeled_fees_tax_bps", "actual_fees_tax_bps"):
+        rows = _evidence(3)
+        rows[field] = rows[field].astype(object)
+        rows.loc[0, field] = True
+        with pytest.raises(ExecutionSufficiencyAssessmentError):
+            prepare_live_execution_sufficiency_evidence(rows, p)
+
+
+def test_naive_numeric_and_nonscalar_sufficiency_timestamps_are_rejected():
+    p, _ = load_frozen_project_protocol(ROOT)
+    for field in ("recommendation_expires_at", "order_outcome_at", "order_expiry_at", "capacity_reference_available_at", "cost_budget_at"):
+        for value in ("2026-10-05T00:05:00", 1234567890, ["2026-10-05T00:05:00Z"]):
+            rows = _evidence(3)
+            rows[field] = rows[field].astype(object)
+            rows.at[0, field] = value
+            with pytest.raises(ExecutionSufficiencyAssessmentError):
+                prepare_live_execution_sufficiency_evidence(rows, p)
+
+
+def test_ingestion_cannot_precede_order_outcome():
+    p, _ = load_frozen_project_protocol(ROOT)
+    rows = _evidence(3)
+    rows.loc[0, "ingested_at"] = "2026-10-05T00:00:02+00:00"
+    rows.loc[0, "order_outcome_at"] = "2026-10-05T00:00:03+00:00"
+    with pytest.raises(ExecutionSufficiencyAssessmentError, match="ingested_at cannot precede order_outcome_at"):
+        prepare_live_execution_sufficiency_evidence(rows, p)
