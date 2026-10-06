@@ -142,10 +142,15 @@ class ShadowCapitalAllocator:
                 or order['filled_quantity'] != 0 or snapshot['filled_quantity'] != 0
                 or any(order[f] != snapshot[f] for f in ('symbol','side','quantity','broker_order_id'))):
                 raise OrderJournalError('only confirmed unchanged zero-fill terminal BUY can release principal')
-            reservation = self.journal.db.execute('SELECT fee_buffer,reserve FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
+            reservation = self.journal.db.execute('SELECT limit_price,fee_buffer,reserve FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
             if reservation is None or self.journal.db.execute('SELECT 1 FROM shadow_capital_releases WHERE key=?', (key,)).fetchone():
                 raise OrderJournalError('reservation absent or principal already released')
-            fee, total = reservation
+            price, fee, total = reservation
+            if (type(price) is not int or price <= 0
+                or type(fee) is not int or fee < 0
+                or type(total) is not int or total > 2**63-1
+                or total != order['quantity'] * price + fee):
+                raise OrderJournalError('invalid unreleased BUY reservation')
             released = total - fee
             self.journal.db.execute('UPDATE shadow_capital_reservations SET reserve=? WHERE key=?', (fee, key))
             self.journal.db.execute('INSERT INTO shadow_capital_releases VALUES(?,?,?)', (key, released, expected_snapshot_revision))

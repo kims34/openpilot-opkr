@@ -59,6 +59,20 @@ class PrincipalReleaseTests(unittest.TestCase):
         self.assertTrue(self.batch(status='REJECTED')['matched'])
         self.assertEqual(self.release()['retained_fee_buffer_krw'],3)
 
+    def test_corrupt_unreleased_reservation_cannot_create_principal_credit(self):
+        self.assertTrue(self.batch()['matched'])
+        for price, fee, total in ((8,-7,83), (8,84,83), (0,3,83),
+                                 (8,3,82), (8,3,84), (8,3,83.5), (8.5,3,88)):
+            with self.subTest(price=price, fee=fee, total=total):
+                self.j.db.execute('UPDATE shadow_capital_reservations SET limit_price=?,fee_buffer=?,reserve=?',
+                    (price,fee,total))
+                before = tuple(self.j.db.iterdump())
+                with self.assertRaises(OrderJournalError):
+                    self.release()
+                self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.j.db.execute('UPDATE shadow_capital_reservations SET limit_price=8,fee_buffer=3,reserve=83')
+        self.assertEqual(self.release()['released_principal_krw'], 80)
+
     def test_cancel_request_or_individual_snapshot_cannot_release(self):
         self.j.mark_cancel_requested('d1')
         with self.assertRaises(OrderJournalError): self.release()
