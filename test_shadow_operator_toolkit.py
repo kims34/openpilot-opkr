@@ -104,6 +104,19 @@ class OperatorToolkitTests(unittest.TestCase):
                 self.assertFalse(result['real_orders_authorized'])
                 fixture.payload[name]['body'].pop('return_code')
 
+            # Python accepts these non-standard constants unless the extracted
+            # CLI explicitly rejects them. An ignored response field must not
+            # let malformed native evidence reach the journal.
+            for value in (float('nan'),float('inf'),float('-inf')):
+                fixture.payload['opening']['body']['ignored_native_field'] = value
+                fixture.write()
+                code,result = review()
+                self.assertEqual(code,2)
+                self.assertFalse(result['assessment_completed'])
+                self.assertNotIn('cashflow_reconciliation',result)
+                self.assertFalse(result['real_orders_authorized'])
+            fixture.payload['opening']['body'].pop('ignored_native_field')
+
             # Exercise decoder exhaustion in the extracted CLI, including its
             # process exit/stderr boundary rather than only an in-process call.
             fixture.input.write_text('['*20000+'0'+']'*20000,encoding='utf-8')

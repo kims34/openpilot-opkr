@@ -26,12 +26,20 @@ def _object(pairs):
     return result
 
 
+def _reject_nonstandard_constant(_value):
+    # Python's JSON decoder accepts NaN/Infinity extensions by default. Native
+    # broker evidence must remain strict JSON even when the value is nested in
+    # a response field this offline review does not otherwise interpret.
+    require(False)
+
+
 def review_native_settlement_file(input_path, journal_path):
     journal = None
     try:
         with open(input_path,encoding='utf-8') as source:
             try:
-                payload = json.load(source,object_pairs_hook=_object)
+                payload = json.load(source, object_pairs_hook=_object,
+                                    parse_constant=_reject_nonstandard_constant)
             except RecursionError:
                 # Decoder depth exhaustion is invalid input, not a request
                 # failure that may log the private file path/client address.

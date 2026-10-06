@@ -122,6 +122,25 @@ class NativeReviewCLITests(unittest.TestCase):
         self.assertNotIn(str(self.input),output.getvalue())
         self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
 
+    def test_nonstandard_json_constants_are_private_and_precede_journal_open(self):
+        before = self.journal.shadow_control(),self.journal.db.total_changes
+        for token in ('NaN','Infinity','-Infinity'):
+            self.payload['opening']['body']['ignored_native_field'] = token
+            encoded = json.dumps(self.payload).replace('"ignored_native_field": "'+token+'"',
+                                                        '"ignored_native_field": '+token)
+            self.input.write_text(encoded,encoding='utf-8')
+            output = io.StringIO()
+            with patch.object(OrderIntentJournal,'open_readonly',
+                              side_effect=AssertionError('must not open')), redirect_stdout(output):
+                self.assertEqual(main(['--input',str(self.input),'--journal',str(self.path)]),2)
+            result = json.loads(output.getvalue())
+            self.assertFalse(result['assessment_completed'])
+            self.assertFalse(result['real_orders_authorized'])
+            self.assertNotIn(token,output.getvalue())
+            self.assertNotIn(str(self.input),output.getvalue())
+        self.payload['opening']['body'].pop('ignored_native_field')
+        self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+
     def test_explicit_failed_opening_or_closing_response_never_reports_cash_match(self):
         before = self.journal.shadow_control(),self.journal.db.total_changes
         for name in ('opening','closing'):

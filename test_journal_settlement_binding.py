@@ -1,5 +1,6 @@
 """Synthetic local lifecycle cases; never real account/provenance evidence."""
 import os
+import json
 import tempfile
 import unittest
 from dataclasses import replace
@@ -87,6 +88,22 @@ class JournalSettlementBindingTests(unittest.TestCase):
         out = self.assess()
         self.assertFalse(out['account_settlement_admitted'])
         self.assertTrue(out['local_reconciliation_errors'])
+
+    def test_stored_binding_extra_content_cannot_reach_authorization_boundary(self):
+        self.acknowledged()
+        before = self.journal.db.total_changes
+        payload = json.loads(self.journal.db.execute(
+            'SELECT payload FROM reconciled_snapshot_bindings').fetchone()[0])
+        payload['unexpected_unreviewed_field'] = 'tampered'
+        self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?',
+                                (json.dumps(payload),))
+        modified = self.journal.db.total_changes
+        out = self.assess()
+        self.assertFalse(out['ready_for_final_user_authorization'])
+        self.assertFalse(out['account_settlement_admitted'])
+        self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED',out['local_reconciliation_errors'])
+        self.assertEqual(self.journal.db.total_changes,modified)
+        self.assertGreater(modified,before)
 
     def test_mismatched_account_or_korean_day_blocks(self):
         for snapshot in (replace(self.snapshot,account_fingerprint='b'*64),
