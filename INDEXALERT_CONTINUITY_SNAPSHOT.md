@@ -1,3 +1,71 @@
+# INDEXALERT_HANDOFF — 2026-10-06T06:46Z / 15:46 KST
+
+## Actual restored and completed state
+
+At resume GitHub development HEAD 2d41fbd093104c2e7eaf1839c7d0141762385003 and research HEAD dae21213c9f7bfaa3a9f698b1cbb6a39f192af7c matched the prior completed checkpoint; their documentation Actions 37422364097/37422370485/37422370571 were SUCCESS. Related research refs were actually enumerated; no newer adopted Challenger was found in the retrieved Ledger/Status. No merged PR56–79 or owner preview installation was repeated.
+
+Current tested code HEADs: index-alert-position-regen-fix-v1 cf3bea32428036ca1a925f0acb40abe802d361f3; index-alert-research-v1 ea7f82800d6fd9e0a8228d338ffc3d5176e48fdb; index-alert-server 8a68b01bca5d551d083ccda263df38d86fa54166. This documentation commit follows those code HEADs; resolve actual branch refs before resuming.
+
+Completed five sequential engineering fixes on both development and research branches:
+- PR80/81: reject original non-string PIT/source and expected-scope fingerprints before normalization. Old numeric64digit values were accepted; direct synthetic reproduction shows rejection. Fifteen bad-input tests and two valid-string compatibility tests; PR CI362passed.
+- PR82/83: retain exact already-validated source_contract_fingerprint_sha256 and expected_scope_contract_fingerprint_sha256 values in audit summary dictionaries, alongside counts. Four cases distinguish different contracts. Additive traceability only; no fingerprint interpretation or admission/authority decision changed. PR CI366passed.
+- PR84/85: validate all eight existing COVERAGE_PIT_AUDIT prerequisite requirement flags as exactTrue and the four frozen Gate-C/D requirement lists. Existing validator accepted removal/false of an independent expected-scope prerequisite. Forty-four drift regressions reject; unchanged contract remains valid. Required evidence flags are requirements, not proof that evidence is complete. Dedicated suite now includes existing review tests; PR CI415passed; canonical official research893passed/5warnings.
+- PR86/87: enforce existing expected-scope contract requirement to output a scope fingerprint for investor and status outputs. Ten missing/malformed-field regressions; frozen JSON unchanged; PR CI430passed.
+- PR88/89: expected-scope materializer previously emitted KOSDAQ common-stock rows under the frozen KOSPI contract. Require daily MKT_NM and master MKT_TP_NM explicitly KOSPI; reject ambiguous/mixed/out-of-scope evidence. No guessed aliases, silent new securities/calendar/zero rows or contract scope changes. Also reject numeric/non-string fingerprints at upstream bind_scope_contract_fingerprint so downstream validation cannot be bypassed by prior coercion. Sixteen regression/compatibility cases; PR CI451passed. Existing empty-daily behavior, exact ISU_CD same-date join, valid string trim/lowercase and input immutability remain. Direct synthetic reproduction stubbed contract loading only for the local materializer experiment; actual CI/production retains required contract validation.
+
+PR80 MERGED; dev; feature c0c8468fae808fdc30e58ddf665ee4b1ff1733e7; merge 425731f574804ab8982e01e08ea63ff4d5b72da5; exact-head run 37424809736/job 112141947518 SUCCESS.
+PR81 MERGED; research; feature 35e44ad564edfd5b83f1c93e58bb3010445117f3; merge 11827420277d84f7cfb7c6737c52f90d64d18631; exact-head run 37424816689/job 112141970020 SUCCESS.
+PR82 MERGED; dev; feature e1115e44ad62669d900d56b48675c4164275c88a; merge 840fd08e0a9a7169a63892d3733c1b113946bc8b; exact-head run 37424933631/job 112142342584 SUCCESS.
+PR83 MERGED; research; feature 8c8b3d6ba58a31815b75e800e4ae4ac467ee2120; merge b3c4c4817a57aa028d55c3e40e01549d1ebbd90c; exact-head run 37424943628/job 112142373847 SUCCESS.
+PR84 MERGED; dev; feature 66395b206a43f1b48f9a9851994adf0fcfe246d0; merge bc66b133ce0457d932cb400191c5186af6a37d5e; exact-head run 37425074289/job 112142782005 SUCCESS.
+PR85 MERGED; research; feature 02f8913b55eec76375a24061d9ba64bf3e0f63aa; merge f835c8256b9b64ca9b70ea63fe785a8fba7107ce; exact-head run 37425082710/job 112142809283 SUCCESS.
+PR86 MERGED; dev; feature abcbb57193ca285380a31e0159ec5a4f4179371a; merge 82c2fb92bd11e196f8adc0581a75b3a13c73d129; exact-head run 37425277388/job 112143413813 SUCCESS.
+PR87 MERGED; research; feature 2bb8ec7ef800bbdfd4fbc2c7575c38f8cf4c7222; merge 0d504cb52b08a0787ef077b73a8044dbc50643bc; exact-head run 37425286843/job 112143443644 SUCCESS.
+PR88 MERGED; dev; feature 7a8b37265b12bc47eaa9f5899567e5d0da271243; merge cf3bea32428036ca1a925f0acb40abe802d361f3; exact-head run 37425461062/job 112143978389 SUCCESS.
+PR89 MERGED; research; feature bfc719159abb30c9cd65cc53360aabbd7d5d159c; merge ea7f82800d6fd9e0a8228d338ffc3d5176e48fdb; exact-head run 37425471292/job 112144010151 SUCCESS.
+
+Local pytest remains unavailable; direct Python reproductions were run, and actual GitHub Actions logs supply pytest counts. These are offline engineering checks, not real KRX data/performance/genuine LIVE evidence. No new Alpha trial or ACCEPTED_CHALLENGER/Champion replacement.
+
+Frozen blobs verified unchanged after guard merges: INDEXALERT_MASTER_SPEC.md 798e658d2b3414f95ce648c58945425d9a579182; INDEXALERT_KRX_COVERAGE_PIT_AUDIT_CONTRACT.json aba8fc20b6ad0af313a5175ee9c0e7a26a92d4c8; INDEXALERT_KRX_EXPECTED_SCOPE_ATTESTATION_CONTRACT.json 864aa4ab115271ce5195d204c10c87017507e42d.
+
+## Actual Railway evidence
+
+Fresh inventory/config reads at2026-10-06T06:36Z: project d1c1a050-b7d6-41ce-b300-13c20f82a20a, production83d5840b-270e-4d3f-a941-a37fd4a55ff7; eight services/three volumes; no staged changes or running new deployment observed. Runtime37902fde-ca05-43e0-bc76-278992bf7732 pin8a68b01bca5d551d083ccda263df38d86fa54166, deploy eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00SUCCESS, /data500MB f96f985a-8aba-41ef-88df-f76999c4ff0c. Read-only evidence/config audit start chain then uvicorn remains. Runtime logs actually read through2026-10-06T06:36:46Z: Yahoo/Naver/ECOS market-display updates; market_state LIVE in quote output is not genuine broker-native fill evidence.
+
+PIT225f2279-d728-4e1a-a3f3-2447ff0f9dc1 pin26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15, deploy7021473a-d9a6-4711-b496-a359fd9bb0c8SUCCESS, /pit5000MB03f389e5-5030-46a9-bfa5-dd8aa3dc24fa, read-only retired audit/NEVER restart. Re-read existing Oct5 audit logs: all preserved hashes match, model_executed/outcome_metrics_parsed/private_artifacts_mutated/network/real_orders false; all retired stages blocked. No new private outcome read.
+
+KRX003812ee-102b-42b6-bda4-36925885b428 pinef95e7857f692fda3855390e918e165487624881, deploye56cf101-15c5-478e-ae67-228585013ef0SUCCESS, /data5000MB61610fae-dc0c-493e-9920-eb3cef4cea86, read-only integrity audit/NEVER restart. Re-read existing Oct5 logs:14495 verified checkpoints/14425 objects, errors{}, snapshot17ab461a78822b58b4026fe727d519aff992d200fabe036d905a20c99629a060. Storage integrity only; historical coverage/PIT/performance/holdout/LIVE false.
+
+DEMOcd47a5f0-709c-46cc-9b8f-ea0969ce2ba9SUCCESS/no volume. Legacy backendcce12a43-592a-4910-9b75-89c6b7cdd159 and push3ad3102d-ced6-416b-a6da-85c390c9a606 remain FAILED; db-query-readonly undeployed; verify-deployment-statusSUCCESS. No redeploy/restart/secret/private-volume/account/order mutation performed.
+
+## Incomplete work and exact resume
+
+Cross-audit source/batch/raw-payload/independent expected-scope binding remains OPEN. Exact fingerprints are now retained, but this does not prove lineage/coverage came from the same authenticated batch/payload/attestation. Never equate source_contract_fingerprint to batch_fingerprint, metadata self-hash to independent trust, or source-contract summaryTrue to genuine proof without the existing contracts/callers establishing that meaning. COVERAGE_PIT_AUDIT permits review candidates only and forbids GatePASS/sourceclosure/performance/holdout/trading.
+
+Expected-scope batch resume review OPEN: _load_or_init_state validates task-set hash but does not yet derive completed_task_count/batch_complete/status from the verified exact completed-date set; _verify_completed_date verifies referenced object hashes but does not reconstruct all materialized scope keys from raw official responses. Inspect immutable private-store and executor contracts/tests before implementing. Never mutate existing private checkpoints, infer actual completed official scope, reset acquisition, or equate a self-hash with independent provenance.
+
+Next exact execution: refresh GitHub refs/Actions and latest four continuity/research files plus Master Spec; refresh Railway pins/deployments/logs before any operational action. Do not repeat PR56–89. Review research_v1_krx_expected_scope_batch.py _load_or_init_state/_verify_completed_date alongside executor/private-store contracts and tests; reproduce inconsistent completion-map/counter/status or exact raw-scope binding with synthetic fixtures only, then reject malformed resume metadata without resetting/re-writing old private acquisition evidence or launching network requests. Check actual completion set and receipt/raw-object provenance; do not assume self-checksummed metadata alone independently attests a historical scope. Any newly justified implementation follows isolated branch, actual exact-head CI, merge and canonical CI before further work.
+
+External source C/D/E history/availability/provenance/status-event realized fill/recovery economics, independent preregistration chronology/trust root, genuine LIVE whole-account/day/ownership/fill/fees/settlement gates, original production signing key and push E2E remain OPEN. Actions-local absent credentials from prior probes are not evidence Railway configured keys are absent. Isolated Android4.8-preview owner UI validation already complete; no original4.7 uninstall/data-clear/key upload authorized or performed. Original package/signing constraints remain in earlier records.
+
+Schedule: prior directly confirmed enabled existing task6ac3b166d460819186ae78ecc3c7444d, first planned Oct6 19:28:47KST/every5hours; latest direct user reauthorization supersedes historical manual-only cancellation notes. Not changed or independently re-queried this execution; no duplicate automation or queue timestamp claim.
+
+## Frozen prohibitions
+
+Project INCOMPLETE. MASTER_OFF and existing PIT/time/labels/H5CoreWF504/126/126 rolling1260/horizonpurge/embargo/CPCV60/Top30..3/no-backfill/cost/slippage/partial-fill/NetEV/Precision@Selected/PF/MDD/ES95/99/capacity/model/threshold/acceptance/rejection/promotion boundaries unchanged. No synthetic/estimated KRX or broker data admitted as real evidence. No unauthorized model fit/performance testing, order implementation below Master Spec gates or actual trading activation.
+
+Preserve CONSUMED_FAILED_INVALID_V1_HOLDOUT, passedfalse, cutoff2026-09-25/window2026-09-28..10-01 and discrepancy lineage. Result30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82, manifestff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907, receipt3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63. No deletion/reset/reevaluation/reseal/relabel/retune, private outcome parse or retroactive timestamp fabrication. Development/tests/deploy/validation authorization persists; actual orders/funds movements/broker-account permission changes still require separate explicit approval.
+
+## Canonical exact merge validation
+
+index-alert-position-regen-fix-v1 @cf3bea32428036ca1a925f0acb40abe802d361f3; KRX source admission exact authority flags; run37425598932/job112144401669; SUCCESS; 2026-10-06T06:46:14.9349711Z 451 passed in 1.51s
+index-alert-research-v1 @ea7f82800d6fd9e0a8228d338ffc3d5176e48fdb; KRX source admission exact authority flags; run37425602427/job112144412401; SUCCESS; 2026-10-06T06:46:20.6006451Z 451 passed in 1.83s
+index-alert-research-v1 @ea7f82800d6fd9e0a8228d338ffc3d5176e48fdb; IndexAlert Research v1 Official KRX Status Integrity; run37425602409/job112144412087; SUCCESS; 2026-10-06T06:46:27.3044432Z 919 passed, 5 warnings in 8.61s
+
+These verified CI results are offline engineering validation only. Documentation checkpoint follows; final actual branch HEAD must be resolved from GitHub.
+
+---
+
 # Authorization normalization follow-up — 2026-10-06T06:10Z / 15:10 KST
 
 Actual tested development HEADfaa4b1c5ea2821b3dc750bf5985b2d6db264d043; research HEAD6acf2fbffb3c67f4b92082a517ffb58b88e09c79. This documentation checkpoint follows these code HEADs; obtain exact current branch HEAD from GitHub when resuming.
