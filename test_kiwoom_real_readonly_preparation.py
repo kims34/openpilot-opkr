@@ -28,7 +28,7 @@ class RealReadOnlyPreparationTests(unittest.TestCase):
                 assess_real_readonly_preparation(dict(self.cfg,**change))
 
     def test_only_reviewed_query_ids_are_admitted(self):
-        for api in ("ka00001","kt00001","kt00007","ka10076","kt00018"):
+        for api in ("ka00001","kt00001","kt00007","kt00017","ka10076","kt00018"):
             self.assertEqual(require_readonly_api(api),api)
         for api in ("kt10000","kt10001","kt10002","kt10003","/oauth2/revoke","KA00001",""):
             with self.assertRaises(RealReadOnlyPreparationError):
