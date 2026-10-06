@@ -34,6 +34,22 @@ def quarantine_conflict(method):
 
 
 class OrderIntentJournal:
+    @classmethod
+    def open_readonly(cls, path):
+        """Inspection only: existing DB, no initialization/startup recovery.
+
+        SQLite mode=ro is the write barrier. Inspection transactions use BEGIN
+        to pin a read snapshot instead of trying to obtain a writer lock.
+        This connection must never serve an execution worker.
+        """
+        from pathlib import Path
+        journal = cls.__new__(cls)
+        journal.db = sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',
+            uri=True, isolation_level=None, timeout=10)
+        journal.db.execute('PRAGMA query_only=ON')
+        journal._inspection_only = True
+        return journal
+
     def __init__(self, path):
         self.db = sqlite3.connect(path, isolation_level=None, timeout=10)
         self.db.execute("PRAGMA journal_mode=WAL")
@@ -77,7 +93,7 @@ class OrderIntentJournal:
 
     @contextmanager
     def _atomic(self):
-        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("BEGIN" if getattr(self, '_inspection_only', False) else "BEGIN IMMEDIATE")
         try:
             yield
         except BaseException:
