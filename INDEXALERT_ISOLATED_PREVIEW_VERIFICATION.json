@@ -1,0 +1,37 @@
+{
+  "recorded_at": "2026-10-06T02:09:50.711Z",
+  "source_head": "06e23a33def235fa7505d30fe1443267e13eb847",
+  "android_merge_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+  "preview_run": 37402266619,
+  "preview_job": 112071864833,
+  "preview_tests": 4,
+  "original_regression_run": 37402266653,
+  "original_regression_job": 112071865029,
+  "original_regression_tests": 4,
+  "canonical_android_runs": [
+    {
+      "id": 37402569974,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": 37402570020,
+      "status": "IN_PROGRESS"
+    }
+  ],
+  "application_id": "com.indexalert.preview",
+  "version_name": "4.8-preview",
+  "version_code": 48,
+  "apk_size_bytes": 820613,
+  "apk_sha256": "c46bf10dc036bfaff5ab0b7d00938a66081cedac4ef2c20ce72d7bfa5e38564f",
+  "signer_sha256": "52083f68874f93989f232571fd811bb5b2e45f685a3980c33dcca02b89605bf4",
+  "apk_artifact": 11386380038,
+  "proof_artifact": 11385403921,
+  "downloaded_archives_and_apk_hash_verified": true,
+  "production_app_updated": false,
+  "physical_preview_ui_verified": false,
+  "production_push_e2e_verified": false,
+  "installed_original_signing_continuity_verified": false,
+  "broker_request_sent": false,
+  "orders_requested": false,
+  "frozen_criteria_changed": false
+}
