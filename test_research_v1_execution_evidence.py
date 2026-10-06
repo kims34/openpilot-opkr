@@ -257,6 +257,16 @@ class TestExecutionEvidence(unittest.TestCase):
         with self.assertRaises(ExecutionEvidenceError):
             validate_execution_observations(rows)
 
+    def test_ingestion_cannot_precede_submission_or_final_fill(self):
+        rows = self._rows()
+        rows.loc[0, "ingested_at"] = "2026-09-29T00:00:00.500Z"
+        with self.assertRaises(ExecutionEvidenceError):
+            validate_execution_observations(rows)
+        rows = self._rows()
+        rows.loc[0, "ingested_at"] = "2026-09-29T00:00:02.500Z"
+        with self.assertRaises(ExecutionEvidenceError):
+            validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
