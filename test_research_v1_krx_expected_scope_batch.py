@@ -360,3 +360,48 @@ def test_resume_rejects_receipt_non_false_authority_fields(tmp_path, field, valu
         execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
             fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
     assert calls == []
+
+
+def test_resume_rejects_relocated_receipt_with_valid_raw_and_metadata(tmp_path):
+    from research_v1_krx_private_store import write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    state_rel = "expected_scope/batch_state-v1.json"
+    state = json.loads((root / state_rel).read_text())
+    old_scope_rel = state["completed"]["20150615"]["private_scope_relpath"]
+    scope = json.loads((root / old_scope_rel).read_text())
+    receipt = json.loads((root / scope["daily_receipt_relpath"]).read_text())
+    wrong_rel = "expected_scope/receipts/20150615/stk_bydd_trd/" + "f"*64 + ".json"
+    write_private_json(root, wrong_rel, receipt, git_worktree=worktree)
+    scope["daily_receipt_relpath"] = wrong_rel
+    import research_v1_krx_expected_scope_batch as batch
+    scope_rel = f"expected_scope/dates/20150615/{batch._sha256(scope)}.json"
+    written = write_private_json(root, scope_rel, scope, git_worktree=worktree)
+    state["completed"]["20150615"]["private_scope_relpath"] = scope_rel
+    state["completed"]["20150615"]["private_scope_metadata_sha256"] = written["metadata_sha256"]
+    write_private_json(root, state_rel, state, git_worktree=worktree)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="receipt content-address checksum"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []
+
+
+@pytest.mark.parametrize("relpath", [
+    "other/20150615/stk_bydd_trd/" + "a"*64 + ".json",
+    "expected_scope/receipts/20150616/stk_bydd_trd/" + "a"*64 + ".json",
+    "expected_scope/receipts/20150615/stk_isu_base_info/" + "a"*64 + ".json",
+    "expected_scope/receipts/20150615/stk_bydd_trd/not-a-digest.json",
+])
+def test_receipt_path_is_bound_to_frozen_dataset_date_before_private_read(monkeypatch, relpath):
+    import research_v1_krx_expected_scope_batch as batch
+    def forbidden_read(*args, **kwargs):
+        pytest.fail("unexpected private read")
+    monkeypatch.setattr(batch, "read_private_json", forbidden_read)
+    with pytest.raises(KRXExpectedScopeBatchError, match="content-address path drift"):
+        batch._verify_receipt(root="unused", relpath=relpath, requested_date="20150615",
+            dataset_identifier="stk_bydd_trd", git_worktree="unused")
