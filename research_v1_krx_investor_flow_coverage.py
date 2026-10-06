@@ -245,6 +245,7 @@ def audit_investor_flow_coverage(
         sealed_holdout_authorized=False,
     )
     out = asdict(audit)
+    out["expected_scope_contract_fingerprint_sha256"] = expected["scope_contract_fingerprint_sha256"].iloc[0]
     out["missing_key_sample"] = [tuple(map(str, key)) for key in list(missing[:10])]
     out["extra_key_sample"] = [tuple(map(str, key)) for key in list(extra[:10])]
     out["guardrail"] = (
