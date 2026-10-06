@@ -1,3 +1,17 @@
+# Latest readiness transport verification — 2026-10-07 00:43 KST
+
+PR186 feature22d5851bb377cc81532812bb110e36caf4f92604 merged as cd9b349ced4958eba478744b680e8074db4c2f28 on index-alert-build. The original readiness GET inherited automatic redirects. The connection now disables them, retaining only configured GET /automation/readiness, UNKNOWN for non200, existing8192-character cap and5000ms connect/read timeouts. It exposes no new endpoint, controls, account access or orders. Production and preview copies are byte-identical.
+
+Exact feature-head preview CI37488276397/job112353949952 SUCCESS: actual4authority-contract+5transport JUnit cases, no failures/errors/skips; actual isolated APK, metadata/merged manifest/permissions/noFirebase/noWorkManager/signature verified. Production-module CI37488276454/job112353942785 SUCCESS: same9JUnit cases; actual debug and unsigned release APK/package/signing verified. Both workflows now require the five named transport cases, not merely a total count. Local workflow YAML/embedded Python syntax and byte equality checks passed; no local Android compilation was claimed.
+
+Downloaded preview-verification artifact11424935000 ZIPsha256f373f1bf186881fbc8c76be0a98098b377bb4f788229f1abade28a313a9d0d03 and production-module verification11424467394 ZIPsha2565c1e165a01f371627ad3e944641c461600749db844b71fd52293d3a19579b1d4 were independently checked against actual XML test cases and exact feature head. Downloaded preview APK artifact11424715831 ZIPsha256e0168b20335627d88dc691305ebbe9d066b4183d1d34be45a8286c69cbdb607a contains actual APKsha256b5df1da0b221b5785d401178af03e4b77af126c335ec9312e1f144f73a93bd81,820653bytes, matching verification JSON. CI apksigner verified preview certificate43d3af27b7b002d498ad5f61cd985532fb440e12be2d0ff7430082a5c179f9d3. The production debug CI signer5c46f2f6f0022efd02c9b33f4cbcf2cee49e370976557d565de6f74c100b6552 differs from installed4.7.
+
+These are fresh CI candidates; they have not been owner installed and do not establish signing continuity, new production push/device E2E or empirical KRX/LIVE/Alpha evidence. The owner observation below remains tied to its older dated APK, not this new one. Do not reinstall merely to repeat that already completed UI observation. Preserve installed com.indexalert.app4.7 and data. No real order, broker request, funds movement, production token or Frozen/PIT/holdout gate change.
+
+Merge-push Actions37489030714(preview)/37489030742(app) were in progress at this documentation write; do not call them successful until exact run/job evidence is retrieved. Development Status/Continuity/Handoff on index-alert-position-regen-fix-v1 hold the authoritative cross-branch resume checkpoint.
+
+---
+
 # Isolated Android readiness preview
 
 This separate application uses com.indexalert.preview4.8-preview/code48 and the label IndexAlert 검증. It does not update com.indexalert.app or migrate its data. Its only network operation is the existing4.8 GET /automation/readiness contract. It contains no Firebase, registration/receipt/self-test sender, notifications, workers, broker requests, trading controls or data-sharing permissions. It cannot validate production notification E2E or original-package4.8 signing continuity.
