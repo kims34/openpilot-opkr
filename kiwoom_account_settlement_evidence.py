@@ -4,7 +4,11 @@ No network/authentication/order capability. This parser only prepares exact brok
 fields for later independently authenticated provenance and settlement admission.
 """
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
+import re
+
+OFFICIAL_SCHEMA_COMMIT = "953e5dbff123f437ab4d11a78a95191a685eb51f"
 
 
 class SettlementEvidenceError(ValueError):
@@ -30,18 +34,23 @@ def _decimal_text(value):
 class AccountSettlementSnapshot:
     account_fingerprint: str
     captured_at: str
-    available_cash_krw: Decimal
+    deposit_cash_krw: Decimal
     withdrawable_cash_krw: Decimal
     d2_estimated_cash_krw: Decimal
+    orderable_amount_krw: Decimal
 
     def report(self):
         return {
             "mode": "OFFLINE_ACCOUNT_SETTLEMENT_NORMALIZATION",
             "account_fingerprint": self.account_fingerprint,
             "captured_at": self.captured_at,
-            "available_cash_krw": str(self.available_cash_krw),
+            "deposit_cash_krw": str(self.deposit_cash_krw),
             "withdrawable_cash_krw": str(self.withdrawable_cash_krw),
             "d2_estimated_cash_krw": str(self.d2_estimated_cash_krw),
+            "orderable_amount_krw": str(self.orderable_amount_krw),
+            "source_api": "kt00001",
+            "official_schema_commit": OFFICIAL_SCHEMA_COMMIT,
+            "buying_power_verified": False,
             "source_account_origin_authenticated": False,
             "snapshot_freshness_attested": False,
             "trading_date_origin_attested": False,
@@ -54,22 +63,32 @@ class AccountSettlementSnapshot:
 def normalize_kt00001_settlement(row, *, account_fingerprint, captured_at):
     """Normalize reviewed kt00001 cash/settlement fields without admitting origin."""
     _require(type(row) is dict)
-    _require(type(account_fingerprint) is str and 16 <= len(account_fingerprint) <= 128)
-    _require(account_fingerprint.strip() == account_fingerprint)
-    _require(type(captured_at) is str and captured_at.endswith(("+09:00", "Z")))
+    _require(type(account_fingerprint) is str and
+             re.fullmatch(r'(?:sha256:)?[0-9a-f]{64}', account_fingerprint) is not None)
+    _require(type(captured_at) is str and captured_at.strip() == captured_at)
+    try:
+        captured = datetime.fromisoformat(captured_at.replace('Z', '+00:00'))
+        _require(captured.tzinfo is not None and captured.utcoffset() is not None)
+    except ValueError:
+        raise SettlementEvidenceError("ACCOUNT_SETTLEMENT_EVIDENCE_BLOCKED") from None
 
     # Reviewed Kiwoom schema names. Absence is fail-closed rather than inferred.
-    required = ("entr", "pymn_alow_amt", "d2_entra")
+    # entr is deposit balance, NOT orderable funds. D+2 is estimated,
+    # NOT settled cash. ord_alow_amt is a separate broker-reported amount;
+    # this normalization never attests usable cash, margin or buying power.
+    required = ("entr", "pymn_alow_amt", "d2_entra", "ord_alow_amt")
     _require(all(k in row for k in required))
-    available = _decimal_text(row["entr"])
+    deposit = _decimal_text(row["entr"])
     withdrawable = _decimal_text(row["pymn_alow_amt"])
     d2 = _decimal_text(row["d2_entra"])
-    _require(available >= 0 and withdrawable >= 0 and d2 >= 0)
+    orderable = _decimal_text(row["ord_alow_amt"])
+    _require(deposit >= 0 and withdrawable >= 0 and d2 >= 0 and orderable >= 0)
 
     return AccountSettlementSnapshot(
         account_fingerprint=account_fingerprint,
         captured_at=captured_at,
-        available_cash_krw=available,
+        deposit_cash_krw=deposit,
         withdrawable_cash_krw=withdrawable,
         d2_estimated_cash_krw=d2,
+        orderable_amount_krw=orderable,
     )
