@@ -182,3 +182,28 @@ def test_receipt_requires_exact_false_before_batch_normalization(field, value):
         verify_receipt_fingerprint(forged)
     with pytest.raises(KRXAcquisitionBatchError, match="authority"):
         build_acquisition_batch_manifest([forged])
+
+@pytest.mark.parametrize("value", [None, True, -1, "1", 1.8, [], {}])
+def test_rehashed_receipt_requires_canonical_row_count(value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+    forged = copy.deepcopy(_receipt())
+    forged["response_rows"] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match="response_rows"):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match="response_rows"):
+        build_acquisition_batch_manifest([forged])
+
+
+def test_zero_row_count_remains_valid_without_requiring_positive_rows():
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS
+    from research_v1_krx_acquisition_receipt import _sha256
+    receipt = copy.deepcopy(_receipt())
+    receipt["response_rows"] = 0
+    receipt["receipt_fingerprint_sha256"] = _sha256(
+        {name: receipt[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    assert build_acquisition_batch_manifest([receipt])["total_response_rows"] == 0
