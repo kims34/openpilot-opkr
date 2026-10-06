@@ -24,7 +24,7 @@ dt{color:#52647b}dd{margin:4px 0 18px;font-weight:600}li{margin:10px 0}.notice{c
 <section><h2>확인할 항목</h2><ul id="blockers"></ul></section>
 <section><h2>자금 예약</h2><dl id="capital"></dl></section>
 <section><h2>결제 자료 대조</h2><dl id="settlement"></dl>
-<p>아래 결과는 결제 자료를 별도로 조회한 시점의 진단입니다. 잔액 일치로 실제 계좌 출처나 결제 의미가 검증되지는 않습니다.</p></section>
+<p>아래 결과는 결제 자료를 별도로 조회한 시점의 진단입니다. 잔액 일치만으로 결제 검증을 충족하지 않습니다. 전체 자료 범위·입출금 방향·수수료와 세금 및 실제 계좌 출처를 별도로 검증해야 합니다.</p></section>
 <p>조회 시점의 상태입니다. 이후 도착한 체결·재접속·Kill Switch로 상태가 달라질 수 있습니다.</p>
 <script src="/dashboard.js"></script></html>'''
 
@@ -54,6 +54,18 @@ if(!settlementResponse.ok)throw Error('settlement unavailable');
 const settlement=await settlementResponse.json();
 if(settlement.assessment_completed){field(byId('settlement'),'자료 점검','완료');
 field(byId('settlement'),'예수금 증감 대조',settlement.cashflow_reconciliation.cash_balance_matched?'일치':'불일치');
+field(byId('settlement'),'결제 필드 검증',settlement.cashflow_reconciliation.settlement_fields_consistent?'충족':'미충족');
+const settlementLabels={ACCOUNT_DATE_SCOPE_UNBOUND:'계좌와 거래일 연결을 확인하세요',
+JOURNAL_CONTROL_CHANGED:'운영 상태가 변경됐습니다. 다시 점검하세요',
+KILL_SWITCH_LATCHED:'Kill Switch가 잠겨 있습니다',
+BATCH_RECONCILIATION_REQUIRED:'전체 주문 내역 대조가 필요합니다',
+INBOX_OR_BATCH_UNRESOLVED:'체결 수신 내역과 전체 주문 내역을 대조하세요',
+ORDER_SNAPSHOT_BINDING_STALE:'주문 대조 결과가 현재 상태와 맞지 않습니다',
+ORDER_SNAPSHOT_CONTENT_CHANGED:'주문 내용이 대조 이후 변경됐습니다',
+ORDER_SNAPSHOT_SCOPE_CHANGED:'주문 대조 범위가 변경됐습니다',
+UNRESOLVED_DURABLE_INTENTS:'처리 여부가 확인되지 않은 주문이 있습니다'};
+for(const key of settlement.local_reconciliation_errors)
+field(byId('settlement'),'결제 연결 점검',settlementLabels[key]||'추가 점검이 필요합니다');
 field(byId('settlement'),'결제 조회 epoch / revision',settlement.journal_epoch+' / '+settlement.snapshot_revision);
 field(byId('settlement'),'독립 계좌·결제 승인','미확인');
 if(data.diagnostics_complete&&(data.journal_epoch!==settlement.journal_epoch||data.snapshot_revision!==settlement.snapshot_revision))
