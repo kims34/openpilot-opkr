@@ -27,4 +27,10 @@ Verified artifact:
 
 The downloaded workflow artifact was independently hashed after extraction and matched the recorded APK SHA-256 exactly.
 
-Owner may install this APK alongside4.7 and observe the readiness UI. Such an observation is only preview-device readiness UI evidence, never production4.8 push proof, source/PIT admission, empirical promotion or authorization for real orders. Original frozen gates and consumed failed holdout remain unchanged.
+## Owner device observation — 2026-10-06
+
+The owner reported ADB installation of the isolated package succeeded after removing only a pre-existing signer-incompatible com.indexalert.preview package. The production com.indexalert.app v4.7 package was not removed or updated. The owner then supplied a handset screenshot showing the isolated UI title "IndexAlert 4.8 검증", the explicit separate-app/no-notification/no-auto-trading notice, and the GET-derived unavailable state "현재 자동매매를 사용할 수 없습니다."
+
+This establishes only that the isolated preview launched on the owner's handset and rendered the fail-closed unavailable readiness state. It is not production com.indexalert.app v4.8 installation proof, signing continuity, notification E2E, broker/account provenance, Shadow completion, Alpha admission, execution sufficiency, or real-order authority.
+
+Original frozen gates and consumed failed holdout remain unchanged.
