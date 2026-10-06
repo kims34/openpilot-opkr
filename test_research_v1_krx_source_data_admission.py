@@ -270,3 +270,59 @@ def test_rehashed_direct_batch_preserves_acquisition_contract(field, value):
             source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
             lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
         )
+
+
+@pytest.mark.parametrize("gate", list("ABCDEF"))
+@pytest.mark.parametrize("status", ["PARTIAL", "BLOCKED"])
+def test_stale_source_closed_summary_cannot_hide_open_gate(gate, status):
+    gates = _gates(True)
+    gates["gates"][gate]["status"] = status
+    with pytest.raises(KRXSourceDataAdmissionError, match="summary/authority drift"):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=gates, acquisition_batch_manifest=_batch(),
+            lineage_audit=_lineage(), coverage_audit=_coverage(),
+        )
+
+
+@pytest.mark.parametrize("field", [
+    "all_source_gates_pass", "source_contract_closed_for_declared_scope",
+    "alpha_or_final_judge_promotion_authorized",
+    "sealed_holdout_authorized_by_source_audit_alone",
+    "live_trading_authorized_by_source_audit_alone",
+])
+@pytest.mark.parametrize("value", [None, 0, "false"])
+def test_source_audit_summary_requires_exact_canonical_booleans(field, value):
+    gates = _gates(True)
+    gates[field] = value
+    with pytest.raises(KRXSourceDataAdmissionError, match="summary/authority drift"):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=gates, acquisition_batch_manifest=_batch(),
+            lineage_audit=_lineage(), coverage_audit=_coverage(),
+        )
+
+
+@pytest.mark.parametrize("mutation", ["missing_gate", "extra_gate", "non_mapping", "missing_entries",
+                                     "status_nonstring", "invalid_status", "evidence_null", "evidence_blank"])
+def test_source_audit_incomplete_or_malformed_entries_fail_closed(mutation):
+    gates = _gates(True)
+    if mutation == "missing_gate":
+        del gates["gates"]["C"]
+    elif mutation == "extra_gate":
+        gates["gates"]["G"] = gates["gates"]["A"]
+    elif mutation == "non_mapping":
+        gates["gates"]["C"] = []
+    elif mutation == "missing_entries":
+        del gates["gates"]
+    elif mutation == "status_nonstring":
+        gates["gates"]["C"]["status"] = 1
+    elif mutation == "invalid_status":
+        gates["gates"]["C"]["status"] = "IDEA"
+    elif mutation == "evidence_null":
+        gates["gates"]["C"]["evidence"] = None
+    else:
+        gates["gates"]["C"]["evidence"] = " "
+    with pytest.raises(KRXSourceDataAdmissionError):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=gates, acquisition_batch_manifest=_batch(),
+            lineage_audit=_lineage(), coverage_audit=_coverage(),
+        )
