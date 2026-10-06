@@ -40,8 +40,13 @@ def reconcile_reviewed_native_history(batch, opening, closing, reviews, *,
     require(start < end <= instant(batch.captured_at))
     query = dict(batch.request_fields)
     korea = ZoneInfo('Asia/Seoul')
-    require(native_day(query['strt_dt']) <= start.astimezone(korea).date())
-    require(native_day(query['end_dt']) >= end.astimezone(korea).date())
+    try:
+        start_day, end_day = start.astimezone(korea).date(), end.astimezone(korea).date()
+    except OverflowError:
+        # A parseable timestamp can exceed datetime's range on conversion.
+        require(False)
+    require(native_day(query['strt_dt']) <= start_day)
+    require(native_day(query['end_dt']) >= end_day)
     require(query['tp'] == '0' and query['gds_tp'] == '0' and query['dmst_stex_tp'] == '%')
     require(all(query[field] == '' for field in ('stk_cd', 'crnc_cd', 'frgn_stex_code')))
     require(type(batch.records) is tuple and all(type(row) is NativeSettlementTransaction for row in batch.records))
