@@ -196,6 +196,17 @@ def normalise_investor_flow_lineage(table: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def revalidate_investor_flow_lineage(lineage: pd.DataFrame) -> pd.DataFrame:
+    """Revalidate the current snapshot instead of trusting a mutable marker."""
+    if lineage is None or lineage.empty:
+        raise KRXInvestorFlowLineageError("validated lineage is required")
+    if "lineage_validated" not in lineage.columns or not all(
+        value is True for value in lineage["lineage_validated"].tolist()
+    ):
+        raise KRXInvestorFlowLineageError("lineage contains unvalidated rows")
+    return normalise_investor_flow_lineage(lineage)
+
+
 def attach_decision_eligibility(
     lineage: pd.DataFrame,
     decision_time,
@@ -206,16 +217,11 @@ def attach_decision_eligibility(
     caller supplies the actual decision timestamp. An observation is eligible
     only when `decision_time >= available_at`.
     """
-    if lineage is None or lineage.empty:
-        raise KRXInvestorFlowLineageError("validated lineage is required")
-    if "lineage_validated" not in lineage.columns or not bool(
-        lineage["lineage_validated"].all()
-    ):
-        raise KRXInvestorFlowLineageError(
-            "decision eligibility requires lineage validated by this module"
-        )
+    validated = revalidate_investor_flow_lineage(lineage)
     decision = _aware_timestamp(decision_time, "decision_time")
     out = lineage.copy()
+    for field in validated.columns:
+        out[field] = validated[field]
     out["decision_time"] = decision
     decision_utc = decision.tz_convert("UTC")
     out["eligible_at_decision"] = out["available_at"].map(
@@ -226,12 +232,7 @@ def attach_decision_eligibility(
 
 def audit_investor_flow_lineage(lineage: pd.DataFrame) -> dict:
     """Summarize structural PIT evidence without authorizing performance tests."""
-    if lineage is None or lineage.empty:
-        raise KRXInvestorFlowLineageError("validated lineage is required")
-    if "lineage_validated" not in lineage.columns or not bool(
-        lineage["lineage_validated"].all()
-    ):
-        raise KRXInvestorFlowLineageError("lineage contains unvalidated rows")
+    lineage = revalidate_investor_flow_lineage(lineage)
 
     current_public_fp = public_evidence_fingerprint_sha256()
     public_fps = set(lineage["public_contract_evidence_fingerprint_sha256"])

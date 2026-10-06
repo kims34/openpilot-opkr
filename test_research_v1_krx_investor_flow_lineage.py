@@ -145,3 +145,42 @@ def test_missing_required_lineage_column_is_rejected():
     del row["available_at"]
     with pytest.raises(KRXInvestorFlowLineageError, match="missing required columns"):
         normalise_investor_flow_lineage(pd.DataFrame([row]))
+
+@pytest.mark.parametrize("marker", ["false", "True", 1, 0, None, False, 1.0])
+def test_consumers_reject_non_true_boolean_validation_markers(marker):
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_valid_row()]))
+    lineage["lineage_validated"] = marker
+    with pytest.raises(KRXInvestorFlowLineageError, match="unvalidated"):
+        audit_investor_flow_lineage(lineage)
+    with pytest.raises(KRXInvestorFlowLineageError, match="unvalidated"):
+        attach_decision_eligibility(lineage, "2026-09-24T09:00:00+09:00")
+
+
+@pytest.mark.parametrize("field,value", [
+    ("available_at", pd.Timestamp("2026-09-23T19:00:00+09:00")),
+    ("published_at", pd.Timestamp("2026-09-23T19:59:59+09:00")),
+    ("ingested_at", pd.Timestamp("2026-09-23T20:01:00+09:00")),
+    ("source_contract_fingerprint_sha256", "not-a-digest"),
+    ("public_contract_evidence_fingerprint_sha256", "f" * 64),
+    ("isu_cd", ""),
+])
+def test_consumers_revalidate_fields_mutated_after_normalization(field, value):
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_valid_row()]))
+    lineage[field] = value
+    with pytest.raises(KRXInvestorFlowLineageError):
+        audit_investor_flow_lineage(lineage)
+    with pytest.raises(KRXInvestorFlowLineageError):
+        attach_decision_eligibility(lineage, "2026-09-23T19:30:00+09:00")
+
+
+def test_revalidation_preserves_input_extra_columns_and_index():
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_valid_row()], index=[42]))
+    lineage["caller_note"] = "preserve"
+    original = lineage.copy(deep=True)
+    audit = audit_investor_flow_lineage(lineage)
+    out = attach_decision_eligibility(lineage, "2026-09-23T20:05:00+09:00")
+    pd.testing.assert_frame_equal(lineage, original)
+    assert audit["lineage_structurally_valid"] is True
+    assert out.index.tolist() == [42]
+    assert out["caller_note"].tolist() == ["preserve"]
+    assert out["eligible_at_decision"].tolist() == [True]
