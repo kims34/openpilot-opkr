@@ -843,3 +843,8 @@ PR144/145 removed the remaining lossy `astype(str)` coercion from execution `sid
 ## 2026-10-06 — Rejected UTC decision-date binding experiment
 
 PR146/147 tested binding `decision_date` to the UTC calendar date of `recommendation_at`. Exact-head CI correctly failed because frozen `decision_date` represents the market-session decision date and cannot be inferred as UTC calendar date from the execution timestamp without a separately frozen exchange-calendar/timezone contract. The proposed implementation and regression were reverted on their isolated branches and both PRs were closed **without merge**. This experiment is `REJECTED_DO_NOT_APPLY`; PR138/139 exact `YYYY-MM-DD` type/format hardening remains authoritative. No base branch behavior, frozen criterion, holdout state, genuine-LIVE evidence or broker authority changed.
+
+
+## 2026-10-06 — Exact execution identifier preservation
+
+PR144/145 removed remaining lossy `astype(str)` coercion from execution `side`/`source`, requiring original string metadata before normalization; exact-head Actions passed and both merged. PR148/149 then removed silent surrounding-whitespace normalization from `observation_id`, `decision_policy_id`, and `execution_policy_id`, so identity/policy binding is exact rather than canonicalized after ingestion; exact-head Actions passed and both merged. PR146/147 remained closed without merge as a rejected UTC-date inference experiment. Current merge heads before this documentation update: development `3f82639e02c577d1314795cec5355c4e165a90a5`, research `ef9a6d0f768f1b30b7b414d49faea1f3076b6dac`. No genuine LIVE evidence was admitted and no frozen threshold/model/holdout/broker-authority state changed.
