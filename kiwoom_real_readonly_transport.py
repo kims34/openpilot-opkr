@@ -20,6 +20,10 @@ PATH = "/api/dostk/acnt"
 MAX_RESPONSE_BYTES = 1024 * 1024
 SCOPES = {
     "ka00001": (frozenset(), frozenset()),
+    "kt00001": (
+        frozenset({"qry_tp"}),
+        frozenset({"qry_tp"}),
+    ),
     "kt00007": (
         frozenset("qry_tp stk_bond_tp sell_tp dmst_stex_tp".split()),
         frozenset("qry_tp stk_bond_tp sell_tp dmst_stex_tp ord_dt stk_cd fr_ord_no".split()),
@@ -172,6 +176,8 @@ class KiwoomRealReadOnlyTransport:
         _require(type(body) is dict and required <= set(body) <= allowed)
         _require(all(type(v) is str and len(v) <= 256 for v in body.values()))
         _require(all(body[k].strip() for k in required))
+        if api_id == "kt00001":
+            _require(body == {"qry_tp": "2"})
         if api_id == "kt00018":
             _require(body == {"qry_tp": "2", "dmst_stex_tp": "KRX"})
         _require(

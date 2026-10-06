@@ -10,13 +10,13 @@ PROVENANCE = (ROOT / "INDEXALERT_LIVE_EXECUTION_PROVENANCE_CONTRACT.md").read_te
 
 def test_kiwoom_readiness_is_explicitly_non_ordering_and_fail_closed():
     required = (
-        "READ-ONLY / DEMO PREPARATION ONLY — REAL-ACCOUNT ORDERING DISABLED",
+        "READ-ONLY DEMO + EXPLICIT REAL QUERY PREPARATION — REAL-ACCOUNT ORDERING DISABLED",
         "genuine_live_provenance_verified=false",
         "empirical_execution_sufficiency_assessed=false",
         "sealed_holdout_authorized=false",
         "live_trading_authorized=false",
         "demo/paper observations must never be relabelled `PROSPECTIVE_LIVE_EXECUTION_LOG`",
-        "possession of REAL credentials alone does not authorize a REAL request or any order submission",
+        "possession of REAL credentials alone does not authorize any request; REAL requests are limited to the separately reviewed fixed-host read-only allowlist, and no order submission is authorized.",
         "Real-account order submission remains disabled",
         "The sealed holdout remains untouched",
     )

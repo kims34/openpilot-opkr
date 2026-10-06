@@ -1,8 +1,8 @@
-# IndexAlert Kiwoom REST Readiness Contract — Read-Only / Demo Preparation
+# IndexAlert Kiwoom REST Readiness Contract — Read-Only DEMO / REAL Preparation
 
-Updated: 2026-10-02 KST
+Updated: 2026-10-07 KST
 Branch: `index-alert-research-v1`
-Status: **READ-ONLY / DEMO PREPARATION ONLY — REAL-ACCOUNT ORDERING DISABLED**
+Status: **READ-ONLY DEMO + EXPLICIT REAL QUERY PREPARATION — REAL-ACCOUNT ORDERING DISABLED**
 
 This contract freezes the safe preparation boundary for a future Kiwoom Securities REST adapter. It does not authorize real-account ordering, does not close the empirical execution blocker, and does not change any Alpha, statistical, KRX, holdout, promotion, capacity or execution-sufficiency threshold.
 
@@ -62,7 +62,11 @@ When credentials are eventually configured, they must be injected by the deploym
 
 `DEMO/PAPER` and `REAL` are different evidence classes even when they expose similar API schemas.
 
-Current allowed environment: **DEMO/read-only preparation only**.
+Current allowed environments:
+- DEMO/read-only preparation;
+- REAL/read-only explicit user-operated queries through the reviewed fixed-host allowlist only.
+
+The REAL read-only boundary was introduced only after a separate fail-closed implementation/review path. It does not make any order-capable method available and does not authorize LIVE trading.
 
 Rules:
 - demo/paper observations may validate connectivity, parsing, state-machine plumbing and reconciliation mechanics;
@@ -70,7 +74,7 @@ Rules:
 - demo/paper observations must never set `genuine_live_provenance_verified=true`;
 - demo/paper observations cannot satisfy the frozen execution-sufficiency sample or metric gates;
 - a successful token, account query, quote query or websocket connection is technical connectivity only;
-- possession of REAL credentials alone does not authorize a REAL request or any order submission.
+- possession of REAL credentials alone does not authorize any request; REAL requests are limited to the separately reviewed fixed-host read-only allowlist, and no order submission is authorized.
 
 Observed demo plumbing is recorded separately in `INDEXALERT_KIWOOM_DEMO_CONNECTIVITY_EVIDENCE.md`. The observed `TOKEN_OK`, `ACCOUNT_OK`, `BALANCE_OK`, and `FILLS_OK` sequence confirms only demo/read-only connectivity and does not change any project promotion or execution gate.
 
@@ -78,7 +82,10 @@ Observed demo plumbing is recorded separately in `INDEXALERT_KIWOOM_DEMO_CONNECT
 
 Until a later explicit promotion-stage change is committed and independently reviewed:
 
-Allowed after the user configures appropriate demo credentials locally/through a secret manager:
+Allowed after the user configures the matching environment credentials locally/through a secret manager:
+- fixed-host REAL OAuth plus explicitly allowlisted read-only account queries (ka00001, kt00001, kt00007, ka10076, kt00018) with ordering configuration disabled;
+- REAL read-only outputs must remain secret/account-safe and cannot by themselves set genuine LIVE provenance or trading authority;
+-
 - authentication/token smoke checks against the demo environment;
 - read-only demo account-number discovery;
 - read-only demo balances/positions/open-order/execution queries;
@@ -211,6 +218,6 @@ No such change is authorized by this document.
 
 ## 11. Current conclusion
 
-Kiwoom REST is a viable future broker adapter/evidence source based on the reviewed official schema, including broker-native order and execution identifiers plus fill/fee/tax fields. Demo/read-only authentication, account, balance and filled-order connectivity has been observed successfully, and offline normalization/reconciliation plumbing is implemented for the reviewed broker-native schemas.
+Kiwoom REST is a viable future broker adapter/evidence source based on the reviewed official schema, including broker-native order and execution identifiers plus fill/fee/tax fields. Demo/read-only authentication, account, balance and filled-order connectivity has been observed successfully. A user-operated REAL read-only OAuth + ka00001 connectivity observation is also recorded in INDEXALERT_KIWOOM_REAL_READONLY_EVIDENCE_2026-10-07.md. Offline normalization/reconciliation plumbing is implemented for the reviewed broker-native schemas. REAL settlement-field validation remains a separate step and no read-only success is order authority.
 
 **Real-account order submission remains disabled. Demo/paper evidence is not genuine LIVE evidence. REST order snapshots without broker execution IDs cannot be promoted into per-execution evidence. The sealed holdout remains untouched.**
