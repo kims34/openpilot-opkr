@@ -43,7 +43,7 @@ def inspect_shadow_operational_status(path):
         connection.execute('PRAGMA query_only=ON')
         connection.execute('BEGIN')
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        _require({'intents','shadow_control','reconciliation_barrier','reconciled_snapshot_bindings'} <= tables)
+        _require({'intents','executions','shadow_control','reconciliation_barrier','reconciled_snapshot_bindings'} <= tables)
         control = connection.execute('SELECT epoch,mode,killed FROM shadow_control WHERE id=1').fetchone()
         barrier = connection.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
         _require(control is not None and barrier is not None)
@@ -67,16 +67,27 @@ def inspect_shadow_operational_status(path):
         # snapshot still describes the current journal orders.
         names = ('key','broker_order_id','symbol','side','quantity','filled_quantity','state')
         known = {}
+        intent_fills = {}
         for key,payload,broker_id,filled,state,terminal in connection.execute(
                 "SELECT key,payload,broker_order_id,filled,state,terminal_status FROM intents"):
             try:
                 identity = validate_stored_intent_row(payload,state,broker_id,filled,terminal)
             except OrderJournalError:
                 _require(False)
+            intent_fills[key] = filled
             if state != 'INTENT_CREATED':
                 known[key] = dict(key=key,broker_order_id=broker_id,
                     symbol=identity['symbol'],side=identity['side'],quantity=identity['quantity'],
                     filled_quantity=filled,state=state)
+        # A matching intent/snapshot pair cannot override immutable fills.
+        # All reads share the existing read-only SQLite snapshot; no repair.
+        execution_totals = {key: 0 for key in intent_fills}
+        for key, execution_id, quantity in connection.execute(
+                'SELECT key,execution_id,quantity FROM executions'):
+            _require(key in intent_fills and type(execution_id) is str and bool(execution_id.strip()))
+            _require(type(quantity) is int and quantity > 0)
+            execution_totals[key] += quantity
+        _require(execution_totals == intent_fills)
         bindings = list(connection.execute('SELECT key,revision,epoch,payload FROM reconciled_snapshot_bindings'))
         if {row[0] for row in bindings} != set(known):
             blockers.add('ORDER_SNAPSHOT_SCOPE_CHANGED')
