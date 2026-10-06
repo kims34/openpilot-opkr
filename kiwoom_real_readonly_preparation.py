@@ -7,7 +7,7 @@ broker permission, move funds, or grant LIVE evidence/ordering authority.
 from kiwoom_readonly_configuration_audit import REAL_BASE_URL
 
 
-READ_ONLY_API_IDS = frozenset({"ka00001", "kt00007", "ka10076", "kt00018"})
+READ_ONLY_API_IDS = frozenset({"ka00001", "kt00001", "kt00007", "ka10076", "kt00018"})
 ORDER_API_IDS = frozenset({"kt10000", "kt10001", "kt10002", "kt10003"})
 
 
