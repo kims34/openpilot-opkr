@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass
 import re
 from typing import Any, Mapping
 
-from research_v1_krx_acquisition_receipt import _sha256
+from research_v1_krx_acquisition_receipt import ALLOWED_ACCESS_ROUTES, _sha256
 from research_v1_krx_public_evidence import (
     PUBLIC_EVIDENCE_VERSION,
     public_evidence_fingerprint_sha256,
@@ -88,8 +88,22 @@ def _verify_batch(batch: Mapping[str, Any]) -> bool:
     body = {field: batch[field] for field in BATCH_BODY_FIELDS}
     if claimed != _sha256(body):
         raise KRXSourceDataAdmissionError("batch fingerprint mismatch; manifest may be tampered")
+    for field in (
+        "source_family", "intended_use_scope", "access_route", "dataset_identifier",
+        "authorization_evidence_reference", "client_revision", "public_contract_evidence_version",
+    ):
+        if not isinstance(batch[field], str) or not batch[field].strip():
+            raise KRXSourceDataAdmissionError(f"batch {field} must be a non-empty string")
+    if batch["access_route"] not in ALLOWED_ACCESS_ROUTES:
+        raise KRXSourceDataAdmissionError("batch access_route is unsupported")
+    if any(marker in batch["authorization_evidence_reference"].lower()
+           for marker in ("password=", "token=", "cookie=", "secret=")):
+        raise KRXSourceDataAdmissionError("batch authorization_evidence_reference must be opaque and non-secret")
+    for field in ("response_schema_sha256", "public_contract_evidence_fingerprint_sha256"):
+        if not isinstance(batch[field], str) or not SHA256_RE.fullmatch(batch[field]):
+            raise KRXSourceDataAdmissionError(f"batch {field} must be a SHA-256 string")
     auth_fp = str(batch["authorization_evidence_fingerprint_sha256"]).strip().lower()
-    if not SHA256_RE.fullmatch(auth_fp):
+    if not isinstance(batch["authorization_evidence_fingerprint_sha256"], str) or not SHA256_RE.fullmatch(auth_fp):
         raise KRXSourceDataAdmissionError(
             "batch authorization evidence fingerprint is missing or malformed"
         )

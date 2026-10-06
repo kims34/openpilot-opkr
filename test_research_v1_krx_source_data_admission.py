@@ -233,3 +233,40 @@ def test_rehashed_batch_cannot_claim_coverage_or_pit_authority(field, value):
             source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
             lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
         )
+
+@pytest.mark.parametrize("field", [
+    "source_family", "intended_use_scope", "access_route", "dataset_identifier",
+    "authorization_evidence_reference", "client_revision", "public_contract_evidence_version",
+])
+@pytest.mark.parametrize("value", [None, 0, {}, ""])
+def test_rehashed_direct_batch_rejects_non_string_contracts(field, value):
+    batch = _batch()
+    batch[field] = value
+    batch["batch_fingerprint_sha256"] = _sha256(
+        {name: batch[name] for name in BATCH_BODY_FIELDS}
+    )
+    with pytest.raises(KRXSourceDataAdmissionError):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
+            lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
+        )
+
+
+@pytest.mark.parametrize("field,value", [
+    ("authorization_evidence_fingerprint_sha256", int("1" * 64)),
+    ("response_schema_sha256", "not-a-digest"),
+    ("public_contract_evidence_fingerprint_sha256", None),
+    ("access_route", "UNOFFICIAL_PROXY"),
+    ("authorization_evidence_reference", "TOKEN=synthetic-placeholder"),
+])
+def test_rehashed_direct_batch_preserves_acquisition_contract(field, value):
+    batch = _batch()
+    batch[field] = value
+    batch["batch_fingerprint_sha256"] = _sha256(
+        {name: batch[name] for name in BATCH_BODY_FIELDS}
+    )
+    with pytest.raises(KRXSourceDataAdmissionError):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
+            lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
+        )
