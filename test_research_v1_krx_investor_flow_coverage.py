@@ -194,3 +194,16 @@ def test_expected_scope_fingerprint_string_normalization_preserves_existing_beha
     audit = audit_investor_flow_coverage(scope, lineage)
     assert audit["coverage_structurally_complete"] is True
     assert audit["feature_performance_testing_authorized"] is False
+
+
+@pytest.mark.parametrize("scope_fp", ["c" * 64, "d" * 64])
+def test_coverage_summary_retains_exact_expected_scope_contract_fingerprint(scope_fp):
+    scope = pd.DataFrame([
+        _scope_row(scope_contract_fingerprint_sha256=scope_fp)
+    ])
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_lineage_row()]))
+    summary = audit_investor_flow_coverage(scope, lineage)
+    assert summary["expected_scope_contract_fingerprint_count"] == 1
+    assert summary["expected_scope_contract_fingerprint_sha256"] == scope_fp
+    assert summary["feature_performance_testing_authorized"] is False
+    assert summary["sealed_holdout_authorized"] is False
