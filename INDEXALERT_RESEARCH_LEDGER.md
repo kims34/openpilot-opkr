@@ -1,3 +1,69 @@
+# INDEXALERT_HANDOFF — 2026-10-06T06:04Z / 15:04 KST
+
+Project remains INCOMPLETE. Actual tested code HEADs before this documentation checkpoint:
+- index-alert-position-regen-fix-v1@78452bdfde69d6fa2ca1a4a33f90b23683f0b752
+- index-alert-research-v1@7950f3dae76a9c1eed67f965603a00b6b6c7d2a2
+- index-alert-server@8a68b01bca5d551d083ccda263df38d86fa54166 (fresh branch/config read; unchanged)
+The documentation commit follows these tested HEADs. Always retrieve exact current branch HEAD/parent and latest Actions from GitHub rather than treating an earlier checkpoint as current.
+
+Recovered the interruption accurately: PR66 existed at feature2b026eab52855544d3d1df6be135f287297d9d9c with SUCCESS CI37419869880/job112126607451161passed; research counterpart branch did not exist. Completed its merge and research synchronization, then continued through PR77. No completed PR56–65 work or owner preview installation was repeated.
+
+Completed:
+- PR66/67: exact string contract fields and authorization digest type at receipt ingress;54 regressions.
+- PR68/69: revalidate retrieved_at with the builder's existing timezone-aware parser;5 malformed/naive cases plus2 valid timezone cases. Existing timezone/PIT rules and receipt bytes are not rewritten.
+- PR70/71: reject missing/container/numeric contract and digest inputs in the builder before they are coerced into apparently valid strings;40 direct-builder regressions; receipt suite/dependencies added to dedicated CI.
+- PR72/73: preserve existing source-family/route allowlists, opaque non-secret references and serialized column types, and require acquisition-only coverage/PIT claims to remain exact False;28 regressions.
+- PR74/75: apply canonical scalar contract, digest, route and opaque-reference checks to directly supplied batch manifests;33 regressions.
+- PR76/77: CRITICAL PIT CONSUMER REVALIDATION. A previously normalized frame mutated to available_at19:00 while published_at20:00 still emitted chronology_valid=true and permitted a19:30 decision; string"false" lineage_validated also passed coverage. All3 synthetic counterexamples were reproduced against the original consumers. Audit, decision and coverage now require exact True markers and rerun the existing full lineage validator against the current snapshot. Frozen chronology event<=published<=available<=ingested,20:00KST publication floor, identity/public/source checks remain unchanged. Preserve input, caller metadata and index; coverage errors retain their domain type.25 regressions.
+
+Exact PR merges/CI references:
+- PR66: merged9e7f199c92fc71eb51a71ab777be1b78734ce9d; CI37419869880/job112126607451 (PR66).
+- PR67: merge8c7c989b9d4a20372dfea57db9adf7ffd124d290; CI37420288439/job112127890655.
+- PR68: merge23d8d55e957b0afdc91de040a3e668981bb313bb; CI37420392444/job112128215963.
+- PR69: merged318c6c59b5a9d3734d34af7b840a96d95b951ad; CI37420401725/job112128246021.
+- PR70: merge072e2f36760106c1843a7e6914b9cedc1519cc08; CI37420523552/job112128627795.
+- PR71: merge48e0bc6c107520b7a329c92a7c456f33dfbcf850; CI37420533833/job112128659894.
+- PR72: merge7b82109d879dba4eb467dacc966d2972295fa244; CI37420785854/job112129439857.
+- PR73: mergeedaa69d16cd672ac85016a697e349437148097d9; CI37420795299/job112129467992.
+- PR74: merge1c3e0b80cb5d08e8ab8a8a2ea5a390ab36859e5f; CI37421076117/job112130331255.
+- PR75: merge8ce53993ca763de80916caaf4fb44b9542ab8e95; CI37421084677/job112130358250.
+- PR76: merge78452bdfde69d6fa2ca1a4a33f90b23683f0b752; CI37421499000/job112131639057.
+- PR77: merge7950f3dae76a9c1eed67f965603a00b6b6c7d2a2; CI37421507668/job112131666511.
+
+Actual canonical job-log verification:
+- index-alert-position-regen-fix-v1: KRX source admission exact authority flags; run37421642473/job112132085189; success; 2026-10-06T06:03:25.2804452Z 329 passed in 1.55s
+- index-alert-research-v1: IndexAlert Research v1 Official KRX Status Integrity; run37421649060/job112132104960; success; 2026-10-06T06:03:32.6005524Z 821 passed, 5 warnings in 4.11s
+- index-alert-research-v1: KRX source admission exact authority flags; run37421649010/job112132104750; success; 2026-10-06T06:03:36.1558103Z 329 passed in 1.55s
+The dedicated suite covers329 offline receipt/batch/source/lineage/coverage tests. Official research suite821passed with5emitted warnings. Local py_compile passed for all5changed modules. Local direct synthetic reproductions verified malformed builder inputs, receipt/batch contracts and all3PIT bypasses fail closed after fixes. Local pytest is unavailable; no local pytest pass is claimed. These are engineering tests, never actual KRX/genuine LIVE/Alpha results.
+
+Master Spec Git blob798e658d2b3414f95ce648c58945425d9a579182 remains unchanged. No frozen thresholds, labels, model, Champion, real-order logic or accepted empirical trial changed. Fresh research Ledger/Status were read; ideas remain HOLD/source/preregistration-gated and no new ACCEPTED_CHALLENGER was found or applied.
+
+Railway read-only recovery:
+Projectd1c1a050-b7d6-41ce-b300-13c20f82a20a / production83d5840b-270e-4d3f-a941-a37fd4a55ff7;8services/3volumes/no staged changes.
+- Runtime37902fde-ca05-43e0-bc76-278992bf7732: deploymenteaaa9f67-b9f2-41d2-832c-7d6fad9b9b00SUCCESS, pin8a68b01bca5d551d083ccda263df38d86fa54166; /data500MB volume f96f985a-8aba-41ef-88df-f76999c4ff0c; read-only evidence/configuration audits then uvicorn. Actual latest inspected logs2026-10-06T05:47:42Z remain market-display/provider observations, not native fills or official source-admission evidence.
+- PIT225f2279-d728-4e1a-a3f3-2447ff0f9dc1: deployment7021473a-d9a6-4711-b496-a359fd9bb0c8SUCCESS, pin26f56e63c3f30a6f8e02695ce9a4eb7b4ac3fe15; /pit5000MB volume03f389e5-5030-46a9-bfa5-dd8aa3dc24fa; audit_retired_validation.py/restartNEVER. Existing audit log confirms all3preserved hashes, no model/outcome parse/private mutation/network/orders; all retired validation stages blocked.
+- KRX003812ee-102b-42b6-bda4-36925885b428: deploymente56cf101-15c5-478e-ae67-228585013ef0SUCCESS, pinef95e7857f692fda3855390e918e165487624881; /data5000MB volume61610fae-dc0c-493e-9920-eb3cef4cea86; read-only integrity/restartNEVER. Existing actual audit log14495verified checkpoints/14425objects/errors{}; historical_coverage_validated=false, pit_availability_validated=false and all later authoritiesfalse.
+- DEMO deploymentcd47a5f0-709c-46cc-9b8f-ea0969ce2ba9SUCCESS, no volume. Legacy backend/push still retain September23FAILED deployments; db-query has no deployment. Do not claim whole-project health.
+No deployment/restart/source-pin/volume/secret/account/broker/real-order changes this run. Do not roll these code changes into retired/consumed validation or alter old immutable receipt/fill bindings.
+
+Schedule freshly listed this run: existing task6ac3b166d460819186ae78ecc3c7444d ENABLED, Asia/Seoul, DTSTART20261006T192847 and RRULE:FREQ=HOURLY;INTERVAL=5. First planned19:28:47KSTOctober6. Returned next_run_time=null; no queue timestamp claimed. Latest explicit owner reauthorization supersedes historical cancellation. No duplicate automation or new scheduling change.
+
+Exact next resume:
+1. Fetch GitHub latest HEADs/commits/open PRs/Actions, including documentation checkpoint workflows, plus current Railway inventory/config/logs. Do not restart successful readonly workers or repeat PR56–77.
+2. Continue source-proof composition review in research_v1_krx_source_data_admission.py, research_v1_krx_investor_flow_lineage.py, research_v1_krx_investor_flow_coverage.py and the existing source/coverage-PIT audit contracts. NEW RESEARCH/ENGINEERING FOLLOWUP: lineage summaries report source fingerprint COUNT, coverage summaries report expected-scope fingerprint COUNT, and composed source admission accepts audit booleans without a defined linkage to the exact batch/payload/expected-scope artifact. Investigate the existing frozen meanings and callers before proposing a binding contract. Do not invent source_contract_fingerprint=batch_fingerprint, substitute self-hashes for independent provenance, or mark any real dataset admitted without authentic source/availability/economics evidence.
+3. If a further independently reproducible input/snapshot bypass is found, implement fail-closed regression coverage and exact-head CI/research synchronization. Keep research ideas/HOLD/REJECT/INCONCLUSIVE out of Champion. No formal successor/preregistration chronology or empirical promotion was established here.
+4. External blockers remain source C/D/E history/availability/provenance and exact status-event realized fill/recovery economics; independent prospective chronology/trust root; genuine LIVE broker-native whole-account/day/ownership/fill/fee/settlement evidence and frozen600observations/200dates/400fills/120near-capacity>=80%ADV0.0005 admission. Isolated handset preview UI is COMPLETE; original production compatible signing-key path and production push E2E remain OPEN. Do not repeat completed owner preview/default-key checks or fabricate substitutes.
+
+Frozen prohibitions: preserve PIT/time/labels/H5/WF504-126-126/rolling1260/horizon purge+embargo/CPCV60/Top3/no-backfill/cost/slippage/partial-fill/NetEV/Precision@Selected/PF/MDD/ES95/99/model/threshold/acceptance/rejection/promotion rules. MASTER_OFF and readiness remain mandatory; real orders, funds movement or broker-account permission changes require separate explicit approval. No real-order implementation below Master Spec gates.
+
+CONSUMED_FAILED_INVALID_V1_HOLDOUT cutoff2026-09-25/window2026-09-28..10-01 and failed/discrepancy/immutable lineage preserved:
+result30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82;
+manifestff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907;
+receipt3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63.
+No delete/reset/re-evaluate/reseal/relabel/retune/private outcome parse. This checkpoint is not project completion or a claim of continuous background execution outside an actual run.
+
+--- Historical authoritative records follow. ---
+
 # Latest checkpoint — 2026-10-06 14:41 KST
 
 Development tested code HEAD465dc1c166d80557532cbd8b9dc6652f57d28a23; research tested code HEAD806a38f9e75f9bbc27f25c651e7059ae30be473f. This documentation commit is their subsequent checkpoint; resolve the exact current branch HEAD from GitHub when resuming.
