@@ -231,6 +231,15 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
+    def test_boolean_identity_and_timestamp_values_are_rejected(self):
+        for field in ("symbol", "decision_date", "recommendation_at", "order_submitted_at", "ingested_at"):
+            with self.subTest(field=field):
+                rows = self._rows()
+                rows[field] = rows[field].astype(object)
+                rows.loc[0, field] = True
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()

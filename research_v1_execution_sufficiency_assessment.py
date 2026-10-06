@@ -150,6 +150,8 @@ def prepare_live_execution_sufficiency_evidence(
 
     if table["observation_id"].isna().any():
         raise ExecutionSufficiencyAssessmentError("observation_id must not be missing")
+    if table["observation_id"].map(lambda v: isinstance(v, (bool, np.bool_))).any():
+        raise ExecutionSufficiencyAssessmentError("observation_id must not contain boolean values")
     x["observation_id"] = table["observation_id"].astype(str).str.strip().to_numpy()
     if x["observation_id"].eq("").any() or x["observation_id"].duplicated().any():
         raise ExecutionSufficiencyAssessmentError("observation_id must be non-empty and unique")
@@ -192,6 +194,8 @@ def prepare_live_execution_sufficiency_evidence(
         "modeled_fees_tax_bps",
         "actual_fees_tax_bps",
     ]:
+        if table[field].map(lambda v: isinstance(v, (bool, np.bool_))).any():
+            raise ExecutionSufficiencyAssessmentError(f"{field} must not contain boolean values")
         x[field] = pd.to_numeric(table[field], errors="coerce").to_numpy()
         if x[field].isna().any() or np.isinf(x[field]).any():
             raise ExecutionSufficiencyAssessmentError(f"{field} must be finite numeric")
