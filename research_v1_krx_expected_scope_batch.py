@@ -225,9 +225,11 @@ def _verify_completed_date(
     completion: Mapping[str, Any],
     git_worktree: str,
 ) -> dict[str, Any]:
-    scope_rel = str(completion.get("private_scope_relpath") or "")
-    expected_prefix = f"expected_scope/dates/{requested_date}/"
-    if not scope_rel.startswith(expected_prefix) or not scope_rel.endswith(".json"):
+    scope_rel = completion.get("private_scope_relpath")
+    if not isinstance(scope_rel, str):
+        raise KRXExpectedScopeBatchError("private scope relpath must be a string")
+    scope_path = Path(scope_rel)
+    if scope_path.parent != Path("expected_scope") / "dates" / requested_date or scope_path.suffix != ".json":
         raise KRXExpectedScopeBatchError("private scope relpath drift")
     scope_name = Path(scope_rel).name
     scope_digest = scope_name[:-5]
