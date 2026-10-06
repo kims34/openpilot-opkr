@@ -481,3 +481,31 @@ def test_completion_summary_drift_fails_before_refetch(tmp_path, field, value):
         execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
             fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
     assert calls == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("official_trading_date_observed", 0), ("official_trading_date_observed", "false"),
+    ("official_trading_date_observed", None), ("official_trading_date_observed", {}),
+    ("investor_expected_key_count", 0.5), ("investor_expected_key_count", False),
+    ("investor_expected_key_count", "0"), ("investor_expected_key_count", None),
+    ("investor_expected_key_count", -1),
+    ("status_expected_key_count", 0.5), ("status_expected_key_count", False),
+    ("status_expected_key_count", "0"), ("status_expected_key_count", None),
+    ("status_expected_key_count", -1),
+])
+def test_date_result_type_cannot_be_coerced_into_valid_completion(tmp_path, monkeypatch, field, value):
+    import research_v1_krx_expected_scope_batch as batch
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    original = batch.execute_expected_scope_date
+    def corrupted_summary(**kwargs):
+        result = original(**kwargs)
+        result[field] = value
+        return result
+    monkeypatch.setattr(batch, "execute_expected_scope_date", corrupted_summary)
+    with pytest.raises(KRXExpectedScopeBatchError, match="date executor"):
+        execute_expected_scope_batch(environment=_env(tmp_path), git_worktree=str(worktree),
+            fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    state = json.loads((tmp_path / "private" / batch.CHECKPOINT_REL).read_text())
+    assert state["completed"] == {}
+    assert state["completed_task_count"] == 0

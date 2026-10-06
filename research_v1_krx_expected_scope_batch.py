@@ -393,6 +393,11 @@ def execute_expected_scope_batch(
             if result.get(field) is not False:
                 raise KRXExpectedScopeBatchError(f"date executor illegally claims authority: {field}")
 
+        if type(result.get("official_trading_date_observed")) is not bool:
+            raise KRXExpectedScopeBatchError("date executor trading-date flag must be an exact boolean")
+        for field in ("investor_expected_key_count", "status_expected_key_count"):
+            if type(result.get(field)) is not int or result[field] < 0:
+                raise KRXExpectedScopeBatchError(f"date executor key count must be a non-negative integer: {field}")
         completion = {
             "private_scope_relpath": result["private_scope_relpath"],
             "private_scope_metadata_sha256": result[
