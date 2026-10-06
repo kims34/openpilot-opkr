@@ -1,4 +1,5 @@
 import copy
+from decimal import localcontext
 import sqlite3
 import tempfile
 import unittest
@@ -74,6 +75,37 @@ class BridgeTests(unittest.TestCase):
         self.apply()
         self.assertFalse(self.apply()['executions_created'])
         self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+
+    def test_changed_price_under_low_decimal_precision_is_conflict(self):
+        first=fill();first.update(fill_price='100001',unit_fill_price='100001')
+        changed=fill();changed.update(fill_price='100002',unit_fill_price='100002')
+        with localcontext() as context:
+            context.prec=3
+            self.apply(first)
+            with self.assertRaises(NativeBridgeError):self.apply(changed)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assert_blocked()
+
+    def test_same_price_across_decimal_contexts_and_restart_remains_duplicate(self):
+        first=fill();first.update(fill_price='100001.00',unit_fill_price='100001')
+        self.apply(first)
+        self.j.close();self.j=OrderIntentJournal(self.path)
+        self.b=KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+        equivalent=fill();equivalent.update(fill_price='1.00001E5',unit_fill_price='100001.000')
+        with localcontext() as context:
+            context.prec=3
+            self.assertFalse(self.apply(equivalent)['executions_created'])
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+
+    def test_changed_price_beyond_default_precision_is_conflict(self):
+        first=fill();first.update(fill_price='12345678901234567890123456789',
+            unit_fill_price='12345678901234567890123456789')
+        self.apply(first)
+        changed=fill();changed.update(fill_price='12345678901234567890123456788',
+            unit_fill_price='12345678901234567890123456788')
+        with self.assertRaises(NativeBridgeError):self.apply(changed)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assert_blocked()
 
     def test_native_scope_order_fill_and_execution_rows_reject_mutation_and_replace(self):
         self.apply()

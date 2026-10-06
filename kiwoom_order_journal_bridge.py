@@ -42,6 +42,22 @@ def number(value, *, integer=False, positive=False):
     return n
 
 
+def exact_decimal_identity(value):
+    """Canonical finite value without context-dependent rounding or arithmetic.
+
+    Decimal.normalize() applies the thread's precision before removing zeros.
+    That can collapse different execution prices or change a replay digest.
+    Removing trailing coefficient zeros directly preserves every significant
+    digit and keeps equivalent decimal/exponent spellings idempotent.
+    """
+    sign, digits, exponent = value.as_tuple()
+    digits = list(digits)
+    while len(digits) > 1 and digits[-1] == 0:
+        digits.pop()
+        exponent += 1
+    return str(Decimal((sign, tuple(digits), exponent)))
+
+
 class KiwoomOrderJournalBridge:
     def __init__(self,journal,*,account_fingerprint,trading_date):
         self.journal=journal
@@ -143,7 +159,7 @@ class KiwoomOrderJournalBridge:
         datetime.strptime(time,'%H%M%S')
         payload=dict(account=self.account,day=self.day,order=binding[0],symbol=order['symbol'],
             native_side=binding[1],execution_id=execution,quantity=qty,
-            price=str(price.normalize()),time=time,remaining=remaining)
+            price=exact_decimal_identity(price),time=time,remaining=remaining)
         serialized=json.dumps(payload,sort_keys=True,separators=(',',':'))
         digest=hashlib.sha256(serialized.encode()).hexdigest()
         old=self.journal.db.execute('SELECT digest FROM native_fill_bindings WHERE key=? AND execution_id=?',(key,execution)).fetchone()
