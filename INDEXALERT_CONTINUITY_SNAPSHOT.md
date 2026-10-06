@@ -1,3 +1,7 @@
+# Signing path checkpoint — 2026-10-06 10:55 KST
+
+Owner standard local .android/debug.keystore presence check returned False. This is NOT a search of all custom keys. Installed4.7 SDK identity remains verified via owner-provided output; known4.8 artifacts remain signer-incompatible. No uninstall, data-clear, key upload or installation occurred. Concrete alternatives, inspected build/manifest/data persistence and exact next isolated-preview feasibility review are recorded in INDEXALERT_ANDROID_SIGNING_CONTINUITY_PLAN.md. No preview build or migration verification exists yet. Keep4.7 and its data. All existing frozen/trading/holdout boundaries and last observed Railway pins remain unchanged; Railway was not queried in this owner signing checkpoint. Re-fetch actual documentation HEAD/Actions on resume; this note cannot embed its future SHA or claim new test results.
+
 # Owner handset APK inspection — 2026-10-06 10:50:03 KST
 
 This updates the installed-signer blocker only; older evidence remains historical. Evidence provenance is owner-executed Windows PowerShell / Android SDK output supplied verbatim in this chat, not a directly attached device or an execution of the repository Python verifier by this environment.
