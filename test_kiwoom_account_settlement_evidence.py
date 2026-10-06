@@ -63,6 +63,15 @@ class SettlementEvidenceTests(unittest.TestCase):
                 with self.subTest(field=field, text=text), self.assertRaises(SettlementEvidenceError):
                     normalize_kt00001_settlement({**row, field:text}, account_fingerprint=FP, captured_at=TS)
 
+    def test_python_and_unicode_cash_aliases_reject_without_changing_ascii_decimal(self):
+        row = {"entr":"8999","pymn_alow_amt":"0","d2_entra":"0","ord_alow_amt":"0"}
+        for field in row:
+            for text in ('8_999', '8__999', '８９９９', '٨٩٩٩', '8\u066999'):
+                with self.subTest(field=field, text=text), self.assertRaises(SettlementEvidenceError):
+                    normalize_kt00001_settlement({**row, field:text}, account_fingerprint=FP, captured_at=TS)
+        for text in ('8999', '008999', '8999.00', '+8999', '8.999E+3'):
+            out = normalize_kt00001_settlement({**row, 'entr':text}, account_fingerprint=FP, captured_at=TS)
+            self.assertEqual(out.deposit_cash_krw, 8999)
+
 if __name__ == "__main__":
     unittest.main()
-

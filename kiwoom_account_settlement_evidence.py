@@ -22,6 +22,9 @@ def _require(condition):
 
 def _decimal_text(value):
     _require(type(value) is str and value.strip() == value and value != "")
+    # Do not reinterpret Python-only separators or Unicode digit aliases as
+    # native cash bytes. Existing ASCII Decimal notation stays supported.
+    _require(value.isascii() and '_' not in value)
     # Commas must represent complete thousands groups, never arbitrary
     # characters to discard. Preserve the existing comma-free Decimal path.
     _require(',' not in value or re.fullmatch(r'[+-]?[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?', value))
