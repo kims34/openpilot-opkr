@@ -31,7 +31,7 @@ class Type00ProtectedIntakeIntegrationTests(unittest.TestCase):
                 event=extract_type00_events(frame)[0]
                 out=intake.append("receipt-1","d",event,trading_date="2026-10-07")
                 self.assertEqual(out["result"],"RECEIPT_PERSISTED")
-                self.assertFalse(out["genuine_live_evidence"])
+                self.assertFalse(out["source_provenance_admitted"])
                 self.assertFalse(out["live_ordering_authorized"])
                 self.assertEqual(inbox.counts()["pending"],1)
             finally:
