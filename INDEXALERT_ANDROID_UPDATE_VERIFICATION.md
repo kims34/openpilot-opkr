@@ -1,3 +1,13 @@
+## Owner-paired wireless inspection support
+
+The read-only verifier now accepts an explicit --wireless-device target after the owner pairs/connects through Android settings. Default remains USB -d. Example with a placeholder (do not publish real addresses/serials):
+
+```sh
+python verify_indexalert_installed_apk.py --wireless-device 192.0.2.10:37123 --adb /path/to/adb --aapt2 /path/to/aapt2 --apksigner /path/to/apksigner
+```
+
+Only Android TLS connection service names or IPv4:port targets are accepted; no automatic pairing/connect/discovery. Authorized device state and emulator-marker diagnostics are checked before the existing public APK reads. These diagnostics are not cryptographic hardware/ownership attestation. The selector is never emitted in the JSON report, which identifies only USB or PAIRED_WIRELESS transport. No app data, signing key, network credential or broker action is accessed. Tests are mocked/synthetic. The owner's actual prior inspection used direct SDK PowerShell commands, not this Python CLI; do not relabel it as a new automated verifier run or repeat that completed inspection.
+
 # Signing path checkpoint — 2026-10-06 10:55 KST
 
 Owner standard local .android/debug.keystore presence check returned False. This is NOT a search of all custom keys. Installed4.7 SDK identity remains verified via owner-provided output; known4.8 artifacts remain signer-incompatible. No uninstall, data-clear, key upload or installation occurred. Concrete alternatives, inspected build/manifest/data persistence and exact next isolated-preview feasibility review are recorded in INDEXALERT_ANDROID_SIGNING_CONTINUITY_PLAN.md. No preview build or migration verification exists yet. Keep4.7 and its data. All existing frozen/trading/holdout boundaries and last observed Railway pins remain unchanged; Railway was not queried in this owner signing checkpoint. Re-fetch actual documentation HEAD/Actions on resume; this note cannot embed its future SHA or claim new test results.

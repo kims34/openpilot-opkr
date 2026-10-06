@@ -5,6 +5,7 @@ account state, broker connection or private signing key is accessed.
 """
 import argparse
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import re
@@ -46,11 +47,33 @@ def apk_identity(apk, *, aapt2, apksigner, run=run_tool):
                 signature_verified=True, apk_sha256=hashlib.sha256(Path(apk).read_bytes()).hexdigest())
 
 
-def audit_installed_apk(candidate=None, *, adb='adb', aapt2='aapt2', apksigner='apksigner', run=run_tool):
-    # -d selects a USB physical handset, never an emulator or arbitrary serial.
-    if run([adb, '-d', 'get-state']).strip() != 'device':
+def handset_selector(wireless_device):
+    if wireless_device is None:
+        return ['-d']
+    if not isinstance(wireless_device, str):
+        raise InstalledApkAuditError('PAIRED_WIRELESS_TARGET_REQUIRED')
+    if re.fullmatch(r'adb-[A-Za-z0-9-]+\._adb-tls-connect\._tcp', wireless_device):
+        return ['-s', wireless_device]
+    try:
+        address, port = wireless_device.rsplit(':', 1)
+        ipaddress.IPv4Address(address)
+        if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
+            raise ValueError()
+    except ValueError:
+        raise InstalledApkAuditError('PAIRED_WIRELESS_TARGET_REQUIRED') from None
+    return ['-s', wireless_device]
+
+
+def audit_installed_apk(candidate=None, *, adb='adb', aapt2='aapt2', apksigner='apksigner',
+                        wireless_device=None, run=run_tool):
+    # Default remains one USB handset. Wireless target must be explicitly supplied
+    # by its owner after Android pairing; never discover/connect/pair automatically.
+    selected = [adb, *handset_selector(wireless_device)]
+    if run([*selected, 'get-state']).strip() != 'device':
         raise InstalledApkAuditError('ONE_AUTHORIZED_PHYSICAL_HANDSET_REQUIRED')
-    paths = run([adb, '-d', 'shell', 'pm', 'path', PACKAGE]).splitlines()
+    if wireless_device is not None and run([*selected, 'shell', 'getprop', 'ro.kernel.qemu']).strip() not in ('', '0'):
+        raise InstalledApkAuditError('PHYSICAL_HANDSET_REQUIRED')
+    paths = run([*selected, 'shell', 'pm', 'path', PACKAGE]).splitlines()
     base = [line[len('package:'):] for line in paths
             if line.startswith('package:') and line.endswith('/base.apk')]
     if (len(base) != 1 or not base[0].startswith('/data/app/')
@@ -58,12 +81,13 @@ def audit_installed_apk(candidate=None, *, adb='adb', aapt2='aapt2', apksigner='
         raise InstalledApkAuditError('ONE_INSTALLED_INDEXALERT_BASE_APK_REQUIRED')
     with tempfile.TemporaryDirectory(prefix='indexalert-apk-readonly-') as directory:
         installed_apk = Path(directory) / 'installed-base.apk'
-        run([adb, '-d', 'pull', base[0], str(installed_apk)])
+        run([*selected, 'pull', base[0], str(installed_apk)])
         installed = apk_identity(installed_apk, aapt2=aapt2, apksigner=apksigner, run=run)
     proposed = apk_identity(Path(candidate), aapt2=aapt2, apksigner=apksigner, run=run) if candidate is not None else None
     matches = installed['signer_sha256'] == proposed['signer_sha256'] if proposed is not None else None
     return dict(schema_version='INDEXALERT_INSTALLED_APK_READONLY_v1',
                 status='INSTALLED_PUBLIC_APK_OBSERVED',
+                device_transport='PAIRED_WIRELESS' if wireless_device is not None else 'USB',
                 installed=installed, candidate=proposed,
                 candidate_signer_comparison_performed=proposed is not None,
                 installed_candidate_signers_match=matches,
@@ -81,9 +105,11 @@ def main():
     parser.add_argument('--adb', default='adb')
     parser.add_argument('--aapt2', default='aapt2')
     parser.add_argument('--apksigner', default='apksigner')
+    parser.add_argument('--wireless-device', help='Owner-paired wireless ADB TLS service or IPv4:port; never emitted in reports')
     args = parser.parse_args()
     try:
-        result = audit_installed_apk(args.candidate, adb=args.adb, aapt2=args.aapt2, apksigner=args.apksigner)
+        result = audit_installed_apk(args.candidate, adb=args.adb, aapt2=args.aapt2,
+                                    apksigner=args.apksigner, wireless_device=args.wireless_device)
     except (InstalledApkAuditError, OSError, subprocess.TimeoutExpired):
         print(json.dumps({'schema_version': 'INDEXALERT_INSTALLED_APK_READONLY_v1',
                           'status': 'UNVERIFIED', 'installed_signing_continuity_verified': False,
