@@ -219,3 +219,33 @@ def test_resolver_uses_pinned_catalog_defaults_required_and_period_limit():
             {"isuCd":"KR7000300004","isuCd2":"000300","strtDd":"20240101","endDd":"20260102"},
             catalog_getter=getter,
         )
+
+
+@pytest.mark.parametrize("payload", [
+    {}, {"ERROR_CODE": "AUTHORIZATION_FAILED"}, {"OutBlock_1": None},
+    {"OutBlock_1": ""}, {"OutBlock_1": {}}, {"OutBlock_1": [1]},
+    {"OutBlock_1": [None]}, {"OutBlock_1": [], "output": []},
+])
+def test_openapi_missing_or_malformed_row_block_is_not_empty_scope_evidence(payload):
+    with pytest.raises(KRXHistoricalFetchError, match="row block"):
+        parse_openapi_raw(json.dumps(payload).encode())
+
+
+@pytest.mark.parametrize("block", ["OutBlock_1", "output"])
+def test_openapi_explicit_empty_block_is_preserved_without_invented_columns(block):
+    raw = json.dumps({block: [], "CURRENT_DATETIME": "20261006150000"}).encode()
+    frame = parse_openapi_raw(raw)
+    assert frame.empty
+    assert frame.columns.tolist() == []
+    assert frame.attrs["current_datetime"] == "20261006150000"
+
+
+def test_http_200_error_envelope_fails_in_openapi_adapter():
+    session = Session(gets=[Resp(content=b'{"ERROR_CODE":"AUTHORIZATION_FAILED"}')])
+    with pytest.raises(KRXHistoricalFetchError, match="row block"):
+        fetch_openapi_raw(
+            endpoint="https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+            params={"basDd": "20150615"}, auth_key="PRIVATE_KEY_VALUE",
+            network_authorized=True, session=session,
+        )
+    assert len(session.calls) == 1

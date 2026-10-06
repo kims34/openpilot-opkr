@@ -88,8 +88,6 @@ def materialize_one_date(
 
     if daily_trade is None:
         raise KRXExpectedScopeMaterializerError("daily_trade frame is required")
-    _require_columns(daily_trade, DAILY_REQUIRED, "daily_trade")
-
     if daily_trade.empty:
         _require(
             security_master is None or security_master.empty,
@@ -110,6 +108,7 @@ def materialize_one_date(
             "network_request_attempted": False,
         }
 
+    _require_columns(daily_trade, DAILY_REQUIRED, "daily_trade")
     _require(daily_trade["MKT_NM"].map(lambda value: isinstance(value, str) and value.strip() == "KOSPI").all(), "daily_trade must explicitly identify KOSPI market")
     dates = {_yyyymmdd(v, "BAS_DD") for v in daily_trade["BAS_DD"]}
     _require(dates == {day}, "daily-trade BAS_DD does not exactly match requested date")

@@ -102,7 +102,24 @@ def parse_data_marketplace_raw(method: str, raw: bytes) -> pd.DataFrame:
 
 
 def parse_openapi_raw(raw: bytes) -> pd.DataFrame:
-    return _json_frame(raw)
+    # An explicit empty row block is a valid empty response. Missing or
+    # malformed blocks (including HTTP-200 error envelopes) are not evidence
+    # of an empty trading-date scope.
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise KRXHistoricalFetchError("KRX OpenAPI JSON response could not be parsed") from exc
+    if not isinstance(payload, Mapping):
+        raise KRXHistoricalFetchError("KRX OpenAPI JSON response must be an object")
+    blocks = [key for key in ("OutBlock_1", "output") if key in payload]
+    if len(blocks) != 1:
+        raise KRXHistoricalFetchError("KRX OpenAPI response requires exactly one explicit row block")
+    rows = payload[blocks[0]]
+    if not isinstance(rows, list) or any(not isinstance(row, Mapping) for row in rows):
+        raise KRXHistoricalFetchError("KRX OpenAPI row block must be a list of objects")
+    frame = pd.DataFrame(rows)
+    frame.attrs["current_datetime"] = payload.get("CURRENT_DATETIME")
+    return frame
 
 
 def _response_ok(resp: Any) -> bool:
