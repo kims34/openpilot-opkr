@@ -113,5 +113,22 @@
   "installed_original_signing_continuity_verified": false,
   "broker_request_sent": false,
   "orders_requested": false,
-  "frozen_criteria_changed": false
+  "frozen_criteria_changed": false,
+  "delivered_apk": {
+    "source_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+    "run_id": 37402569974,
+    "job_id": 112072791477,
+    "artifact_id": 11385867401,
+    "archive_sha256": "95d29b53f759e3b2df24dbcb87a2c1057c2939155077fb2e656724f06cf9b3ef",
+    "apk_sha256": "3e873425ce04cee59e10c0886fc61695d7e91d3b39610108b4874dd672a18379",
+    "apk_size_bytes": 820613,
+    "downloaded_archive_and_apk_verified": true,
+    "physical_preview_ui_verified": false
+  },
+  "checkpoint_ci": {
+    "run": 37402813251,
+    "job": 112073573356,
+    "sha": "16246e1dd64b207877d5ab034e0c1dd67117c58a",
+    "proof": []
+  }
 }
