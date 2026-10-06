@@ -1,3 +1,37 @@
+# Canonical integrity continuation — 2026-10-07 08:41 KST
+
+This section supersedes the resume pointer in the 08:24 checkpoint below. Authoritative development code HEAD: `9c4e125d38bb08896a6d716ca3df6f8330b493cd` (PR233 merge). Resolve the branch ref for this record's own documentation commit. Project remains INCOMPLETE; no operational admission or real ordering.
+
+## Completed since the preceding checkpoint
+
+Synthetic offline reproductions only; these tests are not KRX/LIVE evidence.
+
+|PR|Feature SHA|Merge SHA|Exact feature Actions / tests|
+|---|---|---|---|
+|229|abe09472fb665e3c90058238ae6a1633ca7c3b93|ee6595f60ff6e8221232b23881b636a58488536b|Journal37546463554/job112551534481 SUCCESS256; settlement37546463446/job112551533958 SUCCESS86|
+|230|930831441fb8f2e2c25cabdc2de85fb65ffd6057|4a881aa0f8cb2e344e212d93bc6a7e4351c84b45|Journal37546703604/job112552315553 SUCCESS258; settlement37546703537/job112552314494 SUCCESS86|
+|231|85c7cdbb47b3062e612857f495938ba1f03bdcf3|00a4b1c8fc1c5765f3ff99a4f29d52627f6f7136|Journal37546858169/job112552825724 SUCCESS260; durable37546858145/job112552825635 SUCCESS96; settlement37546858153/job112552825906 SUCCESS86; status37546858156/job112552825888 SUCCESS26; toolkit37546858239 Windows112552825997/Ubuntu112552826605 SUCCESS43 each, Chromium112552826203 SUCCESS2|
+|232|ea9f6b3f211d3eaf36cb8096689747eff0b35967|cac1b212bbf4dbb5daeb342d79fcae766dc8ec69|Journal37547123220/job112553683818 SUCCESS261; durable37547123182/job112553680954 SUCCESS97; settlement37547123135/job112553681004 SUCCESS86; status37547123298/job112553681461 SUCCESS26; toolkit37547123291 Windows112553681544/Ubuntu112553681553 SUCCESS43 each, Chromium112553681279 SUCCESS2|
+|233|f5d96cb63ad4744323c8ebacb1363bb71cbb9c43|9c4e125d38bb08896a6d716ca3df6f8330b493cd|Journal37547280630/job112554180407 SUCCESS263; durable37547280805/job112554181476 SUCCESS99; settlement37547280587/job112554180544 SUCCESS86; status37547280624/job112554180290 SUCCESS26; toolkit37547280603 Windows112554180630/Ubuntu112554180538 SUCCESS43 each, Chromium112554180292 SUCCESS2|
+
+229 rejects ambiguous duplicate inbox JSON;230 catches Unicode numeric Decimal parse failure and nonfinite trap-disabled parse before durable append/quarantines privately;231 prevents a false zero-fill snapshot/intent pair from releasing principal when immutable executions remain and validates stored snapshot structure;232 rejects corrupt original price/fee/reserve before principal credit;233 audits managed reservations against BUY/release/execution-backed restoration lineage in one pinned SQLite view before further capacity decisions. Valid late-fill restoration above user ceiling/int64 aggregate remains preserved. Earlier checkpoint documentation f29a53dc5e6d5ce34ea860c0c1904a75af1e8659 exact docs CI37546406500/job112551353589 SUCCESS98,2warnings. Earlier journal merge push37546307216 and PR229 merge push37546521554 subsequently completed SUCCESS.
+
+## In-flight exact continuation
+
+PR234 OPEN feature `df36312d5dfcb70c7f800eef605df51cc03457f3`, branch index-alert-late-fill-principal-lineage-v1. Corrupt negative released principal previously reduced retained reserve on late fill. Patch validates original release and previous restoration before accepting new executions. Inbox regression preserves pending late delivery across restart and applies exactly once after synthetic fixture repair; no production audit rewrite. Journal37547441722/job112554704504, durable37547441726/job112554704692, settlement37547441733/job112554704557, status37547441705/job112554704615 completed SUCCESS. Toolkit37547441665 Windows112554704364/Ubuntu112554704599 SUCCESS; Chromium112554704666 still IN_PROGRESS at this checkpoint. Do not merge until actual completed successful browser check; do not duplicate CI.
+
+Further local independently reproduced fix, NOT yet published: readonly operational status reported complete with no blockers and reserve1 after an original83 reservation was understated. Extract pure validate_stored_capital_reservations(connection) from allocator and reuse inside existing mode=ro status BEGIN; require release-history schema. Files shadow_capital_allocator.py, shadow_operational_status.py, test_shadow_operational_status.py. Affected69passed; combined canonical/type00/status/script/settlement319passed in6.54s including PR234. Publish this delta against the newest actual base after PR234 completes, not all old changes. Existing local modified source includes merged PR222–233; never blindly reset or republish them. Exact upstream blob equality was checked at PR229 for its ten then-modified files; verify later deltas against their own merged HEAD.
+
+Re-fetch dev/open PR234/exact Actions first; preserve concurrent ref movement. Finish PR234 CI/merge, publish and verify readonly capital audit delta, resolve merge-push/docs CI, continue highest-priority reproduced integrity/runtime work. No assertion engineering is exhausted.
+
+## Persisting external boundaries
+
+REAL whole-account scope baseline remains COMPLETED; no repeat request. REAL type00 designated-device auth remains BLOCKED_EXTERNAL_DEVICE_AUTH (LOGIN805004, DETAIL8050), read-only token/account/WS connection OK. No repeated owner PowerShell request while deferred; LOGIN/REG needs no order/fill. No synthetic/local CI evidence grants provenance, source/PIT, settlement, Shadow or Early-Live admission. PR218 final-user-ready remains false pending independent canonical composition. Research194da5016ad3aecc2ceb25944666daa74f038083, Android144fad9c2ed178e04e4b92100210e53e07f77461, prereg1d81eb526f59b87c528d63be9e3883e0f76fedf6 were last checked in this run; re-fetch live refs on resume.
+
+All Frozen/consumed-v1 prohibitions and immutable hashes in the preceding checkpoint remain in force. ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED/FUNDS_MOVEMENT_AUTHORIZED/PERMISSION_CHANGE_AUTHORIZED/GENUINE_LIVE_PROVENANCE_VERIFIED=false. No real broker request/order/funds/permission/signing/holdout action. Hourly continuation not recreated; no claim work continues between executions.
+
+---
+
 # Canonical development continuation — 2026-10-07 08:24 KST
 
 This section supersedes the older top-of-file PR191 checkpoint and historical deferred-account-scope statements. GitHub actual refs/code/merged PRs remain authoritative. Development code HEAD: `026d5b6d3c30c73eec6a3f84eaa56d5514c02b05`. Resolve the branch ref for this record's own documentation SHA. Project INCOMPLETE; ordering disabled.
