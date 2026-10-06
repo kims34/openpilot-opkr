@@ -19,6 +19,7 @@ from order_snapshot_reconciliation import reconcile_order_snapshot_batch
 from shadow_capital_allocator import ShadowCapitalAllocator
 from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge, NativeBridgeError
 from kiwoom_execution_inbox import KiwoomExecutionInbox
+from kiwoom_type00_frame_extractor import extract_type00_events
 from kiwoom_protected_execution_intake import (
     ProtectedAccountBinding, KiwoomProtectedExecutionIntake, ProtectedIntakeError,
 )
@@ -150,7 +151,13 @@ def run_protected_capital_fault_replay():
                 '908','909','910','911','914','915','913','919'),
                 ('synthetic-private-account','synthetic-order','005930','10','8','6','','2',
                  '091501','synthetic-execution','8','4','8','4','체결','')))
-            intake.append('synthetic-receipt', 'synthetic-decision', raw, trading_date=day)
+            frame = {'trnm':'REAL','data':[{'type':'00','item':'','values':raw}]}
+            extracted = extract_type00_events(frame)
+            _require(len(extracted) == 1 and extracted[0]['909'] == 'synthetic-execution',
+                'type00 frame extraction lost execution identity')
+            raw = extracted[0]
+            completed.append('type00_frame_extracts_before_protected_routing')
+            intake.append_for_bound_order('synthetic-receipt', raw, trading_date=day)
             _denied(lambda: journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch']),
                 OrderJournalError)
             completed.append('protected_pending_late_fill_blocks_released_cash_reuse')
@@ -175,14 +182,14 @@ def run_protected_capital_fault_replay():
             _require(journal.shadow_control()['mode'] == 'MASTER_OFF', 'late fill enabled claims')
             completed.append('protected_native_late_fill_restores_principal_atomically')
 
-            intake.append('synthetic-redelivery', 'synthetic-decision', raw, trading_date=day)
+            intake.append_for_bound_order('synthetic-redelivery', raw, trading_date=day)
             _require(not inbox.replay_next()['executions_created'], 'redelivery created another fill')
             _require(allocator.state()['managed_reserve_krw'] == 83, 'redelivery changed reservation')
             _require(journal.get('synthetic-decision')['filled_quantity'] == 4, 'redelivery changed quantity')
             completed.append('distinct_protected_redelivery_never_duplicates_fill_or_reserve')
 
             alternate = dict(raw, **{'910':'9','914':'9'})
-            _denied(lambda: intake.append('synthetic-receipt', 'synthetic-decision',
+            _denied(lambda: intake.append_for_bound_order('synthetic-receipt',
                 alternate, trading_date=day), ProtectedIntakeError)
             _require(inbox.counts()['conflicts'] == 1, 'conflicting delivery lost')
             _require(allocator.state()['managed_reserve_krw'] == 83, 'conflict released capital')
