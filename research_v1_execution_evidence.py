@@ -172,13 +172,17 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     if not x["symbol"].str.fullmatch(r"\d{1,6}").all():
         raise ExecutionEvidenceError("symbol must contain 1-6 decimal digits")
     x["symbol"] = x["symbol"].str.zfill(6)
-    x["side"] = x["side"].astype(str).str.upper().str.strip()
+    if not table["side"].map(lambda v: isinstance(v, str)).all():
+        raise ExecutionEvidenceError("side must be an original string value")
+    x["side"] = table["side"].str.upper().str.strip()
     if not x["side"].eq("BUY").all():
         raise ExecutionEvidenceError("current frozen execution schema supports BUY only")
     if x["decision_date"].isna().any() or x["symbol"].eq("").any():
         raise ExecutionEvidenceError("invalid decision_date or symbol")
 
-    sources = x["source"].astype(str).str.strip()
+    if not table["source"].map(lambda v: isinstance(v, str)).all():
+        raise ExecutionEvidenceError("source must be an original string value")
+    sources = table["source"].str.strip()
     if sources.eq(SHADOW_DECISION_SOURCE).any():
         raise ExecutionEvidenceError(
             "Shadow decisions cannot carry broker fill evidence; use a separate Shadow decision/intention log"
