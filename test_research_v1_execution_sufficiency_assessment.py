@@ -164,7 +164,7 @@ def test_naive_numeric_and_nonscalar_sufficiency_timestamps_are_rejected():
 def test_ingestion_cannot_precede_order_outcome():
     p, _ = load_frozen_project_protocol(ROOT)
     rows = _evidence(3)
-    rows.loc[0, "ingested_at"] = "2026-10-05T00:00:02+00:00"
-    rows.loc[0, "order_outcome_at"] = "2026-10-05T00:00:03+00:00"
+    ingested = pd.Timestamp(rows.loc[0, "ingested_at"])
+    rows.loc[0, "order_outcome_at"] = (ingested + pd.Timedelta(seconds=1)).isoformat()
     with pytest.raises(ExecutionSufficiencyAssessmentError, match="ingested_at cannot precede order_outcome_at"):
         prepare_live_execution_sufficiency_evidence(rows, p)
