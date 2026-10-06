@@ -1,7 +1,7 @@
 name: Early Live Admission Boundary
 on:
   push:
-    branches: [index-alert-early-live-ci-v1]
+    branches: [index-alert-early-live-ci-v1, index-alert-position-regen-fix-v1]
     paths: [early_live_admission_gate.py, test_early_live_admission_gate.py, .github/workflows/early-live-admission-boundary.yml]
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
