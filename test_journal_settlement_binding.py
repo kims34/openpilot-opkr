@@ -126,6 +126,37 @@ class JournalSettlementBindingTests(unittest.TestCase):
         with self.assertRaises(SettlementBindingError):
             self.assess(expected_epoch=True)
 
+    def test_cashflow_composition_vetoes_unexplained_balance(self):
+        from account_cashflow_reconciliation import (
+            reconcile_settled_cashflow, bind_reconciled_cashflow_to_early_live,
+        )
+        from decimal import Decimal
+        opening = replace(self.snapshot, captured_at='2026-10-06T09:00:00+09:00',
+                          deposit_cash_krw=Decimal('100001'))
+        cashflow = reconcile_settled_cashflow(opening, self.snapshot, [],
+            complete_settlement_scope_attested=True, signed_net_mapping_attested=True,
+            fees_tax_completeness_attested=True)
+        out = bind_reconciled_cashflow_to_early_live(self.base, self.admission,
+            self.snapshot, self.journal, cashflow, expected_epoch=self.epoch,
+            expected_snapshot_revision=self.revision)
+        self.assertFalse(out['ready_for_final_user_authorization'])
+        self.assertFalse(out['account_settlement_admitted'])
+
+    def test_cashflow_report_cannot_be_reused_for_another_snapshot(self):
+        from account_cashflow_reconciliation import (
+            CashflowReconciliationError, reconcile_settled_cashflow,
+            bind_reconciled_cashflow_to_early_live,
+        )
+        opening = replace(self.snapshot, captured_at='2026-10-06T09:00:00+09:00')
+        cashflow = reconcile_settled_cashflow(opening, self.snapshot, [],
+            complete_settlement_scope_attested=True, signed_net_mapping_attested=True,
+            fees_tax_completeness_attested=True)
+        other = replace(self.snapshot, captured_at='2026-10-06T10:01:00+09:00')
+        with self.assertRaises(CashflowReconciliationError):
+            bind_reconciled_cashflow_to_early_live(self.base, self.admission,
+                other, self.journal, cashflow, expected_epoch=self.epoch,
+                expected_snapshot_revision=self.revision)
+
 
 if __name__ == '__main__':
     unittest.main()
