@@ -128,7 +128,7 @@ def validate_authorization_evidence(
     approval_state = _nonempty(evidence["approval_state"], "approval_state", max_len=30).upper()
     scope_statement = _nonempty(evidence["scope_statement"], "scope_statement", max_len=1000)
     automated_collection_authorized = evidence.get("automated_collection_authorized")
-    if automated_collection_authorized not in (None, True, False):
+    if automated_collection_authorized is not None and type(automated_collection_authorized) is not bool:
         raise KRXAuthorizationEvidenceError(
             "automated_collection_authorized must be boolean when provided"
         )
