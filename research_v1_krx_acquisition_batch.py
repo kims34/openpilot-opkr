@@ -105,6 +105,9 @@ def verify_receipt_fingerprint(receipt: Mapping[str, Any]) -> str:
         raise KRXAcquisitionBatchError("receipt illegally claims sealed-holdout authority")
     if receipt["live_trading_authorized"] is not False:
         raise KRXAcquisitionBatchError("receipt illegally claims live-trading authority")
+    rows = receipt["response_rows"]
+    if type(rows) is not int or rows < 0:
+        raise KRXAcquisitionBatchError("receipt response_rows must be a non-negative integer")
     return claimed
 
 
@@ -161,7 +164,7 @@ def build_acquisition_batch_manifest(
         "public_contract_evidence_version": public_version,
         "public_contract_evidence_fingerprint_sha256": public_fp,
         "receipt_count": len(items),
-        "total_response_rows": int(sum(int(receipt["response_rows"]) for receipt in items)),
+        "total_response_rows": sum(receipt["response_rows"] for receipt in items),
         "receipt_fingerprints_sha256": sorted_fps,
         "coverage_validated": False,
         "pit_lineage_validated": False,
