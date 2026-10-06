@@ -84,6 +84,24 @@ class RealTransportTests(unittest.TestCase):
         self.assertNotIn("private-account", repr(page))
         self.assertEqual(self.requests[-1][1]["headers"]["api-id"], "ka00001")
 
+    def test_settlement_query_is_exact_readonly_scope(self):
+        self.auth()
+        self.responses.append(Response({
+            "return_code": 0,
+            "entr": "100000",
+            "pymn_alow_amt": "90000",
+            "d2_entra": "95000",
+            "ord_alow_amt": "50000",
+        }))
+        page = self.transport.query("kt00001", {"qry_tp": "2"})
+        self.assertEqual(page.body["ord_alow_amt"], "50000")
+        self.assertEqual(self.requests[-1][1]["headers"]["api-id"], "kt00001")
+        count = len(self.requests)
+        for body in ({}, {"qry_tp": "3"}, {"qry_tp": 2}, {"qry_tp": "2", "extra": "x"}):
+            with self.assertRaises(Exception):
+                self.transport.query("kt00001", body)
+        self.assertEqual(len(self.requests), count)
+
     def test_order_cancel_amend_and_arbitrary_ids_never_send(self):
         self.auth()
         count = len(self.requests)
