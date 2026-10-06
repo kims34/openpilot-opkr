@@ -27,6 +27,19 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
         self.assertIn('PERMISSION_CHANGE_AUTHORIZED=$false',self.text)
         self.assertIn('GENUINE_LIVE_PROVENANCE_VERIFIED=$false',self.text)
 
+    def test_failure_diagnostics_preserve_completed_stage_without_raw_message(self):
+        for marker in ("$script:TokenOk", "$script:AccountEndpointOk", "$script:WsConnected", "$script:WsLoginOk"):
+            self.assertIn(marker, self.text)
+        self.assertIn("DETAIL_CODE", self.text)
+        self.assertIn("ERROR_CLASS", self.text)
+        self.assertIn("Set-SanitizedErrorDetail $obj.return_msg", self.text)
+        self.assertNotIn("RETURN_MSG=", self.text)
+
+    def test_async_void_results_are_suppressed(self):
+        self.assertIn("$null = $Ws.SendAsync", self.text)
+        self.assertIn("$null = $ws.ConnectAsync", self.text)
+        self.assertIn("$null = $ws.CloseAsync", self.text)
+
     def test_private_values_are_not_emitted(self):
         self.assertNotIn('Write-Host',self.text)
         self.assertNotIn('Write-Output $script:Account',self.text)
