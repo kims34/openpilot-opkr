@@ -12,6 +12,7 @@ import sqlite3
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals
+from shadow_capital_allocator import validate_stored_capital_reservations
 
 
 def _require(condition):
@@ -113,7 +114,7 @@ def inspect_shadow_operational_status(path):
             if pending: blockers.add('NATIVE_INBOX_PENDING')
             if conflicts: blockers.add('NATIVE_INBOX_CONFLICTED')
         capital = None
-        capital_tables = {'shadow_capital_config','shadow_capital_reservations'}
+        capital_tables = {'shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'}
         if tables & capital_tables:
             _require(capital_tables <= tables)
             row = connection.execute('SELECT revision,enabled,maximum,baseline FROM shadow_capital_config WHERE id=1').fetchone()
@@ -124,7 +125,7 @@ def inspect_shadow_operational_status(path):
             _require(type(values) is list and len(values)==4)
             baseline = AutomationCapitalState(*values).committed_automation_capital_krw()
             AutomationUserControls(bool(enabled),maximum).validate()
-            managed = sum(_amount(row[0]) for row in connection.execute('SELECT reserve FROM shadow_capital_reservations'))
+            managed = validate_stored_capital_reservations(connection)
             committed = baseline+managed
             capital = dict(revision=capital_revision, automation_enabled=bool(enabled),
                 maximum_krw=maximum, baseline_committed_krw=baseline,

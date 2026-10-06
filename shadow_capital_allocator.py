@@ -15,8 +15,44 @@ from indexalert_automation_control import (
     AutomationCapitalState, AutomationUserControls, DecisionAction,
     EngineOrderIntent, validate_engine_plan,
 )
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_intent_row
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
+
+
+def validate_stored_capital_reservations(connection):
+    """Pure reservation audit; caller pins one surrounding SQLite snapshot."""
+    reserve = 0
+    revocations_exist = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_release_revocations'").fetchone()
+    for key, price, fee, amount in connection.execute(
+            'SELECT key,limit_price,fee_buffer,reserve FROM shadow_capital_reservations'):
+        row = connection.execute('SELECT payload,state,broker_order_id,filled,terminal_status FROM intents WHERE key=?', (key,)).fetchone()
+        if row is None:
+            raise OrderJournalError('orphan managed BUY reservation')
+        order = validate_stored_intent_row(*row)
+        if (order['side'] != 'BUY' or type(price) is not int or price <= 0
+            or type(fee) is not int or fee < 0 or type(amount) is not int or amount < 0):
+            raise OrderJournalError('invalid managed BUY reservation')
+        principal = order['quantity'] * price
+        released = connection.execute('SELECT released_principal,snapshot_revision FROM shadow_capital_releases WHERE key=?', (key,)).fetchone()
+        revoked = connection.execute('SELECT restored_principal,execution_id FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone() if revocations_exist else None
+        expected = principal + fee
+        if released is not None:
+            if (type(released[0]) is not int or released[0] != principal
+                or type(released[1]) is not int or released[1] <= 0):
+                raise OrderJournalError('invalid managed principal release')
+            expected = fee
+            if revoked is not None:
+                if (type(revoked[0]) is not int or revoked[0] != principal
+                    or type(revoked[1]) is not str or not revoked[1].strip()
+                    or not connection.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?', (key,revoked[1])).fetchone()):
+                    raise OrderJournalError('invalid managed principal restoration')
+                expected = principal + fee
+        elif revoked is not None:
+            raise OrderJournalError('orphan managed principal restoration')
+        if amount != expected or expected > 2**63-1:
+            raise OrderJournalError('managed BUY reservation amount changed')
+        reserve += amount
+    return reserve
 
 
 class ShadowCapitalAllocator:
@@ -49,34 +85,7 @@ class ShadowCapitalAllocator:
         revision, enabled, maximum, baseline = row
         # Restoring a late-fill reservation can exceed the ceiling or even the
         # SQLite aggregate integer range. Preserve/report exposure exactly.
-        reserve = 0
-        revocations_exist = self.journal.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_release_revocations'").fetchone()
-        for key, price, fee, amount in self.journal.db.execute(
-                'SELECT key,limit_price,fee_buffer,reserve FROM shadow_capital_reservations'):
-            order = self.journal.get(key)
-            if (order['side'] != 'BUY' or type(price) is not int or price <= 0
-                or type(fee) is not int or fee < 0 or type(amount) is not int or amount < 0):
-                raise OrderJournalError('invalid managed BUY reservation')
-            principal = order['quantity'] * price
-            released = self.journal.db.execute('SELECT released_principal,snapshot_revision FROM shadow_capital_releases WHERE key=?', (key,)).fetchone()
-            revoked = self.journal.db.execute('SELECT restored_principal,execution_id FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone() if revocations_exist else None
-            expected = principal + fee
-            if released is not None:
-                if (type(released[0]) is not int or released[0] != principal
-                    or type(released[1]) is not int or released[1] <= 0):
-                    raise OrderJournalError('invalid managed principal release')
-                expected = fee
-                if revoked is not None:
-                    if (type(revoked[0]) is not int or revoked[0] != principal
-                        or type(revoked[1]) is not str or not revoked[1].strip()
-                        or not self.journal.db.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?', (key,revoked[1])).fetchone()):
-                        raise OrderJournalError('invalid managed principal restoration')
-                    expected = principal + fee
-            elif revoked is not None:
-                raise OrderJournalError('orphan managed principal restoration')
-            if amount != expected or expected > 2**63-1:
-                raise OrderJournalError('managed BUY reservation amount changed')
-            reserve += amount
+        reserve = validate_stored_capital_reservations(self.journal.db)
         return dict(revision=revision, controls=AutomationUserControls(bool(enabled), maximum),
             capital=AutomationCapitalState(*json.loads(baseline)), managed_reserve_krw=reserve)
 

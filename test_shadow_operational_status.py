@@ -95,6 +95,21 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertEqual(result['capital']['total_committed_krw'],98)
         self.assertIn('CAPITAL_CEILING_EXCEEDED',result['local_blockers'])
 
+    def test_understated_reservation_is_unavailable_instead_of_false_free_capacity(self):
+        self.reconcile_claimed()
+        self.journal.db.execute('UPDATE shadow_capital_reservations SET reserve=1')
+        before = tuple(self.journal.db.iterdump())
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(result['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertNotIn('capital', result)
+        self.assertNotIn('PRIVATE', json.dumps(result))
+        self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
+    def test_capital_schema_without_release_history_is_unavailable(self):
+        self.journal.db.execute('DROP TABLE shadow_capital_releases')
+        self.assertFalse(self.inspect()['diagnostics_complete'])
+
     def test_complete_local_view_does_not_admit_external_shadow_or_live(self):
         result = self.inspect()
         self.assertEqual(result['local_blockers'],[])
