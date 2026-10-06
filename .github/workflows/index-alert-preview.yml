@@ -29,6 +29,7 @@ jobs:
         run: |
           cmp app/src/main/java/com/indexalert/app/AutomationReadiness.kt preview/src/main/java/com/indexalert/app/AutomationReadiness.kt
           cmp app/src/test/java/com/indexalert/app/AutomationReadinessTest.kt preview/src/test/java/com/indexalert/app/AutomationReadinessTest.kt
+          cmp app/src/test/java/com/indexalert/app/AutomationReadinessTransportTest.kt preview/src/test/java/com/indexalert/app/AutomationReadinessTransportTest.kt
       - name: Test and build isolated APK
         run: gradle :preview:testDebugUnitTest :preview:assembleDebug --stacktrace
       - name: Verify actual package, manifest, dependencies, signing and JUnit
@@ -47,6 +48,19 @@ jobs:
           assert int(suite.get("tests","0"))==4
           assert all(int(suite.get(k,"0"))==0 for k in ("errors","failures","skipped"))
           assert all(not any(c.find(k) is not None for k in ("error","failure","skipped")) for c in cases)
+          transport=[s for s in suites if s.get("name")=="com.indexalert.app.AutomationReadinessTransportTest"]
+          assert len(transport)==1, "Transport JUnit result required"
+          transport_suite=transport[0]
+          transport_expected={"successfulGetUsesFixedTimeoutsAndNeverFollowsRedirects",
+                              "redirectsAndErrorsNeverReadAResponseBody",
+                              "characterLimitAcceptsBoundaryAndRejectsOversizeWithoutDrainingBody",
+                              "fragmentedUtf8ResponseIsReadUntilEof",
+                              "responseAndReadFailuresDisconnectAndCloseOpenedBody"}
+          transport_cases=transport_suite.findall("testcase")
+          assert len(transport_cases)==5 and {c.get("name") for c in transport_cases}==transport_expected
+          assert int(transport_suite.get("tests","0"))==5
+          assert all(int(transport_suite.get(k,"0"))==0 for k in ("errors","failures","skipped"))
+          assert all(not any(c.find(k) is not None for k in ("error","failure","skipped")) for c in transport_cases)
           dependency=pathlib.Path("preview-dependencies.txt").read_text()
           assert "com.google.firebase" not in dependency and "androidx.work" not in dependency
           directory=pathlib.Path("preview/build/outputs/apk/debug")
@@ -81,7 +95,7 @@ jobs:
                   "checkout_sha":os.environ["GITHUB_SHA"],"run_id":os.environ["GITHUB_RUN_ID"],
                   "application_id":meta["applicationId"],"version_code":48,"version_name":"4.8-preview",
                   "apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),"size_bytes":apk.stat().st_size,
-                  "signer_sha256":certs,"signature_verified":True,"tests":4,"failures":0,"errors":0,"skipped":0,
+                  "signer_sha256":certs,"signature_verified":True,"tests":9,"contract_tests":4,"transport_tests":5,"failures":0,"errors":0,"skipped":0,
                   "readiness_source_byte_identical":True,"permissions":permissions,
                   "firebase_dependency_present":False,"workmanager_dependency_present":False,
                   "production_app_updated":False,"installed_signing_continuity_verified":False,

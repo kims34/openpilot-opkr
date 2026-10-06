@@ -52,6 +52,19 @@ jobs:
           assert len(cases)==4 and int(suite.get("tests","0"))==4
           assert all(int(suite.get(k,"0"))==0 for k in ("errors","failures","skipped"))
           assert all(not any(c.find(k) is not None for k in ("error","failure","skipped")) for c in cases)
+          transport=[s for s in suites if s.get("name")=="com.indexalert.app.AutomationReadinessTransportTest"]
+          assert len(transport)==1, "Transport JUnit result required"
+          transport_suite=transport[0]
+          transport_expected={"successfulGetUsesFixedTimeoutsAndNeverFollowsRedirects",
+                              "redirectsAndErrorsNeverReadAResponseBody",
+                              "characterLimitAcceptsBoundaryAndRejectsOversizeWithoutDrainingBody",
+                              "fragmentedUtf8ResponseIsReadUntilEof",
+                              "responseAndReadFailuresDisconnectAndCloseOpenedBody"}
+          transport_cases=transport_suite.findall("testcase")
+          assert len(transport_cases)==5 and {c.get("name") for c in transport_cases}==transport_expected
+          assert int(transport_suite.get("tests","0"))==5
+          assert all(int(transport_suite.get(k,"0"))==0 for k in ("errors","failures","skipped"))
+          assert all(not any(c.find(k) is not None for k in ("error","failure","skipped")) for c in transport_cases)
           sdk=pathlib.Path(os.environ["ANDROID_HOME"])/"build-tools"
           tools=sorted(p for p in sdk.iterdir() if (p/"aapt2").is_file() and (p/"apksigner").is_file())
           assert tools, "Installed SDK verification tools required"
@@ -85,7 +98,7 @@ jobs:
           result={"schema_version":"INDEXALERT_ANDROID_BUILD_VERIFICATION_v1",
               "source_head":source_head,"checkout_sha":os.environ["GITHUB_SHA"],
               "run_id":os.environ["GITHUB_RUN_ID"],"unit_test_class":suite.get("name"),
-              "tests":4,"failures":0,"errors":0,"skipped":0,"artifacts":artifact,
+              "tests":9,"contract_tests":4,"transport_tests":5,"failures":0,"errors":0,"skipped":0,"artifacts":artifact,
               "installed_signing_continuity_verified":False,"physical_e2e_verified":False,
               "broker_request_sent":False,"orders_requested":False,
               "live_ordering_authorized":False,"frozen_criteria_changed":False}
