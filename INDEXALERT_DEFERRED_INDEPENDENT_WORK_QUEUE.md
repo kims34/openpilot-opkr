@@ -6,7 +6,7 @@ The owner has explicitly deferred local/owner-operated checks until they later s
 
 ## Owner-operated validation status
 - `KIWOOM_REAL_ACCOUNT_SCOPE_READONLY_v1`: completed 2026-10-07. The redacted REAL whole-account read-only baseline is recorded in `INDEXALERT_KIWOOM_REAL_ACCOUNT_SCOPE_EVIDENCE_2026-10-07.md`.
-- No owner-operated item is currently pending in the tracker; new external checks may still be required later as genuine execution provenance/Shadow integration advances.
+- `KIWOOM_REAL_TYPE00_READONLY_v1` is currently pending/deferred. It verifies REAL WebSocket LOGIN + read-only type00 registration only and does not block independent development. No real order is required for LOGIN/REG connectivity.
 
 ## Independent work order
 Continue work that does not require owner-local credentials or interaction, in this order when actionable evidence/code gaps exist:
