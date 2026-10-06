@@ -5,6 +5,36 @@ def p():
  return {"schema_version":"1","trial_id":"T-001","core_version":"CORE-v1","hypothesis":"new PIT-safe family improves executable NetEV","dataset_window":"development-only","pit_contract":"existing-frozen-PIT","target_horizon":"H5","primary_metrics":["NetEV","PF","MDD","ES95","ES99"],"acceptance_criteria":{"use":"preregistered-only"},"cost_assumptions":{"use":"existing-frozen-cost-contract"},"evaluation_protocol":"purged-walk-forward","preregistered_at":"2026-10-02T03:00:00+09:00","data_roles":["development","calibration"],"automatic_production_promotion":False,"live_order_authorized":False}
 
 class ContinuousResearchGovernanceTest(unittest.TestCase):
+ def test_malformed_preregistration_timestamp_invalidates_candidate(self):
+  for value in (True,False,1,0,{},[],None,"","not-a-time","2026-02-30T00:00:00Z","2026-10-02T03:00:00+25:00"):
+   with self.subTest(value=value):
+    x=p(); x["preregistered_at"]=value
+    out=evaluate_trial(x,protocol_fingerprint(x),{"all_preregistered_acceptance_criteria_passed":True})
+    self.assertEqual(out["classification"],"INVALIDATED")
+    self.assertIn("INVALID_PREREGISTRATION_TIMESTAMP",out["blockers"])
+    for authority in ("production_promotion_allowed","live_order_authorized","sealed_holdout_authorized"):
+     self.assertIs(out[authority],False)
+ def test_date_only_and_naive_time_do_not_establish_registration_moment(self):
+  for value in ("2026-10-02","2026-10-02T03:00:00","2026-10-02 03:00:00"):
+   with self.subTest(value=value):
+    x=p(); x["preregistered_at"]=value
+    self.assertFalse(validate_preregistration(x)["valid"])
+ def test_existing_aware_timestamp_forms_remain_valid_without_authority(self):
+  for value in ("2026-10-02T03:00:00+09:00","2026-10-01T18:00:00Z","2026-10-01T18:00:00.123456+00:00"):
+   with self.subTest(value=value):
+    x=p(); x["preregistered_at"]=value
+    fp=protocol_fingerprint(x); out=evaluate_trial(x,fp,{"all_preregistered_acceptance_criteria_passed":True})
+    self.assertTrue(validate_preregistration(x)["valid"])
+    self.assertEqual(out["protocol_fingerprint"],fp)
+    self.assertEqual(out["classification"],"ACCEPTED_CHALLENGER")
+    self.assertFalse(out["production_promotion_allowed"])
+    self.assertFalse(out["live_order_authorized"])
+ def test_valid_timestamp_cannot_hide_fingerprint_mutation_or_holdout_access(self):
+  x=p(); fp=protocol_fingerprint(x); x["preregistered_at"]="2026-10-01T18:00:01Z"
+  out=evaluate_trial(x,fp,{"all_preregistered_acceptance_criteria_passed":True,"sealed_holdout_accessed":True})
+  self.assertEqual(out["classification"],"INVALIDATED")
+  self.assertIn("PROTOCOL_CHANGED_AFTER_PREREGISTRATION",out["blockers"])
+  self.assertIn("SEALED_HOLDOUT_ACCESSED",out["blockers"])
  def test_valid_protocol_can_only_become_challenger(self):
   x=p(); fp=protocol_fingerprint(x); out=evaluate_trial(x,fp,{"all_preregistered_acceptance_criteria_passed":True})
   self.assertEqual(out["classification"],"ACCEPTED_CHALLENGER"); self.assertFalse(out["production_promotion_allowed"]); self.assertFalse(out["live_order_authorized"])
