@@ -34,7 +34,7 @@ class EarlyLiveAdmissionGateTests(unittest.TestCase):
         for value in (1, 0, "true", None):
             with self.assertRaises(ValueError):
                 assess_early_live_readiness(
-                    EarlyLiveAdmissionEvidence(successor_alpha_admitted=value)
+                    EarlyLiveAdmissionEvidence(successor_alpha_admitted=value, source_pit_status_economics_pass=True, exact_policy_shadow_complete=True, broker_native_provenance_capture_tested=True, durable_order_journal_tested=True, account_settlement_tested=True, pretrade_risk_tested=True, cancel_reconnect_kill_tested=True, numeric_capital_limits_frozen=True)
                 )
 
     def test_invalid_counts_fail_closed(self):
