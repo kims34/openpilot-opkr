@@ -115,7 +115,7 @@ def parse_openapi_raw(raw: bytes) -> pd.DataFrame:
     if len(blocks) != 1:
         raise KRXHistoricalFetchError("KRX OpenAPI response requires exactly one explicit row block")
     rows = payload[blocks[0]]
-    if not isinstance(rows, list) or any(not isinstance(row, Mapping) for row in rows):
+    if not isinstance(rows, list) or any(not isinstance(row, Mapping) or not row for row in rows):
         raise KRXHistoricalFetchError("KRX OpenAPI row block must be a list of objects")
     frame = pd.DataFrame(rows)
     frame.attrs["current_datetime"] = payload.get("CURRENT_DATETIME")

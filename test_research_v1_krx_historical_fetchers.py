@@ -224,7 +224,7 @@ def test_resolver_uses_pinned_catalog_defaults_required_and_period_limit():
 @pytest.mark.parametrize("payload", [
     {}, {"ERROR_CODE": "AUTHORIZATION_FAILED"}, {"OutBlock_1": None},
     {"OutBlock_1": ""}, {"OutBlock_1": {}}, {"OutBlock_1": [1]},
-    {"OutBlock_1": [None]}, {"OutBlock_1": [], "output": []},
+    {"OutBlock_1": [None]}, {"OutBlock_1": [{}]}, {"OutBlock_1": [], "output": []},
 ])
 def test_openapi_missing_or_malformed_row_block_is_not_empty_scope_evidence(payload):
     with pytest.raises(KRXHistoricalFetchError, match="row block"):
