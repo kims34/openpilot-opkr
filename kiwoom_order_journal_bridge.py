@@ -76,6 +76,11 @@ class KiwoomOrderJournalBridge:
             scope=journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
             require(scope is None or scope==(self.account,self.day))
             journal.db.execute('INSERT OR IGNORE INTO native_journal_scope VALUES(1,?,?)',(self.account,self.day))
+            for key, broker_id, side in journal.db.execute(
+                    'SELECT key,broker_order_id,native_side FROM native_order_bindings'):
+                order = journal.get(key)
+                require(order['state'] != 'INTENT_CREATED' and order['broker_order_id'] == broker_id)
+                require(type(side) is str and bool(side.strip()))
             for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
                 for operation in ('UPDATE','DELETE'):
                     journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS {table}_{operation.lower()}_immutable
