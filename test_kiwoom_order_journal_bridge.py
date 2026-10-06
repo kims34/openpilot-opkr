@@ -217,6 +217,23 @@ class BridgeTests(unittest.TestCase):
                 self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
                 self.assert_blocked()
 
+    def test_startup_rejects_corrupt_unbound_execution_total_without_inventing_native_binding(self):
+        self.j.record_execution('d1',broker_order_id='native-order',execution_id='offline',quantity=4)
+        self.j.db.execute('UPDATE intents SET filled=3')
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_fill_bindings').fetchone(), (0,))
+        self.assert_blocked()
+
+    def test_startup_rejects_orphan_execution_without_native_binding(self):
+        self.j.db.execute("INSERT INTO executions VALUES('orphan','orphan-fill',1)")
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (1,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_fill_bindings').fetchone(), (0,))
+        self.assert_blocked()
+
     def test_session_cannot_switch_account_or_trading_day_after_restart(self):
         for account,day in (('sha256:'+'b'*64,DAY),(ACCOUNT,'2026-10-06')):
             with self.assertRaises(NativeBridgeError):

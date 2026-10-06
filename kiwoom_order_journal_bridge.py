@@ -76,6 +76,8 @@ class KiwoomOrderJournalBridge:
             scope=journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
             require(scope is None or scope==(self.account,self.day))
             journal.db.execute('INSERT OR IGNORE INTO native_journal_scope VALUES(1,?,?)',(self.account,self.day))
+            validate_stored_execution_totals(journal.db,
+                dict(journal.db.execute('SELECT key,filled FROM intents')))
             for key, broker_id, side in journal.db.execute(
                     'SELECT key,broker_order_id,native_side FROM native_order_bindings'):
                 order = journal.get(key)
