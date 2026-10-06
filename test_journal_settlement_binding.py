@@ -119,6 +119,17 @@ class JournalSettlementBindingTests(unittest.TestCase):
         self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED',out['local_reconciliation_errors'])
         self.assertEqual(self.journal.db.total_changes,modified)
 
+    def test_inconsistent_terminal_fact_cannot_reach_authorization_boundary(self):
+        self.acknowledged()
+        self.journal.db.execute("UPDATE intents SET terminal_status='FILLED' WHERE key=?",
+                                ('synthetic-intent',))
+        modified = self.journal.db.total_changes
+        out = self.assess()
+        self.assertFalse(out['ready_for_final_user_authorization'])
+        self.assertFalse(out['account_settlement_admitted'])
+        self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED',out['local_reconciliation_errors'])
+        self.assertEqual(self.journal.db.total_changes,modified)
+
     def test_mismatched_account_or_korean_day_blocks(self):
         for snapshot in (replace(self.snapshot,account_fingerprint='b'*64),
                          replace(self.snapshot,captured_at='2026-10-07T00:00:00+09:00')):

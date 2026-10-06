@@ -134,6 +134,20 @@ class OrderIntentJournal:
             or type(row[3]) is not int or not 0 <= row[3] <= payload['quantity']
             or row[4] not in (None,'CANCELLED','REJECTED','FILLED')):
             raise OrderJournalError("invalid stored intent payload")
+        state, broker_id, filled, terminal = row[1:]
+        quantity = payload['quantity']
+        if ((terminal == 'FILLED' and filled != quantity)
+            or (terminal == 'REJECTED' and filled != 0)
+            or (state == 'INTENT_CREATED' and (broker_id is not None or filled != 0 or terminal is not None))
+            or (state == 'SUBMITTING' and (filled != 0 or terminal is not None))
+            or (state == 'ACKNOWLEDGED' and (broker_id is None or filled != 0 or terminal is not None))
+            or (state == 'PARTIALLY_FILLED' and
+                (broker_id is None or not 0 < filled < quantity or terminal is not None))
+            or (state == 'CANCEL_REQUESTED' and (broker_id is None or filled >= quantity or terminal is not None))
+            or (state == 'CANCELLED' and (broker_id is None or filled >= quantity or terminal != 'CANCELLED'))
+            or (state == 'REJECTED' and (filled != 0 or terminal != 'REJECTED'))
+            or (state == 'FILLED' and (broker_id is None or filled != quantity or terminal != 'FILLED'))):
+            raise OrderJournalError("inconsistent stored intent state")
         return dict(key=key, **payload, state=row[1], broker_order_id=row[2],
                     filled_quantity=row[3], remaining_quantity=payload["quantity"]-row[3],
                     terminal_status=row[4], live_ordering_authorized=False, genuine_live_evidence=False)
