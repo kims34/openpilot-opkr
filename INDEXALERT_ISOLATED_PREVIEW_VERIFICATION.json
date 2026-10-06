@@ -108,7 +108,7 @@
   "proof_artifact": 11385403921,
   "downloaded_archives_and_apk_hash_verified": true,
   "production_app_updated": false,
-  "physical_preview_ui_verified": false,
+  "physical_preview_ui_verified": true,
   "production_push_e2e_verified": false,
   "installed_original_signing_continuity_verified": false,
   "broker_request_sent": false,
@@ -123,12 +123,26 @@
     "apk_sha256": "3e873425ce04cee59e10c0886fc61695d7e91d3b39610108b4874dd672a18379",
     "apk_size_bytes": 820613,
     "downloaded_archive_and_apk_verified": true,
-    "physical_preview_ui_verified": false
+    "physical_preview_ui_verified": true
   },
   "checkpoint_ci": {
     "run": 37402813251,
     "job": 112073573356,
     "sha": "16246e1dd64b207877d5ab034e0c1dd67117c58a",
     "proof": []
+  },
+  "owner_preview_ui_observation": {
+    "observed_at": "2026-10-06T11:34:24+09:00",
+    "provenance": "OWNER_SUPPLIED_HANDSET_SCREENSHOT",
+    "screenshot_sha256": "a7751574a5326dc5da24eb74deeb115c4385e9cedc8f59db88c10378e48522b8",
+    "title": "IndexAlert 4.8 검증",
+    "displayed_status": "현재 자동매매를 사용할 수 없습니다.",
+    "preview_ui_observed": true,
+    "exact_installed_apk_hash_independently_observed": false,
+    "raw_http_payload_observed": false,
+    "production_app_upgrade_verified": false,
+    "production_push_e2e_verified": false,
+    "broker_request_verified": false,
+    "live_ordering_authorized": false
   }
 }

@@ -1,3 +1,15 @@
+# Preview handset UI observation — 2026-10-06 11:34 KST
+
+The owner installation/screen-observation step is COMPLETE. Do not ask to repeat preview installation, original4.7 APK inspection or the absent default debug-key check.
+
+Owner supplied a handset screenshot with title "IndexAlert 4.8 검증", separate-app/no-notifications/no-automation explanation, visible unavailable text "현재 자동매매를 사용할 수 없습니다." and refresh button. Screenshot SHA256a7751574a5326dc5da24eb74deeb115c4385e9cedc8f59db88c10378e48522b8. This is owner-reported screenshot UI evidence: exact installed APK bytes and raw HTTP payload were not independently captured. The delivered canonical preview artifact remains11385867401/run37402569974/head52377357c0c5260673fc823be3e8a0451abbea72/APKSHA3e873425ce04cee59e10c0886fc61695d7e91d3b39610108b4874dd672a18379. Do not conflate build proof with runtime byte attestation. Isolated preview UI observation is verified; production4.8 signing continuity/push receipt/E2E and full automated trading readiness remain OPEN/false.
+
+Observed pre-record branches: dev4da4c45b91c9f09362dc156428fb984fa70d7993, research3ca93d4c164bdefe68ddccd19c7b476f57be4e87, Android52377357c0c5260673fc823be3e8a0451abbea72, server8a68b01bca5d551d083ccda263df38d86fa54166. Last actual doc CI: dev7bbc3d/37402974916 PASS76; research99d52d/37403055616 PASS72 and37403055610 PASS548/5warnings. New documentation is not yet tested merely because those previous runs passed.
+
+Railway refreshed: no pending work;8services,3existing legacy issues,0recent failures. Runtimeeaaa9f67-b9f2-41d2-832c-7d6fad9b9b00 SUCCESS1running0crashed; completed PIT/KRX/DEMO deployments remain SUCCESS0running. No service/source pin/volume/credential/config/deployment changes.
+
+Exact next continuation: recover actual refs/Actions and latest authoritative records; mark ONLY the isolated preview owner-UI step closed. Preserve original4.7/data and the production signer/push blocker. Continue only contract-justified independent source/PIT/status-economics/preregistration/admission/native account/execution evidence work; do not manufacture trust roots, a new successor/admission or genuine LIVE samples. No additional handset action is required for the completed screen check. Existing frozen criteria and consumed failed invalidv1 result/manifest/receipt hashes below remain untouched; no orders/funds/account-permission changes, private outcomes, retune, cutoff/model/threshold/promotion-rule changes. Project remains INCOMPLETE.
+
 # Canonical Android verification and exact owner step — 2026-10-06T02:12:02.786Z
 
 Supersedes the preceding pending-CI statements. Project remains INCOMPLETE; all original frozen/holdout/ordering boundaries below remain mandatory.
