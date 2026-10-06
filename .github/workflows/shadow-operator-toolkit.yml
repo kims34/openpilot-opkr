@@ -6,6 +6,7 @@ on:
       - '*settlement*.py'
       - '*cashflow*.py'
       - shadow_operational_*.py
+      - test_shadow_dashboard_script.py
       - order_intent_journal.py
       - order_snapshot_reconciliation.py
       - indexalert_automation_control.py
@@ -29,7 +30,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest -v test_shadow_operator_toolkit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m unittest -v test_shadow_operator_toolkit test_shadow_dashboard_script
       - name: Build exact feature-head archive
         env:
           TOOLKIT_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
