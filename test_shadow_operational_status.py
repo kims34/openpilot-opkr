@@ -126,6 +126,31 @@ class OperationalStatusTests(unittest.TestCase):
             self.assertNotIn('PRIVATE',json.dumps(result))
             self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
 
+    def test_matching_snapshot_cannot_hide_changed_intent_execution_total(self):
+        row = self.reconcile_claimed()
+        self.journal.record_execution('PRIVATE-INTENT', broker_order_id='PRIVATE-ORDER',
+            execution_id='PRIVATE-FILL', quantity=3)
+        self.journal.db.execute('UPDATE intents SET filled=2')
+        row['filled_quantity'] = 2
+        # Corrupt intent and matching binding cannot override retained fills.
+        self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?', (json.dumps(row),))
+        before = self.journal.db.total_changes
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(result['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertEqual(self.journal.db.total_changes, before)
+        self.assertNotIn('PRIVATE', json.dumps(result))
+
+    def test_orphan_execution_cannot_be_omitted_from_readonly_status(self):
+        self.journal.db.execute('INSERT INTO executions VALUES(?,?,?)',
+            ('PRIVATE-ORPHAN', 'PRIVATE-FILL', 1))
+        before = self.journal.db.total_changes
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(result['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertEqual(self.journal.db.total_changes, before)
+        self.assertNotIn('PRIVATE', json.dumps(result))
+
     def test_duplicate_bound_snapshot_fields_are_changed_without_mutation(self):
         row = self.reconcile_claimed()
         payload = '{"filled_quantity":9,' + json.dumps(row)[1:]
