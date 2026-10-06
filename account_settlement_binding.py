@@ -1,8 +1,10 @@
-"""Offline gate composition; external attestations never come from local rows.
+"""Offline structural gate composition; local rows never grant admission.
 
-Use bind_journal_settlement_to_early_live for the journal-backed boundary.
-The low-level composer remains an external-admission interface, not an origin
-verifier. Neither path enables trading or clears a reconciliation barrier.
+Use bind_journal_settlement_to_early_live for the journal-backed consistency
+boundary. Settlement attestations may be supplied for structural composition,
+but neither this module nor caller booleans verify the independent canonical
+gate admissions required before final user authorization. Neither path enables
+trading or clears a reconciliation barrier.
 """
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone, timedelta
@@ -37,10 +39,11 @@ def bind_settlement_to_early_live(base,settlement):
 
 def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *,
                                         expected_epoch, expected_snapshot_revision):
-    """Recheck durable local state atomically before the final boundary.
+    """Recheck durable local state atomically before structural assessment.
 
     A result is valid only for its reported epoch/revision. This is diagnostic
-    composition, not a reusable activation token or independent broker proof.
+    composition, not a reusable activation token, final-user-ready signal, or
+    independent broker/gate proof.
     Origin, freshness, date and settlement attestations must still be supplied
     by their independent admissions. No clock TTL is invented here.
     """
