@@ -1,3 +1,16 @@
+# Native settlement connection checkpoint — 2026-10-06
+
+Latest verified code HEAD: `4753aa5179666d7019e35bec562d00139b75a07c` on `index-alert-position-regen-fix-v1`. This continuation restored `5f5066532923097904ac19eb81bd81a1104c94cc`; no open PRs were present. Only relevant native settlement/cashflow files and CI were inspected.
+
+- [PR164](https://github.com/kims34/openpilot-opkr/pull/164), merge `d26b5a9ee1ebf722afbdf9f739c74e01414c7f3b`: offline kt00015 page-chain intake, all-type/product/venue query scope, explicit final-page closure, immutable original fields and exact/conflicting duplicate checks. Missing amounts stay absent. No inferred direction, currency, settlement timestamp or origin. Official example actually read at `953e5dbff123f437ab4d11a78a95191a685eb51f`. Feature `6e5765cb0b2b68b6c47d0bc5f89faeb639403581`, CI37451821416 SUCCESS; 43 related synthetic tests passed locally.
+- [PR165](https://github.com/kims34/openpilot-opkr/pull/165), merge `4753aa5179666d7019e35bec562d00139b75a07c`: exact one-review-per-native-row coverage binding to existing settled cashflow reconciliation. Missing/extra/changed/duplicate reviews, collapsed movement IDs, account/period/capture mismatch block. Excluded rows require separate external attestation for consistency. Feature `37ba6f095db8a204d45782f6c84c5aec93a870e3`, CI37452380214 SUCCESS; 50 related synthetic tests passed locally.
+
+Native page closure and local reviews do not authenticate account origin, full settlement scope, KRW net direction, fee inclusion or settlement timestamps. All such external proof gaps remain open; caller attestations are not broker-native evidence. No Core/frozen changes, feature-performance tests, holdout access, genuine LIVE, actual orders, funds movement or order-permission changes. `real_orders_authorized=false`.
+
+Resume from PR165's completed intake→reviewed cashflow→journal settlement path; do not repeat PR164/165 implementation or successful suites absent new changes. Next material engineering target is operational end-to-end Shadow integration with independently evidenced native mapping when available. Production 4.8 signer continuity and notification end-to-end proof remain separate from the already confirmed isolated preview install; do not repeat old device setup. No claim that all independent engineering is exhausted or that work continues after this execution ends.
+
+---
+
 # Post-PR160 development checkpoint — 2026-10-06T10:40Z
 
 Latest verified code HEAD: `ab67bb082f16ff4e961aa7a9d75374a8ef28d1b0` on `index-alert-position-regen-fix-v1`. Restore HEAD was exactly PR160 merge `614a79c31a060bb23000f741d0437e3ed70e3600`; open PR list was empty. Research reference `8eeab7e651fb031e69f9806b7789b9e21c450bfc` and build reference `f65f71be88b4675252178a4f2726c13d4a783fed` were read once, not modified in this development batch.
