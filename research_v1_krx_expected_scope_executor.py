@@ -72,7 +72,14 @@ def _ensure_fetch_result(result: Any) -> FetchResult:
         raise KRXExpectedScopeExecutorError(
             "authorized expected-scope fetch must report network_request_attempted=true"
         )
-    ts = pd.Timestamp(result.retrieved_at)
+    if not isinstance(result.transport_status, str) or not result.transport_status.strip():
+        raise KRXExpectedScopeExecutorError("transport_status must be a non-empty string")
+    if not isinstance(result.retrieved_at, str) or not result.retrieved_at.strip():
+        raise KRXExpectedScopeExecutorError("retrieved_at must be timezone-aware string")
+    try:
+        ts = pd.Timestamp(result.retrieved_at)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise KRXExpectedScopeExecutorError("retrieved_at must be timezone-aware string") from exc
     if pd.isna(ts) or ts.tzinfo is None or ts.utcoffset() is None:
         raise KRXExpectedScopeExecutorError("retrieved_at must be timezone-aware")
     return result
@@ -113,7 +120,7 @@ def _persist_response(
         "requested_date": requested_date,
         "request_metadata_sha256": request_sha,
         "retrieved_at": pd.Timestamp(result.retrieved_at).isoformat(),
-        "transport_status": str(result.transport_status),
+        "transport_status": result.transport_status,
         "raw_object_sha256": raw["raw_object_sha256"],
         "raw_bytes_size": int(raw["raw_bytes_size"]),
         "response_rows": int(len(frame)),
