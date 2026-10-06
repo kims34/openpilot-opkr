@@ -142,6 +142,10 @@ class KiwoomOrderJournalBridge:
         """Derive execution identity without applying a fill or trusting markers."""
         require(self.journal.db.in_transaction)
         order,binding=self._row(key,row,trading_date,SOURCE_CONTRACT,'broker_execution_event')
+        quantities = [record[0] for record in self.journal.db.execute(
+            'SELECT quantity FROM executions WHERE key=?', (key,))]
+        require(all(type(quantity) is int and quantity > 0 for quantity in quantities))
+        require(sum(quantities) == order['filled_quantity'])
         require(row.get('source_api')=='domestic_realtime_order_fill_00')
         require(row.get('broker_execution_id_available_in_source') is True)
         require(row.get('side')==binding[1] and row.get('order_status')=='체결' and row.get('rejection_reason')=='')

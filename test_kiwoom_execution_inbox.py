@@ -201,6 +201,22 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.i.counts()['pending'], 1)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
 
+    def test_restart_rejects_intent_fill_total_changed_under_processed_receipt(self):
+        self.append(); self.i.replay_next()
+        self.j.close()
+        raw = sqlite3.connect(self.path, isolation_level=None)
+        try:
+            raw.execute('UPDATE intents SET filled=3')
+        finally:
+            raw.close()
+        self.j = OrderIntentJournal(self.path)
+        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
+        with self.assertRaises(ExecutionInboxError):
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+
     def test_restart_after_later_fill_preserves_processed_receipt_identity(self):
         self.append(); self.i.replay_next()
         self.append('second', fixtures.fill('fill-2', 6, 0, '091502')); self.i.replay_next()
