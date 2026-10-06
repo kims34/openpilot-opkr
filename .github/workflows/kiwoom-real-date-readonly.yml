@@ -1,0 +1,31 @@
+name: Kiwoom REAL Broker-Date Read-Only Boundary
+on:
+  pull_request:
+    paths:
+      - 'kiwoom_real_readonly_preparation.py'
+      - 'kiwoom_real_readonly_transport.py'
+      - 'kiwoom_real_settlement_date_readonly_smoke.ps1'
+      - 'test_kiwoom_real_readonly_preparation.py'
+      - 'test_kiwoom_real_readonly_transport.py'
+      - 'test_kiwoom_real_settlement_date_readonly_smoke_ps1.py'
+      - '.github/workflows/kiwoom-real-date-readonly.yml'
+  push:
+    branches:
+      - index-alert-position-regen-fix-v1
+    paths:
+      - 'kiwoom_real_readonly_preparation.py'
+      - 'kiwoom_real_readonly_transport.py'
+      - 'kiwoom_real_settlement_date_readonly_smoke.ps1'
+      - 'test_kiwoom_real_readonly_preparation.py'
+      - 'test_kiwoom_real_readonly_transport.py'
+      - 'test_kiwoom_real_settlement_date_readonly_smoke_ps1.py'
+      - '.github/workflows/kiwoom-real-date-readonly.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest -v test_kiwoom_real_readonly_preparation.py test_kiwoom_real_readonly_transport.py test_kiwoom_real_settlement_date_readonly_smoke_ps1.py

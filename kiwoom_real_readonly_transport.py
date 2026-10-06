@@ -24,6 +24,7 @@ SCOPES = {
         frozenset({"qry_tp"}),
         frozenset({"qry_tp"}),
     ),
+    "kt00017": (frozenset(), frozenset()),
     "kt00007": (
         frozenset("qry_tp stk_bond_tp sell_tp dmst_stex_tp".split()),
         frozenset("qry_tp stk_bond_tp sell_tp dmst_stex_tp ord_dt stk_cd fr_ord_no".split()),
