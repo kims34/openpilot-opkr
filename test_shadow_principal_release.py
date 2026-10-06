@@ -144,6 +144,18 @@ class PrincipalReleaseTests(unittest.TestCase):
         self.assertEqual(self.a.state()['managed_reserve_krw'],3)
         self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_capital_releases').fetchone()[0],1)
 
+    def test_capital_view_rejects_missing_or_changed_release_lineage(self):
+        self.batch()
+        self.release()
+        self.j.db.execute('UPDATE shadow_capital_releases SET released_principal=79')
+        with self.assertRaises(OrderJournalError):
+            self.a.state()
+        self.j.db.execute('UPDATE shadow_capital_releases SET released_principal=80')
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 3)
+        self.j.db.execute('DELETE FROM shadow_capital_releases')
+        with self.assertRaises(OrderJournalError):
+            self.a.state()
+
     def test_failed_batch_clears_prior_settlement_bindings(self):
         self.batch()
         reconcile_order_snapshot_batch(self.j,revision=2,orders=[])

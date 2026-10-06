@@ -9,6 +9,7 @@ principal while retaining the fee buffer. Actual cash reuse still requires an
 independently admitted settlement/account adapter.
 """
 import json
+from contextlib import nullcontext
 
 from indexalert_automation_control import (
     AutomationCapitalState, AutomationUserControls, DecisionAction,
@@ -36,6 +37,11 @@ class ShadowCapitalAllocator:
                 snapshot_revision INTEGER NOT NULL)''')
 
     def state(self):
+        # Standalone readers need the same pinned view as claim/release callers.
+        with nullcontext() if self.journal.db.in_transaction else self.journal._atomic():
+            return self._state_locked()
+
+    def _state_locked(self):
         row = self.journal.db.execute(
             'SELECT revision,enabled,maximum,baseline FROM shadow_capital_config WHERE id=1').fetchone()
         if row is None:
@@ -43,7 +49,34 @@ class ShadowCapitalAllocator:
         revision, enabled, maximum, baseline = row
         # Restoring a late-fill reservation can exceed the ceiling or even the
         # SQLite aggregate integer range. Preserve/report exposure exactly.
-        reserve = sum(row[0] for row in self.journal.db.execute('SELECT reserve FROM shadow_capital_reservations'))
+        reserve = 0
+        revocations_exist = self.journal.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_release_revocations'").fetchone()
+        for key, price, fee, amount in self.journal.db.execute(
+                'SELECT key,limit_price,fee_buffer,reserve FROM shadow_capital_reservations'):
+            order = self.journal.get(key)
+            if (order['side'] != 'BUY' or type(price) is not int or price <= 0
+                or type(fee) is not int or fee < 0 or type(amount) is not int or amount < 0):
+                raise OrderJournalError('invalid managed BUY reservation')
+            principal = order['quantity'] * price
+            released = self.journal.db.execute('SELECT released_principal,snapshot_revision FROM shadow_capital_releases WHERE key=?', (key,)).fetchone()
+            revoked = self.journal.db.execute('SELECT restored_principal,execution_id FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone() if revocations_exist else None
+            expected = principal + fee
+            if released is not None:
+                if (type(released[0]) is not int or released[0] != principal
+                    or type(released[1]) is not int or released[1] <= 0):
+                    raise OrderJournalError('invalid managed principal release')
+                expected = fee
+                if revoked is not None:
+                    if (type(revoked[0]) is not int or revoked[0] != principal
+                        or type(revoked[1]) is not str or not revoked[1].strip()
+                        or not self.journal.db.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?', (key,revoked[1])).fetchone()):
+                        raise OrderJournalError('invalid managed principal restoration')
+                    expected = principal + fee
+            elif revoked is not None:
+                raise OrderJournalError('orphan managed principal restoration')
+            if amount != expected or expected > 2**63-1:
+                raise OrderJournalError('managed BUY reservation amount changed')
+            reserve += amount
         return dict(revision=revision, controls=AutomationUserControls(bool(enabled), maximum),
             capital=AutomationCapitalState(*json.loads(baseline)), managed_reserve_krw=reserve)
 

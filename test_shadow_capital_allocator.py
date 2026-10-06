@@ -63,6 +63,22 @@ class ShadowCapitalTests(unittest.TestCase):
         self.assertEqual(self.j.get('d2')['state'], 'INTENT_CREATED')
         self.assertEqual(self.a.state()['managed_reserve_krw'], 80)
 
+    def test_corrupt_existing_reservation_cannot_free_capacity_for_another_buy(self):
+        self.claim()
+        self.ack()
+        self.j.register('d2', symbol='OTHER', side='BUY', quantity=10)
+        for amount in (1, -80, 80.5):
+            with self.subTest(amount=amount):
+                self.j.db.execute('UPDATE shadow_capital_reservations SET reserve=?', (amount,))
+                before = tuple(self.j.db.iterdump())
+                with self.assertRaises(OrderJournalError):
+                    self.a.reserve_and_claim_buy('d2',limit_price_krw=8,fee_buffer_krw=0,
+                        expected_epoch=self.epoch,expected_capital_revision=1)
+                self.assertEqual(tuple(self.j.db.iterdump()), before)
+                self.assertEqual(self.j.get('d2')['state'], 'INTENT_CREATED')
+        self.j.db.execute('UPDATE shadow_capital_reservations SET reserve=80')
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 80)
+
     def test_failed_claim_rolls_back_its_reservation(self):
         self.j.trip_kill_switch()
         with self.assertRaises(OrderJournalError):
