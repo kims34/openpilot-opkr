@@ -202,3 +202,15 @@ def test_source_fingerprint_string_normalization_preserves_existing_behavior():
     ]))
     assert lineage["source_contract_fingerprint_sha256"].tolist() == [SOURCE_FP]
     assert audit_investor_flow_lineage(lineage)["feature_performance_testing_authorized"] is False
+
+
+@pytest.mark.parametrize("source_fp", ["a" * 64, "b" * 64])
+def test_lineage_summary_retains_exact_source_contract_fingerprint(source_fp):
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([
+        _valid_row(source_contract_fingerprint_sha256=source_fp)
+    ]))
+    summary = audit_investor_flow_lineage(lineage)
+    assert summary["source_contract_fingerprint_count"] == 1
+    assert summary["source_contract_fingerprint_sha256"] == source_fp
+    assert summary["feature_performance_testing_authorized"] is False
+    assert summary["sealed_holdout_authorized"] is False
