@@ -126,6 +126,15 @@ class JournalSettlementBindingTests(unittest.TestCase):
         with self.assertRaises(SettlementBindingError):
             self.assess(expected_epoch=True)
 
+    def test_korean_date_overflow_is_blocked_before_journal_transaction(self):
+        from unittest.mock import patch
+        before = self.journal.shadow_control(),self.journal.db.total_changes
+        for timestamp in ('9999-12-31T23:00:00Z','0001-01-01T00:00:00+23:00'):
+            with patch.object(self.journal,'_atomic',side_effect=AssertionError('must not transact')):
+                with self.assertRaises(SettlementBindingError):
+                    self.assess(snapshot=replace(self.snapshot,captured_at=timestamp))
+        self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+
     def test_cashflow_composition_vetoes_unexplained_balance(self):
         from account_cashflow_reconciliation import (
             reconcile_settled_cashflow, bind_reconciled_cashflow_to_early_live,

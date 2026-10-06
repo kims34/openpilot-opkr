@@ -77,3 +77,13 @@ class NativeBindingTests(unittest.TestCase):
                          replace(self.movement,settled_at=self.opening.captured_at)):
             with self.assertRaises(CashflowReconciliationError):
                 self.run_binding([replace(self.review,movement=movement)])
+
+    def test_korean_date_conversion_overflow_is_blocked(self):
+        query = dict(self.batch.request_fields)
+        query.update(strt_dt='99991231',end_dt='99991231')
+        self.opening = replace(self.opening,captured_at='9999-12-31T01:00:00Z')
+        self.closing = replace(self.closing,captured_at='9999-12-31T23:00:00Z')
+        batch = replace(self.batch,captured_at='9999-12-31T23:30:00Z',
+                        request_fields=tuple(sorted(query.items())))
+        with self.assertRaises(CashflowReconciliationError):
+            self.run_binding(batch=batch)

@@ -30,7 +30,12 @@ def review_native_settlement_file(input_path, journal_path):
     journal = None
     try:
         with open(input_path,encoding='utf-8') as source:
-            payload = json.load(source,object_pairs_hook=_object)
+            try:
+                payload = json.load(source,object_pairs_hook=_object)
+            except RecursionError:
+                # Decoder depth exhaustion is invalid input, not a request
+                # failure that may log the private file path/client address.
+                require(False)
         require(type(payload) is dict and set(payload)=={'account_fingerprint','opening','closing','history','review_manifest'})
         for name in ('opening','closing'):
             require(type(payload[name]) is dict and set(payload[name])=={'body','captured_at'})

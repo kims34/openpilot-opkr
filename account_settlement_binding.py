@@ -58,11 +58,12 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
         captured = datetime.fromisoformat(snapshot.captured_at.replace('Z', '+00:00'))
         if captured.tzinfo is None or captured.utcoffset() is None:
             raise ValueError
+        day = captured.astimezone(timezone(timedelta(hours=9))).date().isoformat()
         cash = (snapshot.deposit_cash_krw, snapshot.withdrawable_cash_krw,
                 snapshot.d2_estimated_cash_krw, snapshot.orderable_amount_krw)
         if any(type(v) is not Decimal or not v.is_finite() or v < 0 for v in cash):
             raise ValueError
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         raise SettlementBindingError("SETTLEMENT_BINDING_BLOCKED") from None
 
     errors = set()
@@ -83,7 +84,6 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
         scope = (journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
                  if 'native_journal_scope' in tables else None)
         account = 'sha256:' + snapshot.account_fingerprint.removeprefix('sha256:')
-        day = captured.astimezone(timezone(timedelta(hours=9))).date().isoformat()
         if scope != (account, day):
             errors.add('ACCOUNT_DATE_SCOPE_UNBOUND')
         unresolved = 0
