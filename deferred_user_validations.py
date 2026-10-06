@@ -28,6 +28,7 @@ def current_deferred_validations() -> dict:
             "KIWOOM_REAL_ACCOUNT_SCOPE_READONLY_v1",
             "Verify complete read-only REAL account scope for orders, open orders, fills and holdings",
             "kiwoom_real_account_scope_readonly_smoke.ps1",
+            completed=True,
         ),
     )
     material = tuple(item.validate() for item in items)
