@@ -16,7 +16,10 @@ from dataclasses import asdict, dataclass
 import re
 from typing import Any, Iterable, Mapping
 
-from research_v1_krx_acquisition_receipt import KRXAcquisitionReceiptError, _aware_iso, _sha256
+from research_v1_krx_acquisition_receipt import (
+    ALLOWED_ACCESS_ROUTES, ALLOWED_SOURCE_FAMILIES,
+    KRXAcquisitionReceiptError, _aware_iso, _sha256,
+)
 from research_v1_krx_public_evidence import (
     PUBLIC_EVIDENCE_VERSION,
     public_evidence_fingerprint_sha256,
@@ -96,6 +99,16 @@ def verify_receipt_fingerprint(receipt: Mapping[str, Any]) -> str:
                   "authorization_evidence_reference", "client_revision", "retrieved_at"):
         if not isinstance(receipt[field], str) or not receipt[field].strip():
             raise KRXAcquisitionBatchError(f"receipt {field} must be a non-empty string")
+    if receipt["source_family"] not in ALLOWED_SOURCE_FAMILIES:
+        raise KRXAcquisitionBatchError("receipt source_family is unsupported")
+    if receipt["access_route"] not in ALLOWED_ACCESS_ROUTES:
+        raise KRXAcquisitionBatchError("receipt access_route is unsupported")
+    if any(marker in receipt["authorization_evidence_reference"].lower()
+           for marker in ("password=", "token=", "cookie=", "secret=")):
+        raise KRXAcquisitionBatchError("receipt authorization_evidence_reference must be opaque and non-secret")
+    columns = receipt["response_columns"]
+    if not isinstance(columns, list) or any(not isinstance(column, str) for column in columns):
+        raise KRXAcquisitionBatchError("receipt response_columns must be a list of strings")
     try:
         _aware_iso(receipt["retrieved_at"], "retrieved_at")
     except KRXAcquisitionReceiptError as exc:
