@@ -148,6 +148,8 @@ def prepare_live_execution_sufficiency_evidence(
             "genuine broker provenance is a separate admission requirement"
         )
 
+    if table["observation_id"].isna().any():
+        raise ExecutionSufficiencyAssessmentError("observation_id must not be missing")
     x["observation_id"] = table["observation_id"].astype(str).str.strip().to_numpy()
     if x["observation_id"].eq("").any() or x["observation_id"].duplicated().any():
         raise ExecutionSufficiencyAssessmentError("observation_id must be non-empty and unique")
