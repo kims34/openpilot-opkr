@@ -275,3 +275,47 @@ def test_same_request_different_payload_fails_reconciliation_without_overwrite(t
 
     after = sorted(p.name for p in receipt_dir.glob("*.json"))
     assert after == before
+
+
+@pytest.mark.parametrize("field,value", [
+    ("transport_status", None), ("transport_status", False),
+    ("transport_status", 200), ("transport_status", {}),
+    ("transport_status", []), ("transport_status", ""),
+    ("transport_status", "   "),
+    ("retrieved_at", None), ("retrieved_at", False),
+    ("retrieved_at", 0), ("retrieved_at", EVAL),
+    ("retrieved_at", ""), ("retrieved_at", "NaT"),
+    ("retrieved_at", "not-a-date"), ("retrieved_at", "2026-10-02T12:45:00"),
+])
+def test_fetch_metadata_rejected_before_private_write(tmp_path, monkeypatch, field, value):
+    from dataclasses import replace
+    import research_v1_krx_expected_scope_executor as executor
+
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    calls = []
+    def forbidden_write(*args, **kwargs):
+        pytest.fail("malformed fetch metadata must fail before private write")
+    monkeypatch.setattr(executor, "write_raw_object", forbidden_write)
+    result = replace(_result(pd.DataFrame()), **{field: value})
+    def fetcher(**kwargs):
+        calls.append(kwargs)
+        return result
+    with pytest.raises(KRXExpectedScopeExecutorError, match=field):
+        execute_expected_scope_date(
+            requested_date="20260927", environment=_env(tmp_path),
+            git_worktree=str(worktree), fetcher=fetcher, evaluation_time=EVAL,
+        )
+    assert len(calls) == 1
+    assert not (tmp_path / "private" / "expected_scope").exists()
+
+
+@pytest.mark.parametrize("stamp", ["2026-10-02T12:45:00+00:00", "2026-10-02T21:45:00+09:00"])
+def test_fetch_metadata_preserves_explicit_transport_and_aware_time(stamp):
+    from dataclasses import replace
+    from research_v1_krx_expected_scope_executor import _ensure_fetch_result
+
+    # Synthetic fixture metadata only; does not assert genuine transport origin.
+    result = replace(_result(pd.DataFrame()), retrieved_at=stamp)
+    assert _ensure_fetch_result(result) is result
+    assert result.transport_status == "FAKE_daily"
