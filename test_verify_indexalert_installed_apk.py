@@ -10,10 +10,15 @@ from verify_indexalert_installed_apk import InstalledApkAuditError, audit_instal
 
 class InstalledApkAuditTest(unittest.TestCase):
     def audit(self, *, installed_signer='a', candidate_signer='a', paths=None,
-              state='device', package='com.indexalert.app', signed=True, inspect_only=False):
+              state='device', package='com.indexalert.app', signed=True, inspect_only=False,
+              wireless_device=None, qemu='0'):
         calls = []
         def run(argv):
             calls.append(argv)
+            if wireless_device is not None and argv[:3] == ['adb', '-s', wireless_device]:
+                if argv[3:] == ['shell', 'getprop', 'ro.kernel.qemu']:
+                    return qemu
+                argv = ['adb', '-d', *argv[3:]]
             if argv[:3] == ['adb', '-d', 'get-state']:
                 return state
             if argv[:4] == ['adb', '-d', 'shell', 'pm']:
@@ -32,7 +37,8 @@ class InstalledApkAuditTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             candidate = Path(directory) / 'candidate.apk'
             candidate.write_bytes(b'synthetic-candidate-public-apk')
-            result = audit_installed_apk(None if inspect_only else candidate, run=run)
+            result = audit_installed_apk(None if inspect_only else candidate, run=run,
+                                         wireless_device=wireless_device)
         return result, calls
 
     def test_matching_installed_signer_is_only_signing_continuity(self):
@@ -98,6 +104,32 @@ class InstalledApkAuditTest(unittest.TestCase):
         metadata = "other.app' platformBuildVersionName='name='com.indexalert.app"
         with self.assertRaises(InstalledApkAuditError):
             self.audit(package=metadata)
+
+    def test_owner_paired_wireless_targets_are_selected_without_identifier_report(self):
+        for target in ('adb-SYNTHETIC-paired._adb-tls-connect._tcp', '192.0.2.10:37123'):
+            result, calls = self.audit(inspect_only=True, wireless_device=target)
+            self.assertEqual(result['device_transport'], 'PAIRED_WIRELESS')
+            self.assertNotIn(target, json.dumps(result))
+            self.assertFalse(result['automatic_install_authorized'])
+            adb_calls = [c for c in calls if c[0] == 'adb']
+            self.assertEqual(len(adb_calls), 4)
+            self.assertTrue(all(c[:3] == ['adb', '-s', target] for c in adb_calls))
+            self.assertEqual(adb_calls[1][3:], ['shell', 'getprop', 'ro.kernel.qemu'])
+            self.assertFalse(Path(adb_calls[-1][-1]).exists())
+
+    def test_invalid_wireless_target_is_rejected_before_any_device_access(self):
+        for target in ('', 'emulator-5554', 'arbitrary-usb-serial', 'host:5555',
+                       '192.0.2.10:0', '192.0.2.10:65536', '192.0.2.10:１２',
+                       'adb-test._adb-tls-pairing._tcp', '192.0.2.10:55\n'):
+            calls = []
+            with self.subTest(target=target), self.assertRaises(InstalledApkAuditError):
+                audit_installed_apk(wireless_device=target, run=lambda argv: calls.append(argv))
+            self.assertEqual(calls, [])
+
+    def test_wireless_emulator_and_unauthorized_connection_fail_closed(self):
+        for args in ({'qemu': '1'}, {'qemu': 'unexpected'}, {'state': 'unauthorized'}):
+            with self.subTest(args=args), self.assertRaises(InstalledApkAuditError):
+                self.audit(inspect_only=True, wireless_device='192.0.2.10:37123', **args)
 
 
 if __name__ == '__main__':
