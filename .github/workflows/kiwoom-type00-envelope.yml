@@ -1,0 +1,22 @@
+name: Kiwoom Type00 Envelope Boundary
+on:
+  pull_request:
+    paths:
+      - 'kiwoom_realtime_order_fill_subscription_contract.py'
+      - 'test_kiwoom_realtime_order_fill_subscription_contract.py'
+      - '.github/workflows/kiwoom-type00-envelope.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'kiwoom_realtime_order_fill_subscription_contract.py'
+      - 'test_kiwoom_realtime_order_fill_subscription_contract.py'
+      - '.github/workflows/kiwoom-type00-envelope.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest -v test_kiwoom_realtime_order_fill_subscription_contract.py test_kiwoom_order_request_contract.py
