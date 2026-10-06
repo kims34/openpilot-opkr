@@ -30,9 +30,9 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Verify read-only automation availability contract
-        run: gradle testDebugUnitTest --stacktrace
+        run: gradle :app:testDebugUnitTest --stacktrace
       - name: Build debug and unsigned release APKs
-        run: gradle assembleDebug assembleRelease --stacktrace
+        run: gradle :app:assembleDebug :app:assembleRelease --stacktrace
       - name: Verify candidate APK identity, signing and actual JUnit results
         run: |
           python3 - <<'PY'
