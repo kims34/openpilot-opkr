@@ -838,3 +838,8 @@ PR142/143 completed symmetric development/research hardening for `observation_id
 ## 2026-10-06 — Execution side/source identity hardening
 
 PR144/145 removed the remaining lossy `astype(str)` coercion from execution `side` and `source`: both must now be original strings before normalization/source admission. Exact-head execution-integrity Actions passed before both merges. Merge heads before this documentation update: development `13939bb582aaeca64f2fe3348eb8f539e703811e`, research `c694f96dc1cb8dda65973bfcccab9c2cef2e14e3`. Structural validation only; genuine LIVE provenance, empirical sufficiency, source/PIT/status-economics, successor/holdout and real-order gates remain fail-closed.
+
+
+## 2026-10-06 — Rejected UTC decision-date binding experiment
+
+PR146/147 tested binding `decision_date` to the UTC calendar date of `recommendation_at`. Exact-head CI correctly failed because frozen `decision_date` represents the market-session decision date and cannot be inferred as UTC calendar date from the execution timestamp without a separately frozen exchange-calendar/timezone contract. The proposed implementation and regression were reverted on their isolated branches and both PRs were closed **without merge**. This experiment is `REJECTED_DO_NOT_APPLY`; PR138/139 exact `YYYY-MM-DD` type/format hardening remains authoritative. No base branch behavior, frozen criterion, holdout state, genuine-LIVE evidence or broker authority changed.
