@@ -1,3 +1,28 @@
+# Authorization normalization follow-up — 2026-10-06T06:10Z / 15:10 KST
+
+Actual tested development HEADfaa4b1c5ea2821b3dc750bf5985b2d6db264d043; research HEAD6acf2fbffb3c67f4b92082a517ffb58b88e09c79. This documentation checkpoint follows these code HEADs; obtain exact current branch HEAD from GitHub when resuming.
+
+PR78/79 MERGED after exact-head CI345passed. Numeric0/1/0.0/1.0 previously passed optional-boolean tuple membership. Synthetic input1 initially failed explicit automated-collection permission, normalized toTrue, and passed metadata tiny-probe preflight after roundtrip. The validator now accepts only actual optional booleans;4numeric regressions reject before normalization and3canonical None/False/True roundtrips preserve decisions and record fingerprints. No external approval was established, no tiny/bulk request was made by this work, no old normalized record was rewritten or retrospectively trusted. The underlying external approval artifact remains necessary; already-normalized legacy metadata cannot recover its original type merely by rehashing.
+
+PR78 feature2f1affbc64d3084636ed77a6abb1d4288c9c560e, mergefaa4b1c5ea2821b3dc750bf5985b2d6db264d043, PR CI37422045864/job112133324878345passed.
+PR79 feature9a39fb48085be9e852cd10975c0b3ec24ecb6c42, merge6acf2fbffb3c67f4b92082a517ffb58b88e09c79, PR CI37422053941/job112133349378345passed.
+Actual canonical merge CI:
+- index-alert-position-regen-fix-v1: KRX source admission exact authority flags; run37422191859/job112133789789; success; 2026-10-06T06:09:35.4347114Z 345 passed in 1.58s.
+- index-alert-research-v1: IndexAlert Research v1 KRX Status Source Probe; run37422198832/job112133811149; success; success; no pytest count inferred.
+- index-alert-research-v1: KRX source admission exact authority flags; run37422198708/job112133810594; success; 2026-10-06T06:09:36.0870863Z 345 passed in 1.16s.
+- index-alert-research-v1: IndexAlert Research v1 KRX Investor Flow Probe; run37422198670/job112133811522; success; success; no pytest count inferred.
+- index-alert-research-v1: IndexAlert Research v1 Official KRX Status Integrity; run37422198766/job112133810811; success; 2026-10-06T06:09:49.6385352Z 828 passed, 5 warnings in 8.14s.
+
+Previous documentation HEADs60cc79d0cf9a0f65d441a64ff89a651c30e74477 / b034949ce66cd4fb41245b14d8910445951b855b also have SUCCESS Actions37421858353 /37421865292 /37421865281. Dedicated CI345 and official KRX828passed/5warnings are offline engineering checks, not genuine source/Alpha/LIVE evidence. Local direct numeric-permission regression/roundtrip passed; local pytest is unavailable. Source-data admission/PIT/coverage code changes from PR66–77 remain as recorded below.
+
+Fresh Railway inventory at2026-10-06T06:10Z again confirms identical runtime/PIT/KRX/DEMO deployments and all3volumes, no staged changes, legacy backend/push FAILED and db-query undeployed. Source pins/start commands and preserved holdout hashes remain the earlier directly checked configuration/audit evidence. No deployment, restart, private-volume/source record, secret, account permission, actual broker order or model/frozen change was performed. Schedule remains the earlier directly listed ENABLED19:28:47KSTfirst planned start/every5hours; no new automation was created and no queue timestamp inferred.
+
+Next exact resume: fresh actual HEAD/Actions/Status/Continuity/Railway first; do not repeat merged PR56–79 or owner preview installation. Continue the documented cross-audit source/batch/payload/expected-scope binding review only under the existing frozen contract meanings; the current COVERAGE_PIT_AUDIT contract permits review candidates but forbids GatePASS/sourceclosure/performance/holdout/trading. Authentic external approval, independent expected scope and availability lineage remain required. Keep the newly identified summary-binding research/engineering issue OPEN rather than manufacturing a self-attestation or changing fingerprint semantics. Other external source/economics/independent chronology/genuine LIVE/original signing-key/production-push blockers remain OPEN, as below.
+
+Project INCOMPLETE; MASTER_OFF and all frozen H5/PIT/labels/WF/purge/embargo/cost/partial-fill/NetEV/Precision/PF/MDD/ES95/99/holdout/model/threshold/promotion rules are unchanged. Preserve failed consumed v1 cutoff/window/result/manifest/receipt hashes and discrepancy lineage. No re-evaluation, reseal, relabel, private outcome access, retrospective timestamp fabrication or real-order enablement. Real orders/funds/account permission changes still need separate explicit approval. This is a continuation checkpoint, not project completion.
+
+--- Full handoff and historical authoritative records follow. ---
+
 # INDEXALERT_HANDOFF — 2026-10-06T06:04Z / 15:04 KST
 
 Project remains INCOMPLETE. Actual tested code HEADs before this documentation checkpoint:
