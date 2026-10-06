@@ -90,8 +90,12 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
         unresolved = 0
         known = []
         for key, in journal.db.execute("SELECT key FROM intents WHERE state!='INTENT_CREATED'"):
-            order = journal.get(key)
             known.append(key)
+            try:
+                order = journal.get(key)
+            except OrderJournalError:
+                errors.add('ORDER_SNAPSHOT_CONTENT_CHANGED')
+                continue
             if order['state'] in ('SUBMITTING', 'RECONCILIATION_REQUIRED'):
                 unresolved += 1
             bound = journal.db.execute('SELECT revision,epoch,payload FROM reconciled_snapshot_bindings WHERE key=?', (key,)).fetchone()
