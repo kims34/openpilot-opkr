@@ -94,6 +94,52 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.j.get('decision-1')['state'], 'RECONCILIATION_REQUIRED')
         self.assertEqual(self.j.get('decision-1')['filled_quantity'], 4)
 
+    def test_corrupt_execution_total_blocks_both_duplicate_and_new_fill(self):
+        self.acknowledged()
+        self.fill()
+        self.j.db.execute('UPDATE intents SET filled=3')
+        for execution, quantity in (('fill-1',4), ('later',1)):
+            with self.subTest(execution=execution), self.assertRaises(OrderJournalError):
+                self.fill(execution,quantity)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*),SUM(quantity) FROM executions').fetchone(), (1,4))
+            self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+            self.assertEqual(self.j.get('decision-1')['state'], 'RECONCILIATION_REQUIRED')
+
+    def test_orphan_execution_blocks_another_fill_without_discarding_existing_records(self):
+        self.acknowledged()
+        self.fill()
+        self.j.db.execute("INSERT INTO executions VALUES('orphan','orphan-fill',1)")
+        with self.assertRaises(OrderJournalError):
+            self.fill('later',1)
+        self.assertEqual(self.j.get('decision-1')['filled_quantity'], 4)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (2,))
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
+    def test_corrupt_execution_totals_block_enable_claim_and_kill_reset(self):
+        self.acknowledged()
+        self.fill()
+        self.j.db.execute('UPDATE intents SET filled=3')
+        self.j.register('decision-2',symbol='OTHER',side='BUY',quantity=1)
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('decision-2',expected_epoch=self.j.shadow_control()['epoch'])
+        self.assertEqual(self.j.get('decision-2')['state'], 'INTENT_CREATED')
+        self.j.disable_shadow()
+        with self.assertRaises(OrderJournalError):
+            self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+        self.j.trip_kill_switch()
+        with self.assertRaises(OrderJournalError):
+            self.j.reset_kill_switch(expected_epoch=self.j.shadow_control()['epoch'])
+        self.assertTrue(self.j.shadow_control()['killed'])
+        self.assertEqual(self.j.db.execute('SELECT killed FROM shadow_control').fetchone(), (1,))
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+
+    def test_malformed_intent_cannot_be_claimed_before_return_validation(self):
+        payload = '{"side":"BUY","quantity":10,"quantity":1,"symbol":"005930"}'
+        self.j.db.execute('UPDATE intents SET payload=?', (payload,))
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('decision-1',expected_epoch=self.j.shadow_control()['epoch'])
+        self.assertEqual(self.j.db.execute('SELECT state,payload FROM intents').fetchone(), ('INTENT_CREATED',payload))
+
     def test_overfill_rolls_back_quantity_and_quarantines(self):
         self.acknowledged()
         self.fill()

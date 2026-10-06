@@ -260,8 +260,8 @@ class OrderIntentJournal:
         self._require_batch_reconciled()
         # Once the optional offline allocator is initialized, BUY claims must
         # use its durable reservation path; the legacy entry cannot bypass it.
+        order = self.get(key)
         if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_config'").fetchone():
-            order = self.get(key)
             if order['side'] == 'BUY':
                 enabled = self.db.execute('SELECT enabled FROM shadow_capital_config WHERE id=1').fetchone()
                 reserved = self.db.execute('SELECT 1 FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
@@ -317,6 +317,8 @@ class OrderIntentJournal:
             raise OrderJournalError("execution requires matching bound broker order")
         if row["state"] in ("INTENT_CREATED", "REJECTED") or row["terminal_status"] == "REJECTED":
             raise OrderJournalError("execution contradicts order state")
+        validate_stored_execution_totals(self.db,
+            dict(self.db.execute('SELECT key,filled FROM intents')))
         prior = self.db.execute("SELECT quantity FROM executions WHERE key=? AND execution_id=?", (key, execution_id)).fetchone()
         if prior:
             if prior[0] != quantity:
@@ -376,6 +378,8 @@ class OrderIntentJournal:
         self.db.execute('UPDATE shadow_capital_config SET revision=revision+1 WHERE id=1')
 
     def _require_batch_reconciled(self):
+        validate_stored_execution_totals(self.db,
+            dict(self.db.execute('SELECT key,filled FROM intents')))
         # A caller-supplied matched batch cannot bypass durable unprocessed or
         # conflicted normalized deliveries. No automatic discard/resolution.
         if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_inbox_receipts'").fetchone():
