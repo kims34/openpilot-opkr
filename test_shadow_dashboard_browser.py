@@ -4,7 +4,7 @@ import tempfile
 from threading import Thread
 import unittest
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 from order_intent_journal import OrderIntentJournal
 from shadow_operational_dashboard import create_dashboard_server
 
@@ -24,20 +24,20 @@ class DashboardBrowserTests(unittest.TestCase):
                     try:
                         page = browser.new_page()
                         page.goto(f"http://127.0.0.1:{server.server_port}")
-                        page.wait_for_function("!document.getElementById('refresh').disabled")
+                        expect(page.locator("#refresh")).to_be_enabled()
                         self.assertIn("조회 완료", page.locator("#state").inner_text())
                         self.assertIn("꺼짐", page.locator("#state").inner_text())
                         self.assertIn("연결되지 않았습니다", page.locator("#settlement").inner_text())
                         self.assertEqual(page.locator("#error").inner_text(), "")
                         page.route("**/api/settlement", lambda route: route.abort())
                         page.locator("#refresh").click()
-                        page.wait_for_function("!document.getElementById('refresh').disabled")
+                        expect(page.locator("#refresh")).to_be_enabled()
                         self.assertIn("가져오지 못했습니다", page.locator("#error").inner_text())
                         for selector in ("#state", "#blockers", "#capital", "#settlement"):
                             self.assertEqual(page.locator(selector).inner_text(), "")
                         page.unroute("**/api/settlement")
                         page.locator("#refresh").click()
-                        page.wait_for_function("!document.getElementById('refresh').disabled")
+                        expect(page.locator("#refresh")).to_be_enabled()
                         self.assertIn("조회 완료", page.locator("#state").inner_text())
                         self.assertEqual(page.locator("#error").inner_text(), "")
                         self.assertEqual(before, (journal.shadow_control(), journal.db.total_changes))
