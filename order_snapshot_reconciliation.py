@@ -7,7 +7,7 @@ No network, execution insertion, auto-enable, cancellation or submission.
 """
 import json
 
-from order_intent_journal import OrderJournalError
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals
 
 
 FIELDS = {'key', 'broker_order_id', 'symbol', 'side', 'quantity', 'filled_quantity', 'status'}
@@ -54,8 +54,18 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
             raise OrderJournalError('missing batch reconciliation safety state')
         if valid_revision and revision <= last[0]:
             errors.add('STALE_OR_REPLAYED_SNAPSHOT')
-        known = {row[0]: journal.get(row[0]) for row in journal.db.execute(
-            "SELECT key FROM intents WHERE state!='INTENT_CREATED' ORDER BY key")}
+        keys = [row[0] for row in journal.db.execute(
+            "SELECT key FROM intents WHERE state!='INTENT_CREATED' ORDER BY key")]
+        known = {}
+        try:
+            known = {key: journal.get(key) for key in keys}
+        except OrderJournalError:
+            errors.add('DURABLE_INTENT_CONFLICT')
+        try:
+            validate_stored_execution_totals(journal.db,
+                dict(journal.db.execute('SELECT key,filled FROM intents')))
+        except OrderJournalError:
+            errors.add('EXECUTION_LEDGER_CONFLICT')
         seen, broker_ids, matched, snapshots = set(), set(), [], []
         for order in material:
             if not isinstance(order, dict) or set(order) != FIELDS:
@@ -110,7 +120,7 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
             journal.db.executemany('INSERT INTO reconciled_snapshot_bindings VALUES(?,?,?,?)',
                 [(key, revision, epoch, payload) for key, payload in snapshots])
     return dict(mode='OFFLINE_ORDER_SNAPSHOT_RECONCILIATION', matched=not errors,
-        errors=sorted(errors), observed_order_count=len(material), expected_order_count=len(known),
+        errors=sorted(errors), observed_order_count=len(material), expected_order_count=len(keys),
         network_request_attempted=False, broker_request_sent=False,
         executions_created=False, real_broker_origin_verified=False,
         account_scope_attested=False, snapshot_freshness_attested=False,
