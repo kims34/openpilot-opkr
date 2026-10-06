@@ -81,14 +81,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _respond(self,status,body,content_type):
         encoded = body.encode('utf-8')
-        self.send_response(status)
-        self.send_header('Content-Type',content_type+'; charset=utf-8')
-        self.send_header('Content-Length',str(len(encoded)))
-        self.send_header('Cache-Control','no-store')
-        self.send_header('X-Content-Type-Options','nosniff')
-        self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
-        self.end_headers()
-        self.wfile.write(encoded)
+        try:
+            self.send_response(status)
+            self.send_header('Content-Type',content_type+'; charset=utf-8')
+            self.send_header('Content-Length',str(len(encoded)))
+            self.send_header('Cache-Control','no-store')
+            self.send_header('X-Content-Type-Options','nosniff')
+            self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+            self.end_headers()
+            self.wfile.write(encoded)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # A cancelled browser request must not log client identities.
+
 
     def do_GET(self):
         # Prevent foreign-host DNS rebinding. No CORS or remote bind option.
@@ -140,3 +144,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__': main()
+
