@@ -182,6 +182,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("order_submitted_at cannot precede recommendation_at")
     if (x["ingested_at"] < x["recommendation_at"]).any():
         raise ExecutionEvidenceError("ingested_at cannot precede recommendation_at")
+    if (x["ingested_at"] < x["order_submitted_at"]).any():
+        raise ExecutionEvidenceError("ingested_at cannot precede order_submitted_at")
 
     numeric_fields = [
         "requested_qty", "filled_qty", "avg_fill_price", "reference_open",
@@ -223,6 +225,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("first fill cannot precede order submission")
     if (x.loc[filled, "final_fill_at"] < x.loc[filled, "first_fill_at"]).any():
         raise ExecutionEvidenceError("final fill cannot precede first fill")
+    if (x.loc[filled, "ingested_at"] < x.loc[filled, "final_fill_at"]).any():
+        raise ExecutionEvidenceError("ingested_at cannot precede final fill")
 
     # No-fill observations must not fabricate execution timestamps/prices or markouts.
     no_fill_fields = [

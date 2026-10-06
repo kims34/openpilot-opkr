@@ -199,6 +199,8 @@ def prepare_live_execution_sufficiency_evidence(
         raise ExecutionSufficiencyAssessmentError("order_expiry_at must follow order_submitted_at")
     if (x["order_outcome_at"] < x["order_submitted_at"]).any():
         raise ExecutionSufficiencyAssessmentError("order_outcome_at cannot precede order submission")
+    if (x["ingested_at"] < x["order_outcome_at"]).any():
+        raise ExecutionSufficiencyAssessmentError("ingested_at cannot precede order_outcome_at")
     if (x["capacity_reference_available_at"] > x["recommendation_at"]).any():
         raise ExecutionSufficiencyAssessmentError("capacity ADV20 must be PIT-available by recommendation time")
     if (x["cost_budget_at"] > x["recommendation_at"]).any():
