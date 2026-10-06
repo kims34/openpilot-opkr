@@ -93,6 +93,17 @@ class OperatorToolkitTests(unittest.TestCase):
                 self.assertNotIn('cashflow_reconciliation',result)
                 self.assertFalse(result['real_orders_authorized'])
 
+            fixture.payload['closing']['body']['entr'] = '8999'
+            for name in ('opening','closing'):
+                fixture.payload[name]['body']['return_code'] = 1
+                fixture.write()
+                code,result = review()
+                self.assertEqual(code,2)
+                self.assertFalse(result['assessment_completed'])
+                self.assertNotIn('cashflow_reconciliation',result)
+                self.assertFalse(result['real_orders_authorized'])
+                fixture.payload[name]['body'].pop('return_code')
+
             # Exercise decoder exhaustion in the extracted CLI, including its
             # process exit/stderr boundary rather than only an in-process call.
             fixture.input.write_text('['*20000+'0'+']'*20000,encoding='utf-8')
