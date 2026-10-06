@@ -833,3 +833,8 @@ Continued execution-evidence audit after PR134-137. PR138/139 require `decision_
 ## 2026-10-06 — Execution identifier type preservation
 
 PR142/143 completed symmetric development/research hardening for `observation_id`, `decision_policy_id`, and `execution_policy_id`: these identity-bearing fields must now be original strings and can no longer be silently manufactured by `astype(str)` from numeric/object scalars. Exact-head execution-integrity Actions passed before both merges. Merge heads before this documentation update: development `13e2a38cc5d27e9028faf46d79bff8331d250032`, research `a37de259325902db08bd324a2855f0433bd23d8f`. This remains structural/fail-closed validation only; no genuine LIVE evidence, frozen threshold/model change, holdout access, or broker authority was introduced.
+
+
+## 2026-10-06 — Execution side/source identity hardening
+
+PR144/145 removed the remaining lossy `astype(str)` coercion from execution `side` and `source`: both must now be original strings before normalization/source admission. Exact-head execution-integrity Actions passed before both merges. Merge heads before this documentation update: development `13939bb582aaeca64f2fe3348eb8f539e703811e`, research `c694f96dc1cb8dda65973bfcccab9c2cef2e14e3`. Structural validation only; genuine LIVE provenance, empirical sufficiency, source/PIT/status-economics, successor/holdout and real-order gates remain fail-closed.
