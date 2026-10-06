@@ -9,6 +9,8 @@ from research_v1_execution_sufficiency_protocol import (
 )
 from research_v1_execution_sufficiency_assessment import (
     assess_execution_sufficiency,
+    prepare_live_execution_sufficiency_evidence,
+    ExecutionSufficiencyAssessmentError,
     load_frozen_project_protocol,
 )
 
@@ -128,3 +130,11 @@ def test_protocol_frozen_after_live_is_rejected():
     p["frozen_at"] = "2027-01-01T00:00:00+00:00"
     with pytest.raises(Exception, match="before the first LIVE"):
         assess_execution_sufficiency(_evidence(), p, protocol_document_text=doc)
+
+@pytest.mark.parametrize("missing_id", [None, float("nan"), pd.NA])
+def test_missing_observation_id_cannot_become_text_identity(missing_id):
+    p, _ = load_frozen_project_protocol(ROOT)
+    rows = _evidence(3)
+    rows.loc[0, "observation_id"] = missing_id
+    with pytest.raises(ExecutionSufficiencyAssessmentError, match="observation_id must not be missing"):
+        prepare_live_execution_sufficiency_evidence(rows, p)
