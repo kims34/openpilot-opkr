@@ -826,5 +826,40 @@
     "Review independent registration/admission and official source/native-account evidence under frozen contracts; syntax is not independent chronology.",
     "Keep runtime pin and completed workers. Owner-only public installed APK observation precedes any compatible signed update; no key/password upload or default uninstall.",
     "Preserve failed consumed v1 lineage and all statistical/execution/promotion gates; no real orders/funds/broker permissions."
-  ]
+  ],
+  "final_document_checkpoints": {
+    "development": "5032563074c3697031a7d4bf62be4351757dfa48",
+    "research": "84b23958a84678a7cc21f3ce28ecdb3789e12ea6"
+  },
+  "document_checkpoint_ci": [
+    {
+      "run": 37395191935,
+      "job": 112049378355,
+      "status": "success",
+      "tests": 76,
+      "observed_result": "2026-10-06T00:40:23.4807205Z 76 passed in 3.80s",
+      "head": "5032563074c3697031a7d4bf62be4351757dfa48",
+      "scope": "execution_docs_code_integrity_not_live_evidence"
+    },
+    {
+      "run": 37395196917,
+      "job": 112049394932,
+      "status": "success",
+      "tests": 72,
+      "observed_result": "2026-10-06T00:40:33.2793283Z 72 passed in 2.78s",
+      "head": "84b23958a84678a7cc21f3ce28ecdb3789e12ea6",
+      "scope": "execution_docs_code_integrity_not_live_evidence"
+    },
+    {
+      "run": 37395196970,
+      "job": 112049395087,
+      "status": "success",
+      "tests": 548,
+      "observed_result": "2026-10-06T00:40:32.0181892Z 548 passed, 5 warnings in 7.58s",
+      "head": "84b23958a84678a7cc21f3ce28ecdb3789e12ea6",
+      "scope": "source_code_integrity_not_external_admission"
+    }
+  ],
+  "document_checkpoint_ci_checked_at": "2026-10-06T00:42:10Z",
+  "application_and_frozen_contract_changes_in_this_verification_record": false
 }
