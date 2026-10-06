@@ -129,6 +129,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         "markout_5m_price", "markout_30m_price", "markout_close_price",
     ]].copy()
     x["decision_date"] = pd.to_datetime(x["decision_date"], errors="coerce").dt.normalize()
+    if x["symbol"].isna().any():
+        raise ExecutionEvidenceError("symbol must not be missing")
     x["symbol"] = x["symbol"].astype(str).str.strip().str.upper().str.replace(r"\.0$", "", regex=True)
     x["symbol"] = x["symbol"].map(lambda s: s.zfill(6) if s.isdigit() else s)
     x["side"] = x["side"].astype(str).str.upper().str.strip()

@@ -205,6 +205,14 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
+    def test_missing_symbol_cannot_become_text_identity(self):
+        for value in (None, np.nan, pd.NA):
+            with self.subTest(value=value):
+                rows = self._rows()
+                rows.loc[0, "symbol"] = value
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
