@@ -1,0 +1,3 @@
+# Windows does not normally ship the IANA database used by Python zoneinfo.
+# This is an offline diagnostic toolkit, not a pinned LIVE runtime.
+tzdata; sys_platform == "win32"
