@@ -1,3 +1,9 @@
+# Prior checkpoint CI verified — 2026-10-06T16:16Z / 2026-10-07 01:16 KST
+
+Documentation checkpoint be51b92e783399e625fcbac400e82fd6915898c0 passed IndexAlert Research v1 Execution Evidence Integrity run37494290619/job112374705880:98passed,2warnings in4.23s. Underlying latest code remains0698882bb9cf59ad61b9e10a05cc42878dcd8652; PR187–190 remain merged and no open PR was observed. Resolve the live development ref for this record's own documentation SHA and verify only its newer push CI on resume. No safety, research, execution, evidence or external-blocker state changed from the exact checkpoint below.
+
+---
+
 # Strict native/durable settlement integrity continuation — 2026-10-06T16:15Z / 2026-10-07 01:15 KST
 
 Authoritative development code HEAD0698882bb9cf59ad61b9e10a05cc42878dcd8652 on index-alert-position-regen-fix-v1. Prior documentation HEAD01eb30d6f82f38a67f9c073ea6d479a11e239aeb passed execution-integrity37489812862/job112359260546:98passed2warnings. Android build144fad9c2ed178e04e4b92100210e53e07f77461, researchdf1f864e6102757415a6d6a8d6fb9559cb2d1b3e and server8a68b01bca5d551d083ccda263df38d86fa54166 remain unchanged. No open PR remains after PR187–190. Project INCOMPLETE; real ordering disabled.
