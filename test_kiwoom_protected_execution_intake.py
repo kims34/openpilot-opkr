@@ -53,6 +53,20 @@ class ProtectedIntakeTests(unittest.TestCase):
         self.assertEqual(self.j.get('intent')['state'],before)
         self.assertEqual(self.j.get('intent')['filled_quantity'],0)
 
+    def test_undecodable_nonfill_number_is_private_and_quarantines_before_retention(self):
+        for append in (self.append, self.append_bound):
+            for field in ('910', '911', '914', '915'):
+                with self.subTest(path=append.__name__, field=field):
+                    row = self.nonfill()
+                    row[field] = '\u00b2'
+                    with self.assertRaises(ProtectedIntakeError) as raised:
+                        append(row)
+                    self.assertEqual(str(raised.exception), 'PROTECTED_INTAKE_RECONCILIATION_REQUIRED')
+                    self.assertEqual(self.inbox.counts()['receipts'], 0)
+                    self.assertEqual(self.j.get('intent')['filled_quantity'], 0)
+                    self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+                    self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
     def test_fill_like_event_cannot_be_downgraded_to_nonfill_ignore(self):
         row=self.nonfill()
         row.update({'909':'execution','910':'100','911':'4','914':'100','915':'4'})
