@@ -509,3 +509,44 @@ def test_date_result_type_cannot_be_coerced_into_valid_completion(tmp_path, monk
     state = json.loads((tmp_path / "private" / batch.CHECKPOINT_REL).read_text())
     assert state["completed"] == {}
     assert state["completed_task_count"] == 0
+
+
+@pytest.mark.parametrize("master_value", [False, 0, "", {}, [], "VALID_SYNTHETIC_MASTER"])
+def test_empty_daily_scope_cannot_claim_master_request_on_resume(tmp_path, master_value):
+    from pathlib import Path
+    from research_v1_krx_private_store import write_private_json
+    from research_v1_krx_expected_scope_executor import _persist_response, MASTER_ENDPOINT
+    import research_v1_krx_expected_scope_batch as batch
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    state_path = root / batch.CHECKPOINT_REL
+    state = json.loads(state_path.read_text())
+    entry = state["completed"]["20150615"]
+    scope = json.loads((root / entry["private_scope_relpath"]).read_text())
+    if master_value == "VALID_SYNTHETIC_MASTER":
+        # Canonical synthetic master receipt proves old acceptance was not just a bad path.
+        result = _empty_fetcher([])(
+            endpoint=MASTER_ENDPOINT, params={"basDd": "20150615"},
+            auth_key="synthetic", network_authorized=True,
+            retrieved_at_override=EVAL.isoformat(),
+        )
+        master_value = _persist_response(
+            root=str(root), git_worktree=str(worktree), dataset_identifier="stk_isu_base_info",
+            requested_date="20150615", endpoint=MASTER_ENDPOINT, result=result,
+        )["receipt_relpath"]
+    scope["master_receipt_relpath"] = master_value
+    rel = str(Path(entry["private_scope_relpath"]).parent / (batch._sha256(scope) + ".json"))
+    written = write_private_json(str(root), rel, scope, git_worktree=str(worktree))
+    entry["private_scope_relpath"] = rel
+    entry["private_scope_metadata_sha256"] = written["metadata_sha256"]
+    state_path.write_text(json.dumps(state) + "\n")
+    state_path.chmod(0o600)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="empty daily response"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []
