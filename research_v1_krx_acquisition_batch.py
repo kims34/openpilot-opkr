@@ -92,8 +92,12 @@ def verify_receipt_fingerprint(receipt: Mapping[str, Any]) -> str:
     expected = _sha256(_body(receipt))
     if claimed != expected:
         raise KRXAcquisitionBatchError("receipt fingerprint mismatch; receipt may be tampered")
+    for field in ("source_family", "intended_use_scope", "access_route", "dataset_identifier",
+                  "authorization_evidence_reference", "client_revision", "retrieved_at"):
+        if not isinstance(receipt[field], str) or not receipt[field].strip():
+            raise KRXAcquisitionBatchError(f"receipt {field} must be a non-empty string")
     auth_fp = str(receipt["authorization_evidence_fingerprint_sha256"]).strip().lower()
-    if not SHA256_RE.fullmatch(auth_fp):
+    if not isinstance(receipt["authorization_evidence_fingerprint_sha256"], str) or not SHA256_RE.fullmatch(auth_fp):
         raise KRXAcquisitionBatchError(
             "authorization evidence fingerprint is missing or malformed"
         )
