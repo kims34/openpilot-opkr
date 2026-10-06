@@ -1,0 +1,22 @@
+name: Kiwoom REAL Account Scope Evidence
+on:
+  pull_request:
+    paths:
+      - 'kiwoom_real_account_scope_evidence.py'
+      - 'test_kiwoom_real_account_scope_evidence.py'
+      - '.github/workflows/kiwoom-real-account-scope-evidence.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'kiwoom_real_account_scope_evidence.py'
+      - 'test_kiwoom_real_account_scope_evidence.py'
+      - '.github/workflows/kiwoom-real-account-scope-evidence.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest -v test_kiwoom_real_account_scope_evidence.py test_deferred_user_validations.py
