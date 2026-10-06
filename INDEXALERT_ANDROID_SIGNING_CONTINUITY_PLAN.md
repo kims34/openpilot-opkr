@@ -1,3 +1,26 @@
+# Android signing continuity — current decision, 2026-10-07 00:34 KST
+
+This section supersedes the historical 10:55 proposal below. Project INCOMPLETE; no installed-production update or production push continuity is verified.
+
+## Latest owner evidence and scope
+The owner ran a recursive USERPROFILE search for *.jks and *.keystore with Get-ChildItem, then Select-Object -ExpandProperty FullName. Three invocations from C:\\Windows\\system32, C:\\Windows and C:\\ returned to the prompt with no displayed path. The command uses the same absolute USERPROFILE scope regardless of working directory; the >> prompt is normal PowerShell continuation. This records no matching file reported within that search scope. ErrorAction SilentlyContinue hides inaccessible-path errors. It does not prove every drive, custom extension, external/cloud backup or original CI signing identity is absent. Do not repeat this completed search or require another handset setup. No key/password was requested, uploaded or read.
+
+Installed com.indexalert.app 4.7/code47 retains verified APK SHA256 9e1b72432b44f41a04c7f502d98502d3c77d69ec451718b8da34a260269eca01 and signer SHA256 ecb7486e3ce65fba42f6bf55ff8359abd0ee7d8268c8305e248340c84443c6fa. Original compatible signing-private-key availability remains unresolved. A public APK/certificate and a new debug key cannot restore that identity. Preserve the installed app and its private preferences/history; no uninstall, clear-data, migration or compatible update was authorized by the search result.
+
+## Completed independent preview
+Separate com.indexalert.preview 4.8-preview/code48 was already implemented, CI-built, audited and owner installed/launched; canonical build branch f65f71be88b4675252178a4f2726c13d4a783fed includes the device observation. The title/notices/unavailable display were observed. See INDEXALERT_READONLY_PREVIEW.md and INDEXALERT_PREVIEW_DEVICE_EVIDENCE_2026-10-06.md on index-alert-build for exact dated source/run/artifact evidence.
+
+The isolated module has INTERNET only, allowBackup=false and cleartext=false, no Firebase/WorkManager dependencies, no production registration/receipt/self-test/notification service, and only the existing GET /automation/readiness. That completed isolation path must not be reimplemented. Its UI observation is not a com.indexalert.app 4.8 production upgrade, new-build push evidence, real broker data or order admission. Fresh CI debug APKs do not establish even preview signing continuity.
+
+## Resume and external dependency
+Continue independent engineering with GitHub live HEAD/PR/Actions recovery. PR186 (feature 22d5851bb377cc81532812bb110e36caf4f92604) adds non-following, bounded readiness GET transport and actual JUnit/APK CI; as of this checkpoint it is pending verification and must not be called merged or installed.
+
+If the owner later volunteers a legitimate original-key backup, verify its public certificate locally before a reviewed compatible update. Never request private-key/password upload. If no original identity is available, replacement/data migration requires a concrete preservation plan and an explicit owner decision; the existing app remains intact. This dependency does not block other development.
+
+Frozen/PIT/holdout burn/promotion criteria remain unchanged; no broker/account request, order, funds movement or production token mutation was performed.
+
+---
+
 # Android signing continuity decision — 2026-10-06 10:55 KST
 
 ## Verified inputs
