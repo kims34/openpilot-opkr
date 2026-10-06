@@ -1041,5 +1041,32 @@
     "production_push_e2e_verified": false,
     "broker_request_verified": false,
     "live_ordering_authorized": false
+  },
+  "exact_fill_price_replay_verification": {
+    "checked_at": "2026-10-06T02:48:43.678Z",
+    "development_head": "cbc65cd7df5038a7a64e2160141435acfc0bac52",
+    "research_head": "e8218be0c3781a87efe1254f721aefd9a4028f0f",
+    "android_head": "52377357c0c5260673fc823be3e8a0451abbea72",
+    "server_head": "8a68b01bca5d551d083ccda263df38d86fa54166",
+    "pull_request": 55,
+    "feature_head": "720b3c687e6d442f7f6d376d49e0490f9ff54b5a",
+    "local_targeted_unittest": 75,
+    "local_additional_safety_unittest": 81,
+    "ci": {
+      "pull_request_run": 37405784084,
+      "pull_request_job": 112082927901,
+      "canonical_run": 37405826392,
+      "canonical_job": 112083058177,
+      "tests": 240,
+      "result": "SUCCESS"
+    },
+    "scope": "OFFLINE_SYNTHETIC_DIAGNOSTICS_ONLY",
+    "rounding_collision_reproduced": true,
+    "historical_bindings_rewritten": false,
+    "broker_request_sent": false,
+    "orders_requested": false,
+    "live_ordering_authorized": false,
+    "frozen_criteria_changed": false,
+    "automatic_continuation_enabled": false
   }
 }
