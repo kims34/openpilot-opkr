@@ -166,8 +166,12 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     x["decision_date"] = pd.to_datetime(x["decision_date"], format="%Y-%m-%d", errors="coerce").dt.normalize()
     if x["symbol"].isna().any():
         raise ExecutionEvidenceError("symbol must not be missing")
-    x["symbol"] = x["symbol"].astype(str).str.strip().str.upper().str.replace(r"\.0$", "", regex=True)
-    x["symbol"] = x["symbol"].map(lambda s: s.zfill(6) if s.isdigit() else s)
+    if not table["symbol"].map(lambda v: isinstance(v, (str, int, np.integer)) and not isinstance(v, (bool, np.bool_))).all():
+        raise ExecutionEvidenceError("symbol must be a string or integer code")
+    x["symbol"] = x["symbol"].astype(str).str.strip().str.upper()
+    if not x["symbol"].str.fullmatch(r"\d{1,6}").all():
+        raise ExecutionEvidenceError("symbol must contain 1-6 decimal digits")
+    x["symbol"] = x["symbol"].str.zfill(6)
     x["side"] = x["side"].astype(str).str.upper().str.strip()
     if not x["side"].eq("BUY").all():
         raise ExecutionEvidenceError("current frozen execution schema supports BUY only")
