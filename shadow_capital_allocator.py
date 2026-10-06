@@ -22,7 +22,12 @@ from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snap
 def validate_stored_capital_reservations(connection):
     """Pure reservation audit; caller pins one surrounding SQLite snapshot."""
     reserve = 0
+    keys = {row[0] for row in connection.execute('SELECT key FROM shadow_capital_reservations')}
+    if not {row[0] for row in connection.execute('SELECT key FROM shadow_capital_releases')} <= keys:
+        raise OrderJournalError('orphan managed principal release')
     revocations_exist = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_release_revocations'").fetchone()
+    if revocations_exist and not {row[0] for row in connection.execute('SELECT key FROM shadow_capital_release_revocations')} <= keys:
+        raise OrderJournalError('orphan managed principal restoration')
     for key, price, fee, amount in connection.execute(
             'SELECT key,limit_price,fee_buffer,reserve FROM shadow_capital_reservations'):
         row = connection.execute('SELECT payload,state,broker_order_id,filled,terminal_status FROM intents WHERE key=?', (key,)).fetchone()

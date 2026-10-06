@@ -156,6 +156,19 @@ class PrincipalReleaseTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.a.state()
 
+    def test_deleted_fee_reservation_cannot_make_its_released_capacity_reusable(self):
+        self.batch()
+        self.release()
+        self.j.db.execute('DELETE FROM shadow_capital_reservations')
+        self.j.register('d2', symbol='OTHER', side='BUY', quantity=20)
+        epoch = self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])['epoch']
+        before = tuple(self.j.db.iterdump())
+        with self.assertRaises(OrderJournalError):
+            self.a.reserve_and_claim_buy('d2',limit_price_krw=5,fee_buffer_krw=0,
+                expected_epoch=epoch,expected_capital_revision=2)
+        self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.assertEqual(self.j.get('d2')['state'], 'INTENT_CREATED')
+
     def test_failed_batch_clears_prior_settlement_bindings(self):
         self.batch()
         reconcile_order_snapshot_batch(self.j,revision=2,orders=[])
