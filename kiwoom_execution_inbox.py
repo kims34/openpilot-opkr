@@ -83,7 +83,7 @@ class KiwoomExecutionInbox:
             require(hashlib.sha256(payload.encode()).hexdigest() == digest)
             row = json.loads(payload)
             self._validate_row(row)
-            receipts[sequence] = (key, row)
+            receipts[sequence] = (key, day, row)
         for receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT receipt_id,key,day,payload,digest FROM native_inbox_conflicts'):
             self._text(receipt_id); self._text(key); self.bridge._context(day)
@@ -96,17 +96,10 @@ class KiwoomExecutionInbox:
                 'SELECT receipt_sequence,outcome FROM native_inbox_attempts'):
             require(receipt_sequence in receipts and outcome in ('APPLIED', 'DUPLICATE', 'BLOCKED'))
             if outcome in ('APPLIED', 'DUPLICATE'):
-                key, row = receipts[receipt_sequence]
-                execution_id = row.get('broker_execution_id')
-                require(isinstance(execution_id, str) and bool(execution_id.strip()))
+                key, day, row = receipts[receipt_sequence]
                 # A terminal attempt marker must never hide a receipt whose
                 # durable native binding/execution disappeared or never existed.
-                require(self.journal.db.execute(
-                    'SELECT 1 FROM native_fill_bindings WHERE key=? AND execution_id=?',
-                    (key, execution_id)).fetchone() is not None)
-                require(self.journal.db.execute(
-                    'SELECT 1 FROM executions WHERE key=? AND execution_id=?',
-                    (key, execution_id)).fetchone() is not None)
+                self.bridge._verify_existing_execution_locked(key,row,trading_date=day)
 
     def append(self, receipt_id, key, row, *, trading_date):
         """Persist a normalized copy before any execution-journal mutation."""
