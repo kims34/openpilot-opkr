@@ -148,6 +148,7 @@ def _persist_response(
     }
 
     receipt_dir = Path(root) / "expected_scope" / "receipts" / requested_date / dataset_identifier
+    reused_receipt = None
     if receipt_dir.exists():
         for existing_path in sorted(receipt_dir.glob("*.json")):
             rel_existing = str(existing_path.relative_to(Path(root)))
@@ -204,12 +205,15 @@ def _persist_response(
                 expected_size=int(existing["raw_bytes_size"]),
                 git_worktree=git_worktree,
             )
-            return {
-                **existing,
-                "receipt_metadata_sha256": wrapped["metadata_sha256"],
-                "receipt_relpath": rel_existing,
-                "reused_immutable_receipt": True,
-            }
+            if reused_receipt is None:
+                reused_receipt = {
+                    **existing,
+                    "receipt_metadata_sha256": wrapped["metadata_sha256"],
+                    "receipt_relpath": rel_existing,
+                    "reused_immutable_receipt": True,
+                }
+    if reused_receipt is not None:
+        return reused_receipt
 
     receipt_fp = _sha256(receipt)
     rel = (
@@ -358,10 +362,10 @@ def execute_expected_scope_date(
                     "metadata_sha256": wrapped["metadata_sha256"],
                     "metadata_relpath": rel_existing,
                 }
-                break
-            raise KRXExpectedScopeExecutorError(
-                "same expected-scope date produced conflicting private scope"
-            )
+            else:
+                raise KRXExpectedScopeExecutorError(
+                    "same expected-scope date produced conflicting private scope"
+                )
     if scope_write is None:
         scope_write = write_private_json(
             root,

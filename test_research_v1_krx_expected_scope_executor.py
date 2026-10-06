@@ -457,3 +457,45 @@ def test_relocated_existing_scope_cannot_bypass_content_address(tmp_path):
         )
     assert moved.read_bytes() == before
     assert len(list(moved.parent.glob("*.json"))) == 1
+
+
+@pytest.mark.parametrize("artifact", ["receipt", "scope"])
+def test_valid_first_artifact_does_not_hide_later_conflict(tmp_path, artifact):
+    from research_v1_krx_expected_scope_executor import _sha256
+    from research_v1_krx_private_store import read_private_json, write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    def fetcher(**kwargs):
+        return _result(pd.DataFrame())
+    first = execute_expected_scope_date(
+        requested_date="20260927", environment=env, git_worktree=str(worktree),
+        fetcher=fetcher, evaluation_time=EVAL,
+    )
+    if artifact == "scope":
+        rel = first["private_scope_relpath"]
+    else:
+        directory = tmp_path / "private" / "expected_scope" / "receipts" / "20260927" / "stk_bydd_trd"
+        rel = str(next(directory.glob("*.json")).relative_to(tmp_path / "private"))
+    body = read_private_json(env["KRX_PRIVATE_RAW_DIR"], rel, git_worktree=str(worktree))["value"]
+    if artifact == "receipt":
+        body["raw_object_sha256"] = "f" * 64
+    else:
+        body["official_trading_date_observed"] = True
+    # Ensure the valid artifact is lexically first. Extra nonce is fixture-only.
+    for nonce in range(10000):
+        body["_synthetic_fixture_nonce"] = nonce
+        digest = _sha256(body)
+        if digest > Path(rel).stem:
+            break
+    else:
+        pytest.fail("could not create ordered synthetic fixture")
+    conflicting_rel = str(Path(rel).parent / (digest + ".json"))
+    write_private_json(env["KRX_PRIVATE_RAW_DIR"], conflicting_rel, body, git_worktree=str(worktree))
+    snapshot = {p.name: p.read_bytes() for p in (tmp_path / "private" / rel).parent.glob("*.json")}
+    with pytest.raises(KRXExpectedScopeExecutorError, match="conflicting"):
+        execute_expected_scope_date(
+            requested_date="20260927", environment=env, git_worktree=str(worktree),
+            fetcher=fetcher, evaluation_time=EVAL,
+        )
+    assert {p.name: p.read_bytes() for p in (tmp_path / "private" / rel).parent.glob("*.json")} == snapshot
