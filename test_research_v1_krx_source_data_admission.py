@@ -193,3 +193,29 @@ def test_rehashed_batch_requires_exact_false_authority_flags(field, value):
             source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
             lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
         )
+
+@pytest.mark.parametrize("field,value", [
+    ("receipt_count", True), ("receipt_count", "1"), ("receipt_count", 1.8),
+    ("receipt_count", None), ("receipt_count", 0), ("receipt_count", -1),
+    ("total_response_rows", True), ("total_response_rows", "1"),
+    ("total_response_rows", 1.8), ("total_response_rows", None),
+    ("total_response_rows", -1),
+    ("receipt_fingerprints_sha256", "x"),
+    ("receipt_fingerprints_sha256", {"a" * 64: True}),
+    ("receipt_fingerprints_sha256", ["not-a-digest"]),
+    ("receipt_fingerprints_sha256", [None]),
+    ("receipt_fingerprints_sha256", [[]]),
+    ("receipt_fingerprints_sha256", []),
+    ("receipt_fingerprints_sha256", ["a" * 64, "a" * 64]),
+])
+def test_rehashed_batch_rejects_malformed_counts_and_receipt_digests(field, value):
+    batch = _batch()
+    batch[field] = value
+    batch["batch_fingerprint_sha256"] = _sha256(
+        {name: batch[name] for name in BATCH_BODY_FIELDS}
+    )
+    with pytest.raises(KRXSourceDataAdmissionError):
+        assess_investor_flow_source_data_admission(
+            source_gate_audit=_gates(True), acquisition_batch_manifest=batch,
+            lineage_audit=_lineage(True, True), coverage_audit=_coverage(True),
+        )
