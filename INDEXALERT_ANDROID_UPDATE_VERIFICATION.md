@@ -20,13 +20,19 @@ This establishes artifact-level mismatch only. It does not prove which signer is
 
 Use Python3 and Android SDK platform/build tools on a computer already authorized by its owner to read one USB-connected physical handset. This development environment has no attached handset and cannot perform that step. Do not change device/account permissions silently or ask for signing-key/password uploads.
 
-After a candidate has been signed locally with an existing independently verified signing identity, the owner can run:
+First inspect the installed public APK without downloading or signing any candidate. This requires no private signing key and does not change the app:
+
+```sh
+python verify_indexalert_installed_apk.py --adb /path/to/adb --aapt2 /path/to/aapt2 --apksigner /path/to/apksigner
+```
+
+This emits installed public version/hash/certificate metadata only. candidate=null, candidate_signer_comparison_performed=false and installed_signing_continuity_verified=false remain explicit; exit0 means inspection succeeded, not that an update is compatible. Keep the current app/data. After a candidate has been signed locally with an existing independently verified signing identity, the owner can separately compare:
 
 ```sh
 python verify_indexalert_installed_apk.py candidate-signed.apk --adb /path/to/adb --aapt2 /path/to/aapt2 --apksigner /path/to/apksigner
 ```
 
-The tool performs only adb -d get-state, pm path com.indexalert.app and pull of that app's public base APK into a temporary directory. It verifies both actual APK identities/signatures with SDK tools, emits only public version/hash/certificate metadata, and deletes the temporary public APK copy. It never reads app data, device IDs, credentials, account/broker state or private signing keys, and never installs or uninstalls anything. Multiple/unauthorized devices, ambiguous base paths, wrong package, unsigned APK or tool errors fail closed. Exit0 means the two inspected APKs have matching signers; exit1 is a signer mismatch; exit2 is unverified. Matching signers alone is not general install permission or physical E2E proof; version/update compatibility remains separately reviewable.
+The tool performs only adb -d get-state, pm path com.indexalert.app and pull of that app's public base APK into a temporary directory. It verifies both actual APK identities/signatures with SDK tools, emits only public version/hash/certificate metadata, and deletes the temporary public APK copy. It never reads app data, device IDs, credentials, account/broker state or private signing keys, and never installs or uninstalls anything. Multiple/unauthorized devices, ambiguous base paths, wrong package, unsigned APK or tool errors fail closed. With a candidate, exit0 means the two inspected APKs have matching signers; exit1 is a signer mismatch; exit2 is unverified. Without a candidate, exit0 means installed-only inspection succeeded and provides no update/signing-continuity authority. Matching signers alone is not general install permission or physical E2E proof; version/update compatibility remains separately reviewable.
 
 If the installed signer differs, retain the current app/data. A compatible signed release requires the corresponding existing signing identity; a new random debug key cannot supply it. If that key is unavailable, app/data migration needs the user's concrete decision and a separate reviewable plan. No uninstall workaround is authorized by this guide.
 
