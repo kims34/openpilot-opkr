@@ -88,7 +88,7 @@ def materialize_one_date(
 
     if daily_trade is None:
         raise KRXExpectedScopeMaterializerError("daily_trade frame is required")
-    if daily_trade.empty:
+    if len(daily_trade) == 0:
         _require(
             security_master is None or security_master.empty,
             "empty daily-trade date must not carry an identity snapshot into scope",
