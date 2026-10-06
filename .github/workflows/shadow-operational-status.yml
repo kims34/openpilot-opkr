@@ -5,6 +5,8 @@ on:
     paths:
       - shadow_operational_status.py
       - test_shadow_operational_status.py
+      - shadow_operational_dashboard.py
+      - test_shadow_operational_dashboard.py
       - order_intent_journal.py
       - shadow_capital_allocator.py
       - indexalert_automation_control.py
@@ -20,4 +22,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest -v test_shadow_operational_status
+      - run: python -m unittest -v test_shadow_operational_status test_shadow_operational_dashboard
