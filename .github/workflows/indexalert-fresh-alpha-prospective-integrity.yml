@@ -1,0 +1,33 @@
+name: IndexAlert Fresh Alpha Prospective Protocol Integrity
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'INDEXALERT_FRESH_ALPHA_PROSPECTIVE_PROTOCOL.md'
+      - 'INDEXALERT_FRESH_ALPHA_PROSPECTIVE_PROTOCOL.json'
+      - 'research_v1_fresh_alpha_protocol.py'
+      - 'test_research_v1_fresh_alpha_protocol.py'
+      - '.github/workflows/indexalert-fresh-alpha-prospective-integrity.yml'
+  pull_request:
+    paths:
+      - 'INDEXALERT_FRESH_ALPHA_PROSPECTIVE_PROTOCOL.md'
+      - 'INDEXALERT_FRESH_ALPHA_PROSPECTIVE_PROTOCOL.json'
+      - 'research_v1_fresh_alpha_protocol.py'
+      - 'test_research_v1_fresh_alpha_protocol.py'
+      - '.github/workflows/indexalert-fresh-alpha-prospective-integrity.yml'
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and validate frozen future-only protocol
+        run: |
+          python -m py_compile research_v1_fresh_alpha_protocol.py
+          python -m unittest -v test_research_v1_fresh_alpha_protocol.py
+          python research_v1_fresh_alpha_protocol.py
