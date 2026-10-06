@@ -93,6 +93,18 @@ Every economic observation requires timezone-aware `economic_available_at` evide
 
 Naive/missing timestamps or source-contract mismatch block exact economics.
 
+### Evidence-class labels are not provenance admission
+
+The literal values `PROSPECTIVE_LIVE_EXECUTION_LOG`, `BROKER_HISTORICAL_EXECUTION_RECORD`,
+`OFFICIAL_KRX_RECOVERY_RECORD`, `OFFICIAL_ISSUER_RECOVERY_RECORD`, and
+`BROKER_CASH_DISTRIBUTION_RECORD` classify the claimed evidence source. They are not,
+by themselves, authenticity credentials. An evidence reference or hash proves identity only.
+
+The executable auditor may therefore report that the supplied rows satisfy the structural
+status-economics contract, but it must keep `exact_status_economics_ready=false` until a
+separate independent provenance admission binds the exact broker/KRX/issuer source artifacts
+to the affected-position rows. This clarification does not relax any existing requirement.
+
 ## 8. Closure semantics
 
 `exact_status_economics_ready=true` requires all of:
