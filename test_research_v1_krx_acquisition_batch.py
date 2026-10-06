@@ -162,3 +162,23 @@ def test_receipt_claiming_promotion_authority_is_rejected_even_if_refingerprinte
     forged["receipt_fingerprint_sha256"] = _sha256(body)
     with pytest.raises(KRXAcquisitionBatchError, match="illegally claims promotion authority"):
         build_acquisition_batch_manifest([forged])
+
+@pytest.mark.parametrize("field", [
+    "alpha_or_final_judge_promotion_authorized",
+    "sealed_holdout_authorized",
+    "live_trading_authorized",
+])
+@pytest.mark.parametrize("value", [None, 0, 0.0, "", [], {}, True, "false"])
+def test_receipt_requires_exact_false_before_batch_normalization(field, value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+
+    forged = copy.deepcopy(_receipt())
+    forged[field] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match="authority"):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match="authority"):
+        build_acquisition_batch_manifest([forged])
