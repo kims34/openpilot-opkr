@@ -48,14 +48,22 @@ try {
     $account = Invoke-RestMethod @accountArgs
     if ($account.return_code -ne 0 -or [string]::IsNullOrWhiteSpace([string]$account.acctNo)) { Fail-Closed "ACCOUNT" ([int]$account.return_code) }
 
+    # Windows PowerShell 5.1 / .NET Framework compatible fingerprinting.
+    # Avoid newer SHA256.HashData / Convert.ToHexString APIs.
     $fingerprintKeyText = "indexalert-fingerprint-key-v1" + [char]0 + $env:KIWOOM_APP_SECRET
-    $keyBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($fingerprintKeyText))
-    $hmac = [System.Security.Cryptography.HMACSHA256]::new($keyBytes)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $keyBytes = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($fingerprintKeyText))
+    } finally {
+        $sha256.Dispose()
+    }
+    $hmac = New-Object System.Security.Cryptography.HMACSHA256 -ArgumentList (, $keyBytes)
     try {
         $fingerprintDataText = "indexalert-kiwoom-account-fingerprint-v1" + [char]0 + [string]$account.acctNo
         $data = [System.Text.Encoding]::UTF8.GetBytes($fingerprintDataText)
         $fingerprintBytes = $hmac.ComputeHash($data)
-        $fingerprint = "sha256:" + ([Convert]::ToHexString($fingerprintBytes).ToLowerInvariant())
+        $hex = ([System.BitConverter]::ToString($fingerprintBytes)).Replace("-", "").ToLowerInvariant()
+        $fingerprint = "sha256:" + $hex
     } finally {
         $hmac.Dispose()
         [Array]::Clear($keyBytes, 0, $keyBytes.Length)
@@ -95,5 +103,8 @@ catch {
         $j = $_.ErrorDetails.Message | ConvertFrom-Json
         if ($null -ne $j.return_code) { $code = [int]$j.return_code }
     } catch {}
+    if ($code -eq -1) {
+        Fail-Closed "LOCAL_COMPATIBILITY_OR_NETWORK" $code
+    }
     Fail-Closed "NETWORK_OR_PROVIDER" $code
 }
