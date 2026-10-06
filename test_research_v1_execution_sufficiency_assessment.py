@@ -177,3 +177,13 @@ def test_order_outcome_cannot_precede_final_fill():
     rows.loc[0, "order_outcome_at"] = (final_fill - pd.Timedelta(seconds=1)).isoformat()
     with pytest.raises(ExecutionSufficiencyAssessmentError, match="order_outcome_at cannot precede final_fill_at"):
         prepare_live_execution_sufficiency_evidence(rows, p)
+
+
+def test_identifier_fields_reject_non_string_coercion():
+    p, _ = load_frozen_project_protocol(ROOT)
+    for field, value in (("observation_id", 123), ("decision_policy_id", 123), ("execution_policy_id", 123)):
+        rows = _evidence(3)
+        rows[field] = rows[field].astype(object)
+        rows.at[0, field] = value
+        with pytest.raises(ExecutionSufficiencyAssessmentError):
+            prepare_live_execution_sufficiency_evidence(rows, p)

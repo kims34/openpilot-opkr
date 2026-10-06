@@ -164,14 +164,16 @@ def prepare_live_execution_sufficiency_evidence(
 
     if table["observation_id"].isna().any():
         raise ExecutionSufficiencyAssessmentError("observation_id must not be missing")
-    if table["observation_id"].map(lambda v: isinstance(v, (bool, np.bool_))).any():
-        raise ExecutionSufficiencyAssessmentError("observation_id must not contain boolean values")
+    if not table["observation_id"].map(lambda v: isinstance(v, str)).all():
+        raise ExecutionSufficiencyAssessmentError("observation_id must be an original string value")
     x["observation_id"] = table["observation_id"].astype(str).str.strip().to_numpy()
     if x["observation_id"].eq("").any() or x["observation_id"].duplicated().any():
         raise ExecutionSufficiencyAssessmentError("observation_id must be non-empty and unique")
 
     for field in ["decision_policy_id", "execution_policy_id"]:
-        x[field] = table[field].astype(str).str.strip().to_numpy()
+        if not table[field].map(lambda v: isinstance(v, str)).all():
+            raise ExecutionSufficiencyAssessmentError(f"{field} must be an original string value")
+        x[field] = table[field].str.strip().to_numpy()
         if x[field].eq("").any():
             raise ExecutionSufficiencyAssessmentError(f"{field} must be non-empty")
         expected = str(protocol[field]).strip()
