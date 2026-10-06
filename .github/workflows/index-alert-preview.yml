@@ -1,0 +1,105 @@
+name: IndexAlert isolated readiness preview
+on:
+  push:
+    branches: [index-alert-readonly-preview-v1, index-alert-build]
+    paths: ['index-alert/**', '.github/workflows/index-alert-preview.yml']
+  pull_request:
+    branches: [index-alert-build]
+    paths: ['index-alert/**', '.github/workflows/index-alert-preview.yml']
+  workflow_dispatch:
+concurrency:
+  group: index-alert-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: index-alert
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Require exact production readiness source and tests
+        run: |
+          cmp app/src/main/java/com/indexalert/app/AutomationReadiness.kt preview/src/main/java/com/indexalert/app/AutomationReadiness.kt
+          cmp app/src/test/java/com/indexalert/app/AutomationReadinessTest.kt preview/src/test/java/com/indexalert/app/AutomationReadinessTest.kt
+      - name: Test and build isolated APK
+        run: gradle :preview:testDebugUnitTest :preview:assembleDebug --stacktrace
+      - name: Verify actual package, manifest, dependencies, signing and JUnit
+        run: |
+          gradle :preview:dependencies --configuration debugRuntimeClasspath > preview-dependencies.txt
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,subprocess,xml.etree.ElementTree as ET
+          root=pathlib.Path(".")
+          suites=[ET.parse(p).getroot() for p in pathlib.Path("preview/build/test-results/testDebugUnitTest").glob("TEST-*.xml")]
+          target=[s for s in suites if s.get("name")=="com.indexalert.app.AutomationReadinessTest"]
+          assert len(target)==1
+          suite=target[0]
+          expected={"exactUnavailableReportIsRecognized","everyAuthorityOrMutationFlagRequiresExactBooleanFalse","unexpectedReadyOrLiveModesNeverEnableAutomation","controlContractMustMatchAndCannotBeReplacedWithScalarOrExtraFields"}
+          cases=suite.findall("testcase")
+          assert len(cases)==4 and {c.get("name") for c in cases}==expected
+          assert int(suite.get("tests","0"))==4
+          assert all(int(suite.get(k,"0"))==0 for k in ("errors","failures","skipped"))
+          assert all(not any(c.find(k) is not None for k in ("error","failure","skipped")) for c in cases)
+          dependency=pathlib.Path("preview-dependencies.txt").read_text()
+          assert "com.google.firebase" not in dependency and "androidx.work" not in dependency
+          directory=pathlib.Path("preview/build/outputs/apk/debug")
+          meta=json.loads((directory/"output-metadata.json").read_text())
+          assert meta["applicationId"]=="com.indexalert.preview" and len(meta["elements"])==1
+          element=meta["elements"][0]
+          assert element["versionCode"]==48 and element["versionName"]=="4.8-preview"
+          apk=directory/element["outputFile"]
+          sdk=pathlib.Path(os.environ["ANDROID_HOME"])/"build-tools"
+          tool=sorted(p for p in sdk.iterdir() if (p/"aapt2").is_file() and (p/"apksigner").is_file())[-1]
+          badging=subprocess.check_output([str(tool/"aapt2"),"dump","badging",str(apk)],text=True)
+          package=next(x for x in badging.splitlines() if x.startswith("package:"))
+          assert "name='com.indexalert.preview'" in package and "versionCode='48'" in package and "versionName='4.8-preview'" in package
+          permissions=re.findall(r"uses-permission: name='([^']+)'",badging)
+          assert permissions==["android.permission.INTERNET"], permissions
+          manifests=list(pathlib.Path("preview/build/intermediates/merged_manifests/debug").rglob("AndroidManifest.xml"))
+          assert len(manifests)==1, manifests
+          manifest=ET.parse(manifests[0]).getroot()
+          app=manifest.find("application")
+          ns="{http://schemas.android.com/apk/res/android}"
+          assert app is not None and app.get(ns+"allowBackup")=="false" and app.get(ns+"usesCleartextTraffic")=="false"
+          assert app.get(ns+"name") is None
+          assert not any(app.findall(tag) for tag in ("service","provider","receiver","activity-alias"))
+          activities=app.findall("activity")
+          assert len(activities)==1 and activities[0].get(ns+"name")=="com.indexalert.app.PreviewActivity"
+          signature=subprocess.check_output([str(tool/"apksigner"),"verify","--print-certs",str(apk)],text=True)
+          certs=re.findall(r"certificate SHA-256 digest: ([0-9a-fA-F]{64})",signature)
+          assert len(certs)==1
+          event=json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+          result={"schema_version":"INDEXALERT_ISOLATED_READINESS_PREVIEW_v1",
+                  "source_head":event.get("pull_request",{}).get("head",{}).get("sha") or os.environ["GITHUB_SHA"],
+                  "checkout_sha":os.environ["GITHUB_SHA"],"run_id":os.environ["GITHUB_RUN_ID"],
+                  "application_id":meta["applicationId"],"version_code":48,"version_name":"4.8-preview",
+                  "apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),"size_bytes":apk.stat().st_size,
+                  "signer_sha256":certs,"signature_verified":True,"tests":4,"failures":0,"errors":0,"skipped":0,
+                  "readiness_source_byte_identical":True,"permissions":permissions,
+                  "firebase_dependency_present":False,"workmanager_dependency_present":False,
+                  "production_app_updated":False,"installed_signing_continuity_verified":False,
+                  "physical_e2e_verified":False,"production_push_e2e_verified":False,
+                  "broker_request_sent":False,"orders_requested":False,"live_ordering_authorized":False,
+                  "frozen_criteria_changed":False}
+          pathlib.Path("../indexalert_preview_verification.json").write_text(json.dumps(result,indent=2)+"\n")
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IndexAlert-v4.8-isolated-readiness-preview
+          path: index-alert/preview/build/outputs/apk/debug/preview-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IndexAlert-preview-verification
+          path: |
+            indexalert_preview_verification.json
+            index-alert/preview/build/test-results/testDebugUnitTest/TEST-*.xml
+            index-alert/preview/build/outputs/apk/debug/output-metadata.json
+            index-alert/preview-dependencies.txt
