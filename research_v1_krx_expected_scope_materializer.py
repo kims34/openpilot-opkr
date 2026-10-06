@@ -110,6 +110,7 @@ def materialize_one_date(
             "network_request_attempted": False,
         }
 
+    _require(daily_trade["MKT_NM"].map(lambda value: isinstance(value, str) and value.strip() == "KOSPI").all(), "daily_trade must explicitly identify KOSPI market")
     dates = {_yyyymmdd(v, "BAS_DD") for v in daily_trade["BAS_DD"]}
     _require(dates == {day}, "daily-trade BAS_DD does not exactly match requested date")
 
@@ -123,7 +124,7 @@ def materialize_one_date(
     master["security_group"] = master["SECUGRP_NM"].astype(str).str.strip()
     master["stock_kind"] = master["KIND_STKCERT_TP_NM"].astype(str).str.strip()
     master["market_name"] = master["MKT_TP_NM"].astype(str).str.strip()
-    _require(master["market_name"].ne("").all(), "security_master market identity missing")
+    _require(master["MKT_TP_NM"].map(lambda value: isinstance(value, str) and value.strip() == "KOSPI").all(), "security_master must explicitly identify KOSPI market")
 
     common = master[
         master["security_group"].eq(COMMON_SECURITY_GROUP)
@@ -175,7 +176,8 @@ def bind_scope_contract_fingerprint(
     fingerprint: str,
 ) -> pd.DataFrame:
     """Attach one externally frozen contract fingerprint without changing keys."""
-    fp = str(fingerprint or "").strip().lower()
+    _require(isinstance(fingerprint, str), "scope contract fingerprint must be a SHA-256 string")
+    fp = fingerprint.strip().lower()
     _require(bool(re.fullmatch(r"[0-9a-f]{64}", fp)), "scope contract fingerprint must be SHA-256")
     _require(date_column in frame.columns, "date column missing from expected scope")
     out = frame.copy()
