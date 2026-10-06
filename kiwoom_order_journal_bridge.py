@@ -13,7 +13,7 @@ import json
 import re
 import sqlite3
 
-from order_intent_journal import OrderJournalError
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals
 from research_v1_kiwoom_native_execution import (
     OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT, KT00007_SOURCE_CONTRACT,
     KA10076_SOURCE_CONTRACT,
@@ -205,6 +205,8 @@ class KiwoomOrderJournalBridge:
             sources={'kt00007':KT00007_SOURCE_CONTRACT,'ka10076':KA10076_SOURCE_CONTRACT}
             require(api in sources)
             order,binding=self._row(key,row,trading_date,sources[api],'order_aggregate_snapshot')
+            validate_stored_execution_totals(self.journal.db,
+                dict(self.journal.db.execute('SELECT key,filled FROM intents')))
             require(row.get('broker_execution_id')=='' and row.get('broker_execution_id_available_in_source') is False)
             require(number(row.get('fill_qty'),integer=True)==order['filled_quantity'])
             require(number(row.get('remaining_qty'),integer=True)==order['remaining_quantity'])
