@@ -282,3 +282,27 @@ def test_timezone_aware_retrieval_preserves_receipt_fingerprint(value):
     receipt = _receipt(retrieved_at=value)
     assert verify_receipt_fingerprint(receipt) == receipt["receipt_fingerprint_sha256"]
     assert build_acquisition_batch_manifest([receipt])["receipt_count"] == 1
+
+@pytest.mark.parametrize("field,value", [
+    ("source_family", "KRX_UNKNOWN"),
+    ("access_route", "UNOFFICIAL_PROXY"),
+    ("authorization_evidence_reference", "password=synthetic-placeholder"),
+    ("authorization_evidence_reference", "TOKEN=synthetic-placeholder"),
+    ("authorization_evidence_reference", "cookie=synthetic-placeholder"),
+    ("authorization_evidence_reference", "secret=synthetic-placeholder"),
+    ("response_columns", None), ("response_columns", True),
+    ("response_columns", {}), ("response_columns", "TRD_DD"),
+    ("response_columns", ["TRD_DD", 1]), ("response_columns", [["TRD_DD"]]),
+])
+def test_rehashed_receipt_enforces_builder_contract_and_column_types(field, value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+    forged = copy.deepcopy(_receipt())
+    forged[field] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match=field):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match=field):
+        build_acquisition_batch_manifest([forged])

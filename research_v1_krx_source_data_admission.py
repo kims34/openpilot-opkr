@@ -107,6 +107,8 @@ def _verify_batch(batch: Mapping[str, Any]) -> bool:
     if len(fps) != count or len(fps) != len(set(fps)):
         raise KRXSourceDataAdmissionError("batch receipt fingerprints are incomplete or duplicated")
     for forbidden in (
+        "coverage_validated",
+        "pit_lineage_validated",
         "alpha_or_final_judge_promotion_authorized",
         "sealed_holdout_authorized",
         "live_trading_authorized",
