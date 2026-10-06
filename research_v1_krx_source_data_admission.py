@@ -15,6 +15,7 @@ import re
 from typing import Any, Mapping
 
 from research_v1_krx_acquisition_receipt import ALLOWED_ACCESS_ROUTES, _sha256
+from research_v1_krx_source_gates import audit_source_gates
 from research_v1_krx_public_evidence import (
     PUBLIC_EVIDENCE_VERSION,
     public_evidence_fingerprint_sha256,
@@ -132,6 +133,40 @@ def _verify_batch(batch: Mapping[str, Any]) -> bool:
     return True
 
 
+
+def _revalidate_source_gates(gates: Mapping[str, Any]) -> dict[str, Any]:
+    entries = _mapping(gates.get("gates"), "source-gate A-F entries")
+    if set(entries) != set("ABCDEF"):
+        raise KRXSourceDataAdmissionError("source-gate entries must contain exactly A-F")
+    scope = gates.get("intended_use_scope")
+    if not isinstance(scope, str) or not scope.strip():
+        raise KRXSourceDataAdmissionError("source-gate intended_use_scope must be a non-empty string")
+    statuses, evidence = {}, {}
+    for gate in "ABCDEF":
+        entry = _mapping(entries[gate], f"source-gate {gate}")
+        for field in ("status", "evidence"):
+            value = entry.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise KRXSourceDataAdmissionError(f"source-gate {gate}.{field} must be a non-empty string")
+        statuses[gate] = entry["status"]
+        evidence[gate] = entry["evidence"]
+    try:
+        current = audit_source_gates(
+            source_family=gates["source_family"], intended_use_scope=scope,
+            statuses=statuses, evidence=evidence,
+        )
+    except ValueError as exc:
+        raise KRXSourceDataAdmissionError("source-gate audit cannot be revalidated") from exc
+    for field in (
+        "all_source_gates_pass", "source_contract_closed_for_declared_scope",
+        "alpha_or_final_judge_promotion_authorized",
+        "sealed_holdout_authorized_by_source_audit_alone",
+        "live_trading_authorized_by_source_audit_alone",
+    ):
+        if gates.get(field) is not current[field]:
+            raise KRXSourceDataAdmissionError(f"source-gate summary/authority drift: {field}")
+    return current
+
 def assess_investor_flow_source_data_admission(
     *,
     source_gate_audit: Mapping[str, Any],
@@ -152,6 +187,7 @@ def assess_investor_flow_source_data_admission(
     if batch.get("source_family") != "KRX_INVESTOR_FLOW":
         raise KRXSourceDataAdmissionError("acquisition batch is not KRX_INVESTOR_FLOW")
 
+    gates = _revalidate_source_gates(gates)
     batch_valid = _verify_batch(batch)
     auth_evidence_fp = str(
         batch.get("authorization_evidence_fingerprint_sha256") or ""
