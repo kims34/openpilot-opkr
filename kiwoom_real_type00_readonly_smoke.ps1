@@ -152,8 +152,10 @@ try {
         try {
             $raw = Receive-Text -Ws $ws -TimeoutMs $remaining
         } catch [System.OperationCanceledException] {
-            continue
-        } catch [System.Threading.Tasks.TaskCanceledException] {
+            # TaskCanceledException derives from OperationCanceledException.
+            # A second TaskCanceledException catch is rejected by Windows PowerShell
+            # as already handled, so the base cancellation type is intentionally
+            # the single timeout handler here.
             continue
         }
         if ($null -eq $raw) { break }
