@@ -1,3 +1,38 @@
+# Research Value & Evidence Policy — 2026-10-07 KST
+
+## Primary objective
+Maximize the probability that IndexAlert produces reproducible positive executable Net EV in future real markets after all trading costs, taxes, slippage, impact, failed/partial fills and relevant tail risk. Research count, commit count, experiment count and backtest attractiveness are not progress by themselves.
+
+## Mandatory pre-study value gate
+Before any new empirical Challenger, inspect current MASTER_SPEC / RESEARCH_LEDGER / RESEARCH_STATUS and actual GitHub state. Record RESEARCH SKIP unless all applicable conditions are met: (1) explicit economic/market-structure hypothesis; (2) materially new information versus prior studies; (3) plausible path to better executable Net EV or lower failure risk; (4) not parameter mining/post-hoc tuning; (5) honestly testable with currently available PIT/availability/execution evidence. Never invent a topic merely to keep research active.
+
+## Priority of evidence
+Prefer independent new future OOS, prospective exact-policy Shadow and genuine broker-native LIVE evidence over repeated reuse of the same historical development sample. Once a sufficiently specified candidate exists but decisive independent evidence is unavailable, stop exploratory iteration and record **RESEARCH PAUSE — NEW EVIDENCE REQUIRED**.
+
+## Frozen comparison discipline
+Champion/Frozen rules are immutable unless the established promotion process authorizes change. Every new idea is an isolated Challenger. Hold PIT universe, availability-time, labels, costs/tax/slippage/execution assumptions, WF/Purged-CPCV and OOS comparison constant unless the research question explicitly concerns one of them and that change is preregistered. Never reopen/reuse a consumed holdout as independent evidence.
+
+## Failure-first research
+When OOS/Shadow/Tiny Live degrades, diagnose before changing parameters: Alpha / Selection / Regime / Calibration / Entry / Fill / Slippage-Cost / Holding / Exit / Capacity / Tail-risk failure. Only a diagnosed mechanism may motivate the minimum necessary Challenger.
+
+## Anti-overfit
+Preregister hypothesis, comparators, primary metrics and reject/stop conditions where feasible. Preserve every failed Challenger. Control multiple testing/PBO/DSR and complexity penalty. Prefer the simpler frozen model when incremental benefit is small or unstable. Do not sweep features, thresholds, horizons, N or models and select the winner after observing outcomes.
+
+## Decision metrics
+Promotion evidence must jointly consider cost-adjusted NetEV, date-cluster LCB(NetEV), PF, MDD, ES95/ES99, coverage, turnover, capacity, concentration/effective independent bets, calibration, regime stability, execution feasibility and dependence on a few dates/names. Hit rate or raw total return cannot override these.
+
+## Promotion and real-money boundary
+Research -> OOS/CPCV -> Frozen Challenger -> Shadow -> Fresh Confirmation -> Tiny Live -> Limited Live -> Production. No skipped stage. Research/synthetic/paper fills are not genuine LIVE evidence. Research alone never enables real-account orders or capital scaling.
+
+## Required terminal disposition
+Every research item ends as exactly one of: ADOPT CANDIDATE / CONTINUE VALIDATION / INCONCLUSIVE / REJECT / RESEARCH SKIP / NEW EVIDENCE REQUIRED. Do not repeatedly modify INCONCLUSIVE/REJECT studies until they become positive.
+
+## Current Dynamic 0-N disposition
+EXP-2026-10-06-DYNAMIC-0N-01 and EXP-2026-10-06-DYNAMIC-0N-RANKAWARE-01 are complete developmental diagnostics. Current disposition remains INCONCLUSIVE. Rank-aware follow-up had negative date-cluster LCB and extreme date/concentration dependence; it does not justify Champion or operating-code change. A genuine marginal-utility Dynamic 0-N requires unavailable/unfinished PIT sector-factor/dependence plus capital/minimum-order/capacity/execution uncertainty evidence. Do not keep tuning N/rank bands/thresholds on the same outcomes. **RESEARCH PAUSE — NEW EVIDENCE REQUIRED** for further Dynamic 0-N performance claims until those inputs or genuinely new prospective evidence exist.
+
+
+---
+
 # Cash alias and extracted-package CI continuation — 2026-10-06T14:16Z / 23:16 KST
 
 Actual code HEAD index-alert-position-regen-fix-v1 4ffd7bea43ba864c40c672cc64a2d79a77e2543b; research index-alert-research-v1 e2675a47b0bab9944a5a97caaf9ca565e8c81a86; server index-alert-server 8a68b01bca5d551d083ccda263df38d86fa54166. This record follows these refs; resolve current branches for documentation self SHAs. Project INCOMPLETE / real ordering disabled. PR173–179 were already complete and not repeated as new work.
