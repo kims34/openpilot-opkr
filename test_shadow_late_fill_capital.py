@@ -90,6 +90,37 @@ class LateFillCapitalTests(unittest.TestCase):
         self.assertEqual(self.a.state()['managed_reserve_krw'],83)
         self.assert_stopped()
 
+    def test_corrupt_release_principal_cannot_reduce_reserve_on_late_fill(self):
+        self.released()
+        for principal in (-80, 0, 79, 81, 80.5):
+            with self.subTest(principal=principal):
+                self.j.db.execute('UPDATE shadow_capital_releases SET released_principal=?', (principal,))
+                with self.assertRaises(OrderJournalError):
+                    self.late()
+                self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+                self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (3,))
+                self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (0,))
+                self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.j.db.execute('UPDATE shadow_capital_releases SET released_principal=80')
+        self.late()
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 1)
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+        self.assert_stopped()
+
+    def test_corrupt_restoration_marker_cannot_accept_another_late_fill(self):
+        self.released()
+        self.late()
+        self.j.db.execute("UPDATE shadow_capital_release_revocations SET execution_id='missing'")
+        with self.assertRaises(OrderJournalError):
+            self.late('later', 1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 1)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (1,))
+        self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (83,))
+        self.j.db.execute("UPDATE shadow_capital_release_revocations SET execution_id='late'")
+        self.late('later', 1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 2)
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+
     def test_native_bridge_binding_failure_rolls_back_restoration_and_fill_atomically(self):
         self.released()
         b=KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)

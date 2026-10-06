@@ -347,16 +347,29 @@ class OrderIntentJournal:
         """
         if not self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_releases'").fetchone():
             return
-        released = self.db.execute('SELECT released_principal FROM shadow_capital_releases WHERE key=?', (key,)).fetchone()
+        released = self.db.execute('SELECT released_principal,snapshot_revision FROM shadow_capital_releases WHERE key=?', (key,)).fetchone()
         if released is None:
             return
+        order = self.get(key)
+        reservation = self.db.execute('SELECT reserve,fee_buffer,limit_price FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
+        if (reservation is None or order['side'] != 'BUY'
+            or any(type(value) is not int for value in reservation + released)
+            or reservation[1] < 0 or reservation[2] <= 0 or released[1] <= 0
+            or released[0] != order['quantity'] * reservation[2]
+            or released[0] + reservation[1] > 2**63-1):
+            raise OrderJournalError('released capital lineage inconsistent')
         self.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_release_revocations (
             key TEXT PRIMARY KEY, restored_principal INTEGER NOT NULL,
             execution_id TEXT NOT NULL)''')
-        if self.db.execute('SELECT 1 FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone():
+        revoked = self.db.execute('SELECT restored_principal,execution_id FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone()
+        if revoked is not None:
+            if (type(revoked[0]) is not int or revoked[0] != released[0]
+                or type(revoked[1]) is not str or not revoked[1].strip()
+                or not self.db.execute('SELECT 1 FROM executions WHERE key=? AND execution_id=?', (key,revoked[1])).fetchone()
+                or reservation[0] != released[0] + reservation[1]):
+                raise OrderJournalError('restored capital lineage inconsistent')
             return
-        reservation = self.db.execute('SELECT reserve,fee_buffer FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
-        if reservation is None or reservation[0] != reservation[1]:
+        if reservation[0] != reservation[1]:
             raise OrderJournalError('released capital reservation inconsistent')
         self.db.execute('UPDATE shadow_capital_reservations SET reserve=reserve+? WHERE key=?', (released[0], key))
         self.db.execute('INSERT INTO shadow_capital_release_revocations VALUES(?,?,?)', (key, released[0], execution_id))
