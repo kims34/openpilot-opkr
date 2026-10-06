@@ -37,7 +37,8 @@ The schema review for this contract used the official public repository:
 
 The reviewed official examples include:
 - account number query `ka00001`, path `/api/dostk/acnt`;
-- account order/fill detail `kt00007`, path `/api/dostk/acnt`;
+- deposit/settlement query `kt00001`, path `/api/dostk/acnt`;
+- account-today status query `kt00017`, path `/api/dostk/acnt`;- account order/fill detail `kt00007`, path `/api/dostk/acnt`;
 - filled-order query `ka10076`, path `/api/dostk/acnt`;
 - domestic real-time order/fill stream type `00`, path `/api/dostk/websocket`.
 
@@ -83,9 +84,9 @@ Observed demo plumbing is recorded separately in `INDEXALERT_KIWOOM_DEMO_CONNECT
 Until a later explicit promotion-stage change is committed and independently reviewed:
 
 Allowed after the user configures the matching environment credentials locally/through a secret manager:
-- fixed-host REAL OAuth plus explicitly allowlisted read-only account queries (ka00001, kt00001, kt00007, ka10076, kt00018) with ordering configuration disabled;
+- fixed-host REAL OAuth plus explicitly allowlisted read-only account queries (ka00001, kt00001, kt00007, kt00017, ka10076, kt00018) with ordering configuration disabled;
 - REAL read-only outputs must remain secret/account-safe and cannot by themselves set genuine LIVE provenance or trading authority;
--
+- broker-date attestation may use the HTTP Date header only when returned by the fixed Kiwoom host on a successful reviewed account-today (`kt00017`) response, parsed as UTC, converted to KST, and within a five-minute freshness bound; this remains account/session-date plumbing, not fill provenance or order authority;
 - authentication/token smoke checks against the demo environment;
 - read-only demo account-number discovery;
 - read-only demo balances/positions/open-order/execution queries;
