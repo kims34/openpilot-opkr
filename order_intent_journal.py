@@ -16,6 +16,10 @@ class OrderJournalError(ValueError):
     pass
 
 
+def _reject_json_constant(_value):
+    raise OrderJournalError("invalid stored intent payload")
+
+
 def quarantine_conflict(method):
     @wraps(method)
     def guarded(self, key, *args, **kwargs):
@@ -115,7 +119,21 @@ class OrderIntentJournal:
         ).fetchone()
         if row is None:
             raise OrderJournalError("unknown intent")
-        payload = json.loads(row[0])
+        try:
+            payload = json.loads(row[0], parse_constant=_reject_json_constant)
+        except (json.JSONDecodeError, RecursionError, TypeError):
+            raise OrderJournalError("invalid stored intent payload") from None
+        if (type(payload) is not dict or set(payload) != {'symbol','side','quantity'}
+            or type(payload['symbol']) is not str or not payload['symbol'].strip()
+            or payload['side'] not in ('BUY','SELL')
+            or type(payload['quantity']) is not int or payload['quantity'] <= 0
+            or row[1] not in ('INTENT_CREATED','SUBMITTING','ACKNOWLEDGED','PARTIALLY_FILLED',
+                              'CANCEL_REQUESTED','CANCELLED','REJECTED','FILLED',
+                              'RECONCILIATION_REQUIRED')
+            or (row[2] is not None and (type(row[2]) is not str or not row[2].strip()))
+            or type(row[3]) is not int or not 0 <= row[3] <= payload['quantity']
+            or row[4] not in (None,'CANCELLED','REJECTED','FILLED')):
+            raise OrderJournalError("invalid stored intent payload")
         return dict(key=key, **payload, state=row[1], broker_order_id=row[2],
                     filled_quantity=row[3], remaining_quantity=payload["quantity"]-row[3],
                     terminal_status=row[4], live_ordering_authorized=False, genuine_live_evidence=False)
