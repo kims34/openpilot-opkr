@@ -421,3 +421,39 @@ def test_existing_receipt_relocated_under_wrong_digest_is_not_reused(tmp_path):
             fetcher=fetcher, evaluation_time=EVAL,
         )
     assert (tmp_path / "private" / first["private_scope_relpath"]).is_file()
+
+
+@pytest.mark.parametrize("day", ["20261301", "20260001", "20260900", "20260931", "20260229", "20250230"])
+def test_invalid_calendar_date_fails_before_fetch(tmp_path, day):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    calls = []
+    with pytest.raises(KRXExpectedScopeExecutorError, match="valid calendar date"):
+        execute_expected_scope_date(
+            requested_date=day, environment=_env(tmp_path), git_worktree=str(worktree),
+            fetcher=lambda **kwargs: calls.append(kwargs), evaluation_time=EVAL,
+        )
+    assert calls == []
+
+
+def test_relocated_existing_scope_cannot_bypass_content_address(tmp_path):
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    def fetcher(**kwargs):
+        return _result(pd.DataFrame())
+    first = execute_expected_scope_date(
+        requested_date="20260927", environment=env, git_worktree=str(worktree),
+        fetcher=fetcher, evaluation_time=EVAL,
+    )
+    original = tmp_path / "private" / first["private_scope_relpath"]
+    moved = original.with_name("f" * 64 + ".json")
+    original.rename(moved)  # Disposable synthetic fixture only.
+    before = moved.read_bytes()
+    with pytest.raises(KRXExpectedScopeExecutorError, match="scope content address"):
+        execute_expected_scope_date(
+            requested_date="20260927", environment=env, git_worktree=str(worktree),
+            fetcher=fetcher, evaluation_time=EVAL,
+        )
+    assert moved.read_bytes() == before
+    assert len(list(moved.parent.glob("*.json"))) == 1
