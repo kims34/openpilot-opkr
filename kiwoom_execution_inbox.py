@@ -73,6 +73,15 @@ class KiwoomExecutionInbox:
         require(row['broker_native_structure_normalized'] and row['broker_execution_id_available_in_source'])
         require(not row['genuine_live_provenance_verified'] and not row['project_live_evidence_admitted'])
 
+    @staticmethod
+    def _decode_payload(payload):
+        try:
+            return json.loads(payload)
+        except RecursionError:
+            # Decoder exhaustion is corrupt durable input, not permission to
+            # bypass the existing private rollback/quarantine boundary.
+            require(False)
+
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
         receipts = {}
@@ -81,7 +90,7 @@ class KiwoomExecutionInbox:
             self._text(receipt_id); self._text(key); self.bridge._context(day)
             require(isinstance(payload, str) and isinstance(digest, str))
             require(hashlib.sha256(payload.encode()).hexdigest() == digest)
-            row = json.loads(payload)
+            row = self._decode_payload(payload)
             self._validate_row(row)
             receipts[sequence] = (key, day, row)
         for receipt_id, key, day, payload, digest in self.journal.db.execute(
@@ -89,7 +98,7 @@ class KiwoomExecutionInbox:
             self._text(receipt_id); self._text(key); self.bridge._context(day)
             require(isinstance(payload, str) and isinstance(digest, str))
             require(hashlib.sha256(payload.encode()).hexdigest() == digest)
-            self._validate_row(json.loads(payload))
+            self._validate_row(self._decode_payload(payload))
             require(self.journal.db.execute(
                 'SELECT 1 FROM native_inbox_receipts WHERE receipt_id=?', (receipt_id,)).fetchone() is not None)
         for receipt_sequence, outcome in self.journal.db.execute(
@@ -141,7 +150,7 @@ class KiwoomExecutionInbox:
                 require(record is not None)
                 sequence, key, day, payload, digest = record
                 require(hashlib.sha256(payload.encode()).hexdigest() == digest)
-                row = json.loads(payload)
+                row = self._decode_payload(payload)
                 # A conflicting receipt requires an independent resolution;
                 # neither the original nor alternate may silently win.
                 require(not self.journal.db.execute('SELECT 1 FROM native_inbox_conflicts WHERE receipt_id=?', (receipt_id,)).fetchone())
