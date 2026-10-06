@@ -175,3 +175,22 @@ def test_coverage_rejects_missing_publication_lineage_even_with_valid_marker():
     lineage = lineage.drop(columns=["published_at"])
     with pytest.raises(KRXInvestorFlowCoverageError, match="missing required columns"):
         audit_investor_flow_coverage(scope, lineage)
+
+
+@pytest.mark.parametrize("value", [int("1" * 64), None, True, {}, []])
+def test_expected_scope_fingerprint_requires_original_string_type(value):
+    scope = pd.DataFrame([_scope_row(scope_contract_fingerprint_sha256=value)])
+    with pytest.raises(KRXInvestorFlowCoverageError, match="SHA256 string"):
+        normalise_expected_investor_flow_scope(scope)
+
+
+def test_expected_scope_fingerprint_string_normalization_preserves_existing_behavior():
+    scope = pd.DataFrame([
+        _scope_row(scope_contract_fingerprint_sha256="  " + SCOPE_FP.upper() + "  ")
+    ])
+    normalized = normalise_expected_investor_flow_scope(scope)
+    assert normalized["scope_contract_fingerprint_sha256"].tolist() == [SCOPE_FP]
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([_lineage_row()]))
+    audit = audit_investor_flow_coverage(scope, lineage)
+    assert audit["coverage_structurally_complete"] is True
+    assert audit["feature_performance_testing_authorized"] is False
