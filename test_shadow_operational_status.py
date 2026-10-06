@@ -144,3 +144,14 @@ class OperationalStatusTests(unittest.TestCase):
             self.assertEqual(result['local_blockers'],['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
             self.assertNotIn('PRIVATE',json.dumps(result))
             self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+
+    def test_inconsistent_terminal_fact_is_unavailable_without_mutation(self):
+        self.reconcile_claimed()
+        self.journal.db.execute("UPDATE intents SET terminal_status='FILLED' WHERE key=?",
+                                ('PRIVATE-INTENT',))
+        before = self.journal.shadow_control(),self.journal.db.total_changes
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(result['local_blockers'],['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertNotIn('PRIVATE',json.dumps(result))
+        self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))

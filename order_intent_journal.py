@@ -20,6 +20,39 @@ def _reject_json_constant(_value):
     raise OrderJournalError("invalid stored intent payload")
 
 
+def validate_stored_intent_row(raw_payload, state, broker_id, filled, terminal):
+    """Validate one durable intent row without opening or mutating a journal."""
+    try:
+        payload = json.loads(raw_payload, parse_constant=_reject_json_constant)
+    except (json.JSONDecodeError, RecursionError, TypeError):
+        raise OrderJournalError("invalid stored intent payload") from None
+    if (type(payload) is not dict or set(payload) != {'symbol','side','quantity'}
+        or type(payload['symbol']) is not str or not payload['symbol'].strip()
+        or payload['side'] not in ('BUY','SELL')
+        or type(payload['quantity']) is not int or payload['quantity'] <= 0
+        or state not in ('INTENT_CREATED','SUBMITTING','ACKNOWLEDGED','PARTIALLY_FILLED',
+                         'CANCEL_REQUESTED','CANCELLED','REJECTED','FILLED',
+                         'RECONCILIATION_REQUIRED')
+        or (broker_id is not None and (type(broker_id) is not str or not broker_id.strip()))
+        or type(filled) is not int or not 0 <= filled <= payload['quantity']
+        or terminal not in (None,'CANCELLED','REJECTED','FILLED')):
+        raise OrderJournalError("invalid stored intent payload")
+    quantity = payload['quantity']
+    if ((terminal == 'FILLED' and filled != quantity)
+        or (terminal == 'REJECTED' and filled != 0)
+        or (state == 'INTENT_CREATED' and (broker_id is not None or filled != 0 or terminal is not None))
+        or (state == 'SUBMITTING' and (filled != 0 or terminal is not None))
+        or (state == 'ACKNOWLEDGED' and (broker_id is None or filled != 0 or terminal is not None))
+        or (state == 'PARTIALLY_FILLED' and
+            (broker_id is None or not 0 < filled < quantity or terminal is not None))
+        or (state == 'CANCEL_REQUESTED' and (broker_id is None or filled >= quantity or terminal is not None))
+        or (state == 'CANCELLED' and (broker_id is None or filled >= quantity or terminal != 'CANCELLED'))
+        or (state == 'REJECTED' and (filled != 0 or terminal != 'REJECTED'))
+        or (state == 'FILLED' and (broker_id is None or filled != quantity or terminal != 'FILLED'))):
+        raise OrderJournalError("inconsistent stored intent state")
+    return payload
+
+
 def quarantine_conflict(method):
     @wraps(method)
     def guarded(self, key, *args, **kwargs):
@@ -119,35 +152,7 @@ class OrderIntentJournal:
         ).fetchone()
         if row is None:
             raise OrderJournalError("unknown intent")
-        try:
-            payload = json.loads(row[0], parse_constant=_reject_json_constant)
-        except (json.JSONDecodeError, RecursionError, TypeError):
-            raise OrderJournalError("invalid stored intent payload") from None
-        if (type(payload) is not dict or set(payload) != {'symbol','side','quantity'}
-            or type(payload['symbol']) is not str or not payload['symbol'].strip()
-            or payload['side'] not in ('BUY','SELL')
-            or type(payload['quantity']) is not int or payload['quantity'] <= 0
-            or row[1] not in ('INTENT_CREATED','SUBMITTING','ACKNOWLEDGED','PARTIALLY_FILLED',
-                              'CANCEL_REQUESTED','CANCELLED','REJECTED','FILLED',
-                              'RECONCILIATION_REQUIRED')
-            or (row[2] is not None and (type(row[2]) is not str or not row[2].strip()))
-            or type(row[3]) is not int or not 0 <= row[3] <= payload['quantity']
-            or row[4] not in (None,'CANCELLED','REJECTED','FILLED')):
-            raise OrderJournalError("invalid stored intent payload")
-        state, broker_id, filled, terminal = row[1:]
-        quantity = payload['quantity']
-        if ((terminal == 'FILLED' and filled != quantity)
-            or (terminal == 'REJECTED' and filled != 0)
-            or (state == 'INTENT_CREATED' and (broker_id is not None or filled != 0 or terminal is not None))
-            or (state == 'SUBMITTING' and (filled != 0 or terminal is not None))
-            or (state == 'ACKNOWLEDGED' and (broker_id is None or filled != 0 or terminal is not None))
-            or (state == 'PARTIALLY_FILLED' and
-                (broker_id is None or not 0 < filled < quantity or terminal is not None))
-            or (state == 'CANCEL_REQUESTED' and (broker_id is None or filled >= quantity or terminal is not None))
-            or (state == 'CANCELLED' and (broker_id is None or filled >= quantity or terminal != 'CANCELLED'))
-            or (state == 'REJECTED' and (filled != 0 or terminal != 'REJECTED'))
-            or (state == 'FILLED' and (broker_id is None or filled != quantity or terminal != 'FILLED'))):
-            raise OrderJournalError("inconsistent stored intent state")
+        payload = validate_stored_intent_row(row[0], *row[1:])
         return dict(key=key, **payload, state=row[1], broker_order_id=row[2],
                     filled_quantity=row[3], remaining_quantity=payload["quantity"]-row[3],
                     terminal_status=row[4], live_ordering_authorized=False, genuine_live_evidence=False)
