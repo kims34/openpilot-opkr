@@ -23,4 +23,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Parse REAL type00 PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path './kiwoom_real_type00_readonly_smoke.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -ne 0) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
       - run: python -m unittest -v test_kiwoom_real_type00_readonly_smoke_ps1.py test_deferred_user_validations.py test_kiwoom_realtime_order_fill_subscription_contract.py test_kiwoom_type00_frame_extractor.py
