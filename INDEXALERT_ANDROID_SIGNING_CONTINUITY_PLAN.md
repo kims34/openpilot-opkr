@@ -1,0 +1,17 @@
+# Android signing continuity decision — 2026-10-06 10:55 KST
+
+## Verified inputs
+Owner-executed SDK observation: installed com.indexalert.app4.7/code47, APK SHA2569e1b72432b44f41a04c7f502d98502d3c77d69ec451718b8da34a260269eca01, signerSHA256ecb7486e3ce65fba42f6bf55ff8359abd0ee7d8268c8305e248340c84443c6fa. Matches independently audited historical CI artifact. Owner Test-Path of the standard local .android/debug.keystore returned False. This proves absence only at that path, not absence of every possible custom signing identity. No key/password was requested or read.
+
+Build branch actually inspected at aaac565a7dc99f36b369b36cadabaf4e2faf1bf5: index-alert/app/build.gradle.kts uses applicationId com.indexalert.app, version4.8/code48 and Google Services plugin. Manifest allowBackup=true is a configuration flag, NOT tested backup/export/restore evidence. MainActivity stores alert switches, delivered-stage state and history in private state SharedPreferences. Do not claim Android backup or reinstall restores these.
+
+## Reviewable paths
+1. Compatible in-place update: requires the original signing private identity, held by its legitimate owner, with public certificate matching the installed fingerprint. Standard local debug file is absent. Known current debug artifacts have different verified fingerprints. No compatible artifact is available from the evidence inspected. A public APK/certificate cannot supply that private key. Do not generate a new random debug key and call it compatible.
+2. Separate validation application: proposed independent applicationId, distinct label and separate app data, retaining the installed4.7 unchanged. Not yet implemented/built/install-ready. Must review Firebase/Google Services package registration and notification token/device ownership, prevent duplicate operational alert registrations, and keep existing GET-only unavailable readiness/no orders. Original Firebase application identity must not be silently relabelled as a registered new package. Separate-app UI testing is not a4.8 com.indexalert.app production upgrade or original-device notification continuity.
+3. Replacement plus data migration: only after a concrete owner-reviewed export/restore plan and explicit decision accepting installation/data changes. No uninstall/clear-data/backup command is approved or executed. allowBackup=true alone cannot meet migration preservation. Historical preferences/delivery state must not be erased to bypass signing mismatch.
+
+## Exact next development
+Inspect initialization/PushBridge and server token ownership contract for feasibility of an isolated, no-production-registration validation flavor. Keep any new preview code off the canonical Android branch until CI and package/config behavior are verified. Do not claim installed4.8, new push receipt or automation readiness. If no evidence-backed isolation path exists, record the actual package/Firebase or data-migration blocker and continue independent research/governance engineering under frozen contracts.
+
+## Safety and continuity
+No real orders, funds movement, broker-account permission change, production token mutation, model/threshold/cutoff/promotion changes or private holdout access. All consumed failedv1 hashes and immutable frozen criteria remain unchanged. This is a decision plan, not an accepted research candidate or working release. Owner can disable wireless debugging after inspection; no further handset command is required merely to reconfirm the already matched installed APK.
