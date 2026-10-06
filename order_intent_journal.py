@@ -20,10 +20,20 @@ def _reject_json_constant(_value):
     raise OrderJournalError("invalid stored intent payload")
 
 
+def _unique_intent_fields(pairs):
+    payload = {}
+    for key, value in pairs:
+        if key in payload:
+            raise OrderJournalError("invalid stored intent payload")
+        payload[key] = value
+    return payload
+
+
 def validate_stored_intent_row(raw_payload, state, broker_id, filled, terminal):
     """Validate one durable intent row without opening or mutating a journal."""
     try:
-        payload = json.loads(raw_payload, parse_constant=_reject_json_constant)
+        payload = json.loads(raw_payload, parse_constant=_reject_json_constant,
+            object_pairs_hook=_unique_intent_fields)
     except (json.JSONDecodeError, RecursionError, TypeError):
         raise OrderJournalError("invalid stored intent payload") from None
     if (type(payload) is not dict or set(payload) != {'symbol','side','quantity'}
