@@ -69,6 +69,8 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     scope = data.get("expected_scope_rules") or {}
     investor = scope.get("investor_flow") or {}
     status = scope.get("security_status") or {}
+    _require(investor.get("output_requires_scope_contract_fingerprint") is True, "investor scope fingerprint requirement lost")
+    _require(status.get("output_requires_scope_contract_fingerprint") is True, "status scope fingerprint requirement lost")
     _require(investor.get("key") == ["event_date","symbol","isu_cd"], "investor key drift")
     _require(status.get("key") == ["snapshot_date","symbol","isu_cd"], "status key drift")
     _require("Never add a missing security/date" in str(investor.get("rule") or ""), "investor no-fill guard lost")
