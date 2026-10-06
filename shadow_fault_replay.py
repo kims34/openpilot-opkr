@@ -154,6 +154,18 @@ def run_protected_capital_fault_replay():
                 '908','909','910','911','914','915','913','919'),
                 ('synthetic-private-account','synthetic-order','005930','10','8','6','','2',
                  '091501','synthetic-execution','8','4','8','4','체결','')))
+            lifecycle = dict(raw)
+            lifecycle.update({'902':'10','909':'','910':'','911':'','914':'','915':'','913':'접수'})
+            lifecycle_frame = {'trnm':'REAL','data':[{'type':'00','item':'','values':lifecycle}]}
+            lifecycle_event = extract_type00_events(lifecycle_frame)[0]
+            lifecycle_out = intake.append_for_bound_order(
+                'synthetic-lifecycle-receipt', lifecycle_event, trading_date=day)
+            _require(lifecycle_out['result'] == 'NON_FILL_EVENT_IGNORED',
+                'known type00 lifecycle event entered execution inbox')
+            _require(inbox.counts()['receipts'] == 0 and inbox.counts()['pending'] == 0,
+                'non-fill lifecycle event poisoned durable execution inbox')
+            _require(journal.shadow_control()['killed'], 'ignored lifecycle event cleared Kill latch')
+            completed.append('nonfill_type00_lifecycle_precedes_fill_without_poisoning_inbox')
             frame = {'trnm':'REAL','data':[{'type':'00','item':'','values':raw}]}
             extracted = extract_type00_events(frame)
             _require(len(extracted) == 1 and extracted[0]['909'] == 'synthetic-execution',
