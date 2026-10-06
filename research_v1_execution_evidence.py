@@ -123,6 +123,11 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("execution evidence table is empty")
 
     x = table.copy()
+    # Preserve original absence before coercion can erase malformed no-fill values.
+    raw_no_fill_fields = x[[
+        "first_fill_at", "final_fill_at", "avg_fill_price",
+        "markout_5m_price", "markout_30m_price", "markout_close_price",
+    ]].copy()
     x["decision_date"] = pd.to_datetime(x["decision_date"], errors="coerce").dt.normalize()
     x["symbol"] = x["symbol"].astype(str).str.strip().str.upper().str.replace(r"\.0$", "", regex=True)
     x["symbol"] = x["symbol"].map(lambda s: s.zfill(6) if s.isdigit() else s)
@@ -160,6 +165,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     ]:
         x[c] = pd.to_numeric(x[c], errors="coerce")
 
+    if not np.isfinite(x[["requested_qty", "filled_qty", "reference_open"]].to_numpy(dtype=float)).all():
+        raise ExecutionEvidenceError("quantities and reference_open must be finite")
     if x["requested_qty"].isna().any() or (x["requested_qty"] <= 0).any():
         raise ExecutionEvidenceError("requested_qty must be positive")
     if x["filled_qty"].isna().any() or (x["filled_qty"] < 0).any():
@@ -174,6 +181,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     required_filled_numeric = [
         "avg_fill_price", "markout_5m_price", "markout_30m_price", "markout_close_price"
     ]
+    if not np.isfinite(x.loc[filled, required_filled_numeric].to_numpy(dtype=float)).all():
+        raise ExecutionEvidenceError("filled-row fill/markout prices must be finite")
     if x.loc[filled, required_filled_numeric].isna().any().any():
         raise ExecutionEvidenceError("filled rows require fill price and all markout prices")
     if (x.loc[filled, required_filled_numeric] <= 0).any().any():
@@ -190,6 +199,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         "first_fill_at", "final_fill_at", "avg_fill_price",
         "markout_5m_price", "markout_30m_price", "markout_close_price",
     ]
+    if raw_no_fill_fields.loc[no_fill].notna().any().any():
+        raise ExecutionEvidenceError("zero-fill rows must not contain original fill timestamps/prices/markouts")
     if x.loc[no_fill, no_fill_fields].notna().any().any():
         raise ExecutionEvidenceError("zero-fill rows must not contain fill timestamps/prices/markouts")
 
