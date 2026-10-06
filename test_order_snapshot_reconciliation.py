@@ -57,6 +57,25 @@ class SnapshotBatchTests(unittest.TestCase):
         self.assertEqual(self.j.get('d1')['filled_quantity'], 4)
         self.assert_blocked()
 
+    def test_matching_corrupt_totals_cannot_clear_batch_barrier(self):
+        self.j.db.execute("UPDATE intents SET filled=3 WHERE key='d1'")
+        orders = copy.deepcopy(self.orders)
+        orders[0]['filled_quantity'] = 3
+        result = self.apply(orders)
+        self.assertFalse(result['matched'])
+        self.assertIn('EXECUTION_LEDGER_CONFLICT', result['errors'])
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM reconciled_snapshot_bindings').fetchone(), (0,))
+        self.assert_blocked()
+
+    def test_orphan_execution_cannot_be_hidden_by_complete_order_scope(self):
+        self.j.db.execute("INSERT INTO executions VALUES('orphan','orphan-fill',1)")
+        result = self.apply()
+        self.assertFalse(result['matched'])
+        self.assertIn('EXECUTION_LEDGER_CONFLICT', result['errors'])
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (2,))
+        self.assert_blocked()
+
     def test_unknown_order_blocks_even_when_all_known_orders_match(self):
         unknown = dict(self.orders[1], key='foreign', broker_order_id='foreign-order')
         result = self.apply(self.orders + [unknown])

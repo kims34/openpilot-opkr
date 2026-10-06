@@ -7,7 +7,7 @@ No network, execution insertion, auto-enable, cancellation or submission.
 """
 import json
 
-from order_intent_journal import OrderJournalError
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals
 
 
 FIELDS = {'key', 'broker_order_id', 'symbol', 'side', 'quantity', 'filled_quantity', 'status'}
@@ -56,6 +56,11 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
             errors.add('STALE_OR_REPLAYED_SNAPSHOT')
         known = {row[0]: journal.get(row[0]) for row in journal.db.execute(
             "SELECT key FROM intents WHERE state!='INTENT_CREATED' ORDER BY key")}
+        try:
+            validate_stored_execution_totals(journal.db,
+                dict(journal.db.execute('SELECT key,filled FROM intents')))
+        except OrderJournalError:
+            errors.add('EXECUTION_LEDGER_CONFLICT')
         seen, broker_ids, matched, snapshots = set(), set(), [], []
         for order in material:
             if not isinstance(order, dict) or set(order) != FIELDS:
