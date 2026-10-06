@@ -253,6 +253,11 @@ def execute_expected_scope_date(
     if len(day) != 8 or not day.isdigit():
         raise KRXExpectedScopeExecutorError("requested_date must be YYYYMMDD")
 
+    try:
+        datetime.strptime(day, "%Y%m%d")
+    except ValueError as exc:
+        raise KRXExpectedScopeExecutorError("requested_date must be a valid calendar date") from exc
+
     now = evaluation_time or datetime.now(timezone.utc)
     if now.tzinfo is None or now.utcoffset() is None:
         raise KRXExpectedScopeExecutorError(
@@ -345,6 +350,8 @@ def execute_expected_scope_date(
                 git_worktree=git_worktree,
             )
             existing_scope = wrapped["value"]
+            if existing_path.stem != _sha256(existing_scope):
+                raise KRXExpectedScopeExecutorError("existing scope content address mismatch")
             if _sha256(existing_scope) == scope_fp:
                 scope_rel = rel_existing
                 scope_write = {
