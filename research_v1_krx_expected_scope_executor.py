@@ -32,6 +32,7 @@ from research_v1_krx_expected_scope_preflight import (
 from research_v1_krx_historical_fetchers import (
     FetchResult,
     fetch_openapi_raw,
+    parse_openapi_raw,
 )
 from research_v1_krx_private_store import (
     read_private_json,
@@ -82,6 +83,16 @@ def _ensure_fetch_result(result: Any) -> FetchResult:
         raise KRXExpectedScopeExecutorError("retrieved_at must be timezone-aware string") from exc
     if pd.isna(ts) or ts.tzinfo is None or ts.utcoffset() is None:
         raise KRXExpectedScopeExecutorError("retrieved_at must be timezone-aware")
+    try:
+        parsed = parse_openapi_raw(bytes(result.raw_bytes))
+    except Exception as exc:
+        raise KRXExpectedScopeExecutorError("raw response must be valid OpenAPI rows") from exc
+    if (
+        dataframe_payload_fingerprint(parsed) != dataframe_payload_fingerprint(result.response_frame)
+        or schema_fingerprint(list(parsed.columns), [str(x) for x in parsed.dtypes])
+        != schema_fingerprint(list(result.response_frame.columns), [str(x) for x in result.response_frame.dtypes])
+    ):
+        raise KRXExpectedScopeExecutorError("response_frame must match parsed raw response")
     return result
 
 
