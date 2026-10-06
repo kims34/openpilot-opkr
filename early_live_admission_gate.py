@@ -57,11 +57,22 @@ def assess_early_live_readiness(evidence: EarlyLiveAdmissionEvidence) -> dict:
         "cancel_reconnect_kill_tested": evidence.cancel_reconnect_kill_tested,
         "numeric_capital_limits_frozen": evidence.numeric_capital_limits_frozen,
     }
-    ready_for_final_user_authorization = all(v is True for v in gates.values())
+    structural_preconditions_satisfied = all(v is True for v in gates.values())
+    blockers = [name for name, passed in gates.items() if passed is not True]
+    # Caller-populated booleans are structural diagnostics only. They cannot
+    # prove that the canonical source/execution/Shadow auditors independently
+    # admitted the exact evidence bundle. Until a separate trusted adapter is
+    # implemented, this assessor must never say that final user authorization
+    # is the only remaining gate.
+    independent_gate_admission_verified = False
+    blockers.append("INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED")
     return {
         "protocol_id": "INDEXALERT-CAPITAL-CAPPED-EARLY-LIVE-v2",
         "gates": gates,
-        "ready_for_final_user_authorization": ready_for_final_user_authorization,
+        "preconditions_structurally_satisfied": structural_preconditions_satisfied,
+        "independent_gate_admission_verified": independent_gate_admission_verified,
+        "blockers": tuple(blockers),
+        "ready_for_final_user_authorization": False,
         # This assessor can never itself authorize trading.
         "early_live_authorized": False,
         "real_orders_authorized": False,

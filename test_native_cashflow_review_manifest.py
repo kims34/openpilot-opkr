@@ -25,7 +25,10 @@ class ReviewManifestTests(unittest.TestCase):
 
     def test_artifact_flows_through_entire_journal_boundary(self):
         result = self.local.assess(reviews=None,review_manifest=self.manifest)
-        self.assertTrue(result['ready_for_final_user_authorization'])
+        self.assertTrue(result['preconditions_structurally_satisfied'])
+        self.assertFalse(result['independent_gate_admission_verified'])
+        self.assertFalse(result['ready_for_final_user_authorization'])
+        self.assertIn('INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED', result['blockers'])
         self.assertFalse(result['real_orders_authorized'])
         self.assertFalse(result['genuine_live_provenance_verified'])
 

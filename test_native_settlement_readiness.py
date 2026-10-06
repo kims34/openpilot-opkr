@@ -42,7 +42,10 @@ class NativeReadinessTests(unittest.TestCase):
         self.local.acknowledged()
         before = self.local.journal.db.total_changes
         result = self.assess()
-        self.assertTrue(result['ready_for_final_user_authorization'])
+        self.assertTrue(result['preconditions_structurally_satisfied'])
+        self.assertFalse(result['independent_gate_admission_verified'])
+        self.assertFalse(result['ready_for_final_user_authorization'])
+        self.assertIn('INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED', result['blockers'])
         self.assertEqual(before,self.local.journal.db.total_changes)
         self.assertEqual(self.local.journal.shadow_control()['mode'],'MASTER_OFF')
         for report in (result,result['native_history_intake'],result['cashflow_reconciliation']):
