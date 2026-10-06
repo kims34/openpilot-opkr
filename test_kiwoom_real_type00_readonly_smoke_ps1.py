@@ -34,6 +34,10 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
         self.assertIn('TYPE00_EVENT_COUNT',self.text)
         self.assertIn('ACCOUNT_MATCHED_TYPE00_EVENT_COUNT',self.text)
 
+    def test_timeout_catch_is_windows_powershell_parse_safe(self):
+        self.assertIn("catch [System.OperationCanceledException]", self.text)
+        self.assertNotIn("catch [System.Threading.Tasks.TaskCanceledException]", self.text)
+
     def test_execution_capture_requires_account_match_and_native_fields(self):
         self.assertIn("values.'9201' -eq $script:Account",self.text)
         for fid in ("'909'","'908'","'914'","'915'"):
