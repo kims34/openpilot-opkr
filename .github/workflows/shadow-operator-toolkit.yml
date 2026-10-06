@@ -22,9 +22,15 @@ permissions:
   contents: read
 jobs:
   toolkit:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
+      - name: Preserve repository bytes across operating systems
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -34,14 +40,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install portable timezone data
+        run: python -m pip install -r operator-toolkit-requirements.txt
       - run: python -m unittest -v test_shadow_operator_toolkit test_shadow_dashboard_script
       - name: Build exact feature-head archive
+        shell: bash
         env:
           TOOLKIT_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
         run: python build_shadow_operator_toolkit.py --source-commit "$TOOLKIT_SOURCE_SHA" --output dist/indexalert-shadow-operator.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: indexalert-shadow-operator-${{ github.event.pull_request.head.sha }}
+          name: indexalert-shadow-operator-${{ github.event.pull_request.head.sha }}-${{ matrix.os }}
           path: dist/indexalert-shadow-operator.zip
           if-no-files-found: error
           retention-days: 14
