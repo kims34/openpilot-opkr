@@ -73,6 +73,31 @@ class JournalSettlementBindingTests(unittest.TestCase):
                      'genuine_live_provenance_verified','funds_movement_authorized'):
             self.assertFalse(out[flag])
 
+    def test_matching_snapshot_cannot_hide_changed_execution_total_at_settlement(self):
+        self.acknowledged()
+        self.journal.record_execution('synthetic-intent', broker_order_id='synthetic-order',
+            execution_id='synthetic-fill', quantity=3)
+        self.rows[0]['filled_quantity'] = 3
+        self.reconcile()
+        self.journal.db.execute('UPDATE intents SET filled=2')
+        self.rows[0]['filled_quantity'] = 2
+        self.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?',
+            (json.dumps(self.rows[0]),))
+        before = self.journal.db.total_changes
+        out = self.assess()
+        self.assertFalse(out['account_settlement_admitted'])
+        self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED', out['local_reconciliation_errors'])
+        self.assertEqual(self.journal.db.total_changes, before)
+
+    def test_orphan_execution_vetoes_settlement_without_mutation(self):
+        self.journal.db.execute('INSERT INTO executions VALUES(?,?,?)',
+            ('synthetic-orphan', 'synthetic-fill', 1))
+        before = self.journal.db.total_changes
+        out = self.assess()
+        self.assertFalse(out['account_settlement_admitted'])
+        self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED', out['local_reconciliation_errors'])
+        self.assertEqual(self.journal.db.total_changes, before)
+
     def test_ambiguous_or_exhausted_stored_snapshot_cannot_be_admitted(self):
         self.acknowledged()
         for payload in ('{"filled_quantity":9,' + json.dumps(self.rows[0])[1:],

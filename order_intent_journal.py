@@ -63,6 +63,21 @@ def validate_stored_intent_row(raw_payload, state, broker_id, filled, terminal):
     return payload
 
 
+def validate_stored_execution_totals(connection, intent_fills):
+    """Read-only integrity check; caller must pin the surrounding snapshot."""
+    totals = {key: 0 for key in intent_fills}
+    if any(type(filled) is not int or filled < 0 for filled in intent_fills.values()):
+        raise OrderJournalError('inconsistent stored executions')
+    for key, execution_id, quantity in connection.execute(
+            'SELECT key,execution_id,quantity FROM executions'):
+        if (key not in intent_fills or type(execution_id) is not str or not execution_id.strip()
+            or type(quantity) is not int or quantity <= 0):
+            raise OrderJournalError('inconsistent stored executions')
+        totals[key] += quantity
+    if totals != intent_fills:
+        raise OrderJournalError('inconsistent stored executions')
+
+
 def quarantine_conflict(method):
     @wraps(method)
     def guarded(self, key, *args, **kwargs):
