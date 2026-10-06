@@ -10,6 +10,14 @@ on:
       - order_intent_journal.py
       - shadow_capital_allocator.py
       - indexalert_automation_control.py
+      - native_settlement_review_cli.py
+      - native_settlement_readiness.py
+      - native_cashflow_review_manifest.py
+      - native_cashflow_binding.py
+      - account_cashflow_reconciliation.py
+      - account_settlement_binding.py
+      - kiwoom_account_settlement_evidence.py
+      - kiwoom_settlement_history.py
       - .github/workflows/shadow-operational-status.yml
 permissions:
   contents: read
