@@ -37,5 +37,11 @@ class RealSettlementPowerShellSmokeTests(unittest.TestCase):
         self.assertIn("Require-Nonnegative-CashText", S)
         self.assertIn("HMACSHA256", S)
 
+    def test_windows_powershell_51_compatible_crypto_surface(self):
+        self.assertIn("[System.Security.Cryptography.SHA256]::Create()", S)
+        self.assertIn("[System.BitConverter]::ToString", S)
+        self.assertNotIn("::HashData(", S)
+        self.assertNotIn("::ToHexString(", S)
+
 if __name__ == "__main__":
     unittest.main()
