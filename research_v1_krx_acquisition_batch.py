@@ -105,6 +105,9 @@ def verify_receipt_fingerprint(receipt: Mapping[str, Any]) -> str:
         raise KRXAcquisitionBatchError("receipt illegally claims sealed-holdout authority")
     if receipt["live_trading_authorized"] is not False:
         raise KRXAcquisitionBatchError("receipt illegally claims live-trading authority")
+    for field in ("request_metadata_sha256", "response_schema_sha256", "response_payload_sha256"):
+        if not isinstance(receipt[field], str) or not SHA256_RE.fullmatch(receipt[field]):
+            raise KRXAcquisitionBatchError(f"receipt {field} must be a SHA-256 string")
     rows = receipt["response_rows"]
     if type(rows) is not int or rows < 0:
         raise KRXAcquisitionBatchError("receipt response_rows must be a non-negative integer")

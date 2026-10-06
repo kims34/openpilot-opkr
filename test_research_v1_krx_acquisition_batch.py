@@ -207,3 +207,20 @@ def test_zero_row_count_remains_valid_without_requiring_positive_rows():
         {name: receipt[name] for name in RECEIPT_BODY_FIELDS}
     )
     assert build_acquisition_batch_manifest([receipt])["total_response_rows"] == 0
+
+@pytest.mark.parametrize("field", [
+    "request_metadata_sha256", "response_schema_sha256", "response_payload_sha256",
+])
+@pytest.mark.parametrize("value", ["not-a-digest", None, 0, [], {}])
+def test_rehashed_receipt_requires_metadata_schema_payload_digest_formats(field, value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+    forged = copy.deepcopy(_receipt())
+    forged[field] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match=field):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match=field):
+        build_acquisition_batch_manifest([forged])
