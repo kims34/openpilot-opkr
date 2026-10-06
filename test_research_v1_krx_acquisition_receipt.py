@@ -141,3 +141,22 @@ def test_empty_result_is_receiptable_but_not_promotion_evidence():
     out = build_acquisition_receipt(**BASE, response_frame=empty)
     assert out["response_rows"] == 0
     assert out["alpha_or_final_judge_promotion_authorized"] is False
+
+@pytest.mark.parametrize("field", [
+    "source_family", "intended_use_scope", "access_route", "dataset_identifier",
+    "authorization_evidence_reference", "client_revision", "public_contract_evidence_version",
+])
+@pytest.mark.parametrize("value", [None, 0, True, [], {}])
+def test_builder_rejects_non_string_contracts_before_serializing(field, value):
+    args = dict(BASE)
+    args[field] = value
+    with pytest.raises(KRXAcquisitionReceiptError, match=field):
+        build_acquisition_receipt(**args, response_frame=_frame())
+
+
+@pytest.mark.parametrize("value", [int("1" * 64), None, True, [], {}])
+def test_builder_does_not_coerce_authorization_digest_to_string(value):
+    args = dict(BASE)
+    args["authorization_evidence_fingerprint_sha256"] = value
+    with pytest.raises(KRXAcquisitionReceiptError, match="authorization_evidence_fingerprint_sha256"):
+        build_acquisition_receipt(**args, response_frame=_frame())
