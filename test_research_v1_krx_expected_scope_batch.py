@@ -405,3 +405,21 @@ def test_receipt_path_is_bound_to_frozen_dataset_date_before_private_read(monkey
     with pytest.raises(KRXExpectedScopeBatchError, match="content-address path drift"):
         batch._verify_receipt(root="unused", relpath=relpath, requested_date="20150615",
             dataset_identifier="stk_bydd_trd", git_worktree="unused")
+
+
+@pytest.mark.parametrize("relpath", [
+    None, False, {}, 123,
+    "expected_scope/dates/20260927/nested/" + "a" * 64 + ".json",
+    "expected_scope/dates/20260927/../20260927/" + "a" * 64 + ".json",
+    "expected_scope/dates/20260926/" + "a" * 64 + ".json",
+])
+def test_completed_scope_noncanonical_directory_rejected_before_private_read(tmp_path, monkeypatch, relpath):
+    import research_v1_krx_expected_scope_batch as batch
+    def forbidden_read(*args, **kwargs):
+        pytest.fail("noncanonical scope path must be rejected before private read")
+    monkeypatch.setattr(batch, "read_private_json", forbidden_read)
+    with pytest.raises(batch.KRXExpectedScopeBatchError, match="private scope relpath"):
+        batch._verify_completed_date(
+            root=str(tmp_path / "private"), requested_date="20260927",
+            completion={"private_scope_relpath": relpath}, git_worktree=str(tmp_path / "repo"),
+        )
