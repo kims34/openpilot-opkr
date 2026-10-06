@@ -157,8 +157,32 @@ def _persist_response(
                 git_worktree=git_worktree,
             )
             existing = wrapped["value"]
-            if existing.get("request_metadata_sha256") != request_sha:
-                continue
+            if not isinstance(existing, dict) or existing_path.stem != _sha256(existing):
+                raise KRXExpectedScopeExecutorError("existing receipt content address mismatch")
+            required = {
+                "receipt_version": "2026-10-02.expected-scope-v2",
+                "contract_id": CONTRACT_ID,
+                "dataset_identifier": dataset_identifier,
+                "requested_date": requested_date,
+                "request_metadata_sha256": request_sha,
+            }
+            if any(existing.get(key) != value for key, value in required.items()):
+                raise KRXExpectedScopeExecutorError("existing receipt request metadata mismatch")
+            if existing.get("network_request_attempted") is not True or any(
+                existing.get(key) is not False for key in (
+                    "raw_rows_emitted", "source_gate_c_closed", "source_gate_d_closed",
+                    "source_gate_e_closed", "feature_performance_testing_authorized",
+                    "sealed_holdout_authorized", "live_trading_authorized",
+                )
+            ):
+                raise KRXExpectedScopeExecutorError("existing receipt authority metadata mismatch")
+            _ensure_fetch_result(FetchResult(
+                raw_bytes=result.raw_bytes,
+                response_frame=frame,
+                retrieved_at=existing.get("retrieved_at"),
+                transport_status=existing.get("transport_status"),
+                network_request_attempted=existing.get("network_request_attempted"),
+            ))
             if (
                 existing.get("response_payload_sha256") != payload_sha
                 or existing.get("response_schema_sha256") != schema_sha
@@ -167,6 +191,13 @@ def _persist_response(
                 raise KRXExpectedScopeExecutorError(
                     "same expected-scope request produced conflicting payload"
                 )
+            if (
+                type(existing.get("response_rows")) is not int
+                or existing["response_rows"] != len(frame)
+                or type(existing.get("raw_bytes_size")) is not int
+                or existing["raw_bytes_size"] != len(result.raw_bytes)
+            ):
+                raise KRXExpectedScopeExecutorError("existing receipt row/byte count mismatch")
             verify_raw_object(
                 root,
                 str(existing["raw_object_sha256"]),
