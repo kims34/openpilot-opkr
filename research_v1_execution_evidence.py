@@ -123,6 +123,12 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("execution evidence table is empty")
 
     x = table.copy()
+    if table["symbol"].map(lambda v: isinstance(v, (bool, np.bool_))).any():
+        raise ExecutionEvidenceError("symbol must not contain boolean values")
+    timestamp_fields = ["decision_date", "recommendation_at", "order_submitted_at", "first_fill_at", "final_fill_at", "ingested_at"]
+    for field in timestamp_fields:
+        if table[field].map(lambda v: isinstance(v, (bool, np.bool_))).any():
+            raise ExecutionEvidenceError(f"{field} must not contain boolean values")
     # Preserve original absence before coercion can erase malformed no-fill values.
     raw_no_fill_fields = x[[
         "first_fill_at", "final_fill_at", "avg_fill_price",
