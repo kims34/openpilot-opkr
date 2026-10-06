@@ -1,3 +1,24 @@
+# Fresh Alpha prospective protocol frozen — 2026-10-07 KST
+
+Disposition: **CONTINUE VALIDATION**.
+
+A future-only diagnostic protocol for the current frozen H5 Top3/NO_TRADE reference was preregistered without reusing historical outcomes.
+
+- First protocol commit / evidence freeze anchor: `5f19026e320ed8aec49f61b5273d03467d7437aa`
+- Freeze anchor time: `2026-10-06T22:54:26Z`
+- Machine-readable registration: `INDEXALERT_FRESH_ALPHA_PROSPECTIVE_PROTOCOL.json`
+- Validator: `research_v1_fresh_alpha_protocol.py`
+- Regression tests: `test_research_v1_fresh_alpha_protocol.py`
+- Integrity Action: `37543634567` SUCCESS at `c1fc1aa84c4401455516520478bb81f061bce05d`.
+
+Only decision timestamps strictly after the freeze anchor are eligible. Historical backfill/replay/reconstruction is forbidden. H5 / WF504-126-126 / purge5 / selection-conditioned q25 / normal-market overlay / 0..3 / strict original Top3 / no rank-4+ backfill / NO_TRADE / existing costs remain unchanged. First diagnostic checkpoint is after 126 completed KRX sessions; long-current-regime checkpoint is 504 sessions. No within-protocol threshold/model/feature/horizon/N/cost retuning is permitted.
+
+This is intentionally **not** formal Shadow S1, Fresh Confirmation S2, holdout evidence, or LIVE execution evidence because the current H5 reference is not an ACCEPTED_CHALLENGER. Passing future diagnostics cannot promote or mutate Core; it may only justify a separately preregistered next-stage decision. Project-v1 consumed failed-invalid holdout remains untouched by this work.
+
+No development/Android/server/operating code was changed.
+
+---
+
 # Research Value & Evidence Policy — 2026-10-07 KST
 
 ## Primary objective
