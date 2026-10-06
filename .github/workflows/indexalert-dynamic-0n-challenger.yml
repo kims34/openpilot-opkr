@@ -1,0 +1,47 @@
+name: IndexAlert Dynamic 0-N Challenger
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_dynamic_0n_challenger.py'
+      - '.github/workflows/indexalert-dynamic-0n-challenger.yml'
+  workflow_dispatch:
+jobs:
+  dynamic-0n:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Frozen integrity
+        run: |
+          python -m py_compile research_v1_dynamic_0n_challenger.py
+          python -m unittest test_research_v1_distributional_netev.py test_research_v1_market_eligibility.py test_research_v1_corporate_action_returns.py test_research_v1_pit_tax.py test_research_v1_supervised_cache.py
+      - name: Restore long-history source
+        uses: actions/cache@v4
+        with:
+          path: research_data/marcap_raw_long
+          key: marcap-long-v1-2015-06-15-2026-09-28
+      - name: Restore frozen supervised PIT labels
+        uses: actions/cache@v4
+        with:
+          path: research_data/pit_supervised_long_v3_ca_fp
+          key: pit-supervised-long-v3-ca-fp-2015-06-15-2026-09-28-h5-c3
+      - name: Build identical PIT panel
+        run: python research_v1_marcap.py --start 2015-06-15 --end 2026-09-28 --out research_data/marcap_kospi_pit_long --raw research_data/marcap_raw_long
+      - name: Run Dynamic 0-N diagnostic
+        run: python research_v1_dynamic_0n_challenger.py --cache research_data/marcap_kospi_pit_long --supervised-cache research_data/pit_supervised_long_v3_ca_fp --result-dir research_results/dynamic_0n_challenger
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: indexalert-dynamic-0n-challenger
+          path: research_results/dynamic_0n_challenger/
+          retention-days: 30
