@@ -11,7 +11,7 @@ import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
-from order_intent_journal import OrderJournalError, validate_stored_intent_row
+from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals
 
 
 def _require(condition):
@@ -81,13 +81,7 @@ def inspect_shadow_operational_status(path):
                     filled_quantity=filled,state=state)
         # A matching intent/snapshot pair cannot override immutable fills.
         # All reads share the existing read-only SQLite snapshot; no repair.
-        execution_totals = {key: 0 for key in intent_fills}
-        for key, execution_id, quantity in connection.execute(
-                'SELECT key,execution_id,quantity FROM executions'):
-            _require(key in intent_fills and type(execution_id) is str and bool(execution_id.strip()))
-            _require(type(quantity) is int and quantity > 0)
-            execution_totals[key] += quantity
-        _require(execution_totals == intent_fills)
+        validate_stored_execution_totals(connection, intent_fills)
         bindings = list(connection.execute('SELECT key,revision,epoch,payload FROM reconciled_snapshot_bindings'))
         if {row[0] for row in bindings} != set(known):
             blockers.add('ORDER_SNAPSHOT_SCOPE_CHANGED')

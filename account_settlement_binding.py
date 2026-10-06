@@ -12,7 +12,7 @@ from decimal import Decimal
 import json
 import re
 from kiwoom_account_settlement_evidence import AccountSettlementSnapshot
-from order_intent_journal import OrderIntentJournal, OrderJournalError
+from order_intent_journal import OrderIntentJournal, OrderJournalError, validate_stored_execution_totals
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 from early_live_admission_gate import EarlyLiveAdmissionEvidence, assess_early_live_readiness
 class SettlementBindingError(ValueError): pass
@@ -84,6 +84,11 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
             journal._require_batch_reconciled()
         except OrderJournalError:
             errors.add('INBOX_OR_BATCH_UNRESOLVED')
+        try:
+            intent_fills = dict(journal.db.execute('SELECT key,filled FROM intents'))
+            validate_stored_execution_totals(journal.db, intent_fills)
+        except OrderJournalError:
+            errors.add('ORDER_SNAPSHOT_CONTENT_CHANGED')
         tables = {r[0] for r in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         scope = (journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
                  if 'native_journal_scope' in tables else None)
