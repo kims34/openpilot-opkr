@@ -61,3 +61,38 @@ class DashboardTests(unittest.TestCase):
         report = json.loads(self.request('/api/status')[2])
         self.assertFalse(report['diagnostics_complete'])
         self.assertFalse(missing.exists())
+
+    def test_unconfigured_settlement_is_explicit_not_success(self):
+        report = json.loads(self.request('/api/settlement')[2])
+        self.assertFalse(report['assessment_completed'])
+        self.assertEqual(report['review_errors'],['SETTLEMENT_INPUT_NOT_CONFIGURED'])
+        self.assertFalse(report['real_orders_authorized'])
+
+    def test_bad_fixed_settlement_input_is_private_and_request_cannot_replace_it(self):
+        private = Path(self.tmp.name)/'private-settlement.json'
+        private.write_text('PRIVATE INVALID INPUT',encoding='utf-8')
+        self.server.settlement_input_path = private
+        status,headers,body = self.request('/api/settlement')
+        self.assertEqual(status,200)
+        self.assertFalse(json.loads(body)['assessment_completed'])
+        self.assertEqual(headers['Cache-Control'],'no-store')
+        self.assertNotIn('PRIVATE INVALID INPUT',body)
+        self.assertNotIn(str(private),body)
+        self.assertEqual(self.request('/api/settlement?input=another.json')[0],404)
+
+    def test_valid_artifact_endpoint_keeps_journal_unchanged_and_admissions_false(self):
+        import test_native_settlement_review_cli as fixtures
+        fixture = fixtures.NativeReviewCLITests()
+        fixture.setUp()
+        try:
+            self.server.journal_path = fixture.path
+            self.server.settlement_input_path = fixture.input
+            before = fixture.journal.shadow_control(),fixture.journal.db.total_changes
+            report = json.loads(self.request('/api/settlement')[2])
+            self.assertTrue(report['assessment_completed'])
+            self.assertTrue(report['cashflow_reconciliation']['cash_balance_matched'])
+            self.assertFalse(report['ready_for_final_user_authorization'])
+            self.assertFalse(report['real_orders_authorized'])
+            self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
+            self.assertNotIn('a'*64,json.dumps(report))
+        finally: fixture.tearDown()
