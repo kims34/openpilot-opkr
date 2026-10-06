@@ -166,14 +166,20 @@ def prepare_live_execution_sufficiency_evidence(
         raise ExecutionSufficiencyAssessmentError("observation_id must not be missing")
     if not table["observation_id"].map(lambda v: isinstance(v, str)).all():
         raise ExecutionSufficiencyAssessmentError("observation_id must be an original string value")
-    x["observation_id"] = table["observation_id"].astype(str).str.strip().to_numpy()
+    stripped_observation_id = table["observation_id"].str.strip()
+    if not stripped_observation_id.eq(table["observation_id"]).all():
+        raise ExecutionSufficiencyAssessmentError("observation_id must not contain surrounding whitespace")
+    x["observation_id"] = stripped_observation_id.to_numpy()
     if x["observation_id"].eq("").any() or x["observation_id"].duplicated().any():
         raise ExecutionSufficiencyAssessmentError("observation_id must be non-empty and unique")
 
     for field in ["decision_policy_id", "execution_policy_id"]:
         if not table[field].map(lambda v: isinstance(v, str)).all():
             raise ExecutionSufficiencyAssessmentError(f"{field} must be an original string value")
-        x[field] = table[field].str.strip().to_numpy()
+        stripped = table[field].str.strip()
+        if not stripped.eq(table[field]).all():
+            raise ExecutionSufficiencyAssessmentError(f"{field} must not contain surrounding whitespace")
+        x[field] = stripped.to_numpy()
         if x[field].eq("").any():
             raise ExecutionSufficiencyAssessmentError(f"{field} must be non-empty")
         expected = str(protocol[field]).strip()
