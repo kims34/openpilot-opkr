@@ -35,6 +35,26 @@ class ProtectedIntakeTests(unittest.TestCase):
     def append(self, row=None, day='2026-10-05'):
         return self.intake.append('receipt','intent',self.raw if row is None else row,trading_date=day)
 
+    def append_bound(self, row=None, day='2026-10-05'):
+        return self.intake.append_for_bound_order('receipt',self.raw if row is None else row,trading_date=day)
+
+    def test_bound_order_resolution_routes_without_caller_decision_key(self):
+        with patch('socket.socket',side_effect=AssertionError('network forbidden')):
+            out=self.append_bound(); self.inbox.replay_next()
+        self.assertTrue(out['broker_order_binding_resolved'])
+        self.assertTrue(out['raw_account_equality_checked'])
+        self.assertFalse(out['source_provenance_admitted'])
+        self.assertFalse(out['live_ordering_authorized'])
+        self.assertEqual(self.j.get('intent')['filled_quantity'],4)
+
+    def test_unknown_broker_order_cannot_be_routed_or_retained(self):
+        row=dict(self.raw); row['9203']='unbound-order'
+        with self.assertRaises(ProtectedIntakeError):
+            self.append_bound(row)
+        self.assertEqual(self.inbox.counts()['receipts'],0)
+        self.assertEqual(self.j.get('intent')['filled_quantity'],0)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
     def test_equal_protected_account_persists_only_normalized_row_and_keeps_admission_false(self):
         with patch('socket.socket',side_effect=AssertionError('network forbidden')):
             out=self.append();self.inbox.replay_next()

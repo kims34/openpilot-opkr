@@ -66,26 +66,55 @@ class KiwoomProtectedExecutionIntake:
         except NativeBridgeError:
             raise ProtectedIntakeError('PROTECTED_INTAKE_RECONCILIATION_REQUIRED') from None
 
+    def _normalize_locked(self, raw_event, trading_date):
+        require(type(raw_event) is dict and set(raw_event) <= RAW_FIELDS)
+        require(all(type(v) is str and len(v) <= 4096 for v in raw_event.values()))
+        require(self.binding.matches(raw_event.get('9201')))
+        require(self.binding.fingerprint == self.inbox.bridge.account)
+        self.inbox.bridge._context(trading_date)
+        # Official extra fields (administrator/screen/terminal/loan/quotes)
+        # are recognized but not needed for this mapping. Drop them before
+        # retention or local identity hashing.
+        selected = {k:v for k,v in raw_event.items() if k in NORMALIZER_FIELDS}
+        return normalize_realtime_order_fill_event(selected,
+            account_fingerprint=self.binding.fingerprint)
+
+    @staticmethod
+    def _report(result, *, bound_order_resolved=False):
+        return dict(result, mode='OFFLINE_PROTECTED_EXECUTION_INTAKE',
+            raw_account_equality_checked=True,
+            broker_order_binding_resolved=bound_order_resolved,
+            fingerprint_scheme='HMAC_SHA256_ACCOUNT_V1',
+            environment_origin_authenticated=False, trading_date_origin_attested=False)
+
     def append(self, receipt_id, key, raw_event, *, trading_date):
         # Raw equality checks complete before the account-free normalized row
         # may be retained. No raw event, account or exception text returned.
         try:
             with self.inbox.bridge._guard():
-                require(type(raw_event) is dict and set(raw_event) <= RAW_FIELDS)
-                require(all(type(v) is str and len(v) <= 4096 for v in raw_event.values()))
-                require(self.binding.matches(raw_event.get('9201')))
-                require(self.binding.fingerprint == self.inbox.bridge.account)
-                self.inbox.bridge._context(trading_date)
-                # Official extra fields (administrator/screen/terminal/loan/
-                # quotes) are recognized but not needed for this mapping. Drop
-                # them before retention or local identity hashing.
-                selected = {k:v for k,v in raw_event.items() if k in NORMALIZER_FIELDS}
-                row = normalize_realtime_order_fill_event(selected,
-                    account_fingerprint=self.binding.fingerprint)
+                row = self._normalize_locked(raw_event, trading_date)
             result = self.inbox.append(receipt_id, key, row, trading_date=trading_date)
         except (NativeBridgeError, ValueError, TypeError, UnicodeError):
             raise ProtectedIntakeError('PROTECTED_INTAKE_RECONCILIATION_REQUIRED') from None
-        return dict(result, mode='OFFLINE_PROTECTED_EXECUTION_INTAKE',
-            raw_account_equality_checked=True,
-            fingerprint_scheme='HMAC_SHA256_ACCOUNT_V1',
-            environment_origin_authenticated=False, trading_date_origin_attested=False)
+        return self._report(result)
+
+    def append_for_bound_order(self, receipt_id, raw_event, *, trading_date):
+        """Resolve the immutable local decision key from broker_order_id.
+
+        This avoids trusting a transport caller to route a broker execution to a
+        decision key. It authenticates neither broker source nor LIVE provenance.
+        """
+        try:
+            with self.inbox.bridge._guard():
+                row = self._normalize_locked(raw_event, trading_date)
+                broker_order_id = row.get('broker_order_id')
+                require(isinstance(broker_order_id, str) and bool(broker_order_id.strip()))
+                bound = self.inbox.journal.db.execute(
+                    'SELECT key FROM native_order_bindings WHERE broker_order_id=?',
+                    (broker_order_id,)).fetchone()
+                require(bound is not None and isinstance(bound[0], str) and bool(bound[0]))
+                key = bound[0]
+            result = self.inbox.append(receipt_id, key, row, trading_date=trading_date)
+        except (NativeBridgeError, ValueError, TypeError, UnicodeError):
+            raise ProtectedIntakeError('PROTECTED_INTAKE_RECONCILIATION_REQUIRED') from None
+        return self._report(result, bound_order_resolved=True)
