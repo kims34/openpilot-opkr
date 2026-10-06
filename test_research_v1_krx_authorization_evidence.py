@@ -167,3 +167,20 @@ def test_permitted_without_separate_approval_is_valid_for_tiny_probe():
     assert out["sufficient_for_tiny_probe_preflight"] is True
     assert out["reason_codes"] == []
     assert out["gate_a_status_ceiling"] == "PARTIAL"
+
+@pytest.mark.parametrize("value", [0, 1, 0.0, 1.0])
+def test_numeric_permission_cannot_be_normalized_into_boolean_authority(value):
+    with pytest.raises(KRXAuthorizationEvidenceError, match="must be boolean"):
+        _validate(_record(automated_collection_authorized=value))
+
+
+@pytest.mark.parametrize("value", [None, False, True])
+def test_canonical_permission_roundtrip_preserves_preflight_and_fingerprint(value):
+    original = _validate(_record(automated_collection_authorized=value))
+    replay = _validate(original["record"])
+    assert replay["record"]["automated_collection_authorized"] is value
+    assert replay["sufficient_for_tiny_probe_preflight"] == original["sufficient_for_tiny_probe_preflight"]
+    assert replay["record_fingerprint_sha256"] == original["record_fingerprint_sha256"]
+    assert replay["gate_a_status_ceiling"] == original["gate_a_status_ceiling"]
+    assert replay["bulk_historical_acquisition_authorized"] is False
+    assert replay["live_trading_authorized"] is False
