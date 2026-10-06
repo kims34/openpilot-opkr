@@ -285,6 +285,15 @@ class TestExecutionEvidence(unittest.TestCase):
                 with self.assertRaises(ExecutionEvidenceError):
                     validate_execution_observations(rows)
 
+    def test_side_and_source_reject_non_string_coercion(self):
+        for field, value in (("side", 1), ("source", 1)):
+            with self.subTest(field=field):
+                rows = self._rows()
+                rows[field] = rows[field].astype(object)
+                rows.at[0, field] = value
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
