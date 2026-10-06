@@ -94,14 +94,18 @@ def _sha256(value: Any) -> str:
 
 
 def _require_text(value: Any, field: str) -> str:
-    text = str(value).strip()
+    if not isinstance(value, str):
+        raise KRXAcquisitionReceiptError(f"{field} must be a non-empty string")
+    text = value.strip()
     if not text:
         raise KRXAcquisitionReceiptError(f"{field} must be non-empty")
     return text
 
 
 def _require_sha256(value: Any, field: str) -> str:
-    text = str(value).strip().lower()
+    if not isinstance(value, str):
+        raise KRXAcquisitionReceiptError(f"{field} must be a SHA256 fingerprint string")
+    text = value.strip().lower()
     if not SHA256_RE.fullmatch(text):
         raise KRXAcquisitionReceiptError(
             f"{field} must be a lowercase 64-hex SHA256 fingerprint"
