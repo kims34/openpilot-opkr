@@ -869,3 +869,8 @@ The frozen cleanup-price-context acquisition is **COMPLETE: 27/27, failed=0**. A
 
 ### Execution evidence input-integrity hardening — 2026-10-06
 PR126-133 completed symmetric development/research hardening for missing execution identities, fractional share quantities, boolean coercion into numeric/identity/timestamp fields, and timezone-naive/numeric/non-scalar timestamp inputs. Exact-head Actions passed before merge; frozen execution-sufficiency thresholds and provenance requirements are unchanged. This is structural validation only and does not close genuine LIVE provenance, empirical execution sufficiency, source/PIT/status-economics, successor/holdout, Shadow or live-order gates. Real-account ordering remains disabled.
+
+
+## 2026-10-06 — Decision-date and symbol identity hardening
+
+Continued execution-evidence audit after PR134-137. PR138/139 require `decision_date` to preserve an exact `YYYY-MM-DD` string rather than accepting full datetime/numeric coercion, protecting the frozen distinct-decision-date counting semantics. PR140/141 remove lossy symbol coercion (`5930.0` -> `005930`) and accept only original string/integer 1-6 digit codes before deterministic zero-padding. Exact-head Actions passed before all four merges. Current merge heads before this documentation update: development `55ee21f37e6acfc5b2c3470c87d07f657ab0da25`, research `ec7ee4cc7f059b84f920aa1309be790bdcc7c5e3`. No genuine LIVE evidence was created/admitted; frozen numerical thresholds/model/horizon/cost rules and consumed-invalid-v1 holdout disposition remain unchanged; real ordering remains disabled.
