@@ -147,6 +147,9 @@ def run_protected_capital_fault_replay():
                 expected_epoch=journal.shadow_control()['epoch'],
                 expected_capital_revision=1, expected_snapshot_revision=1)
             _require(allocator.state()['managed_reserve_krw'] == 3, 'fee buffer lost')
+            journal.trip_kill_switch()
+            _require(journal.shadow_control()['killed'], 'Kill did not latch before late fill')
+            completed.append('kill_latches_before_late_type00_fill')
             raw = dict(zip(('9201','9203','9001','900','901','902','904','907',
                 '908','909','910','911','914','915','913','919'),
                 ('synthetic-private-account','synthetic-order','005930','10','8','6','','2',
@@ -158,6 +161,7 @@ def run_protected_capital_fault_replay():
             raw = extracted[0]
             completed.append('type00_frame_extracts_before_protected_routing')
             intake.append_for_bound_order('synthetic-receipt', raw, trading_date=day)
+            _require(journal.shadow_control()['killed'], 'pending late fill cleared Kill latch')
             _denied(lambda: journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch']),
                 OrderJournalError)
             completed.append('protected_pending_late_fill_blocks_released_cash_reuse')
@@ -170,6 +174,7 @@ def run_protected_capital_fault_replay():
             inbox = KiwoomExecutionInbox(bridge)
             intake = KiwoomProtectedExecutionIntake(inbox, binding)
             _require(inbox.counts()['pending'] == 1, 'pending receipt lost on restart')
+            _require(journal.shadow_control()['killed'], 'restart cleared Kill latch')
             payload = journal.db.execute('SELECT payload FROM native_inbox_receipts').fetchone()[0]
             _require('synthetic-private-account' not in payload, 'raw account persisted')
             _denied(lambda: journal.enable_shadow(expected_epoch=journal.shadow_control()['epoch']),
@@ -180,6 +185,7 @@ def run_protected_capital_fault_replay():
             _require(journal.get('synthetic-decision')['filled_quantity'] == 4, 'fill quantity mismatch')
             _require(allocator.state()['managed_reserve_krw'] == 83, 'late principal not restored')
             _require(journal.shadow_control()['mode'] == 'MASTER_OFF', 'late fill enabled claims')
+            _require(journal.shadow_control()['killed'], 'late fill replay cleared Kill latch')
             completed.append('protected_native_late_fill_restores_principal_atomically')
 
             intake.append_for_bound_order('synthetic-redelivery', raw, trading_date=day)
