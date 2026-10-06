@@ -4,16 +4,42 @@
 # Output is booleans/counts only; never prints token, account, order IDs, symbols, prices, quantities or provider bodies.
 $ErrorActionPreference = "Stop"
 
+$script:TokenOk = $false
+$script:AccountEndpointOk = $false
+$script:WsConnected = $false
+$script:WsLoginOk = $false
+$script:Type00RegSent = $false
+$script:Type00RegAckOk = $false
+$script:DetailCode = $null
+$script:ErrorClass = $null
+
+function Set-SanitizedErrorDetail([object]$Message) {
+    $text = [string]$Message
+    $m = [regex]::Match($text, '(?:\[|CODE=)(\d{3,5})(?::|\b)')
+    if ($m.Success) {
+        $script:DetailCode = [int]$m.Groups[1].Value
+        switch ($script:DetailCode) {
+            { $_ -in 8001,8002,8011,8012 } { $script:ErrorClass = "INVALID_CREDENTIALS"; break }
+            { $_ -in 8003,8005,8006,8009,8015,8016 } { $script:ErrorClass = "INVALID_TOKEN"; break }
+            { $_ -in 8030,8031 } { $script:ErrorClass = "MODE_MISMATCH"; break }
+            { $_ -in 8010,8040,8050,8103 } { $script:ErrorClass = "DEVICE_AUTH"; break }
+            default { $script:ErrorClass = "UNCLASSIFIED" }
+        }
+    }
+}
+
 function Emit-Failure([string]$Stage, [int]$Code = -1) {
     @{
         STAGE=$Stage
         RETURN_CODE=$Code
-        TOKEN_OK=$false
-        ACCOUNT_ENDPOINT_OK=$false
-        WS_CONNECTED=$false
-        WS_LOGIN_OK=$false
-        TYPE00_REG_SENT=$false
-        TYPE00_REG_ACK_OK=$false
+        DETAIL_CODE=$script:DetailCode
+        ERROR_CLASS=$script:ErrorClass
+        TOKEN_OK=$script:TokenOk
+        ACCOUNT_ENDPOINT_OK=$script:AccountEndpointOk
+        WS_CONNECTED=$script:WsConnected
+        WS_LOGIN_OK=$script:WsLoginOk
+        TYPE00_REG_SENT=$script:Type00RegSent
+        TYPE00_REG_ACK_OK=$script:Type00RegAckOk
         TYPE00_EVENT_COUNT=0
         ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=0
         BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED=$false
@@ -32,7 +58,7 @@ function Send-Text([System.Net.WebSockets.ClientWebSocket]$Ws, [string]$Text) {
     $cts = New-Object System.Threading.CancellationTokenSource
     try {
         $cts.CancelAfter(5000)
-        $Ws.SendAsync($segment, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $cts.Token).GetAwaiter().GetResult()
+        $null = $Ws.SendAsync($segment, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, $cts.Token).GetAwaiter().GetResult()
     } finally {
         $cts.Dispose()
     }
@@ -94,6 +120,7 @@ try {
         Emit-Failure "TOKEN" ([int]$tokenResp.return_code)
     }
     $script:Token = [string]$tokenResp.token
+    $script:TokenOk = $true
 
     $headers = @{ authorization="Bearer $script:Token"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
     $accountResp = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
@@ -102,16 +129,18 @@ try {
         Emit-Failure "ACCOUNT" ([int]$accountObj.return_code)
     }
     $script:Account = [string]$accountObj.acctNo
+    $script:AccountEndpointOk = $true
 
     $ws = New-Object System.Net.WebSockets.ClientWebSocket
     $connectCts = New-Object System.Threading.CancellationTokenSource
     try {
         $connectCts.CancelAfter(10000)
-        $ws.ConnectAsync([Uri]"wss://api.kiwoom.com:10000/api/dostk/websocket", $connectCts.Token).GetAwaiter().GetResult()
+        $null = $ws.ConnectAsync([Uri]"wss://api.kiwoom.com:10000/api/dostk/websocket", $connectCts.Token).GetAwaiter().GetResult()
     } finally {
         $connectCts.Dispose()
     }
     if ($ws.State -ne [System.Net.WebSockets.WebSocketState]::Open) { Emit-Failure "WS_CONNECT" 0 }
+    $script:WsConnected = $true
 
     Send-Text -Ws $ws -Text (@{ trnm="LOGIN"; token=$script:Token } | ConvertTo-Json -Compress)
     $loginOk = $false
@@ -129,10 +158,11 @@ try {
         }
         $code = 0
         if ($null -ne $obj.return_code) { $code = [int]$obj.return_code }
-        if ($code -ne 0) { Emit-Failure "WS_LOGIN" $code }
+        if ($code -ne 0) { Set-SanitizedErrorDetail $obj.return_msg; Emit-Failure "WS_LOGIN" $code }
         $loginOk = $true
     }
     if (-not $loginOk) { Emit-Failure "WS_LOGIN_TIMEOUT" 0 }
+    $script:WsLoginOk = $true
 
     $reg = @{
         trnm="REG"
@@ -141,6 +171,7 @@ try {
         data=@(@{ item=@(); type=@("00") })
     } | ConvertTo-Json -Compress -Depth 5
     Send-Text -Ws $ws -Text $reg
+    $script:Type00RegSent = $true
 
     $regAck = $false
     $events = 0
@@ -169,8 +200,9 @@ try {
         if ($trnm -eq "REG") {
             $code = 0
             if ($null -ne $obj.return_code) { $code = [int]$obj.return_code }
-            if ($code -ne 0) { Emit-Failure "TYPE00_REG" $code }
+            if ($code -ne 0) { Set-SanitizedErrorDetail $obj.return_msg; Emit-Failure "TYPE00_REG" $code }
             $regAck = $true
+            $script:Type00RegAckOk = $true
             continue
         }
         if ($trnm -ne "REAL") { continue }
@@ -223,7 +255,7 @@ finally {
                 $closeCts = New-Object System.Threading.CancellationTokenSource
                 try {
                     $closeCts.CancelAfter(3000)
-                    $ws.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, "read-only smoke complete", $closeCts.Token).GetAwaiter().GetResult()
+                    $null = $ws.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, "read-only smoke complete", $closeCts.Token).GetAwaiter().GetResult()
                 } finally {
                     $closeCts.Dispose()
                 }
