@@ -114,6 +114,7 @@ class LateFillCapitalTests(unittest.TestCase):
     def test_restored_total_above_sqlite_sum_range_remains_exact_and_unusable(self):
         self.released()
         # Fixture individual reservations are representable; total exceeds int64.
+        self.j.register('other', symbol='OTHER', side='BUY', quantity=2**63-1)
         self.j.db.execute('INSERT INTO shadow_capital_reservations VALUES(?,?,?,?)',('other',1,0,2**63-1))
         self.late()
         self.assertEqual(self.a.state()['managed_reserve_krw'],2**63-1+83)
