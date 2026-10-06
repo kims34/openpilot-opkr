@@ -107,3 +107,33 @@ def test_scope_contract_fingerprint_is_required_and_key_preserving():
             date_column="event_date",
             fingerprint="bad",
         )
+
+
+@pytest.mark.parametrize("source", ["daily", "master"])
+@pytest.mark.parametrize("market", ["KOSDAQ", "KONEX", "", None, 1])
+def test_expected_scope_rejects_out_of_scope_or_ambiguous_market(source, market):
+    daily, master = _daily(), _master()
+    if source == "daily":
+        daily.loc[0, "MKT_NM"] = market
+    else:
+        master.loc[0, "MKT_TP_NM"] = market
+    with pytest.raises(KRXExpectedScopeMaterializerError, match="explicitly identify KOSPI"):
+        materialize_one_date(requested_date="20260923", daily_trade=daily, security_master=master)
+
+
+@pytest.mark.parametrize("fingerprint", [int("1" * 64), None, True, {}, []])
+def test_scope_binding_cannot_normalize_non_string_fingerprint_into_evidence(fingerprint):
+    frame = pd.DataFrame([{"event_date": "2026-09-23", "symbol": "005930", "isu_cd": "KR7005930003"}])
+    original = frame.copy(deep=True)
+    with pytest.raises(KRXExpectedScopeMaterializerError, match="SHA-256 string"):
+        bind_scope_contract_fingerprint(frame, date_column="event_date", fingerprint=fingerprint)
+    pd.testing.assert_frame_equal(frame, original)
+
+
+def test_scope_binding_preserves_valid_string_normalization_and_input():
+    frame = pd.DataFrame([{"event_date": "2026-09-23", "symbol": "005930", "isu_cd": "KR7005930003"}], index=[42])
+    original = frame.copy(deep=True)
+    bound = bind_scope_contract_fingerprint(frame, date_column="event_date", fingerprint="  " + "A"*64 + "  ")
+    assert bound["scope_contract_fingerprint_sha256"].tolist() == ["a"*64]
+    assert bound.index.tolist() == [42]
+    pd.testing.assert_frame_equal(frame, original)
