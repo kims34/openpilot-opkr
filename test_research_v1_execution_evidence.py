@@ -171,6 +171,40 @@ class TestExecutionEvidence(unittest.TestCase):
         with self.assertRaises(ExecutionEvidenceError):
             validate_execution_observations(rows)
 
+    def test_nonfinite_quantities_and_prices_are_rejected(self):
+        fields = (
+            "requested_qty", "filled_qty", "reference_open", "avg_fill_price",
+            "markout_5m_price", "markout_30m_price", "markout_close_price",
+        )
+        for field in fields:
+            for value in (np.inf, -np.inf):
+                with self.subTest(field=field, value=value):
+                    rows = self._rows()
+                    rows[field] = rows[field].astype(float)
+                    rows.loc[0, field] = value
+                    with self.assertRaises(ExecutionEvidenceError):
+                        validate_execution_observations(rows)
+
+    def test_infinite_full_fill_cannot_claim_live_structural_presence(self):
+        rows = self._rows()
+        for field in ("requested_qty", "filled_qty"):
+            rows[field] = rows[field].astype(float)
+            rows.loc[0, field] = np.inf
+        with self.assertRaises(ExecutionEvidenceError):
+            audit_execution_evidence(rows)
+
+    def test_no_fill_original_values_cannot_be_erased_by_coercion(self):
+        for field in (
+            "first_fill_at", "final_fill_at", "avg_fill_price",
+            "markout_5m_price", "markout_30m_price", "markout_close_price",
+        ):
+            with self.subTest(field=field):
+                rows = self._rows()
+                rows[field] = rows[field].astype(object)
+                rows.loc[2, field] = "malformed"
+                with self.assertRaises(ExecutionEvidenceError):
+                    validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
