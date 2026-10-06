@@ -59,7 +59,7 @@ field(byId('settlement'),'독립 계좌·결제 승인','미확인');
 if(data.diagnostics_complete&&(data.journal_epoch!==settlement.journal_epoch||data.snapshot_revision!==settlement.snapshot_revision))
 field(byId('settlement'),'조회 시점 차이','저널 상태가 변경됐습니다. 다시 조회하세요');
 }else field(byId('settlement'),'자료 점검',settlement.review_errors.includes('SETTLEMENT_INPUT_NOT_CONFIGURED')?'결제 자료 파일이 연결되지 않았습니다':'자료의 범위·형식·저널 연결을 확인하세요');
-}catch(error){byId('error').textContent='상태를 가져오지 못했습니다. 이전 상태는 표시하지 않습니다.';}finally{button.disabled=false;}}
+}catch(error){for(const id of ['state','blockers','capital','settlement'])byId(id).replaceChildren();byId('error').textContent='상태를 가져오지 못했습니다. 이전 상태는 표시하지 않습니다.';}finally{button.disabled=false;}}
 byId('refresh').addEventListener('click',refresh);refresh();'''
 
 
