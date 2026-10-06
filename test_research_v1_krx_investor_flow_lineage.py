@@ -184,3 +184,21 @@ def test_revalidation_preserves_input_extra_columns_and_index():
     assert out.index.tolist() == [42]
     assert out["caller_note"].tolist() == ["preserve"]
     assert out["eligible_at_decision"].tolist() == [True]
+
+
+@pytest.mark.parametrize("field", [
+    "source_contract_fingerprint_sha256",
+    "public_contract_evidence_fingerprint_sha256",
+])
+@pytest.mark.parametrize("value", [int("1" * 64), None, True, {}, []])
+def test_lineage_fingerprints_require_original_string_type(field, value):
+    with pytest.raises(KRXInvestorFlowLineageError, match="SHA256 string"):
+        normalise_investor_flow_lineage(pd.DataFrame([_valid_row(**{field: value})]))
+
+
+def test_source_fingerprint_string_normalization_preserves_existing_behavior():
+    lineage = normalise_investor_flow_lineage(pd.DataFrame([
+        _valid_row(source_contract_fingerprint_sha256="  " + SOURCE_FP.upper() + "  ")
+    ]))
+    assert lineage["source_contract_fingerprint_sha256"].tolist() == [SOURCE_FP]
+    assert audit_investor_flow_lineage(lineage)["feature_performance_testing_authorized"] is False
