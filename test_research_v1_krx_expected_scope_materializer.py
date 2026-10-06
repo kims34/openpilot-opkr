@@ -137,3 +137,24 @@ def test_scope_binding_preserves_valid_string_normalization_and_input():
     assert bound["scope_contract_fingerprint_sha256"].tolist() == ["a"*64]
     assert bound.index.tolist() == [42]
     pd.testing.assert_frame_equal(frame, original)
+
+
+def test_raw_openapi_empty_response_materializes_no_trading_date_or_keys():
+    from research_v1_krx_historical_fetchers import parse_openapi_raw
+    frame = parse_openapi_raw(b'{"OutBlock_1":[]}')
+    assert frame.empty and frame.columns.tolist() == []
+    out = materialize_one_date(requested_date="20260924", daily_trade=frame, security_master=None)
+    assert out["official_trading_date_observed"] is False
+    assert out["investor_expected_scope"].empty
+    assert out["status_expected_scope"].empty
+    safe = public_date_summary(out)
+    assert safe["source_gate_c_closed"] is False
+    assert safe["feature_performance_testing_authorized"] is False
+    assert safe["network_request_attempted"] is False
+
+
+def test_nonzero_rows_with_missing_schema_are_not_empty_date_evidence():
+    with pytest.raises(KRXExpectedScopeMaterializerError, match="missing columns"):
+        materialize_one_date(
+            requested_date="20260924", daily_trade=pd.DataFrame([{}]), security_master=None,
+        )
