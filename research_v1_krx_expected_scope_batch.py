@@ -258,8 +258,8 @@ def _verify_completed_date(
     if scope.get("requested_date") != requested_date:
         raise KRXExpectedScopeBatchError("private scope date drift")
 
-    daily_rel = str(scope.get("daily_receipt_relpath") or "")
-    if not daily_rel:
+    daily_rel = scope.get("daily_receipt_relpath")
+    if not isinstance(daily_rel, str) or not daily_rel:
         raise KRXExpectedScopeBatchError("daily receipt missing")
     daily = _verify_receipt(
         root=root,
@@ -271,17 +271,20 @@ def _verify_completed_date(
 
     master_rel = scope.get("master_receipt_relpath")
     master = None
-    if master_rel:
+    if len(daily["response_frame"]) == 0:
+        if master_rel is not None:
+            raise KRXExpectedScopeBatchError("empty daily response must not have a master receipt")
+    elif not isinstance(master_rel, str) or not master_rel:
+        raise KRXExpectedScopeBatchError(
+            "trading date completion missing same-date master receipt"
+        )
+    if master_rel is not None:
         master = _verify_receipt(
             root=root,
-            relpath=str(master_rel),
+            relpath=master_rel,
             requested_date=requested_date,
             dataset_identifier="stk_isu_base_info",
             git_worktree=git_worktree,
-        )
-    elif scope.get("official_trading_date_observed") is True:
-        raise KRXExpectedScopeBatchError(
-            "trading date completion missing same-date master receipt"
         )
 
     if _sha256(scope) != scope_digest:
