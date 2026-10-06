@@ -168,3 +168,12 @@ def test_ingestion_cannot_precede_order_outcome():
     rows.loc[0, "order_outcome_at"] = (ingested + pd.Timedelta(seconds=1)).isoformat()
     with pytest.raises(ExecutionSufficiencyAssessmentError, match="ingested_at cannot precede order_outcome_at"):
         prepare_live_execution_sufficiency_evidence(rows, p)
+
+
+def test_order_outcome_cannot_precede_final_fill():
+    p, _ = load_frozen_project_protocol(ROOT)
+    rows = _evidence(3)
+    final_fill = pd.Timestamp(rows.loc[0, "final_fill_at"])
+    rows.loc[0, "order_outcome_at"] = (final_fill - pd.Timedelta(seconds=1)).isoformat()
+    with pytest.raises(ExecutionSufficiencyAssessmentError, match="order_outcome_at cannot precede final_fill_at"):
+        prepare_live_execution_sufficiency_evidence(rows, p)
