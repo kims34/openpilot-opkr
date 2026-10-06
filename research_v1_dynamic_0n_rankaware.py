@@ -64,7 +64,7 @@ def walk(z,train_days=504,cal_days=126,test_days=126,purge_days=5):
             d["netev_low"]=float(r.pred_mean)+q["low"]
             d["netev_med"]=float(r.pred_mean)+q["med"]
             d["netev_high"]=float(r.pred_mean)+q["high"]
-            d["rank_cal_n"]=q["n"];rows.append(d)
+            d["rank_cal_n"]=q["n"]; d["score"]=d["netev_low"]; rows.append(d)
         if rows:outs.append(pd.DataFrame(rows))
         folds.append({"test_start":str(td[0].date()),"test_end":str(td[-1].date()),
                       "calibration_rank_bands":[[a,b,n] for a,b,n in BANDS],
