@@ -257,3 +257,28 @@ def test_rehashed_receipt_authorization_digest_must_be_a_string(value):
         verify_receipt_fingerprint(forged)
     with pytest.raises(KRXAcquisitionBatchError, match="authorization evidence fingerprint"):
         build_acquisition_batch_manifest([forged])
+
+@pytest.mark.parametrize("value", [
+    "not-a-time", "2026-10-01", "2026-10-01T12:00:00",
+    "NaT", "2026-13-01T12:00:00+09:00",
+])
+def test_rehashed_receipt_rejects_invalid_or_naive_retrieval_time(value):
+    from research_v1_krx_acquisition_batch import RECEIPT_BODY_FIELDS, verify_receipt_fingerprint
+    from research_v1_krx_acquisition_receipt import _sha256
+    forged = copy.deepcopy(_receipt())
+    forged["retrieved_at"] = value
+    forged["receipt_fingerprint_sha256"] = _sha256(
+        {name: forged[name] for name in RECEIPT_BODY_FIELDS}
+    )
+    with pytest.raises(KRXAcquisitionBatchError, match="retrieved_at"):
+        verify_receipt_fingerprint(forged)
+    with pytest.raises(KRXAcquisitionBatchError, match="retrieved_at"):
+        build_acquisition_batch_manifest([forged])
+
+
+@pytest.mark.parametrize("value", ["2026-10-01T12:00:00+09:00", "2026-10-01T03:00:00Z"])
+def test_timezone_aware_retrieval_preserves_receipt_fingerprint(value):
+    from research_v1_krx_acquisition_batch import verify_receipt_fingerprint
+    receipt = _receipt(retrieved_at=value)
+    assert verify_receipt_fingerprint(receipt) == receipt["receipt_fingerprint_sha256"]
+    assert build_acquisition_batch_manifest([receipt])["receipt_count"] == 1
