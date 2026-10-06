@@ -184,3 +184,30 @@ def test_canonical_permission_roundtrip_preserves_preflight_and_fingerprint(valu
     assert replay["gate_a_status_ceiling"] == original["gate_a_status_ceiling"]
     assert replay["bulk_historical_acquisition_authorized"] is False
     assert replay["live_trading_authorized"] is False
+
+
+@pytest.mark.parametrize("field", [
+    "schema_version", "evidence_reference", "issuer", "source_family",
+    "access_route", "intended_use_scope", "approval_state", "scope_statement",
+    "evidence_document_sha256", "captured_at",
+])
+@pytest.mark.parametrize("value", [1, True, [], {}, None])
+def test_structured_authorization_text_fields_reject_original_non_strings(field, value):
+    with pytest.raises(KRXAuthorizationEvidenceError, match=field):
+        _validate(_record(**{field: value}))
+
+
+def test_numeric_64_digit_document_hash_cannot_be_stringified_into_evidence():
+    with pytest.raises(KRXAuthorizationEvidenceError, match="evidence_document_sha256"):
+        _validate(_record(evidence_document_sha256=int("1" * 64)))
+
+
+def test_valid_original_string_metadata_keeps_roundtrip_fingerprint_and_ceiling():
+    record = _record(evidence_document_sha256="A" * 64)
+    first = _validate(record)
+    replay = _validate(first["record"])
+    assert first["record"]["evidence_document_sha256"] == "a" * 64
+    assert replay["record_fingerprint_sha256"] == first["record_fingerprint_sha256"]
+    assert first["gate_a_status_ceiling"] == replay["gate_a_status_ceiling"] == "PARTIAL"
+    assert first["bulk_historical_acquisition_authorized"] is False
+    assert first["live_trading_authorized"] is False
