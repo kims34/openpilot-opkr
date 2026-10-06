@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -8,6 +9,7 @@ import unittest
 import zipfile
 
 from build_shadow_operator_toolkit import ARTIFACTS,build_operator_toolkit
+import test_native_settlement_review_cli as native_fixtures
 
 
 class OperatorToolkitTests(unittest.TestCase):
@@ -53,6 +55,46 @@ class OperatorToolkitTests(unittest.TestCase):
         first = build_operator_toolkit(self.root,self.output,source_commit=self.commit)
         second = build_operator_toolkit(self.root,self.output,source_commit=self.commit)
         self.assertEqual(first['archive_sha256'],second['archive_sha256'])
+
+    def test_extracted_native_review_runs_outside_repo_and_preserves_journal(self):
+        fixture = native_fixtures.NativeReviewCLITests()
+        fixture.setUp()
+        try:
+            build_operator_toolkit(self.root,self.output,source_commit=self.commit)
+            target = Path(self.tmp.name)/'native-package'
+            with zipfile.ZipFile(self.output) as archive: archive.extractall(target)
+            env = dict(os.environ)
+            env.pop('PYTHONPATH',None)
+            before = fixture.journal.shadow_control(),fixture.journal.db.total_changes
+
+            def review():
+                run = subprocess.run([sys.executable,str(target/'native_settlement_review_cli.py'),
+                    '--journal',str(fixture.path),'--input',str(fixture.input)],
+                    cwd=target,env=env,capture_output=True,text=True,encoding='utf-8',timeout=20)
+                self.assertEqual(run.stderr,'')
+                for private in ('a'*64,'synthetic-review',str(fixture.path),str(fixture.input)):
+                    self.assertNotIn(private,run.stdout)
+                return run.returncode,json.loads(run.stdout)
+
+            code,result = review()
+            self.assertEqual(code,0)
+            self.assertTrue(result['assessment_completed'])
+            self.assertTrue(result['cashflow_reconciliation']['cash_balance_matched'])
+            self.assertFalse(result['cashflow_reconciliation']['settlement_fields_consistent'])
+            self.assertFalse(result['ready_for_final_user_authorization'])
+            self.assertFalse(result['real_orders_authorized'])
+
+            for text in ('8,9,99','8_999','８９９９'):
+                fixture.payload['closing']['body']['entr'] = text
+                fixture.write()
+                code,result = review()
+                self.assertEqual(code,2)
+                self.assertFalse(result['assessment_completed'])
+                self.assertNotIn('cashflow_reconciliation',result)
+                self.assertFalse(result['real_orders_authorized'])
+            self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
+        finally:
+            fixture.tearDown()
 
     def test_missing_source_or_invalid_commit_fails_before_artifact(self):
         with self.assertRaises(ValueError):
