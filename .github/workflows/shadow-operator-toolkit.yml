@@ -1,0 +1,42 @@
+name: Shadow Operator Toolkit
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - '*settlement*.py'
+      - '*cashflow*.py'
+      - shadow_operational_*.py
+      - order_intent_journal.py
+      - order_snapshot_reconciliation.py
+      - indexalert_automation_control.py
+      - shadow_capital_allocator.py
+      - early_live_admission_gate.py
+      - build_shadow_operator_toolkit.py
+      - test_shadow_operator_toolkit.py
+      - INDEXALERT_OPERATOR_TOOLKIT_README.md
+      - operator-toolkit-requirements.txt
+      - .github/workflows/shadow-operator-toolkit.yml
+permissions:
+  contents: read
+jobs:
+  toolkit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest -v test_shadow_operator_toolkit
+      - name: Build exact feature-head archive
+        env:
+          TOOLKIT_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python build_shadow_operator_toolkit.py --source-commit "$TOOLKIT_SOURCE_SHA" --output dist/indexalert-shadow-operator.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-shadow-operator-${{ github.event.pull_request.head.sha }}
+          path: dist/indexalert-shadow-operator.zip
+          if-no-files-found: error
+          retention-days: 14
