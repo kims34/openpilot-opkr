@@ -130,6 +130,9 @@ def audit_exact_status_economics(
     if expected_positions is None or economics_evidence is None:
         raise KRXStatusEconomicsError("expected_positions and economics_evidence are required")
 
+    if type(expected_scope_attested) is not bool:
+        raise KRXStatusEconomicsError("expected_scope_attested must be an exact boolean")
+
     _require_columns(
         expected_positions,
         [
@@ -323,7 +326,7 @@ def audit_exact_status_economics(
     pit_invalid = _unique(pit_invalid)
     contract_mismatch = _unique(contract_mismatch)
 
-    exact_ready = bool(
+    structural_ready = bool(
         expected_scope_attested
         and not missing_ids
         and not extra_ids
@@ -334,6 +337,11 @@ def audit_exact_status_economics(
         and not pit_invalid
         and not contract_mismatch
     )
+    # Evidence class labels and opaque references establish only structural
+    # eligibility. This module does not authenticate broker/KRX/issuer source
+    # artifacts or bind them row-by-row to independently admitted provenance.
+    independent_economics_provenance_admission_verified = False
+    exact_ready = False
 
     audit = StatusEconomicsAudit(
         expected_affected_positions=len(expected_ids),
@@ -356,7 +364,12 @@ def audit_exact_status_economics(
     )
     out = asdict(audit)
     out.update({
-        "expected_scope_attested": bool(expected_scope_attested),
+        "expected_scope_attested": expected_scope_attested,
+        "structural_status_economics_satisfied": structural_ready,
+        "independent_economics_provenance_admission_verified": independent_economics_provenance_admission_verified,
+        "blocking_conditions": (
+            [] if structural_ready else ["STATUS_ECONOMICS_STRUCTURAL_EVIDENCE_INCOMPLETE"]
+        ) + ["INDEPENDENT_ECONOMICS_PROVENANCE_ADMISSION_NOT_IMPLEMENTED"],
         "missing_position_ids_sample": missing_ids[:10],
         "extra_position_ids_sample": extra_ids[:10],
         "accounting_mismatch_position_ids_sample": accounting_mismatch[:10],
@@ -369,7 +382,9 @@ def audit_exact_status_economics(
         "guardrail": (
             "Exact status economics requires independently attested affected-position scope and full quantity closure with verified evidence. "
             "Daily OHLC, modelled/synthetic fills, Shadow/Paper evidence and unresolved quantities cannot close this gate. "
-            "Even exact_status_economics_ready=true is only one Final-Judge input and grants no promotion, holdout or live authority."
+            "Accepted evidence-class labels and opaque references are structural fields, not authenticity credentials. "
+            "Until an independent provenance admission binds the exact broker/KRX/issuer artifacts, exact_status_economics_ready remains false. "
+            "Even a future exact_status_economics_ready=true is only one Final-Judge input and grants no promotion, holdout or live authority."
         ),
     })
     return out
