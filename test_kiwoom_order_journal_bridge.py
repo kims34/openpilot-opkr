@@ -186,6 +186,25 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(self.j.get('d1')['filled_quantity'],0)
         self.assert_blocked()
 
+    def test_rest_matching_corrupt_total_cannot_override_retained_executions(self):
+        self.apply()
+        self.j.db.execute('UPDATE intents SET filled=3')
+        for api in ('kt00007', 'ka10076'):
+            with self.subTest(api=api), self.assertRaises(NativeBridgeError):
+                self.b.verify_rest_snapshot('d1', rest(api,filled=3,remaining=7), trading_date=DAY)
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_fill_bindings').fetchone(), (1,))
+        self.assert_blocked()
+
+    def test_rest_matching_order_cannot_ignore_orphan_execution(self):
+        self.apply()
+        self.j.db.execute("INSERT INTO executions VALUES('orphan','orphan-fill',1)")
+        for api in ('kt00007', 'ka10076'):
+            with self.subTest(api=api), self.assertRaises(NativeBridgeError):
+                self.b.verify_rest_snapshot('d1', rest(api), trading_date=DAY)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (2,))
+        self.assert_blocked()
+
     def test_cumulative_unit_ambiguity_or_missing_unit_fields_fail_closed(self):
         for change in ({'unit_fill_qty':'2'},{'unit_fill_qty':''},{'unit_fill_price':''},
             {'unit_fill_price':'101'}):
