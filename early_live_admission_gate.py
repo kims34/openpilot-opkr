@@ -26,6 +26,20 @@ class EarlyLiveAdmissionEvidence:
 def assess_early_live_readiness(evidence: EarlyLiveAdmissionEvidence) -> dict:
     if type(evidence) is not EarlyLiveAdmissionEvidence:
         raise ValueError("canonical EarlyLiveAdmissionEvidence required")
+    boolean_fields = (
+        evidence.successor_alpha_admitted,
+        evidence.source_pit_status_economics_pass,
+        evidence.exact_policy_shadow_complete,
+        evidence.broker_native_provenance_capture_tested,
+        evidence.durable_order_journal_tested,
+        evidence.account_settlement_tested,
+        evidence.pretrade_risk_tested,
+        evidence.cancel_reconnect_kill_tested,
+        evidence.numeric_capital_limits_frozen,
+    )
+    if any(type(v) is not bool for v in boolean_fields):
+        raise ValueError("gate admissions must be exact booleans")
+
     counts = (evidence.unresolved_reconciliation_count, evidence.risk_breach_count)
     if any(type(v) is not int or v < 0 for v in counts):
         raise ValueError("counts must be nonnegative integers")
