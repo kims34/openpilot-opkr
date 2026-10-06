@@ -10,6 +10,7 @@ from pathlib import Path
 import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
+from order_snapshot_reconciliation import FIELDS, STATUS
 
 
 def _require(condition):
@@ -20,6 +21,13 @@ def _require(condition):
 def _amount(value):
     _require(type(value) is int and value >= 0)
     return value
+
+
+def _load_json(value):
+    try:
+        return json.loads(value)
+    except RecursionError:
+        _require(False)  # Corrupt stored JSON must not expose a traceback.
 
 
 def inspect_shadow_operational_status(path):
@@ -54,6 +62,40 @@ def inspect_shadow_operational_status(path):
             AND NOT EXISTS(SELECT 1 FROM reconciled_snapshot_bindings b
                 WHERE b.key=i.key AND b.revision=? AND b.epoch=?)''',(revision,epoch)).fetchone()[0]
         if stale: blockers.add('ORDER_SNAPSHOT_BINDING_STALE')
+        # Epoch/revision agreement alone does not establish that the stored
+        # snapshot still describes the current journal orders.
+        names = ('key','broker_order_id','symbol','side','quantity','filled_quantity','state')
+        known = {}
+        for key,payload,broker_id,filled,state in connection.execute(
+                "SELECT key,payload,broker_order_id,filled,state FROM intents WHERE state!='INTENT_CREATED'"):
+            identity = _load_json(payload)
+            _require(type(identity) is dict and set(identity)=={'symbol','side','quantity'})
+            _require(type(identity['symbol']) is str and bool(identity['symbol'].strip())
+                and identity['side'] in ('BUY','SELL') and type(identity['quantity']) is int
+                and identity['quantity']>0)
+            known[key] = dict(key=key,broker_order_id=broker_id,
+                symbol=identity['symbol'],side=identity['side'],quantity=identity['quantity'],
+                filled_quantity=filled,state=state)
+        bindings = list(connection.execute('SELECT key,revision,epoch,payload FROM reconciled_snapshot_bindings'))
+        if {row[0] for row in bindings} != set(known):
+            blockers.add('ORDER_SNAPSHOT_SCOPE_CHANGED')
+        changed = 0
+        for key,binding_revision,binding_epoch,payload in bindings:
+            if key not in known or (binding_revision,binding_epoch) != (revision,epoch):
+                continue  # Scope/stale diagnostics remain separate.
+            try:
+                source = _load_json(payload)
+                _require(type(source) is dict and set(source)==FIELDS)
+                _require(type(source['quantity']) is int and source['quantity']>0
+                    and type(source['filled_quantity']) is int
+                    and 0<=source['filled_quantity']<=source['quantity'])
+                _require(type(source['status']) is str and source['status'] in STATUS)
+                _require(all(source[field]==known[key][field] for field in names[:-1]))
+                state = ('PARTIALLY_FILLED' if source['filled_quantity'] else 'ACKNOWLEDGED') if source['status']=='OPEN' else source['status']
+                _require(state==known[key]['state'])
+            except (ValueError, TypeError, KeyError):
+                changed += 1
+        if changed: blockers.add('ORDER_SNAPSHOT_CONTENT_CHANGED')
         pending, conflicts = 0,0
         inbox_tables = {'native_inbox_receipts','native_inbox_attempts','native_inbox_conflicts'}
         if tables & inbox_tables:
@@ -72,7 +114,7 @@ def inspect_shadow_operational_status(path):
             _require(row is not None)
             capital_revision, enabled, maximum, raw_baseline = row
             _amount(capital_revision); _require(enabled in (0,1)); _amount(maximum)
-            values = json.loads(raw_baseline)
+            values = _load_json(raw_baseline)
             _require(type(values) is list and len(values)==4)
             baseline = AutomationCapitalState(*values).committed_automation_capital_krw()
             AutomationUserControls(bool(enabled),maximum).validate()
@@ -90,6 +132,7 @@ def inspect_shadow_operational_status(path):
             journal_epoch=epoch, shadow_mode=mode, kill_latched=bool(killed),
             snapshot_revision=revision, intent_state_counts=states,
             unresolved_intent_count=unresolved, stale_binding_count=stale,
+            changed_binding_count=changed,
             native_inbox_pending_count=pending, native_inbox_conflict_count=conflicts,
             capital=capital)
     except (sqlite3.Error, ValueError, TypeError, OSError):

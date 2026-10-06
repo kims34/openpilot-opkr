@@ -125,3 +125,24 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(errors.getvalue(),'')
             self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
         finally: fixture.tearDown()
+
+    def test_changed_snapshot_is_visible_through_readonly_status_endpoint(self):
+        from test_shadow_operational_status import OperationalStatusTests
+        fixture = OperationalStatusTests()
+        fixture.setUp()
+        try:
+            row = fixture.reconcile_claimed()
+            fixture.journal.db.execute('UPDATE reconciled_snapshot_bindings SET payload=?',
+                (json.dumps({**row,'filled_quantity':1}),))
+            self.server.journal_path = fixture.path
+            before = fixture.journal.shadow_control(),fixture.journal.db.total_changes
+            status,headers,body = self.request('/api/status')
+            report = json.loads(body)
+            self.assertEqual(status,200)
+            self.assertTrue(report['diagnostics_complete'])
+            self.assertIn('ORDER_SNAPSHOT_CONTENT_CHANGED',report['local_blockers'])
+            self.assertEqual(report['changed_binding_count'],1)
+            self.assertFalse(report['real_orders_authorized'])
+            self.assertNotIn('PRIVATE',body)
+            self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
+        finally: fixture.tearDown()
