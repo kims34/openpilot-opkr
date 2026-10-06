@@ -75,8 +75,15 @@ class KiwoomExecutionInbox:
 
     @staticmethod
     def _decode_payload(payload):
+        def unique_fields(pairs):
+            fields = {}
+            for key, value in pairs:
+                require(key not in fields)
+                fields[key] = value
+            return fields
+
         try:
-            return json.loads(payload)
+            return json.loads(payload, object_pairs_hook=unique_fields)
         except RecursionError:
             # Decoder exhaustion is corrupt durable input, not permission to
             # bypass the existing private rollback/quarantine boundary.

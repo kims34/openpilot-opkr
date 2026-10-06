@@ -217,6 +217,18 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
         self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
 
+    def test_restart_rejects_duplicate_receipt_fields_even_when_last_value_matches(self):
+        self.append(); self.i.replay_next()
+        payload = '{"fill_price":"999",' + json.dumps(fixtures.fill())[1:]
+        self.j.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        self.j.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?',
+            (payload, hashlib.sha256(payload.encode()).hexdigest()))
+        with self.assertRaises(ExecutionInboxError):
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 4)
+
     def test_restart_after_later_fill_preserves_processed_receipt_identity(self):
         self.append(); self.i.replay_next()
         self.append('second', fixtures.fill('fill-2', 6, 0, '091502')); self.i.replay_next()
