@@ -1520,3 +1520,19 @@ resolve actual archival source/availability and official terminal-economics evid
 through permitted evidence sources. Only independently preregistered research can
 create an accepted successor; do not weaken frozen sample or promotion gates.
 Current real-trading-ready=false. These are evidence/authority blockers, not CI failures.
+
+
+## 2026-10-07 — PR210/PR211 continuation
+Current development HEAD after merge is `a6987541f90a9c17474653de9008728bac46cfe4` on `index-alert-position-regen-fix-v1`.
+
+Completed after PR209:
+- PR210 merged as `0fc1424e01ab81226c319806a2652a2196fb70a3`: durable normalized execution inbox now audits persisted receipts, conflicts and attempt references on restart. Corruption of an already-processed receipt fails closed, stops Shadow, blocks reconciliation and preserves RECONCILIATION_REQUIRED state. PR and push journal CI passed.
+- PR211 merged as `a6987541f90a9c17474653de9008728bac46cfe4`: protected type00 intake can resolve the local decision key from the immutable broker-order binding instead of trusting a caller-supplied decision key. Unknown broker orders fail closed before receipt retention. PR settlement/journal CI passed; push journal CI was running at handoff write time and must be rechecked on continuation.
+
+External/user-operated state:
+- `KIWOOM_REAL_ACCOUNT_SCOPE_READONLY_v1` remains completed with redacted evidence.
+- `KIWOOM_REAL_TYPE00_READONLY_v1` remains intentionally deferred until the owner can run the prepared local read-only smoke. This does not block independent engineering.
+
+Authority remains unchanged: ORDERING=DISABLED; real orders, funds movement and broker permission changes are not authorized. Neither PR210 nor PR211 grants genuine LIVE provenance, settlement admission, Shadow admission, sealed-holdout authority or research promotion.
+
+Next independent work order remains: complete restart/Kill/reconnect fault handling and conservative capital/reconciliation integrity; then review read-only broker transport/runtime composition. Re-fetch GitHub HEAD/open PR/Actions before any continuation.
