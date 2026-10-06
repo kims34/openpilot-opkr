@@ -1,0 +1,24 @@
+name: Kiwoom Type00 Protected Intake
+on:
+  pull_request:
+    paths:
+      - 'kiwoom_type00_frame_extractor.py'
+      - 'test_kiwoom_type00_frame_extractor.py'
+      - 'test_kiwoom_type00_protected_intake_integration.py'
+      - '.github/workflows/kiwoom-type00-protected-intake.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'kiwoom_type00_frame_extractor.py'
+      - 'test_kiwoom_type00_frame_extractor.py'
+      - 'test_kiwoom_type00_protected_intake_integration.py'
+      - '.github/workflows/kiwoom-type00-protected-intake.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest -v test_kiwoom_type00_frame_extractor.py test_kiwoom_type00_protected_intake_integration.py test_kiwoom_protected_execution_intake.py
