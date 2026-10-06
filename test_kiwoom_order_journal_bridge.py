@@ -1,4 +1,6 @@
 import copy
+import hashlib
+import json
 from decimal import localcontext
 import sqlite3
 import tempfile
@@ -174,6 +176,46 @@ class BridgeTests(unittest.TestCase):
             KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
         self.assertEqual(self.j.db.execute("SELECT native_side FROM native_order_bindings WHERE key='d2'").fetchone(), ('',))
         self.assert_blocked()
+
+    def test_restart_rejects_orphan_fill_binding_without_receipt_reference(self):
+        self.j.db.execute("INSERT INTO native_fill_bindings VALUES('d1','orphan-fill','bad','{}')")
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_fill_bindings').fetchone(), (1,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (0,))
+        self.assert_blocked()
+
+    def test_restart_rejects_changed_fill_binding_digest_without_receipt_reference(self):
+        self.apply()
+        self.j.db.execute('DROP TRIGGER native_fill_bindings_update_immutable')
+        self.j.db.execute("UPDATE native_fill_bindings SET digest='bad'")
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+        self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+        self.assertEqual(self.j.db.execute('SELECT digest FROM native_fill_bindings').fetchone(), ('bad',))
+        self.assert_blocked()
+
+    def test_restart_rejects_rehashed_malformed_fill_binding_without_receipt(self):
+        self.apply()
+        material = json.loads(self.j.db.execute('SELECT payload FROM native_fill_bindings').fetchone()[0])
+        malformed = [json.dumps(dict(material,quantity=3),sort_keys=True,separators=(',',':')),
+            json.dumps(dict(material,remaining=9),sort_keys=True,separators=(',',':')),
+            '{"price":"999",' + json.dumps(material,sort_keys=True,separators=(',',':'))[1:],
+            '[' * 20000 + '0' + ']' * 20000]
+        self.j.db.execute('DROP TRIGGER native_fill_bindings_update_immutable')
+        for payload in malformed:
+            with self.subTest(kind='deep' if len(payload)>1000 else 'object'):
+                self.j.db.execute('UPDATE native_fill_bindings SET payload=?,digest=?',
+                    (payload,hashlib.sha256(payload.encode()).hexdigest()))
+                with self.assertRaises(NativeBridgeError) as raised:
+                    KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY)
+                self.assertEqual(str(raised.exception), 'NATIVE_BRIDGE_RECONCILIATION_REQUIRED')
+                self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+                self.assert_blocked()
 
     def test_session_cannot_switch_account_or_trading_day_after_restart(self):
         for account,day in (('sha256:'+'b'*64,DAY),(ACCOUNT,'2026-10-06')):

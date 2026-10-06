@@ -9,7 +9,7 @@ from unittest.mock import patch
 import test_kiwoom_order_journal_bridge as fixtures
 import test_shadow_principal_release as capital_fixtures
 from kiwoom_execution_inbox import KiwoomExecutionInbox, ExecutionInboxError
-from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
+from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge, NativeBridgeError
 from order_intent_journal import OrderIntentJournal, OrderJournalError
 from order_snapshot_reconciliation import reconcile_order_snapshot_batch
 
@@ -153,9 +153,8 @@ class InboxTests(unittest.TestCase):
         finally:
             raw.close()
         self.j = OrderIntentJournal(self.path)
-        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
-        with self.assertRaises(ExecutionInboxError):
-            KiwoomExecutionInbox(self.b)
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
 
@@ -169,9 +168,8 @@ class InboxTests(unittest.TestCase):
         finally:
             raw.close()
         self.j = OrderIntentJournal(self.path)
-        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
-        with self.assertRaises(ExecutionInboxError):
-            KiwoomExecutionInbox(self.b)
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
 
@@ -210,9 +208,8 @@ class InboxTests(unittest.TestCase):
         finally:
             raw.close()
         self.j = OrderIntentJournal(self.path)
-        self.b = KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
-        with self.assertRaises(ExecutionInboxError):
-            KiwoomExecutionInbox(self.b)
+        with self.assertRaises(NativeBridgeError):
+            KiwoomOrderJournalBridge(self.j, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
         self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
