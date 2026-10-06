@@ -44,7 +44,7 @@ const script=fs.readFileSync(0,'utf8');
  }
 })().catch(e=>{process.stderr.write(String(e));process.exitCode=1});
 """
-        result = subprocess.run([node, "-e", harness], input=script, text=True, capture_output=True)
+        result = subprocess.run([node, "-e", harness], input=script, text=True, encoding="utf-8", capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
 if __name__ == "__main__":
