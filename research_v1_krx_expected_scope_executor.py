@@ -184,13 +184,6 @@ def _persist_response(
                 network_request_attempted=existing.get("network_request_attempted"),
             ))
             if (
-                type(existing.get("response_rows")) is not int
-                or existing["response_rows"] != len(frame)
-                or type(existing.get("raw_bytes_size")) is not int
-                or existing["raw_bytes_size"] != len(result.raw_bytes)
-            ):
-                raise KRXExpectedScopeExecutorError("existing receipt row/byte count mismatch")
-            if (
                 existing.get("response_payload_sha256") != payload_sha
                 or existing.get("response_schema_sha256") != schema_sha
                 or existing.get("raw_object_sha256") != raw["raw_object_sha256"]
@@ -198,6 +191,13 @@ def _persist_response(
                 raise KRXExpectedScopeExecutorError(
                     "same expected-scope request produced conflicting payload"
                 )
+            if (
+                type(existing.get("response_rows")) is not int
+                or existing["response_rows"] != len(frame)
+                or type(existing.get("raw_bytes_size")) is not int
+                or existing["raw_bytes_size"] != len(result.raw_bytes)
+            ):
+                raise KRXExpectedScopeExecutorError("existing receipt row/byte count mismatch")
             verify_raw_object(
                 root,
                 str(existing["raw_object_sha256"]),
