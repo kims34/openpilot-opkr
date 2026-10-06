@@ -104,7 +104,9 @@ def _aware_timestamp(value, field: str) -> pd.Timestamp:
 
 
 def _sha256(value, field: str) -> str:
-    text = str(value).strip().lower()
+    if not isinstance(value, str):
+        raise KRXInvestorFlowLineageError(f"{field} must be a SHA256 string")
+    text = value.strip().lower()
     if not SHA256_RE.fullmatch(text):
         raise KRXInvestorFlowLineageError(
             f"{field} must be a lowercase 64-hex SHA256 fingerprint"
