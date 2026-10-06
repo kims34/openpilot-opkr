@@ -108,3 +108,16 @@ class NativeReviewCLITests(unittest.TestCase):
             self.assertNotIn('cashflow_reconciliation', result)
             self.assertFalse(result['real_orders_authorized'])
             self.assertEqual(before, (self.journal.shadow_control(), self.journal.db.total_changes))
+
+    def test_decoder_depth_exhaustion_is_private_and_precedes_journal_open(self):
+        self.input.write_text('['*20000+'0'+']'*20000,encoding='utf-8')
+        before = self.journal.shadow_control(),self.journal.db.total_changes
+        output = io.StringIO()
+        with patch.object(OrderIntentJournal,'open_readonly',side_effect=AssertionError('must not open')), redirect_stdout(output):
+            self.assertEqual(main(['--input',str(self.input),'--journal',str(self.path)]),2)
+        result = json.loads(output.getvalue())
+        self.assertFalse(result['assessment_completed'])
+        self.assertFalse(result['real_orders_authorized'])
+        self.assertNotIn('cashflow_reconciliation',result)
+        self.assertNotIn(str(self.input),output.getvalue())
+        self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))

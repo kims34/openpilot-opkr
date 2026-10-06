@@ -1,4 +1,6 @@
 import http.client
+from contextlib import redirect_stderr
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -95,4 +97,31 @@ class DashboardTests(unittest.TestCase):
             self.assertFalse(report['real_orders_authorized'])
             self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
             self.assertNotIn('a'*64,json.dumps(report))
+        finally: fixture.tearDown()
+
+    def test_deep_json_is_blocked_without_request_traceback_and_recovers(self):
+        import test_native_settlement_review_cli as fixtures
+        fixture = fixtures.NativeReviewCLITests()
+        fixture.setUp()
+        try:
+            self.server.journal_path = fixture.path
+            self.server.settlement_input_path = fixture.input
+            before = fixture.journal.shadow_control(),fixture.journal.db.total_changes
+            fixture.input.write_text('['*20000+'0'+']'*20000,encoding='utf-8')
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                status,headers,body = self.request('/api/settlement')
+                self.assertEqual(status,200)
+                self.assertEqual(headers['Cache-Control'],'no-store')
+                blocked = json.loads(body)
+                self.assertFalse(blocked['assessment_completed'])
+                self.assertFalse(blocked['real_orders_authorized'])
+                self.assertNotIn(str(fixture.input),body)
+                fixture.write()
+                recovered = json.loads(self.request('/api/settlement')[2])
+                self.assertTrue(recovered['assessment_completed'])
+                self.assertFalse(recovered['ready_for_final_user_authorization'])
+                self.assertFalse(recovered['real_orders_authorized'])
+            self.assertEqual(errors.getvalue(),'')
+            self.assertEqual(before,(fixture.journal.shadow_control(),fixture.journal.db.total_changes))
         finally: fixture.tearDown()
