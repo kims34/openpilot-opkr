@@ -7,7 +7,7 @@ No network, credential discovery, real-account query, sender or LIVE admission.
 """
 import hashlib
 import hmac
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from kiwoom_order_journal_bridge import NativeBridgeError, require
 from research_v1_kiwoom_native_execution import normalize_realtime_order_fill_event
@@ -94,8 +94,14 @@ class KiwoomProtectedExecutionIntake:
             return True
         for field in ('fill_price','fill_qty','unit_fill_price','unit_fill_qty'):
             value = str(row.get(field, '')).strip()
-            if value and Decimal(value.replace(',', '')) != 0:
-                return True
+            if value:
+                try:
+                    amount = Decimal(value.replace(',', ''))
+                except InvalidOperation:
+                    require(False)
+                require(amount.is_finite())
+                if amount != 0:
+                    return True
         return False
 
     def _resolve_bound_key_locked(self, row, supplied_key=None):
