@@ -1,6 +1,6 @@
 # IndexAlert Work 연속연구 B — 2026-10-06
 
-사용자의 “이어서 계속” 요청에 따라 이전 11개를 재조사하지 않고 4개 신규 정보경로를 조사·근거확인·판정했다. 모두 IDEA 수준의 정성 연구이며 실제 preregistered/evaluated trial, accepted challenger, 승격/적용 권한이 아니다. 신규 ID 문자열 부재를 독립성의 증거로 취급하지 않는다.
+사용자의 “이어서 계속” 요청에 따라 이전 11개를 재조사하지 않고 5개 신규 정보경로를 조사·근거확인·판정했다. 모두 IDEA 수준의 정성 연구이며 실제 preregistered/evaluated trial, accepted challenger, 승격/적용 권한이 아니다. 신규 ID 문자열 부재를 독립성의 증거로 취급하지 않는다.
 
 ## 실제 복구
 
@@ -36,7 +36,7 @@ Veto만으로 최근 Core admissions=0을 해결할 수 없다. 정상 supplier 
 
 성능검증이 나중에 실제 허가된 경우 immutable 독립 사전등록→PIT/leakage validation→frozen costs→기존 Walk-Forward→Purged validation→CPCV60 순서를 유지해야 한다. NO_TRADE/빈 slot/no-backfill 포함 동일 결정날짜 정책의 incremental economics, NetEV/PF/date-cluster uncertainty/MDD/ES95/99/recent stability/coverage/capacity를 평가하고 이전 episode 정보 조건부로 중복을 제거한다. 문헌을 보고 임의 신규 수치 threshold·기간·subtype을 확정하지 않았다.
 
-## 4개 신규 조사
+## 5개 신규 조사
 
 ### SUPPLIER-FINANCE-DEPENDENCY-PIT-H5-01 — 공급자금융 의존·만기구조
 
@@ -166,6 +166,38 @@ Veto만으로 최근 Core admissions=0을 해결할 수 없다. 정상 supplier 
 
 15. **최종 판정·다음 gate:** HOLD. 다음 gate: 공식 최초 version·상품/원산지/기업별 적용·사전 issuer exposure audit. 최종 관세 발표 하나만으로 generic veto를 채택하지 않는다.
 
+### FIRST-PRODUCT-MARKETING-APPROVAL-PIT-H5-01 — 최초 제품 판매승인 × 사전 경제적 권리
+
+1. **아이디어/가설:** 신약/바이오제품이 해당 시장에서 처음 실제 판매승인을 받은 공개 상태전환을, 승인 전에 공개된 상장 issuer의 직접 개발/판매/royalty 권리와 연결하는 신규정보 가설. 임상성공·신청접수·보충적 적응증 변경은 최초 판매승인과 구분한다.
+
+2. **독립성·중복성:** 독립 DMC 임상중단, 허가철회, license-out 종료의 손실 veto와 다른 판매기회 개시다. 그렇다고 반대부호로 단순 뒤집지 않는다. 기존 clinical/license/regulatory product episode에 연결해 선행정보 조건부 approval의 추가정보만 후보로 남긴다.
+
+3. **공식·학술·시장 근거:** FDA lazertinib 승인 원문 [S10], FDA database 범위 설명 [S11], 유한양행2018년 계약 공지 [S12]를 실제 확인했다. 한국시장 FDA approval 사건연구2024의 저자기관 초록 [S13]은 정보효과를 보고한다. Timing misspecification 논문2018 [S14] 검색 발췌는 승인일만 쓰면 post-event 효과가 잘못 잡힐 수 있음을 반증한다. 한국 H5 frozen cost-adjusted OOS 성과의 근거는 아니다.
+
+4. **PIT availability:** FDA approval_date와 최초 시장 공개 available_at은 다르다. regulator/sponsor/국내 issuer 중 실제 최초 공개를 timezone-aware로 확인하고 다음 frozen eligible decision만 허용.
+
+5. **Look-ahead/leakage:** FDA 현재 페이지·후일 roundup의 날짜를 최초 공개 timestamp로 가정하지 않는다. 사후 상업매출/royalty receipt/최종 amended license ownership을 이전 승인일에 소급하지 않는다.
+
+6. **Historical data 현실성:** FDA 장기 승인/approval letter archive 경로와 국내 issuer 사전 경제권리 원문 존재는 확인했다. 전체 최초승인 census·정확한 공개시각·common-stock PIT mapping·source admission은 미완료.
+
+7. **IndexAlert H5 연결:** H5 mean/rank에 새 긍정적 정보가 될 가능성은 있으나 gap 이후 next eligible open에서 모두 가격반영됐을 수 있다. fixed Core admission을 우회하는 BUY overlay가 아니다.
+
+8. **NetEV/PF mechanism:** regulatory risk 감소와 합법적 판매 opportunity set의 실제 개시가 사전 cashflow 기대에 추가 정보를 줄 가설. 기존 phase3/접수/예정일 기대에 따라 surprise 작거나 sell-the-news 가능. NetEV/PF 개선값 미측정.
+
+9. **MDD·ES95/99:** 긍정사건이라도 approval-day price gap 뒤 reversals·상업화 실패·고비용 체결로 MDD/ES가 악화될 수 있다. 특정 winner FDA case로 tail 효과를 주장하지 않는다.
+
+10. **Date-cluster uncertainty:** 동일 product/combination/권리자들·일괄 승인일 cluster를 연결. 여러 국내 권리자 또는 여러 국가 승인 건수를 독립 Alpha/관측치로 부풀리지 않는다.
+
+11. **Recent-period stability:** review regime/제약품목 구조/외국 regulator 협력/국내 price-limit·시장 구성 변화에 따라 최근 효과가 다를 수 있다. 한국 논문의 더 강한 subgroup을 골라 사후 q25/시장/업종을 바꾸지 않는다.
+
+12. **Coverage/capacity:** FDA sponsor 이름이 국내 issuer와 다를 수 있다. 실제 사전 권리 mapping이 중요하며 제품명을 관련 테마주 모두에 전파하지 않는다. 보통주 originalTop3 overlap·비용/유동성/capacity 미측정.
+
+13. **Core 대비 incremental effect:** 선행 임상결과·license 계약·신청접수·priority-review·공개 예정일을 조건으로 최초판매 승인만의 marginal 정보 확인이 필요하다. 문헌의 event-day CAR를 next-open H5 NetEV로 대체하지 않는다.
+
+14. **Event family/episode:** license/임상→신청→심사/선행결정→최초 실제판매승인→launch/매출→후속 국가/적응증/취소를 product episode로 연결. approval와 발생한 동일 milestone payment를 독립 Alpha로 중복 계산하지 않는다.
+
+15. **최종 판정·다음 gate:** 조건부 사전등록 후보. 장기 official source 경로·실제 사전 권리계약·한국시장 정보효과 문헌이 있어 source audit 가치가 있다. 다음 gate: 최초 공개시각·사전권리·신규승인 taxonomy·전체기간 coverage·episode audit; 그 전 trial/성과시험/BUY 적용 불가. 고우선으로 승격하지 않는다.
+
 ## 이번 실행 판정표
 
 예상효과 열은 미측정 mechanism 가설이다.
@@ -176,8 +208,9 @@ Veto만으로 최근 Core admissions=0을 해결할 수 없다. 정상 supplier 
 | 대주 금융기관 정리 | 고객파산과 다른 credit supply | 공식 정리+사전 관계 | lender/commitment mapping 부재 | 조건부 | 조달제약 정보 추가 | 대출승계·대체조달·희소성 | HOLD | 관계·승계·실제 제약 |
 | 법인세 확정×과세노출 | fiscal cashflow; 기존 earnings 조건부 | 확정 원문+사전 노출 | 기업 세부담 mapping 어려움 | 약함/조건부 | after-tax 정보 추가 | 선반영·세율≠실제 부담 | HOLD | 확정법 version·issuer 노출 |
 | 수출관세 확정×원산지 | 무역가격경로; 규제 episode 연결 | 최초조치+제품/원산지 | 적용기업 mapping·일부 원문 미확보 | 조건부 | margin/경쟁력 정보 추가 | 잠정조치 선반영·부호 혼합 | HOLD | 원문·HS/origin·노출 |
+| 최초 제품 판매승인×권리 | 신규판매 transition; 임상/licence 조건부 | 최초공개+사전권리 | FDA archive·실제 계약 확인; PIT chain 미완료 | 조건부 | 판매기회/위험해소 정보 | 공개시각·gap·선반영·권리오연결 | 조건부 사전등록 후보 | 시각·권리·전체승인 census |
 
-4개 모두 HOLD. 고우선/조건부 사전등록 후보·검증된 유망 Alpha·accepted challenger 추가 없음. 이 결과도 연구이력에 보존하며 신규아이디어로 재탕하지 않는다. 이전 11개 결과 및 사용자 인계 exclusion inventory는 이전 연구문서에 그대로 남아 있고 이번에 부활/승격하지 않았다.
+HOLD4개, 조건부 사전등록 후보1개. 고우선 후보·검증된 유망 Alpha·accepted challenger 추가 없음. 이 결과도 연구이력에 보존하며 신규아이디어로 재탕하지 않는다. 이전 11개 결과 및 사용자 인계 exclusion inventory는 이전 연구문서에 그대로 남아 있고 이번에 부활/승격하지 않았다.
 
 ## 공식·학술 근거 및 실제 접근 범위
 
@@ -190,6 +223,12 @@ Veto만으로 최근 Core admissions=0을 해결할 수 없다. 정상 supplier 
 - [S7] [EU Commission2026-01-12 BEV price undertaking 안내](https://policy.trade.ec.europa.eu/news/commission-issues-guidance-document-submission-price-undertaking-offers-battery-electric-vehicles-2026-01-12_en) — 공개 본문 확인; 2024 최초 공개시각 입증은 아님.
 - [S8] [Federal Reserve Flaaen/Pierce(2019) 연구](https://www.federalreserve.gov/econres/feds/disentangling-the-effects-of-the-2018-2019-tariffs-on-a-globally-connected-us-manufacturing-sector.htm) — 공개 초록 확인.
 - [S9] [EU definitive-duty 원문번호2024/2754](https://eur-lex.europa.eu/eli/reg_impl/2024/2754/oj/eng/pdf) — 공식 검색 색인 확인; 원문 bot-wall로 열리지 않음.
+
+- [S10] [FDA lazertinib 최초 승인 원문](https://www.fda.gov/drugs/resources-information-approved-drugs/fda-approves-lazertinib-amivantamab-vmjw-non-small-lung-cancer) — 공개 본문 확인; 승인 날짜≠최초 공개시각.
+- [S11] [FDA Drugs@FDA 공식 history 범위](https://www.fda.gov/drugs/drug-approvals-and-databases/about-drugsfda) — 공개 본문 확인; 전체 vintage admission 아님.
+- [S12] [유한양행2018-11-05 사전 license/공동개발 경제권리 공지](https://yuhan.co.kr/Customer/NoticeList/index.asp?Cateid=221&IDX=29482&mode=view&p=1&sm=-1) — 실제 공식 원문 확인; 현재 조회된 page로 전체 PIT chain 통과 선언하지 않음.
+- [S13] [송유정/이상근/박소라2024 한국 FDA approval 사건연구](https://scholarworks.sogang.ac.kr/item/83d93ebe-e223-4ca2-9d56-e90906de437d) — 저자 소속기관 공개초록 확인; H5 비용차감 성과가 아님.
+- [S14] [FDA approval announcements: Attention-grabbing or event-day misspecification? (2018)](https://www.sciencedirect.com/science/article/pii/S0165176518302477) — publisher 검색 색인 발췌 확인; 원문 open 실패.
 
 ## 실제 실행 여부
 
