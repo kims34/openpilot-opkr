@@ -59,11 +59,15 @@ class JournalSettlementBindingTests(unittest.TestCase):
                           side='BUY',quantity=10,filled_quantity=0,status='OPEN')]
         self.reconcile()
 
-    def test_reconciled_scope_only_reaches_authorization_boundary(self):
+    def test_reconciled_scope_reaches_structural_boundary_only(self):
         self.acknowledged()
         before = self.journal.db.total_changes
         out = self.assess()
-        self.assertTrue(out['ready_for_final_user_authorization'])
+        self.assertTrue(out['account_settlement_admitted'])
+        self.assertTrue(out['preconditions_structurally_satisfied'])
+        self.assertFalse(out['independent_gate_admission_verified'])
+        self.assertFalse(out['ready_for_final_user_authorization'])
+        self.assertIn('INDEPENDENT_GATE_ADMISSION_NOT_IMPLEMENTED', out['blockers'])
         self.assertEqual(self.journal.db.total_changes, before)
         for flag in ('real_orders_authorized','early_live_authorized','broker_request_sent',
                      'genuine_live_provenance_verified','funds_movement_authorized'):
