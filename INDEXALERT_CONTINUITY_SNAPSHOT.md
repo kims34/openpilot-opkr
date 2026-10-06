@@ -828,3 +828,8 @@ Follow-up audit after the coercion batch found evidence-time ordering gaps. PR13
 ## 2026-10-06 — Decision-date and symbol identity hardening
 
 Continued execution-evidence audit after PR134-137. PR138/139 require `decision_date` to preserve an exact `YYYY-MM-DD` string rather than accepting full datetime/numeric coercion, protecting the frozen distinct-decision-date counting semantics. PR140/141 remove lossy symbol coercion (`5930.0` -> `005930`) and accept only original string/integer 1-6 digit codes before deterministic zero-padding. Exact-head Actions passed before all four merges. Current merge heads before this documentation update: development `55ee21f37e6acfc5b2c3470c87d07f657ab0da25`, research `ec7ee4cc7f059b84f920aa1309be790bdcc7c5e3`. No genuine LIVE evidence was created/admitted; frozen numerical thresholds/model/horizon/cost rules and consumed-invalid-v1 holdout disposition remain unchanged; real ordering remains disabled.
+
+
+## 2026-10-06 — Execution identifier type preservation
+
+PR142/143 completed symmetric development/research hardening for `observation_id`, `decision_policy_id`, and `execution_policy_id`: these identity-bearing fields must now be original strings and can no longer be silently manufactured by `astype(str)` from numeric/object scalars. Exact-head execution-integrity Actions passed before both merges. Merge heads before this documentation update: development `13e2a38cc5d27e9028faf46d79bff8331d250032`, research `a37de259325902db08bd324a2855f0433bd23d8f`. This remains structural/fail-closed validation only; no genuine LIVE evidence, frozen threshold/model change, holdout access, or broker authority was introduced.
