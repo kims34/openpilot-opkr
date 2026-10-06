@@ -173,6 +173,9 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("requested_qty must be positive")
     if x["filled_qty"].isna().any() or (x["filled_qty"] < 0).any():
         raise ExecutionEvidenceError("filled_qty must be non-negative")
+    for c in ["requested_qty", "filled_qty"]:
+        if not x[c].map(lambda v: float(v).is_integer()).all():
+            raise ExecutionEvidenceError(f"{c} must contain whole-share integer quantities")
     if (x["filled_qty"] > x["requested_qty"]).any():
         raise ExecutionEvidenceError("filled_qty cannot exceed requested_qty")
     if x["reference_open"].isna().any() or (x["reference_open"] <= 0).any():
