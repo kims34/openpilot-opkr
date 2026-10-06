@@ -56,7 +56,9 @@ def _canonical_sha256(value: Any) -> str:
 
 
 def _nonempty(value: Any, field: str, *, max_len: int = 1000) -> str:
-    text = str(value or "").strip()
+    if not isinstance(value, str):
+        raise KRXAuthorizationEvidenceError(f"{field} must be a non-empty string")
+    text = value.strip()
     if not text:
         raise KRXAuthorizationEvidenceError(f"{field} must be non-empty")
     if len(text) > max_len:
