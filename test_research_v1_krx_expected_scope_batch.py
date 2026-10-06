@@ -31,9 +31,8 @@ def _env(tmp_path, *, consent=True):
 def _empty_fetcher(calls):
     def fetcher(**kwargs):
         calls.append((kwargs["endpoint"], dict(kwargs["params"])))
-        frame = pd.DataFrame(
-            columns=["BAS_DD","ISU_CD","ISU_NM","MKT_NM"]
-        )
+        from research_v1_krx_historical_fetchers import parse_openapi_raw
+        frame = parse_openapi_raw(b'{"OutBlock_1":[]}')
         return FetchResult(
             raw_bytes=b'{"OutBlock_1":[]}',
             response_frame=frame,
@@ -249,4 +248,60 @@ def test_paused_resume_verifies_completion_beyond_first_missing_date(tmp_path):
             environment=_env(tmp_path), git_worktree=str(worktree),
             fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0,
         )
+    assert calls == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("response_rows", 1),
+    ("response_payload_sha256", "f" * 64),
+    ("response_schema_sha256", "f" * 64),
+])
+def test_resume_rejects_receipt_metadata_inconsistent_with_verified_raw(tmp_path, field, value):
+    from research_v1_krx_private_store import write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    scope_path = next((root / "expected_scope/dates/20150615").glob("*.json"))
+    scope = json.loads(scope_path.read_text())
+    receipt_rel = scope["daily_receipt_relpath"]
+    receipt = json.loads((root / receipt_rel).read_text())
+    receipt[field] = value
+    write_private_json(root, receipt_rel, receipt, git_worktree=worktree)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="verified raw response"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []
+
+
+@pytest.mark.parametrize("key,date_key", [
+    ("investor_expected_scope", "event_date"),
+    ("status_expected_scope", "snapshot_date"),
+])
+def test_resume_rejects_self_rehashed_scope_keys_absent_from_verified_raw(tmp_path, key, date_key):
+    import research_v1_krx_expected_scope_batch as batch
+    from research_v1_krx_private_store import write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    state_rel = "expected_scope/batch_state-v1.json"
+    state = json.loads((root / state_rel).read_text())
+    old_scope_rel = state["completed"]["20150615"]["private_scope_relpath"]
+    scope = json.loads((root / old_scope_rel).read_text())
+    scope[key] = [{date_key: "2015-06-15", "symbol": "005930", "isu_cd": "KR7005930003"}]
+    new_rel = f"expected_scope/dates/20150615/{batch._sha256(scope)}.json"
+    written = write_private_json(root, new_rel, scope, git_worktree=worktree)
+    state["completed"]["20150615"]["private_scope_relpath"] = new_rel
+    state["completed"]["20150615"]["private_scope_metadata_sha256"] = written["metadata_sha256"]
+    write_private_json(root, state_rel, state, git_worktree=worktree)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="keys differ from verified raw"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
     assert calls == []
