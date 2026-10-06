@@ -1,3 +1,18 @@
+# Dynamic 0-N Challenger diagnostic — 2026-10-06T13:34Z / 22:34 KST
+
+Experiment EXP-2026-10-06-DYNAMIC-0N-01; exact GitHub Actions run 37471348547 SUCCESS at f8596644b3740eb796c48ca6f5dbea4b792c8e9c. Developmental/preregistered diagnostic only; sealed holdout untouched; Champion/Core unchanged. Same H5 model/features/PIT universe/labels/costs, 504/126/126 anchored WF, purge=5, q25 admission netev_low>0, participation=0.0005 and commission assumptions were reused. B/C are diagnostic fixed-N comparators only.
+
+A frozen 0-3 reference: 278 trades, mean NetReturn +1.1501%, PF 1.5461, date-cluster 95% LCB -0.4890%, portfolio total +16.386%, MDD -24.390%, daily ES95 -0.8560%, daily ES99 -3.0488%, Sharpe 0.230, turnover proxy 0.1321 entries/OOS session.
+B fixed 0-5 diagnostic: 429 trades, mean +1.1644%, PF 1.5485, LCB -0.3042%, total +21.443%, MDD -22.793%, daily ES95 -0.7954%, daily ES99 -2.9112%, Sharpe 0.289, turnover 0.2038. This modestly improves several aggregate/tail metrics versus A but LCB remains below zero; not a strategy candidate.
+C fixed 0-10 diagnostic: 786 trades, mean +0.9286%, PF 1.4528, LCB -0.4280%, total +13.825%, MDD -20.440%, daily ES95 -0.7437%, daily ES99 -2.7372%, Sharpe 0.219, turnover 0.3734. More names reduce portfolio tail/MDD under equal-cohort sizing but dilute mean/PF and total return versus B/A.
+D economic-gate Dynamic 0-N upper-bound diagnostic: no tuned N cap; every conservative-positive normal-market candidate may proceed to existing stateful selector. 8,734 trades, 138 trade days, mean +1.6090%, PF 1.6090, LCB -0.0776%, total +18.939%, MDD -14.824%, daily ES95 -0.5567%, daily ES99 -2.0121%, Sharpe 0.359. However trade-level ES95 worsened to -26.741% (A -20.638%), turnover rose to 4.1492 entries/OOS session, mean selected N on trade days 63.29, p50 32.5, p90 96.5, max 719, and max concurrent positions 733. This is operationally unrealistic for small capital and is not a valid final Dynamic policy.
+
+Important selection-bias finding: conservative-positive candidates occurred on only 143 OOS days but averaged 184.9 candidates on those days (p50 172, max 723; >3 on 138 days). The current q25 residual calibration is explicitly conditioned on calibration Top3. Therefore applying its netev_low to rank 4+ is an extrapolation with winner's-curse/rank-calibration risk; D's apparent improvement cannot establish superiority. Full marginal-utility selection additionally lacks official PIT sector/factor mapping, PIT candidate-to-portfolio dependence/correlation contract, KRW capital/minimum-order/round-lot constraints, empirical partial-fill/slippage/impact uncertainty and empirical capacity/live execution evidence.
+
+Current verdict: ② DYNAMIC 0-N CHALLENGER ADDITIONAL VALIDATION WORTHWHILE. Evidence is insufficient for formal Challenger promotion and does not prove Top3 optimal. Next valid research should preregister rank-aware/selection-aware uncertainty for ranks beyond 3 and a capital-aware marginal-utility gate before observing outcomes; then rerun identical WF/Purged/CPCV without opening sealed holdout. No development/Champion/operating-code change is authorized now.
+
+---
+
 # Native cash grouping correction — 2026-10-06T12:59Z / 21:59 KST
 
 Latest implementation HEAD index-alert-position-regen-fix-v1 e392fcb8a9e63851414fb1bffb00fa12f0eb3e43; research index-alert-research-v1 827497a1bc3422ff53df19ed68824fd172f73e00; server index-alert-server 8a68b01bca5d551d083ccda263df38d86fa54166. This record follows these refs; resolve current refs for self/documentation SHAs. Project INCOMPLETE / real_orders_authorized=false. Three consecutive fixes/integration cycles PR177–179 completed after the previous PR173–176 work, without treating each successful CI/merge as completion.
