@@ -7,6 +7,8 @@ from account_cashflow_reconciliation import bind_reconciled_cashflow_to_early_li
 from kiwoom_account_settlement_evidence import normalize_kt00001_settlement
 from kiwoom_settlement_history import normalize_kt00015_history
 from native_cashflow_binding import reconcile_reviewed_native_history
+from native_cashflow_review_manifest import load_native_cashflow_review_manifest
+from account_cashflow_reconciliation import require
 
 
 def assess_native_settlement_readiness(base, settlement, journal, *,
@@ -15,13 +17,17 @@ def assess_native_settlement_readiness(base, settlement, journal, *,
         history_pages, history_request, history_captured_at, reviews,
         expected_epoch, expected_snapshot_revision,
         complete_settlement_scope_attested=False, signed_net_mapping_attested=False,
-        fees_tax_completeness_attested=False, exclusions_attested=False):
+        fees_tax_completeness_attested=False, exclusions_attested=False,
+        review_manifest=None):
     opening = normalize_kt00001_settlement(opening_body,
         account_fingerprint=account_fingerprint, captured_at=opening_captured_at)
     closing = normalize_kt00001_settlement(closing_body,
         account_fingerprint=account_fingerprint, captured_at=closing_captured_at)
     batch = normalize_kt00015_history(history_pages, request=history_request,
         account_fingerprint=account_fingerprint, captured_at=history_captured_at)
+    if review_manifest is not None:
+        require(reviews is None)  # Exactly one review input; no fallback/merge.
+        reviews = load_native_cashflow_review_manifest(review_manifest, batch)
     cashflow = reconcile_reviewed_native_history(batch, opening, closing, reviews,
         complete_settlement_scope_attested=complete_settlement_scope_attested,
         signed_net_mapping_attested=signed_net_mapping_attested,
