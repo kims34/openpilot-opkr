@@ -312,6 +312,37 @@
         37393665836
       ],
       "behaviour": "USB physical-handset public APK signing inspection, no install/uninstall/appdata/keys/account/broker access;4 actual synthetic tests on feature and canonical."
+    },
+    {
+      "pr": 50,
+      "head": "7c980a996686311cb09b42d635837af970419f28",
+      "merge": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
+      "ci_success": [
+        37394296777,
+        37394389229
+      ],
+      "behaviour": "Required research preregistration timestamp exact aware ISO datetime syntax;31 actual governance tests, no chronology/admission/criteria authority."
+    },
+    {
+      "pr": 51,
+      "head": "883d8650239b161827b866604c679bed97a9e9a3",
+      "merge": "f0d72597caf6a04666186ebf5461a57b68c4ca8f",
+      "ci_success": [
+        37394305040,
+        37394392746
+      ],
+      "behaviour": "Equivalent development required timestamp safety,31 actual feature/postmerge governance tests, no actual trial re-evaluation."
+    },
+    {
+      "pr": 52,
+      "head": "4e6ef885a9e57c89c6efc1a6acc4ae422253145e",
+      "initial_head": "1f9deeaa718155fe0f65239ca806a6972ba069b4",
+      "merge": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
+      "ci_success": [
+        37394784569,
+        37394851843
+      ],
+      "behaviour": "Installed-only public APK inspection needs no candidate/private key; leading package identity cannot be overwritten by metadata;7 actual synthetic tests feature/postmerge."
     }
   ],
   "tests": {
@@ -350,7 +381,7 @@
       "status": "success",
       "tests": 76
     },
-    "governance_total": 27,
+    "governance_total": 31,
     "postmerge_attempt": 1,
     "current_durable_postmerge": {
       "run": 37372530315,
@@ -400,6 +431,42 @@
       "job": 111988994376,
       "status": "success",
       "tests": 72
+    },
+    "current_governance_development": {
+      "head": "f0d72597caf6a04666186ebf5461a57b68c4ca8f",
+      "run": 37394392746,
+      "job": 112046785958,
+      "status": "success",
+      "tests": 31
+    },
+    "current_governance_research": {
+      "head": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
+      "run": 37394389229,
+      "job": 112046775142,
+      "status": "success",
+      "tests": 31
+    },
+    "current_research_internal": {
+      "head": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
+      "run": 37394389871,
+      "job": 112046777073,
+      "status": "success",
+      "unittest_tests": 39,
+      "pytest_tests": 16
+    },
+    "current_research_orchestrator": {
+      "head": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
+      "run": 37394389152,
+      "job": 112046774117,
+      "status": "success",
+      "tests": 23
+    },
+    "current_research_successor": {
+      "head": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
+      "run": 37394389143,
+      "job": 112046774202,
+      "status": "success",
+      "tests": 31
     }
   },
   "railway_pit_boundary_verification": {
@@ -506,7 +573,7 @@
   "railway_rechecked_at": "2026-10-06T00:22:00Z",
   "railway_pending_work": [],
   "research_heads": {
-    "main": "6ce8e91382f678d206d19fa3ac01181924047d61",
+    "main": "0830f769ff6b62d39b9091814091d9fd07b22d6c",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
     "new_accepted_successor": false,
@@ -843,6 +910,23 @@
       ],
       "development_fix_merged": true,
       "research_fix_merged": true
+    },
+    "preregistration_timestamp": {
+      "reproduced": true,
+      "malformed_values": [
+        "not-a-time",
+        "date-only",
+        "boolean",
+        "object"
+      ],
+      "prior_structural_classification": "ACCEPTED_CHALLENGER",
+      "remedy": "require existing mandatory timestamp to be a valid offset-aware ISO datetime",
+      "local_governance_tests": 31,
+      "research_pr": 50,
+      "development_pr": 51,
+      "merged_both": true,
+      "independent_registration_chronology_verified": false,
+      "frozen_numerical_criteria_changed": false
     }
   },
   "public_http_capability_check": {
@@ -854,10 +938,10 @@
     "observed_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
     "current_pin_v32_smoke": "success"
   },
-  "recorded_at": "2026-10-06T00:25:00Z",
-  "recorded_parent_head": "17982e1ba1f070159173590f57b37dc00bc5fbb5",
+  "recorded_at": "2026-10-06T00:37:00Z",
+  "recorded_parent_head": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
   "android_readiness": {
-    "checked_at": "2026-10-06T00:25:00Z",
+    "checked_at": "2026-10-06T00:37:00Z",
     "repository": "kims34/openpilot-opkr",
     "base_branch": "index-alert-build",
     "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
@@ -1164,7 +1248,33 @@
       },
       "device_observation": false,
       "installation_or_uninstall_performed": false,
-      "signing_key_accessed": false
+      "signing_key_accessed": false,
+      "latest_revision": {
+        "pr": 52,
+        "head": "4e6ef885a9e57c89c6efc1a6acc4ae422253145e",
+        "merge": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
+        "feature_ci": {
+          "run": 37394784569,
+          "job": 112048045885,
+          "head": "4e6ef885a9e57c89c6efc1a6acc4ae422253145e",
+          "status": "success",
+          "tests": 7
+        },
+        "canonical_ci": {
+          "run": 37394851843,
+          "job": 112048265321,
+          "head": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
+          "status": "success",
+          "tests": 7
+        },
+        "installed_only_needs_candidate": false,
+        "installed_only_needs_signing_key": false,
+        "local_adb_available": false,
+        "actual_handset_audit_performed": false,
+        "installed_signing_continuity_verified": false,
+        "apk_installed": false,
+        "app_uninstalled": false
+      }
     },
     "build_proof_application_code_unchanged_at_current_head": true,
     "build_proof_application_compare": "f772ce57..aaac565a changes only .github/workflows/index-alert-apk-reference-signing.yml"
@@ -1178,5 +1288,6 @@
     "warnings": 5,
     "source_or_empirical_gate_credit": false
   },
-  "current_development_head": "17982e1ba1f070159173590f57b37dc00bc5fbb5"
+  "current_development_head": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
+  "implementation_head_scope": "offline broker safety implementation; current_development_head includes newer host-tool and research-governance code"
 }

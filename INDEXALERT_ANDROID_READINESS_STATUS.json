@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-06T00:25:00Z",
+  "checked_at": "2026-10-06T00:37:00Z",
   "repository": "kims34/openpilot-opkr",
   "base_branch": "index-alert-build",
   "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
@@ -306,7 +306,33 @@
     },
     "device_observation": false,
     "installation_or_uninstall_performed": false,
-    "signing_key_accessed": false
+    "signing_key_accessed": false,
+    "latest_revision": {
+      "pr": 52,
+      "head": "4e6ef885a9e57c89c6efc1a6acc4ae422253145e",
+      "merge": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
+      "feature_ci": {
+        "run": 37394784569,
+        "job": 112048045885,
+        "head": "4e6ef885a9e57c89c6efc1a6acc4ae422253145e",
+        "status": "success",
+        "tests": 7
+      },
+      "canonical_ci": {
+        "run": 37394851843,
+        "job": 112048265321,
+        "head": "1ee210e218c3970a0304c1bd6984a55c9759f81c",
+        "status": "success",
+        "tests": 7
+      },
+      "installed_only_needs_candidate": false,
+      "installed_only_needs_signing_key": false,
+      "local_adb_available": false,
+      "actual_handset_audit_performed": false,
+      "installed_signing_continuity_verified": false,
+      "apk_installed": false,
+      "app_uninstalled": false
+    }
   },
   "build_proof_application_code_unchanged_at_current_head": true,
   "build_proof_application_compare": "f772ce57..aaac565a changes only .github/workflows/index-alert-apk-reference-signing.yml"
