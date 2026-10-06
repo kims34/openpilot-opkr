@@ -99,11 +99,11 @@ def verify_receipt_fingerprint(receipt: Mapping[str, Any]) -> str:
         )
     if str(receipt["receipt_version"]) != "2026-10-01.v2":
         raise KRXAcquisitionBatchError("unsupported acquisition receipt version")
-    if bool(receipt["alpha_or_final_judge_promotion_authorized"]):
+    if receipt["alpha_or_final_judge_promotion_authorized"] is not False:
         raise KRXAcquisitionBatchError("receipt illegally claims promotion authority")
-    if bool(receipt["sealed_holdout_authorized"]):
+    if receipt["sealed_holdout_authorized"] is not False:
         raise KRXAcquisitionBatchError("receipt illegally claims sealed-holdout authority")
-    if bool(receipt["live_trading_authorized"]):
+    if receipt["live_trading_authorized"] is not False:
         raise KRXAcquisitionBatchError("receipt illegally claims live-trading authority")
     return claimed
 
