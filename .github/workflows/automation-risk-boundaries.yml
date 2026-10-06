@@ -1,7 +1,7 @@
 name: Automation Risk Boundaries
 on:
   push:
-    branches: [index-alert-automation-risk-boundary-fix-v1]
+    branches: [index-alert-position-regen-fix-v1, index-alert-automation-risk-boundary-fix-v1]
     paths: [indexalert_automation_control.py, test_automation_risk_boundaries.py, .github/workflows/automation-risk-boundaries.yml]
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
