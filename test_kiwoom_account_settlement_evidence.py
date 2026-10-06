@@ -52,5 +52,17 @@ class SettlementEvidenceTests(unittest.TestCase):
         with self.assertRaises(SettlementEvidenceError):
             normalize_kt00001_settlement(row, account_fingerprint="arbitrary-identity", captured_at=TS)
 
+
+    def test_grouped_cash_is_exact_and_malformed_groups_are_rejected(self):
+        row = {"entr":"8999","pymn_alow_amt":"0","d2_entra":"0","ord_alow_amt":"0"}
+        for text in ("8,999", "+8,999.00", "8,999.000", "0008999"):
+            out = normalize_kt00001_settlement({**row, "entr":text}, account_fingerprint=FP, captured_at=TS)
+            self.assertEqual(out.deposit_cash_krw, 8999)
+        for field in row:
+            for text in ("8,9,99", ",8999", "8999,", "8,,999", "8999,000", "8,999,.00", "8,999.0,0"):
+                with self.subTest(field=field, text=text), self.assertRaises(SettlementEvidenceError):
+                    normalize_kt00001_settlement({**row, field:text}, account_fingerprint=FP, captured_at=TS)
+
 if __name__ == "__main__":
     unittest.main()
+

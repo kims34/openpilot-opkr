@@ -53,6 +53,17 @@ class NativeReviewCLITests(unittest.TestCase):
         self.assertEqual(result['durable_unresolved_reconciliation_count'],1)
         self.assertEqual(before,(self.journal.shadow_control(),self.journal.get('synthetic-intent')))
 
+    def test_malformed_cash_groups_cannot_report_matching_balance(self):
+        self.payload['closing']['body']['entr'] = '8,9,99'
+        self.write()
+        before = self.journal.shadow_control(), self.journal.db.total_changes
+        result = self.assess()
+        self.assertFalse(result['assessment_completed'])
+        self.assertNotIn('cashflow_reconciliation', result)
+        self.assertFalse(result['real_orders_authorized'])
+        self.assertNotIn('8,9,99', json.dumps(result))
+        self.assertEqual(before, (self.journal.shadow_control(), self.journal.db.total_changes))
+
     def test_readonly_journal_refuses_mutation(self):
         readonly = OrderIntentJournal.open_readonly(self.path)
         before = self.journal.shadow_control()
