@@ -305,3 +305,58 @@ def test_resume_rejects_self_rehashed_scope_keys_absent_from_verified_raw(tmp_pa
         execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
             fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
     assert calls == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("receipt_version", None), ("receipt_version", "obsolete"),
+    ("request_metadata_sha256", None), ("request_metadata_sha256", "f" * 64),
+    ("retrieved_at", None), ("retrieved_at", 1), ("retrieved_at", "NaT"),
+    ("retrieved_at", "not-a-time"), ("retrieved_at", "2026-10-02T12:55:00"),
+    ("transport_status", None), ("transport_status", 1), ("transport_status", ""),
+    ("network_request_attempted", False), ("network_request_attempted", 1),
+    ("network_request_attempted", None), ("network_request_attempted", "true"),
+    ("raw_object_sha256", int("1" * 64)), ("raw_object_sha256", None),
+])
+def test_resume_rejects_receipt_request_time_or_transport_contract_drift(tmp_path, field, value):
+    from research_v1_krx_private_store import write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    scope = json.loads(next((root / "expected_scope/dates/20150615").glob("*.json")).read_text())
+    rel = scope["daily_receipt_relpath"]
+    receipt = json.loads((root / rel).read_text())
+    receipt[field] = value
+    write_private_json(root, rel, receipt, git_worktree=worktree)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []
+
+
+@pytest.mark.parametrize("field", [
+    "raw_rows_emitted", "source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+    "feature_performance_testing_authorized", "sealed_holdout_authorized", "live_trading_authorized",
+])
+@pytest.mark.parametrize("value", [True, 0, None, "false"])
+def test_resume_rejects_receipt_non_false_authority_fields(tmp_path, field, value):
+    from research_v1_krx_private_store import write_private_json
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    env = _env(tmp_path)
+    execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+        fetcher=_empty_fetcher([]), evaluation_time=EVAL, max_new_dates=1)
+    root = tmp_path / "private"
+    scope = json.loads(next((root / "expected_scope/dates/20150615").glob("*.json")).read_text())
+    rel = scope["daily_receipt_relpath"]
+    receipt = json.loads((root / rel).read_text())
+    receipt[field] = value
+    write_private_json(root, rel, receipt, git_worktree=worktree)
+    calls = []
+    with pytest.raises(KRXExpectedScopeBatchError, match="illegally claims authority"):
+        execute_expected_scope_batch(environment=env, git_worktree=str(worktree),
+            fetcher=_empty_fetcher(calls), evaluation_time=EVAL, max_new_dates=0)
+    assert calls == []

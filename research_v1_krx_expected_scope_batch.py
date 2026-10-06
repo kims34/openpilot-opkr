@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+
+import pandas as pd
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -20,6 +23,8 @@ from research_v1_krx_expected_scope_attestation import (
 )
 from research_v1_krx_expected_scope_executor import (
     execute_expected_scope_date,
+    DAILY_ENDPOINT,
+    MASTER_ENDPOINT,
 )
 from research_v1_krx_acquisition_receipt import dataframe_payload_fingerprint, schema_fingerprint
 from research_v1_krx_historical_fetchers import parse_openapi_raw
@@ -152,6 +157,38 @@ def _verify_receipt(
         raise KRXExpectedScopeBatchError("receipt date drift")
     if receipt.get("dataset_identifier") != dataset_identifier:
         raise KRXExpectedScopeBatchError("receipt dataset drift")
+    if receipt.get("receipt_version") != "2026-10-02.expected-scope-v2":
+        raise KRXExpectedScopeBatchError("receipt version drift")
+    endpoints = {"stk_bydd_trd": DAILY_ENDPOINT, "stk_isu_base_info": MASTER_ENDPOINT}
+    if dataset_identifier not in endpoints:
+        raise KRXExpectedScopeBatchError("receipt dataset is not an approved expected-scope service")
+    request_meta = {
+        "contract_id": CONTRACT_ID, "dataset_identifier": dataset_identifier,
+        "endpoint": endpoints[dataset_identifier], "method": "GET",
+        "params": {"basDd": requested_date},
+    }
+    if receipt.get("request_metadata_sha256") != _sha256(request_meta):
+        raise KRXExpectedScopeBatchError("receipt request metadata does not match frozen service/date")
+    retrieved = receipt.get("retrieved_at")
+    if not isinstance(retrieved, str):
+        raise KRXExpectedScopeBatchError("receipt retrieval timestamp must be an aware string")
+    try:
+        timestamp = pd.Timestamp(retrieved)
+    except Exception as exc:
+        raise KRXExpectedScopeBatchError("receipt retrieval timestamp is invalid") from exc
+    if pd.isna(timestamp) or timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise KRXExpectedScopeBatchError("receipt retrieval timestamp must be timezone-aware")
+    if not isinstance(receipt.get("transport_status"), str) or not receipt["transport_status"].strip():
+        raise KRXExpectedScopeBatchError("receipt transport status must be a non-empty string")
+    if receipt.get("network_request_attempted") is not True:
+        raise KRXExpectedScopeBatchError("receipt network attempt must be exact true")
+    for field in ("raw_rows_emitted", "source_gate_c_closed", "source_gate_d_closed", "source_gate_e_closed",
+                  "feature_performance_testing_authorized", "sealed_holdout_authorized", "live_trading_authorized"):
+        if receipt.get(field) is not False:
+            raise KRXExpectedScopeBatchError(f"receipt illegally claims authority: {field}")
+    digest = receipt.get("raw_object_sha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise KRXExpectedScopeBatchError("receipt raw object fingerprint must be a SHA-256 string")
     if type(receipt.get("raw_bytes_size")) is not int or receipt["raw_bytes_size"] < 0:
         raise KRXExpectedScopeBatchError("receipt raw byte count must be a non-negative integer")
     raw = read_raw_object(
