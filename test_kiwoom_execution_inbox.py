@@ -85,6 +85,24 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.j.get('d1')['state'],'RECONCILIATION_REQUIRED')
         self.denied_enable()
 
+    def test_restart_audit_rejects_corrupted_already_processed_receipt(self):
+        self.append(); self.i.replay_next(); self.batch()
+        self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+        self.j.close()
+        raw=sqlite3.connect(self.path,isolation_level=None)
+        try:
+            raw.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+            raw.execute("UPDATE native_inbox_receipts SET payload=payload || ' ' WHERE receipt_id='receipt-1'")
+        finally:
+            raw.close()
+        self.j=OrderIntentJournal(self.path)
+        self.b=KiwoomOrderJournalBridge(self.j,account_fingerprint=fixtures.ACCOUNT,trading_date=fixtures.DAY)
+        with self.assertRaises(ExecutionInboxError):
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(),(1,))
+        self.assertEqual(self.j.get('d1')['state'],'RECONCILIATION_REQUIRED')
+
     def test_gap_retained_in_arrival_order_requires_explicit_missing_first_replay(self):
         self.append('second',fixtures.fill('fill-2',6,0,'091502'))
         with self.assertRaises(ExecutionInboxError):self.i.replay_next()
