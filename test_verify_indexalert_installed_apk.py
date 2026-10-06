@@ -94,6 +94,11 @@ class InstalledApkAuditTest(unittest.TestCase):
             with self.subTest(args=args), self.assertRaises(InstalledApkAuditError):
                 self.audit(**args)
 
+    def test_metadata_substring_cannot_overwrite_actual_package_identity(self):
+        metadata = "other.app' platformBuildVersionName='name='com.indexalert.app"
+        with self.assertRaises(InstalledApkAuditError):
+            self.audit(package=metadata)
+
 
 if __name__ == '__main__':
     unittest.main()

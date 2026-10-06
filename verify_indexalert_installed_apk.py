@@ -31,7 +31,11 @@ def apk_identity(apk, *, aapt2, apksigner, run=run_tool):
     badging = run([aapt2, 'dump', 'badging', str(apk)])
     package = next((line for line in badging.splitlines() if line.startswith('package:')), '')
     fields = dict(re.findall(r"(name|versionCode|versionName)='([^']*)'", package))
-    if fields.get('name') != PACKAGE or not fields.get('versionCode', '').isdigit() or not fields.get('versionName'):
+    # The first package token is identity. A name-like substring inside other
+    # metadata must never overwrite it in the generic field extraction.
+    identity = re.match(r"^package:\s+name='([^']*)'(?:\s|$)", package)
+    if (identity is None or identity.group(1) != PACKAGE
+            or not fields.get('versionCode', '').isdigit() or not fields.get('versionName')):
         raise InstalledApkAuditError('INDEXALERT_APK_IDENTITY_REQUIRED')
     certificates = run([apksigner, 'verify', '--verbose', '--print-certs', str(apk)])
     signers = sorted(set(re.findall(r'certificate SHA-256 digest: ([0-9a-fA-F]{64})', certificates)))
