@@ -250,6 +250,13 @@ class TestExecutionEvidence(unittest.TestCase):
                     with self.assertRaises(ExecutionEvidenceError):
                         validate_execution_observations(rows)
 
+    def test_nonscalar_execution_timestamp_is_rejected(self):
+        rows = self._rows()
+        rows["recommendation_at"] = rows["recommendation_at"].astype(object)
+        rows.at[0, "recommendation_at"] = ["2026-09-29T00:00:00Z"]
+        with self.assertRaises(ExecutionEvidenceError):
+            validate_execution_observations(rows)
+
 
 if __name__ == "__main__":
     unittest.main()
