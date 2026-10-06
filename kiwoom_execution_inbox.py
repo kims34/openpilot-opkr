@@ -42,6 +42,7 @@ class KiwoomExecutionInbox:
                 for operation in ('UPDATE', 'DELETE'):
                     self.journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS {name}_{operation.lower()}_immutable
                         BEFORE {operation} ON {name} BEGIN SELECT RAISE(ABORT,'immutable normalized inbox'); END''')
+            self._audit_existing_locked()
 
     @contextmanager
     def _guard(self):
@@ -62,20 +63,45 @@ class KiwoomExecutionInbox:
             raw_broker_artifact_retained=False, real_account_origin_verified=False,
             source_provenance_admitted=False, live_ordering_authorized=False, **extra)
 
+    def _validate_row(self, row):
+        require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
+        require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
+        require(all(type(row[f]) is bool for f in BOOL_FIELDS))
+        require(row['source_contract'] == SOURCE_CONTRACT and row['official_schema_commit'] == OFFICIAL_SCHEMA_COMMIT)
+        require(row['broker'] == 'KIWOOM' and row['source_api'] == 'domestic_realtime_order_fill_00')
+        require(row['record_granularity'] == 'broker_execution_event' and row['account_fingerprint'] == self.bridge.account)
+        require(row['broker_native_structure_normalized'] and row['broker_execution_id_available_in_source'])
+        require(not row['genuine_live_provenance_verified'] and not row['project_live_evidence_admitted'])
+
+    def _audit_existing_locked(self):
+        """Fail closed on durable inbox corruption before any replay is trusted."""
+        receipts = set()
+        for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
+                'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
+            self._text(receipt_id); self._text(key); self.bridge._context(day)
+            require(isinstance(payload, str) and isinstance(digest, str))
+            require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+            self._validate_row(json.loads(payload))
+            receipts.add(sequence)
+        for receipt_id, key, day, payload, digest in self.journal.db.execute(
+                'SELECT receipt_id,key,day,payload,digest FROM native_inbox_conflicts'):
+            self._text(receipt_id); self._text(key); self.bridge._context(day)
+            require(isinstance(payload, str) and isinstance(digest, str))
+            require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+            self._validate_row(json.loads(payload))
+            require(self.journal.db.execute(
+                'SELECT 1 FROM native_inbox_receipts WHERE receipt_id=?', (receipt_id,)).fetchone() is not None)
+        for receipt_sequence, outcome in self.journal.db.execute(
+                'SELECT receipt_sequence,outcome FROM native_inbox_attempts'):
+            require(receipt_sequence in receipts and outcome in ('APPLIED', 'DUPLICATE', 'BLOCKED'))
+
     def append(self, receipt_id, key, row, *, trading_date):
         """Persist a normalized copy before any execution-journal mutation."""
         conflict = False
         with self._guard():
             self._text(receipt_id); self._text(key)
             self.bridge._context(trading_date)
-            require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
-            require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
-            require(all(type(row[f]) is bool for f in BOOL_FIELDS))
-            require(row['source_contract'] == SOURCE_CONTRACT and row['official_schema_commit'] == OFFICIAL_SCHEMA_COMMIT)
-            require(row['broker'] == 'KIWOOM' and row['source_api'] == 'domestic_realtime_order_fill_00')
-            require(row['record_granularity'] == 'broker_execution_event' and row['account_fingerprint'] == self.bridge.account)
-            require(row['broker_native_structure_normalized'] and row['broker_execution_id_available_in_source'])
-            require(not row['genuine_live_provenance_verified'] and not row['project_live_evidence_admitted'])
+            self._validate_row(row)
             payload = json.dumps(row, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
             digest = hashlib.sha256(payload.encode()).hexdigest()
             old = self.journal.db.execute('SELECT key,day,payload,digest FROM native_inbox_receipts WHERE receipt_id=?', (receipt_id,)).fetchone()
