@@ -2,10 +2,10 @@ name: KRX source admission exact authority flags
 on:
   pull_request:
     branches: [index-alert-position-regen-fix-v1, index-alert-research-v1]
-    paths: [research_v1_krx_investor_flow_lineage.py, test_research_v1_krx_investor_flow_lineage.py, research_v1_krx_investor_flow_coverage.py, test_research_v1_krx_investor_flow_coverage.py, research_v1_krx_acquisition_receipt.py, test_research_v1_krx_acquisition_receipt.py, research_v1_krx_acquisition_batch.py, test_research_v1_krx_acquisition_batch.py, research_v1_krx_source_data_admission.py, test_research_v1_krx_source_data_admission.py, .github/workflows/indexalert-source-admission-types.yml]
+    paths: [research_v1_krx_authorization_evidence.py, test_research_v1_krx_authorization_evidence.py, research_v1_krx_auth_preflight.py, research_v1_krx_investor_flow_lineage.py, test_research_v1_krx_investor_flow_lineage.py, research_v1_krx_investor_flow_coverage.py, test_research_v1_krx_investor_flow_coverage.py, research_v1_krx_acquisition_receipt.py, test_research_v1_krx_acquisition_receipt.py, research_v1_krx_acquisition_batch.py, test_research_v1_krx_acquisition_batch.py, research_v1_krx_source_data_admission.py, test_research_v1_krx_source_data_admission.py, .github/workflows/indexalert-source-admission-types.yml]
   push:
     branches: [index-alert-position-regen-fix-v1, index-alert-research-v1]
-    paths: [research_v1_krx_investor_flow_lineage.py, test_research_v1_krx_investor_flow_lineage.py, research_v1_krx_investor_flow_coverage.py, test_research_v1_krx_investor_flow_coverage.py, research_v1_krx_acquisition_receipt.py, test_research_v1_krx_acquisition_receipt.py, research_v1_krx_acquisition_batch.py, test_research_v1_krx_acquisition_batch.py, research_v1_krx_source_data_admission.py, test_research_v1_krx_source_data_admission.py, .github/workflows/indexalert-source-admission-types.yml]
+    paths: [research_v1_krx_authorization_evidence.py, test_research_v1_krx_authorization_evidence.py, research_v1_krx_auth_preflight.py, research_v1_krx_investor_flow_lineage.py, test_research_v1_krx_investor_flow_lineage.py, research_v1_krx_investor_flow_coverage.py, test_research_v1_krx_investor_flow_coverage.py, research_v1_krx_acquisition_receipt.py, test_research_v1_krx_acquisition_receipt.py, research_v1_krx_acquisition_batch.py, test_research_v1_krx_acquisition_batch.py, research_v1_krx_source_data_admission.py, test_research_v1_krx_source_data_admission.py, .github/workflows/indexalert-source-admission-types.yml]
 permissions:
   contents: read
 jobs:
@@ -18,4 +18,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install pandas==2.3.3 pytest==8.4.2
-      - run: python -m pytest -q test_research_v1_krx_investor_flow_lineage.py test_research_v1_krx_investor_flow_coverage.py test_research_v1_krx_acquisition_receipt.py test_research_v1_krx_source_data_admission.py test_research_v1_krx_acquisition_batch.py
+      - run: python -m pytest -q test_research_v1_krx_authorization_evidence.py test_research_v1_krx_investor_flow_lineage.py test_research_v1_krx_investor_flow_coverage.py test_research_v1_krx_acquisition_receipt.py test_research_v1_krx_source_data_admission.py test_research_v1_krx_acquisition_batch.py
