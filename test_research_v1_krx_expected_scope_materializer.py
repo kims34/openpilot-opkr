@@ -151,3 +151,10 @@ def test_raw_openapi_empty_response_materializes_no_trading_date_or_keys():
     assert safe["source_gate_c_closed"] is False
     assert safe["feature_performance_testing_authorized"] is False
     assert safe["network_request_attempted"] is False
+
+
+def test_nonzero_rows_with_missing_schema_are_not_empty_date_evidence():
+    with pytest.raises(KRXExpectedScopeMaterializerError, match="missing columns"):
+        materialize_one_date(
+            requested_date="20260924", daily_trade=pd.DataFrame([{}]), security_master=None,
+        )
