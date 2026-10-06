@@ -17,7 +17,9 @@ from typing import Iterable
 
 import pandas as pd
 
-from research_v1_krx_investor_flow_lineage import KRXInvestorFlowLineageError
+from research_v1_krx_investor_flow_lineage import (
+    KRXInvestorFlowLineageError, revalidate_investor_flow_lineage,
+)
 
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -163,8 +165,10 @@ def _observed_keys(validated_lineage: pd.DataFrame) -> pd.DataFrame:
         raise KRXInvestorFlowCoverageError("validated investor-flow lineage is empty")
     required = ["event_time", "symbol", "isu_cd", "lineage_validated"]
     _require_columns(validated_lineage, required, "validated investor-flow lineage")
-    if not bool(validated_lineage["lineage_validated"].all()):
-        raise KRXInvestorFlowCoverageError("investor-flow lineage contains unvalidated rows")
+    try:
+        validated_lineage = revalidate_investor_flow_lineage(validated_lineage)
+    except KRXInvestorFlowLineageError as exc:
+        raise KRXInvestorFlowCoverageError(str(exc)) from exc
 
     rows = []
     for idx, raw in validated_lineage.iterrows():
