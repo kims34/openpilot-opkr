@@ -4,8 +4,9 @@ Status: development planning only. This document grants no research admission, S
 
 The owner has explicitly deferred local/owner-operated checks until they later say they are available. Do not repeatedly request PowerShell or device/account actions in the meantime.
 
-## Current deferred owner item
-- `KIWOOM_REAL_ACCOUNT_SCOPE_READONLY_v1`: execute `kiwoom_real_account_scope_readonly_smoke.ps1` only after the owner says local work can resume.
+## Owner-operated validation status
+- `KIWOOM_REAL_ACCOUNT_SCOPE_READONLY_v1`: completed 2026-10-07. The redacted REAL whole-account read-only baseline is recorded in `INDEXALERT_KIWOOM_REAL_ACCOUNT_SCOPE_EVIDENCE_2026-10-07.md`.
+- No owner-operated item is currently pending in the tracker; new external checks may still be required later as genuine execution provenance/Shadow integration advances.
 
 ## Independent work order
 Continue work that does not require owner-local credentials or interaction, in this order when actionable evidence/code gaps exist:
