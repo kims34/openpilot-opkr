@@ -161,10 +161,13 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     if (x["ingested_at"] < x["recommendation_at"]).any():
         raise ExecutionEvidenceError("ingested_at cannot precede recommendation_at")
 
-    for c in [
+    numeric_fields = [
         "requested_qty", "filled_qty", "avg_fill_price", "reference_open",
         "markout_5m_price", "markout_30m_price", "markout_close_price",
-    ]:
+    ]
+    for c in numeric_fields:
+        if table[c].map(lambda v: isinstance(v, (bool, np.bool_))).any():
+            raise ExecutionEvidenceError(f"{c} must not contain boolean values")
         x[c] = pd.to_numeric(x[c], errors="coerce")
 
     if not np.isfinite(x[["requested_qty", "filled_qty", "reference_open"]].to_numpy(dtype=float)).all():
@@ -173,6 +176,9 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
         raise ExecutionEvidenceError("requested_qty must be positive")
     if x["filled_qty"].isna().any() or (x["filled_qty"] < 0).any():
         raise ExecutionEvidenceError("filled_qty must be non-negative")
+    for c in ["requested_qty", "filled_qty"]:
+        if not x[c].map(lambda v: float(v).is_integer()).all():
+            raise ExecutionEvidenceError(f"{c} must contain whole-share integer quantities")
     if (x["filled_qty"] > x["requested_qty"]).any():
         raise ExecutionEvidenceError("filled_qty cannot exceed requested_qty")
     if x["reference_open"].isna().any() or (x["reference_open"] <= 0).any():
