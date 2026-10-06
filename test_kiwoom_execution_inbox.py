@@ -175,6 +175,32 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
 
+    def test_deep_durable_payload_quarantines_restart_with_private_error(self):
+        self.append(); self.i.replay_next(); self.batch()
+        self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+        payload = '[' * 20000 + '0' + ']' * 20000
+        self.j.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        self.j.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?',
+            (payload, hashlib.sha256(payload.encode()).hexdigest()))
+        with self.assertRaises(ExecutionInboxError) as raised:
+            KiwoomExecutionInbox(self.b)
+        self.assertEqual(str(raised.exception), 'EXECUTION_INBOX_RECONCILIATION_REQUIRED')
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 4)
+
+    def test_deep_durable_payload_quarantines_replay_without_fill(self):
+        self.append()
+        payload = '[' * 20000 + '0' + ']' * 20000
+        self.j.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        self.j.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?',
+            (payload, hashlib.sha256(payload.encode()).hexdigest()))
+        with self.assertRaises(ExecutionInboxError):
+            self.i.replay_next()
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+        self.assertEqual(self.i.counts()['pending'], 1)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
     def test_restart_after_later_fill_preserves_processed_receipt_identity(self):
         self.append(); self.i.replay_next()
         self.append('second', fixtures.fill('fill-2', 6, 0, '091502')); self.i.replay_next()
