@@ -857,7 +857,7 @@
       "archive_sha256": "95d29b53f759e3b2df24dbcb87a2c1057c2939155077fb2e656724f06cf9b3ef",
       "downloaded_archive_and_apk_verified": true,
       "user_download_file": "IndexAlert-4.8-preview.apk",
-      "physical_preview_ui_verified": false,
+      "physical_preview_ui_verified": true,
       "production_push_e2e_verified": false
     },
     "latest_original_app_regression": {
@@ -940,11 +940,10 @@
     "reset_re_evaluation_reseal_relabel_retune_forbidden": true
   },
   "next_execution": [
-    "Owner installs exact canonical com.indexalert.preview APK alongside retained original4.7 and reports actual readiness screen; no uninstall/data-clear/key upload.",
-    "Record isolated preview UI only. Do not infer original-package4.8 signing/push E2E or broker/Alpha authority.",
-    "Restore actual refs/Actions/Status/Continuity/Handoff before new work; last implementation commits PR53/PR54 and last tested docs recorded here. JSON-only evidence write does not claim another CI run.",
-    "Continue only contract-justified independent source/native-account/preregistration engineering; empirical evidence and original frozen gates remain external prerequisites.",
-    "Preserve all Railway pins/volumes and completed readonly PIT/KRX/DEMO workers. No orders/funds/broker-account permission changes, no holdout/model/threshold/cutoff changes."
+    "Do not repeat the completed owner preview installation/screen or original4.7 signer checks.",
+    "Recover actual GitHub refs/CI/docs; independent research/source/native-account gates remain open.",
+    "Preserve original4.7/data and separate production signing/push E2E blocker; isolated preview is not automation authority.",
+    "Continue contract-eligible independent evidence/engineering, with all frozen and consumed failed holdout protections unchanged."
   ],
   "final_document_checkpoints": {
     "development": "5032563074c3697031a7d4bf62be4351757dfa48",
@@ -1028,5 +1027,21 @@
         ]
       }
     ]
-  }
+  },
+  "owner_preview_ui_observation": {
+    "observed_at": "2026-10-06T11:34:24+09:00",
+    "provenance": "OWNER_SUPPLIED_HANDSET_SCREENSHOT",
+    "screenshot_sha256": "a7751574a5326dc5da24eb74deeb115c4385e9cedc8f59db88c10378e48522b8",
+    "title": "IndexAlert 4.8 검증",
+    "displayed_status": "현재 자동매매를 사용할 수 없습니다.",
+    "preview_ui_observed": true,
+    "exact_installed_apk_hash_independently_observed": false,
+    "raw_http_payload_observed": false,
+    "production_app_upgrade_verified": false,
+    "production_push_e2e_verified": false,
+    "broker_request_verified": false,
+    "live_ordering_authorized": false
+  },
+  "completed_owner_step": "ISOLATED_PREVIEW_UNAVAILABLE_SCREEN_OBSERVED",
+  "development_ui_observation_record": "4dee985de35328acb9e8b493b96bdb20f8a4f80e"
 }
