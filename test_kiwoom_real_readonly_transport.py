@@ -102,6 +102,18 @@ class RealTransportTests(unittest.TestCase):
                 self.transport.query("kt00001", body)
         self.assertEqual(len(self.requests), count)
 
+    def test_today_status_query_is_bodyless_readonly_scope(self):
+        self.auth()
+        self.responses.append(Response({"return_code": 0, "d2_entra": "0"}))
+        page = self.transport.query("kt00017", {})
+        self.assertEqual(page.body["return_code"], 0)
+        self.assertEqual(self.requests[-1][1]["headers"]["api-id"], "kt00017")
+        count = len(self.requests)
+        for body in ({"x":"1"}, {"qry_tp":"2"}):
+            with self.assertRaises(Exception):
+                self.transport.query("kt00017", body)
+        self.assertEqual(len(self.requests), count)
+
     def test_order_cancel_amend_and_arbitrary_ids_never_send(self):
         self.auth()
         count = len(self.requests)
