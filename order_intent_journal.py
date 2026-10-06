@@ -317,6 +317,8 @@ class OrderIntentJournal:
             raise OrderJournalError("execution requires matching bound broker order")
         if row["state"] in ("INTENT_CREATED", "REJECTED") or row["terminal_status"] == "REJECTED":
             raise OrderJournalError("execution contradicts order state")
+        validate_stored_execution_totals(self.db,
+            dict(self.db.execute('SELECT key,filled FROM intents')))
         prior = self.db.execute("SELECT quantity FROM executions WHERE key=? AND execution_id=?", (key, execution_id)).fetchone()
         if prior:
             if prior[0] != quantity:

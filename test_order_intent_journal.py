@@ -94,6 +94,27 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.j.get('decision-1')['state'], 'RECONCILIATION_REQUIRED')
         self.assertEqual(self.j.get('decision-1')['filled_quantity'], 4)
 
+    def test_corrupt_execution_total_blocks_both_duplicate_and_new_fill(self):
+        self.acknowledged()
+        self.fill()
+        self.j.db.execute('UPDATE intents SET filled=3')
+        for execution, quantity in (('fill-1',4), ('later',1)):
+            with self.subTest(execution=execution), self.assertRaises(OrderJournalError):
+                self.fill(execution,quantity)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*),SUM(quantity) FROM executions').fetchone(), (1,4))
+            self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+            self.assertEqual(self.j.get('decision-1')['state'], 'RECONCILIATION_REQUIRED')
+
+    def test_orphan_execution_blocks_another_fill_without_discarding_existing_records(self):
+        self.acknowledged()
+        self.fill()
+        self.j.db.execute("INSERT INTO executions VALUES('orphan','orphan-fill',1)")
+        with self.assertRaises(OrderJournalError):
+            self.fill('later',1)
+        self.assertEqual(self.j.get('decision-1')['filled_quantity'], 4)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (2,))
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
     def test_overfill_rolls_back_quantity_and_quarantines(self):
         self.acknowledged()
         self.fill()
