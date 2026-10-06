@@ -401,5 +401,29 @@ class InboxSettlementTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):self.release()
         self.assertEqual(self.a.state()['managed_reserve_krw'],83)
 
+    def test_corrupt_release_keeps_late_fill_pending_until_lineage_is_repaired(self):
+        self.assertTrue(self.batch()['matched'])
+        self.release()
+        self.j.db.execute('UPDATE shadow_capital_releases SET released_principal=-80')
+        self.append()
+        with self.assertRaises(ExecutionInboxError):
+            self.i.replay_next()
+        self.assertEqual(self.i.counts()['pending'], 1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+        self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (3,))
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        self.a = capital_fixtures.ShadowCapitalAllocator(self.j)
+        self.i = KiwoomExecutionInbox(KiwoomOrderJournalBridge(self.j,
+            account_fingerprint=fixtures.ACCOUNT,trading_date=fixtures.DAY))
+        self.assertEqual(self.i.counts()['pending'], 1)
+        # Synthetic fault fixture repair only; no production audit is rewritten.
+        self.j.db.execute('UPDATE shadow_capital_releases SET released_principal=80')
+        self.i.replay_next()
+        self.assertEqual(self.i.counts()['pending'], 0)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 1)
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+
 
 if __name__=='__main__':unittest.main()
