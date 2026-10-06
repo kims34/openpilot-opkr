@@ -155,3 +155,15 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertEqual(result['local_blockers'],['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
         self.assertNotIn('PRIVATE',json.dumps(result))
         self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
+
+    def test_corrupt_unclaimed_intent_is_not_hidden_from_status(self):
+        self.journal.register('PRIVATE-UNCLAIMED',symbol='PRIVATE-SYMBOL',side='BUY',quantity=1)
+        self.journal.db.execute("UPDATE intents SET payload=? WHERE key=?",
+                                ('{\"symbol\":\"PRIVATE-SYMBOL\",\"side\":\"BUY\",\"quantity\":1,\"extra\":true}',
+                                 'PRIVATE-UNCLAIMED'))
+        before = self.journal.shadow_control(),self.journal.db.total_changes
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(result['local_blockers'],['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertNotIn('PRIVATE',json.dumps(result))
+        self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
