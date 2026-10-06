@@ -2,9 +2,9 @@ name: Durable Order Intent Journal
 on:
   push:
     branches: [index-alert-zero-fill-principal-release-v1, index-alert-position-regen-fix-v1]
-    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'test_shadow_stop_claim_concurrency.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', 'test_shadow_principal_release.py', '.github/workflows/order-intent-journal.yml']
+    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'test_shadow_stop_claim_concurrency.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'kiwoom_realtime_order_fill_subscription_contract.py', 'kiwoom_type00_frame_extractor.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', 'test_shadow_principal_release.py', '.github/workflows/order-intent-journal.yml']
   pull_request:
-    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'test_shadow_stop_claim_concurrency.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', 'test_shadow_principal_release.py', '.github/workflows/order-intent-journal.yml']
+    paths: ['order_intent_journal.py', 'order_snapshot_reconciliation.py', 'test_order_snapshot_reconciliation.py', 'test_order_intent_journal.py', 'test_shadow_safety_control.py', 'test_shadow_stop_claim_concurrency.py', 'shadow_fault_replay.py', 'test_shadow_fault_replay.py', 'kiwoom_realtime_order_fill_subscription_contract.py', 'kiwoom_type00_frame_extractor.py', 'indexalert_automation_control.py', 'test_indexalert_automation_control.py', 'test_automation_risk_boundaries.py', 'shadow_capital_allocator.py', 'test_shadow_capital_allocator.py', 'test_shadow_principal_release.py', '.github/workflows/order-intent-journal.yml']
 permissions:
   contents: read
 jobs:
@@ -25,6 +25,8 @@ jobs:
             test_shadow_safety_control.py
             test_shadow_stop_claim_concurrency.py
             shadow_fault_replay.py
+            kiwoom_realtime_order_fill_subscription_contract.py
+            kiwoom_type00_frame_extractor.py
             test_shadow_fault_replay.py
             indexalert_automation_control.py
             test_indexalert_automation_control.py
