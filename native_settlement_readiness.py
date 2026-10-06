@@ -1,7 +1,8 @@
-"""Read-only offline native input → reviewed cashflow → journal admission path.
+"""Read-only native input → reviewed cashflow → structural journal assessment.
 
-External reviews and admissions remain external requirements. This entry point
-does not configure Shadow, enable permissions, create native evidence or send.
+External reviews and independent gate admissions remain separate requirements.
+This entry point does not configure Shadow, enable permissions, create native
+evidence, declare final-user readiness, or send broker requests.
 """
 from account_cashflow_reconciliation import bind_reconciled_cashflow_to_early_live
 from kiwoom_account_settlement_evidence import normalize_kt00001_settlement
