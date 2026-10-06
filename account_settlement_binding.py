@@ -58,8 +58,8 @@ def bind_journal_settlement_to_early_live(base, settlement, snapshot, journal, *
         captured = datetime.fromisoformat(snapshot.captured_at.replace('Z', '+00:00'))
         if captured.tzinfo is None or captured.utcoffset() is None:
             raise ValueError
-        cash = (snapshot.available_cash_krw, snapshot.withdrawable_cash_krw,
-                snapshot.d2_estimated_cash_krw)
+        cash = (snapshot.deposit_cash_krw, snapshot.withdrawable_cash_krw,
+                snapshot.d2_estimated_cash_krw, snapshot.orderable_amount_krw)
         if any(type(v) is not Decimal or not v.is_finite() or v < 0 for v in cash):
             raise ValueError
     except (ValueError, TypeError):
