@@ -293,6 +293,25 @@
         37376198533
       ],
       "behaviour": "SDK actual APK package/version/digest/signature and4 JUnit results retained; no physical or installed signing-continuity proof."
+    },
+    {
+      "pr": 48,
+      "head": "92381b19106c385167af702d42a8b173db438963",
+      "merge": "aaac565a7dc99f36b369b36cadabaf4e2faf1bf5",
+      "ci_success": [
+        37377380596
+      ],
+      "behaviour": "Actual immutable audited4.7 and candidate4.8 APK signer mismatch, not installed-device proof; no handset mutation."
+    },
+    {
+      "pr": 49,
+      "head": "78946ae1b768ba619ee9df0edd62989bda6a480c",
+      "merge": "17982e1ba1f070159173590f57b37dc00bc5fbb5",
+      "ci_success": [
+        37393595994,
+        37393665836
+      ],
+      "behaviour": "USB physical-handset public APK signing inspection, no install/uninstall/appdata/keys/account/broker access;4 actual synthetic tests on feature and canonical."
     }
   ],
   "tests": {
@@ -367,7 +386,21 @@
       "strategy_evaluated": false,
       "network_request_attempted": false
     },
-    "postmerge_tests": 236
+    "postmerge_tests": 236,
+    "current_docs_execution_integrity": {
+      "head": "8b50c7bc289d9f5d5007615c682f38ae5c50c02b",
+      "run": 37377109497,
+      "job": 111988974174,
+      "status": "success",
+      "tests": 76
+    },
+    "research_current_docs_execution_integrity": {
+      "head": "6ce8e91382f678d206d19fa3ac01181924047d61",
+      "run": 37377115083,
+      "job": 111988994376,
+      "status": "success",
+      "tests": 72
+    }
   },
   "railway_pit_boundary_verification": {
     "service_id": "225f2279-d728-4e1a-a3f3-2447ff0f9dc1",
@@ -452,7 +485,9 @@
     "Independently admit actual broker-native origin/account/day/side and whole-account snapshot scope; normalized offline bridge is implemented but cannot establish these.",
     "Implement independently admitted account valuation/nonzero-fill position/fee/sale settlement before actual cash reuse.",
     "Integrate frozen pretrade market/account freshness, NetEV, capacity/risk policy and actual cancel/reconnect enforcement.",
-    "Resolve official historical expected-scope/PIT availability, affected-position economics and independent successor validation evidence without consumed holdout reuse."
+    "Resolve official historical expected-scope/PIT availability, affected-position economics and independent successor validation evidence without consumed holdout reuse.",
+    "Actual installed handset signer and compatible existing local signing identity before4.8 update; retain app/data and never treat different per-run debug keys as upgrade-compatible.",
+    "Independent immutable chronology/admission evidence for preregistration-before-outcomes: structural evaluate_trial booleans/fingerprints are not independent registration history. Record research question only; do not invent timing receipts or alter frozen trial results."
   ],
   "frozen_criteria_changed": false,
   "cutoff_or_model_threshold_changed": false,
@@ -468,10 +503,10 @@
     "previous_holdout_boundary": 16,
     "normalized_execution_inbox": 14
   },
-  "railway_rechecked_at": "2026-10-05T21:36:00Z",
+  "railway_rechecked_at": "2026-10-06T00:22:00Z",
   "railway_pending_work": [],
   "research_heads": {
-    "main": "c691aac95355ed94cc2cecaab1dfbb086bbceabe",
+    "main": "6ce8e91382f678d206d19fa3ac01181924047d61",
     "economics": "5aefb98988f7b4ccf7c95e7cdf2a671a7bdfee7e",
     "early_live_draft": "1d81eb526f59b87c528d63be9e3883e0f76fedf6",
     "new_accepted_successor": false,
@@ -819,10 +854,10 @@
     "observed_runtime_revision": "8a68b01bca5d551d083ccda263df38d86fa54166",
     "current_pin_v32_smoke": "success"
   },
-  "recorded_at": "2026-10-05T21:37:00Z",
-  "recorded_parent_head": "c670026f57c32585daf2dab48fba84f4405fe306",
+  "recorded_at": "2026-10-06T00:25:00Z",
+  "recorded_parent_head": "17982e1ba1f070159173590f57b37dc00bc5fbb5",
   "android_readiness": {
-    "checked_at": "2026-10-05T21:37:00Z",
+    "checked_at": "2026-10-06T00:25:00Z",
     "repository": "kims34/openpilot-opkr",
     "base_branch": "index-alert-build",
     "base_head": "5154ef7943353791f615622394523ecd52ef8b0f",
@@ -864,7 +899,7 @@
     "broker_order_submission_implemented": false,
     "automation_control_persistence_implemented": false,
     "frozen_criteria_changed": false,
-    "current_canonical_head": "f772ce57d8ef9fd313797559b9d0a37aa417f7c0",
+    "current_canonical_head": "aaac565a7dc99f36b369b36cadabaf4e2faf1bf5",
     "merge": "6cefecd758da3f35be2f99d5c55d7e38fd589473",
     "remote_status": "success",
     "build_proof": {
@@ -998,17 +1033,150 @@
       "head": "6cefecd758da3f35be2f99d5c55d7e38fd589473",
       "status": "success"
     },
-    "postmerge_proof_build": "NOT_YET_OBSERVED",
-    "local_large_apk_download": "stalled_before_file_received; no local APK proof"
+    "postmerge_proof_build": {
+      "head": "f772ce57d8ef9fd313797559b9d0a37aa417f7c0",
+      "run": 37376946309,
+      "job": 111988355734,
+      "status": "success",
+      "tests": 4,
+      "actual_report": {
+        "artifacts": [
+          {
+            "apk_sha256": "4e254e6fd7840e07f3f281918da5e013e51ae9af28d79c24eea3d9a82967e6f0",
+            "application_id": "com.indexalert.app",
+            "expected_unsigned_release": false,
+            "signature_verified": true,
+            "signer_sha256": [
+              "96c9cfd617adeca8003ba60db7d5dcbe0e5792add2a3cb7112e5d22ed6cb09a7"
+            ],
+            "size_bytes": 11835131,
+            "variant": "debug",
+            "version_code": 48,
+            "version_name": "4.8"
+          },
+          {
+            "apk_sha256": "f8e3c9e32355355ea412a0a4a55ddd8db9afff41ea9f6399ed617ceec6370e4b",
+            "application_id": "com.indexalert.app",
+            "expected_unsigned_release": true,
+            "signature_verified": false,
+            "signer_sha256": [],
+            "size_bytes": 8362877,
+            "variant": "release",
+            "version_code": 48,
+            "version_name": "4.8"
+          }
+        ],
+        "broker_request_sent": false,
+        "checkout_sha": "f772ce57d8ef9fd313797559b9d0a37aa417f7c0",
+        "errors": 0,
+        "failures": 0,
+        "frozen_criteria_changed": false,
+        "installed_signing_continuity_verified": false,
+        "live_ordering_authorized": false,
+        "orders_requested": false,
+        "physical_e2e_verified": false,
+        "run_id": "37376946309",
+        "schema_version": "INDEXALERT_ANDROID_BUILD_VERIFICATION_v1",
+        "skipped": 0,
+        "source_head": "f772ce57d8ef9fd313797559b9d0a37aa417f7c0",
+        "tests": 4,
+        "unit_test_class": "com.indexalert.app.AutomationReadinessTest"
+      }
+    },
+    "local_large_apk_download": "stalled_before_file_received; no local APK proof",
+    "historical_reference_signing": {
+      "apk_installed": false,
+      "app_uninstalled": false,
+      "artifacts": [
+        {
+          "apk_sha256": "9e1b72432b44f41a04c7f502d98502d3c77d69ec451718b8da34a260269eca01",
+          "application_id": "com.indexalert.app",
+          "archive_sha256": "0aec298a0d0276f8a5e40dc22429b595e8bb11636f22ceeea75cb018a4a7e411",
+          "artifact_id": 11158994269,
+          "name": "IndexAlert-v4.7-debug",
+          "role": "reference",
+          "run_id": 36856589300,
+          "signature_verified": true,
+          "signer_sha256": [
+            "ecb7486e3ce65fba42f6bf55ff8359abd0ee7d8268c8305e248340c84443c6fa"
+          ],
+          "size_bytes": 11818747,
+          "source_head": "5154ef7943353791f615622394523ecd52ef8b0f",
+          "version_code": 47,
+          "version_name": "4.7"
+        },
+        {
+          "apk_sha256": "6ae4cc5f6ca503461396c9ca69dd19866d5f3077375b923a41162b9a543e7855",
+          "application_id": "com.indexalert.app",
+          "archive_sha256": "5b7b2d0248aa2bc493b5dc5401cad69596b6c59f2af0d069b14902a3c7765db1",
+          "artifact_id": 11371148102,
+          "name": "IndexAlert-v4.8-debug",
+          "role": "candidate",
+          "run_id": 37376198533,
+          "signature_verified": true,
+          "signer_sha256": [
+            "24d1f8adf0b2ed7ad2d47c2f7d957105ce8297fa76b6620d908549c22286ad23"
+          ],
+          "size_bytes": 11835131,
+          "source_head": "9b39efcb7977dfa77c54f3274d17a90469cdd194",
+          "version_code": 48,
+          "version_name": "4.8"
+        }
+      ],
+      "broker_request_sent": false,
+      "frozen_criteria_changed": false,
+      "historical_artifact_is_installed_device_proof": false,
+      "installed_signing_continuity_verified": false,
+      "live_ordering_authorized": false,
+      "orders_requested": false,
+      "physical_e2e_verified": false,
+      "reference_candidate_signers_match": false,
+      "run_id": "37377380596",
+      "schema_version": "INDEXALERT_ANDROID_REFERENCE_SIGNING_v1",
+      "source_head": "92381b19106c385167af702d42a8b173db438963"
+    },
+    "historical_reference_signing_ci": {
+      "run": 37377380596,
+      "job": 111989964638,
+      "head": "92381b19106c385167af702d42a8b173db438963",
+      "status": "success",
+      "pr": 48,
+      "merge": "aaac565a7dc99f36b369b36cadabaf4e2faf1bf5",
+      "artifact_id": 11372436925,
+      "zip_sha256": "42fac3962f05fdb1e32d4b6679177dae690e572a24c9426e3cf281d78f7c622b"
+    },
+    "installed_apk_readonly_tool": {
+      "pr": 49,
+      "head": "78946ae1b768ba619ee9df0edd62989bda6a480c",
+      "merge": "17982e1ba1f070159173590f57b37dc00bc5fbb5",
+      "feature_ci": {
+        "run": 37393595994,
+        "job": 112044173878,
+        "status": "success",
+        "tests": 4
+      },
+      "canonical_ci": {
+        "head": "17982e1ba1f070159173590f57b37dc00bc5fbb5",
+        "run": 37393665836,
+        "job": 112044398471,
+        "tests": 4,
+        "status": "success"
+      },
+      "device_observation": false,
+      "installation_or_uninstall_performed": false,
+      "signing_key_accessed": false
+    },
+    "build_proof_application_code_unchanged_at_current_head": true,
+    "build_proof_application_compare": "f772ce57..aaac565a changes only .github/workflows/index-alert-apk-reference-signing.yml"
   },
   "research_source_gate_ci": {
-    "run": 37373429847,
-    "job": 111975967124,
-    "head": "f20848576a11bbf2ff276b1b7e385514fcf13ef0",
+    "head": "6ce8e91382f678d206d19fa3ac01181924047d61",
+    "run": 37377115348,
+    "job": 111988995745,
     "status": "success",
     "tests": 548,
     "warnings": 5,
-    "observed_at": "2026-10-05T21:03:15Z",
     "source_or_empirical_gate_credit": false
-  }
+  },
+  "current_development_head": "17982e1ba1f070159173590f57b37dc00bc5fbb5"
 }

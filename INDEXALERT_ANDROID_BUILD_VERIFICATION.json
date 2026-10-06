@@ -1,12 +1,12 @@
 {
   "artifacts": [
     {
-      "apk_sha256": "6ae4cc5f6ca503461396c9ca69dd19866d5f3077375b923a41162b9a543e7855",
+      "apk_sha256": "4e254e6fd7840e07f3f281918da5e013e51ae9af28d79c24eea3d9a82967e6f0",
       "application_id": "com.indexalert.app",
       "expected_unsigned_release": false,
       "signature_verified": true,
       "signer_sha256": [
-        "24d1f8adf0b2ed7ad2d47c2f7d957105ce8297fa76b6620d908549c22286ad23"
+        "96c9cfd617adeca8003ba60db7d5dcbe0e5792add2a3cb7112e5d22ed6cb09a7"
       ],
       "size_bytes": 11835131,
       "variant": "debug",
@@ -26,7 +26,7 @@
     }
   ],
   "broker_request_sent": false,
-  "checkout_sha": "3e78bb4a48e3ceef4abf23ba04896b64247c34d9",
+  "checkout_sha": "f772ce57d8ef9fd313797559b9d0a37aa417f7c0",
   "errors": 0,
   "failures": 0,
   "frozen_criteria_changed": false,
@@ -34,10 +34,10 @@
   "live_ordering_authorized": false,
   "orders_requested": false,
   "physical_e2e_verified": false,
-  "run_id": "37376198533",
+  "run_id": "37376946309",
   "schema_version": "INDEXALERT_ANDROID_BUILD_VERIFICATION_v1",
   "skipped": 0,
-  "source_head": "9b39efcb7977dfa77c54f3274d17a90469cdd194",
+  "source_head": "f772ce57d8ef9fd313797559b9d0a37aa417f7c0",
   "tests": 4,
   "unit_test_class": "com.indexalert.app.AutomationReadinessTest"
 }

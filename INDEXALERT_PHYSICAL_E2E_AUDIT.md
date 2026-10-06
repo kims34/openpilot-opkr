@@ -1,3 +1,7 @@
+# Current build boundary — 2026-10-06 KST
+
+The original audited4.7-47 physical delivery remains proven below. Android canonical4.8-48 has compiled/build/JUnit4/SDK APK identity-signing proof, but no observed4.8 handset receipt or installed signing continuity. Actual PR48 SDK audit37377380596 establishes different public certificates on immutable historical4.7/candidate4.8 debug artifacts; this is not an observation of the installed handset. The original DebugSHA2560aec298a0d0276f8a5e40dc22429b595e8bb11636f22ceeea75cb018a4a7e411 is artifact ZIP SHA; actual contained4.7 APK SHA2569e1b72432b44f41a04c7f502d98502d3c77d69ec451718b8da34a260269eca01. Source-bound actual reports and no-uninstall inspection steps are retained in INDEXALERT_ANDROID_REFERENCE_SIGNING.json, INDEXALERT_ANDROID_BUILD_VERIFICATION.json and INDEXALERT_ANDROID_UPDATE_VERIFICATION.md. No new physical E2E, app installation/uninstall, account/broker/order authority is claimed. The historical audit below is preserved.
+
 # IndexAlert Android Push Physical E2E Audit
 
 Updated: 2026-10-02 KST
