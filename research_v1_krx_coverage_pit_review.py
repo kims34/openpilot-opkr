@@ -32,6 +32,15 @@ def validate_contract(data: Mapping[str, Any]) -> dict[str, Any]:
     _require(data.get("phase") == "COVERAGE_PIT_AUDIT", "phase drift")
     _require(data.get("network_request_attempted") is False, "audit must remain network-free")
 
+    prerequisites = data.get("prerequisites")
+    _require(isinstance(prerequisites, Mapping), "prerequisite requirements must be an object")
+    for key in ["identity_seed_complete","identity_standard_code_binding_complete","per_security_history_complete","status_economics_phase_complete","expected_scope_attestation_complete","all_private_raw_objects_verified","all_request_receipts_verified","all_rows_within_preregistered_request_windows"]:
+        _require(prerequisites.get(key) is True, f"prerequisite requirement lost: {key}")
+    for section, key, required in [["status_review","gate_c_candidate_requires",["status_identity_coverage.coverage_structurally_complete=true","status_event_integrity.structurally_consistent=true","all trading-halt/delisting/cleanup historical request tasks complete","exact expected-scope contract fingerprint match"]],["status_review","gate_d_candidate_requires",["separate status PIT lineage audit with explicit official availability timestamps","no retrospective retrieval timestamp may be backdated into historical availability"]],["investor_flow_review","gate_c_candidate_requires",["investor_flow_coverage.coverage_structurally_complete=true","validated observed keys exactly match independently attested expected keys","all investor-flow historical request tasks complete"]],["investor_flow_review","gate_d_candidate_requires",["investor_flow_lineage.lineage_structurally_valid=true","event_time <= published_at <= available_at <= ingested_at","official publication-floor rule satisfied for every row"]]]:
+        section_data = data.get(section)
+        _require(isinstance(section_data, Mapping), f"{section} must be an object")
+        _require(section_data.get(key) == required, f"{section}.{key} requirements drift")
+
     decision = data.get("decision_boundary") or {}
     _require(decision.get("composer_may_emit_gate_review_candidates") is True, "review-candidate capability lost")
     _require(decision.get("composer_may_set_source_gate_pass") is False, "composer may not set gate PASS")
