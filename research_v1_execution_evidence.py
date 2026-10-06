@@ -161,10 +161,13 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     if (x["ingested_at"] < x["recommendation_at"]).any():
         raise ExecutionEvidenceError("ingested_at cannot precede recommendation_at")
 
-    for c in [
+    numeric_fields = [
         "requested_qty", "filled_qty", "avg_fill_price", "reference_open",
         "markout_5m_price", "markout_30m_price", "markout_close_price",
-    ]:
+    ]
+    for c in numeric_fields:
+        if table[c].map(lambda v: isinstance(v, (bool, np.bool_))).any():
+            raise ExecutionEvidenceError(f"{c} must not contain boolean values")
         x[c] = pd.to_numeric(x[c], errors="coerce")
 
     if not np.isfinite(x[["requested_qty", "filled_qty", "reference_open"]].to_numpy(dtype=float)).all():
