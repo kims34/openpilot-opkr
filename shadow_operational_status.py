@@ -68,14 +68,15 @@ def inspect_shadow_operational_status(path):
         names = ('key','broker_order_id','symbol','side','quantity','filled_quantity','state')
         known = {}
         for key,payload,broker_id,filled,state,terminal in connection.execute(
-                "SELECT key,payload,broker_order_id,filled,state,terminal_status FROM intents WHERE state!='INTENT_CREATED'"):
+                "SELECT key,payload,broker_order_id,filled,state,terminal_status FROM intents"):
             try:
                 identity = validate_stored_intent_row(payload,state,broker_id,filled,terminal)
             except OrderJournalError:
                 _require(False)
-            known[key] = dict(key=key,broker_order_id=broker_id,
-                symbol=identity['symbol'],side=identity['side'],quantity=identity['quantity'],
-                filled_quantity=filled,state=state)
+            if state != 'INTENT_CREATED':
+                known[key] = dict(key=key,broker_order_id=broker_id,
+                    symbol=identity['symbol'],side=identity['side'],quantity=identity['quantity'],
+                    filled_quantity=filled,state=state)
         bindings = list(connection.execute('SELECT key,revision,epoch,payload FROM reconciled_snapshot_bindings'))
         if {row[0] for row in bindings} != set(known):
             blockers.add('ORDER_SNAPSHOT_SCOPE_CHANGED')
