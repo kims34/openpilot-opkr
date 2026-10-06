@@ -76,6 +76,22 @@ class SnapshotBatchTests(unittest.TestCase):
         self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (2,))
         self.assert_blocked()
 
+    def test_invalid_durable_intent_quarantines_batch_instead_of_leaving_shadow_on(self):
+        malformed = ['{"symbol":"PRIVATE","side":"BUY","quantity":1,"quantity":10}',
+            '[' * 20000 + '0' + ']' * 20000]
+        for revision, payload in enumerate(malformed, 1):
+            with self.subTest(revision=revision):
+                self.j.db.execute("UPDATE intents SET payload=? WHERE key='d1'", (payload,))
+                result = self.apply(revision=revision)
+                self.assertFalse(result['matched'])
+                self.assertIn('DURABLE_INTENT_CONFLICT', result['errors'])
+                self.assertEqual(result['expected_order_count'], 2)
+                self.assertNotIn('PRIVATE', str(result))
+                self.assertEqual(self.j.db.execute("SELECT payload FROM intents WHERE key='d1'").fetchone(), (payload,))
+                self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+                self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM reconciled_snapshot_bindings').fetchone(), (0,))
+                self.assert_blocked()
+
     def test_unknown_order_blocks_even_when_all_known_orders_match(self):
         unknown = dict(self.orders[1], key='foreign', broker_order_id='foreign-order')
         result = self.apply(self.orders + [unknown])
