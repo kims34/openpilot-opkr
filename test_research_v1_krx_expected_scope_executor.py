@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import json
 
 import pandas as pd
 import pytest
@@ -29,7 +30,9 @@ def _env(tmp_path, *, consent=True, service="indexalert-krx-historical-worker"):
     return out
 
 
-def _result(frame, *, raw=b'{"OutBlock_1":[]}', endpoint="daily"):
+def _result(frame, *, raw=None, endpoint="daily"):
+    if raw is None:
+        raw = json.dumps({"OutBlock_1": frame.to_dict(orient="records")}, ensure_ascii=False).encode("utf-8")
     return FetchResult(
         raw_bytes=raw,
         response_frame=frame,
@@ -82,7 +85,7 @@ def test_empty_daily_date_makes_one_request_and_never_invents_scope(tmp_path):
         assert kwargs["params"] == {"basDd": "20260927"}
         assert kwargs["network_authorized"] is True
         return _result(
-            pd.DataFrame(columns=["BAS_DD","ISU_CD","ISU_NM","MKT_NM"]),
+            pd.DataFrame(),
             raw=b'{"OutBlock_1":[]}',
         )
 
@@ -128,9 +131,9 @@ def test_trading_date_fetches_same_date_master_and_keeps_keys_private(tmp_path):
         assert kwargs["params"] == {"basDd": "20260923"}
         assert kwargs["network_authorized"] is True
         if kwargs["endpoint"] == DAILY_ENDPOINT:
-            return _result(daily, raw=b'{"OutBlock_1":[{"BAS_DD":"20260923"}]}')
+            return _result(daily)
         assert kwargs["endpoint"] == MASTER_ENDPOINT
-        return _result(master, raw=b'{"OutBlock_1":[{"ISU_CD":"KR7005930003"}]}', endpoint="master")
+        return _result(master, endpoint="master")
 
     out = execute_expected_scope_date(
         requested_date="20260923",
@@ -172,7 +175,7 @@ def test_daily_response_date_mismatch_fails_closed(tmp_path):
     def fetcher(**kwargs):
         calls.append(kwargs)
         if kwargs["endpoint"] == DAILY_ENDPOINT:
-            return _result(daily, raw=b'{"OutBlock_1":[{"BAS_DD":"20260922"}]}')
+            return _result(daily)
         master = pd.DataFrame([
             {"ISU_CD":"KR7005930003","ISU_SRT_CD":"005930","ISU_NM":"삼성전자","LIST_DD":"19750611","MKT_TP_NM":"KOSPI","SECUGRP_NM":"주권","KIND_STKCERT_TP_NM":"보통주"},
         ])
@@ -204,8 +207,8 @@ def test_same_request_same_payload_reuses_immutable_receipt_and_scope(tmp_path):
     def fetcher(**kwargs):
         calls.append(kwargs["endpoint"])
         if kwargs["endpoint"] == DAILY_ENDPOINT:
-            return _result(daily, raw=b'{"OutBlock_1":[{"BAS_DD":"20260923","v":"same"}]}')
-        return _result(master, raw=b'{"OutBlock_1":[{"ISU_CD":"KR7005930003","v":"same"}]}', endpoint="master")
+            return _result(daily)
+        return _result(master, endpoint="master")
 
     first = execute_expected_scope_date(
         requested_date="20260923",
@@ -248,9 +251,8 @@ def test_same_request_different_payload_fails_reconciliation_without_overwrite(t
     def fetcher(**kwargs):
         if kwargs["endpoint"] == DAILY_ENDPOINT:
             frame = daily2 if phase["second"] else daily1
-            raw = b'{"OutBlock_1":[{"BAS_DD":"20260923","v":"two"}]}' if phase["second"] else b'{"OutBlock_1":[{"BAS_DD":"20260923","v":"one"}]}'
-            return _result(frame, raw=raw)
-        return _result(master, raw=b'{"OutBlock_1":[{"ISU_CD":"KR7005930003"}]}', endpoint="master")
+            return _result(frame)
+        return _result(master, endpoint="master")
 
     execute_expected_scope_date(
         requested_date="20260923",
@@ -319,3 +321,32 @@ def test_fetch_metadata_preserves_explicit_transport_and_aware_time(stamp):
     result = replace(_result(pd.DataFrame()), retrieved_at=stamp)
     assert _ensure_fetch_result(result) is result
     assert result.transport_status == "FAKE_daily"
+
+
+@pytest.mark.parametrize("raw,frame", [
+    (b'{"OutBlock_1":[]}', pd.DataFrame([{"BAS_DD": "20260927"}])),
+    (b'{"OutBlock_1":[{"BAS_DD":"20260927"}]}', pd.DataFrame()),
+    (b'{"OutBlock_1":[{"BAS_DD":"20260927"}]}', pd.DataFrame([{"BAS_DD": "20260926"}])),
+    (b'{"OutBlock_1":[{"value":"1"}]}', pd.DataFrame([{"value": 1}])),
+    (b'{"OutBlock_1":[]}', pd.DataFrame(columns=["fabricated_column"])),
+    (b'{"error":"unauthorized"}', pd.DataFrame()),
+    (b'{"OutBlock_1":null}', pd.DataFrame()),
+])
+def test_raw_frame_mismatch_or_error_envelope_fails_before_private_write(tmp_path, monkeypatch, raw, frame):
+    import research_v1_krx_expected_scope_executor as executor
+    worktree = (tmp_path / "repo").resolve()
+    worktree.mkdir()
+    calls = []
+    def forbidden_write(*args, **kwargs):
+        pytest.fail("invalid raw/frame must fail before persistence")
+    monkeypatch.setattr(executor, "write_raw_object", forbidden_write)
+    def fetcher(**kwargs):
+        calls.append(kwargs)
+        return _result(frame, raw=raw)
+    with pytest.raises(KRXExpectedScopeExecutorError, match="raw response"):
+        execute_expected_scope_date(
+            requested_date="20260927", environment=_env(tmp_path),
+            git_worktree=str(worktree), fetcher=fetcher, evaluation_time=EVAL,
+        )
+    assert len(calls) == 1
+    assert not (tmp_path / "private" / "expected_scope").exists()
