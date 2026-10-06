@@ -32,6 +32,14 @@ class JournalTests(unittest.TestCase):
             self.j.register('decision-1', symbol='005930', side='BUY', quantity=11)
         self.assertEqual(self.j.get('decision-1')['quantity'], 10)
 
+    def test_duplicate_stored_intent_fields_are_ambiguous_even_if_last_value_matches(self):
+        for repeated in ('"quantity":1,', '"quantity":10,', '"side":"SELL",', '"symbol":"OTHER",'):
+            with self.subTest(repeated=repeated):
+                payload = '{' + repeated + '"symbol":"005930","side":"BUY","quantity":10}'
+                self.j.db.execute('UPDATE intents SET payload=? WHERE key=?', (payload, 'decision-1'))
+                with self.assertRaises(OrderJournalError):
+                    self.j.get('decision-1')
+
     def test_concurrent_connections_have_one_claimant(self):
         ready = Barrier(8)
         armed = Barrier(8)

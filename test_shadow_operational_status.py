@@ -61,6 +61,16 @@ class OperationalStatusTests(unittest.TestCase):
         for value in ('PRIVATE-INTENT','PRIVATE-SYMBOL',str(self.path)):
             self.assertNotIn(value,text)
 
+    def test_duplicate_stored_intent_fields_make_status_unavailable_without_mutation(self):
+        self.journal.register('PRIVATE-INTENT', symbol='PRIVATE-SYMBOL', side='BUY', quantity=10)
+        payload = '{"quantity":1,"quantity":10,"symbol":"PRIVATE-SYMBOL","side":"BUY"}'
+        self.journal.db.execute('UPDATE intents SET payload=?', (payload,))
+        before = self.journal.db.total_changes
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(self.journal.db.total_changes, before)
+        self.assertNotIn('PRIVATE-SYMBOL', json.dumps(result))
+
     def test_pending_conflicts_and_latch_are_visible(self):
         self.journal.db.executescript('''CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY);
             CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
