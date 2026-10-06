@@ -11,6 +11,7 @@ import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from order_snapshot_reconciliation import FIELDS, STATUS
+from order_intent_journal import OrderJournalError, validate_stored_intent_row
 
 
 def _require(condition):
@@ -66,13 +67,12 @@ def inspect_shadow_operational_status(path):
         # snapshot still describes the current journal orders.
         names = ('key','broker_order_id','symbol','side','quantity','filled_quantity','state')
         known = {}
-        for key,payload,broker_id,filled,state in connection.execute(
-                "SELECT key,payload,broker_order_id,filled,state FROM intents WHERE state!='INTENT_CREATED'"):
-            identity = _load_json(payload)
-            _require(type(identity) is dict and set(identity)=={'symbol','side','quantity'})
-            _require(type(identity['symbol']) is str and bool(identity['symbol'].strip())
-                and identity['side'] in ('BUY','SELL') and type(identity['quantity']) is int
-                and identity['quantity']>0)
+        for key,payload,broker_id,filled,state,terminal in connection.execute(
+                "SELECT key,payload,broker_order_id,filled,state,terminal_status FROM intents WHERE state!='INTENT_CREATED'"):
+            try:
+                identity = validate_stored_intent_row(payload,state,broker_id,filled,terminal)
+            except OrderJournalError:
+                _require(False)
             known[key] = dict(key=key,broker_order_id=broker_id,
                 symbol=identity['symbol'],side=identity['side'],quantity=identity['quantity'],
                 filled_quantity=filled,state=state)
