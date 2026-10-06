@@ -1,3 +1,16 @@
+# Integrated native readiness checkpoint — 2026-10-06
+
+Latest verified code HEAD: `d2dbc1448e30a1f1f4b20d8ef2963af1100689fb` on `index-alert-position-regen-fix-v1`. Restore was `c875ff2e89fa5e90adcc24dbe45776b87650e81b`, with no open PRs.
+
+- [PR166](https://github.com/kims34/openpilot-opkr/pull/166), merge `a6e149044895a477f13251854c51ca4cbdfb291e`: raw native snapshots/pages → exact reviewed cashflows → atomic durable journal admission in a single read-only entry point. Six integrated cases cover late fills, unknown submissions, missing external admissions, incomplete pages/reviews, unexplained cash and Kill latch. 32 affected local tests passed; feature `42cc92f7ee79cf78ab99329c6d3e4a22d7a8161d`, CI37452843513 SUCCESS.
+- [PR167](https://github.com/kims34/openpilot-opkr/pull/167), merge `d2dbc1448e30a1f1f4b20d8ef2963af1100689fb`: strict v1 external-review manifest input bound to native row bytes/account/capture/query. Explicit exact decimal text and exclusion nulls; no admission flags, inferred semantics or mixed fallback inputs. Six new artifact/integration cases; 19 affected local tests passed. Feature `9269e117450f828b91b9123d09594979f3a83f05`, CI37453074482/job112234002777 SUCCESS (62 related tests).
+
+Hashes and offline reviews do not establish broker-native authenticity or correct mapping. External source/date/freshness/settlement scope, net direction, costs and actual Shadow/LIVE admission gaps remain open. No Core/frozen changes, feature-performance tests, sealed holdout access, actual LIVE, real orders, funds movement or account/API order permission changes. `real_orders_authorized=false`.
+
+Resume at completed PR167. Do not repeat successful suites or this intake/review/journal glue without new changes. Prioritize operational Shadow integration and independently evidenced native mapping; no claim all independent engineering is exhausted or background work continues after this execution.
+
+---
+
 # Native settlement connection checkpoint — 2026-10-06
 
 Latest verified code HEAD: `4753aa5179666d7019e35bec562d00139b75a07c` on `index-alert-position-regen-fix-v1`. This continuation restored `5f5066532923097904ac19eb81bd81a1104c94cc`; no open PRs were present. Only relevant native settlement/cashflow files and CI were inspected.
