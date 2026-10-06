@@ -1,3 +1,49 @@
+# Canonical development continuation — 2026-10-07 08:24 KST
+
+This section supersedes the older top-of-file PR191 checkpoint and historical deferred-account-scope statements. GitHub actual refs/code/merged PRs remain authoritative. Development code HEAD: `026d5b6d3c30c73eec6a3f84eaa56d5514c02b05`. Resolve the branch ref for this record's own documentation SHA. Project INCOMPLETE; ordering disabled.
+
+Recovery verified development0e3c7c6d9c7da8d799af792bb694cca62ead9a44 and no open PRs before implementation. Actual merged PR205–219 were checked, not reimplemented: REAL whole-account redacted baseline; offline order/type00 envelopes; protected bound routing; restart/orphan-marker checks; Kill-preserving late fills; lifecycle-before-fill replay; independent-admission and status-economics fail-closed boundaries. PR218 keeps final-user readiness false even when all caller booleans are true. PR219 keeps status economics structural until independent provenance admission.
+
+## Newly completed integrity work
+
+All reproductions below use synthetic local SQLite data, never actual broker events or genuine LIVE evidence.
+
+| PR | Feature HEAD | Merge HEAD | Exact feature CI |
+|---|---|---|---|
+|222|4522d29e29d56d2c689e8b97f0186d6e677efedc|3362df96634c69f81e01768f10ae5c8cacb3e879|Journal37545353039/job112547917885 SUCCESS251; settlement37545352907/job112547917487 SUCCESS83|
+|223|9c26d57631a790b70597666b42287a7b673c9cd8|5c7d0001da8ad7c54a0e66b9ff5e20fbe4c619c3|Journal37545465063/job112548288695 SUCCESS253; settlement37545465046/job112548289238 SUCCESS83|
+|224|496a057cec200f803721f1326e6efc2e10d04233|9e9fd090e272bb11083939f6566124ce1dc40d9e|Journal37545628300/job112548815101 SUCCESS254; durable37545628233/job112548814956 SUCCESS94; settlement37545628213/job112548814892 SUCCESS83; status37545628228/job112548815033 SUCCESS23; toolkit37545628267 Windows112548815039/Ubuntu112548815303 SUCCESS40 each, Chromium112548815310 SUCCESS2|
+|225|0cb00334a3cfa9c99bb1321aa52ade57fb742363|50ddab3619210d97d0561e9acd6fac10771674b9|Journal37545757062/job112549244014 SUCCESS255; settlement37545757183/job112549244036 SUCCESS83|
+|226|aee2eae0564fe37b4c2d920cbd659c3c254c63d6|6d6748a335b6d583cac51440f211bb938fa46498|Durable37545897422/job112549704474 SUCCESS94; settlement37545897600/job112549705082 SUCCESS84; status37545897427/job112549704723 SUCCESS24; toolkit37545897407 Windows112549704779/Ubuntu112549706350 SUCCESS41 each, Chromium112549704913 SUCCESS2|
+|227|f55648aa815f287530ff64fe776b867b746e12fc|d5605fb154d8740ace16fc634475822bd44128ed|Settlement37546055661/job112550224870 SUCCESS84; status37546055752/job112550225634 SUCCESS26; toolkit37546055863 Windows112550225808/Ubuntu112550226014 SUCCESS43 each, Chromium112550226219 SUCCESS2|
+|228|d91291643d3a1aeeb52f22e327280f81bac37770|026d5b6d3c30c73eec6a3f84eaa56d5514c02b05|Journal37546208570/job112550723549 SUCCESS255; durable37546208469/job112550723070 SUCCESS94; settlement37546208434/job112550722997 SUCCESS86; status37546208472/job112550723107 SUCCESS26; toolkit37546208483 Windows112550723651/Ubuntu112550723839 SUCCESS43 each, Chromium112550723531 SUCCESS2|
+
+222 compares terminal inbox receipt identity with exact native binding payload/digest and execution quantity, rather than ID presence alone. Rehashed changed receipt prices, changed execution quantities and altered native payloads are rejected; replay after later valid fills stays idempotent.
+223 converts exhausted durable JSON decoding into the existing private rollback/quarantine boundary on audit/replay. Corrupt data is retained; no fill is inferred.
+224 rejects duplicate durable intent JSON fields including identical duplicates; shared read-only status validation inherits this rule.
+225 compares accumulated intent fills with exact positive-integer execution sums inside the native bridge's existing lock before new fills, duplicates or restart audit.
+226 shares strict stored reconciliation snapshot decoding between settlement and status, rejecting duplicates/nonstandard constants/depth exhaustion without mutation.
+227 checks whole-ledger totals and orphan executions in the existing mode=ro pinned status snapshot.
+228 shares that non-mutating whole-ledger check with settlement; matching corrupted intent/snapshot totals and orphan fills cannot gain account_settlement_admitted.
+
+Latest local combined canonical journal/type00/status/script/settlement selection:306passed in6.47s. Local pytest8.4.2 installed after initial missing-dependency check. Local browser runtime absent; actual Chromium evidence above comes from exact CI. Counts overlap and must never be summed as unique tests or empirical observations. PR222 exact merge-push37545400756 SUCCESS. Latest code merge-push durable37546307136 SUCCESS; journal37546307216 was still IN_PROGRESS at record creation and must be resolved without duplicate restart.
+
+## External and research state
+
+REAL whole-account read-only scope is COMPLETED, per INDEXALERT_KIWOOM_REAL_ACCOUNT_SCOPE_EVIDENCE_2026-10-07.md and current deferred tracker. Do not request that completed smoke again. REAL type00 remains BLOCKED_EXTERNAL_DEVICE_AUTH: TOKEN_OK/ACCOUNT_ENDPOINT_OK/WS_CONNECTED true; LOGIN805004, DETAIL8050, DEVICE_AUTH. Owner resolves designated-device authentication when available; no repeated PowerShell prompt while deferred. LOGIN/REG connectivity needs no order or fill; zero events is not failed execution provenance. A successful connectivity smoke will not itself grant provenance, durable/account admission or ordering.
+
+Research HEAD checked194da5016ad3aecc2ceb25944666daa74f038083 (PR220/221 merged). Fresh H5 prospective diagnostics use immutable freeze5f19026e320ed8aec49f61b5273d03467d7437aa at2026-10-06T22:54:26Z: future decisions only, no historical reconstruction, no retune. Diagnostic126/504-session checkpoints are not formal Shadow S1/S2/holdout/LIVE and do not admit H5 as ACCEPTED_CHALLENGER. Dynamic0-N remains INCONCLUSIVE/non-adopted. No research result was promoted. Android144fad9c2ed178e04e4b92100210e53e07f77461 and Early-Live prereg1d81eb526f59b87c528d63be9e3883e0f76fedf6 checked; no Android/prereg change in this execution.
+
+Remaining: independently rooted original source-contract/origin and actual KRX/PIT/status/fill/cost/recovery evidence; independently admitted successor/chronology/exact-policy Shadow; authenticated whole-account net/cost/date/scope mapping and genuine LIVE sufficiency; independent canonical Early-Live admission composition; original production signer and later same-build device/push evidence. Local flags/self-hashes/green CI are not these artifacts.
+
+## Exact continuation and prohibitions
+
+Re-fetch live refs/open PRs/new Actions first. Skip completed PR205–228 and all passing unchanged checks. Resolve latest code journal push37546307216 and this documentation push. Continue concrete reproduced integrity/runtime omissions by the independent queue; the next narrow untested review is ambiguous duplicate JSON fields in durable inbox receipt decoding (stored canonical append is unique, but rehashed corrupt input must not silently choose a field). Reproduce before implementing; preserve genuine evidence and do not interpret fixtures as broker observations. Continue independent development while type00 device authentication is deferred. This record is not completion or a claim all engineering is exhausted.
+
+Master Spec blob798e658d2b3414f95ce648c58945425d9a579182 unchanged. Frozen H5/WF504-126-126/PIT/time/labels/Purged-CPCV/purge/embargo/cost/slippage/fills/NetEV/PF/MDD/ES95·99/HoldoutBurn/capacity/promotion/rejection remain unchanged. Preserve consumed failed-invalid-v1 result30c15bb283e4de6e048d33c06734b86ab29a36c342536942e768c6b4d45f5a82, manifestff5e60c816c6e45b0c9aee100af4e884385b14cc5cf602b16919f27560769907, receipt3f0b86dcd9bdbabc6a14021b7f7a895f9a321aa53d3fc4ad23dd614a29a81a63 without reset/rerun/reseal/relabel/retune. No sealed/private outcomes, account secrets, real broker request, order, funds movement, permission change, ordering activation, Railway or signing action occurred. ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED/FUNDS_MOVEMENT_AUTHORIZED/PERMISSION_CHANGE_AUTHORIZED/GENUINE_LIVE_PROVENANCE_VERIFIED=false. Existing hourly continuation not recreated; no between-run/unlimited-runtime claim.
+
+---
+
 # Unclaimed durable intent status integrity — 2026-10-06T16:20Z / 2026-10-07 01:20 KST
 
 Latest development code HEAD73283e4d168f7502e03fd00dc4e3a50158fde42f. Documentation HEAD2ea64031642012662e983b540d3fe1c09c382890 passed overlapping execution-integrity runs37494435779/job112375205874(98passed,2warnings) and37494541580/job112375574010(98passed,2warnings); duplicate same-head CI is not independent evidence.
