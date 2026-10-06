@@ -99,6 +99,18 @@ def _ts(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce", utc=True)
 
 
+def _timezone_aware_scalar(value) -> bool:
+    if pd.isna(value):
+        return True
+    if isinstance(value, (bool, np.bool_, int, float, np.integer, np.floating)):
+        return False
+    try:
+        ts = pd.Timestamp(value)
+    except (TypeError, ValueError):
+        return False
+    return ts.tzinfo is not None and ts.utcoffset() is not None
+
+
 def _finite_median(series: pd.Series) -> float | None:
     x = pd.to_numeric(series, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
     return None if x.empty else float(x.median())
@@ -159,6 +171,8 @@ def validate_execution_observations(table: pd.DataFrame) -> pd.DataFrame:
     x["source"] = sources
 
     for c in ["recommendation_at", "order_submitted_at", "first_fill_at", "final_fill_at", "ingested_at"]:
+        if not table[c].map(_timezone_aware_scalar).all():
+            raise ExecutionEvidenceError(f"{c} must preserve an explicit timezone")
         x[c] = _ts(x[c])
     if x[["recommendation_at", "order_submitted_at", "ingested_at"]].isna().any().any():
         raise ExecutionEvidenceError("recommendation/order/ingested timestamps are mandatory")
