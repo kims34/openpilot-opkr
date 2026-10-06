@@ -73,5 +73,16 @@ class SettlementEvidenceTests(unittest.TestCase):
             out = normalize_kt00001_settlement({**row, 'entr':text}, account_fingerprint=FP, captured_at=TS)
             self.assertEqual(out.deposit_cash_krw, 8999)
 
+    def test_supplied_native_failure_or_coerced_success_code_is_rejected(self):
+        row = {'entr':'8999','pymn_alow_amt':'0','d2_entra':'0','ord_alow_amt':'0'}
+        for code in (1,-1,'0',False,True,None,0.0):
+            with self.subTest(code=code), self.assertRaises(SettlementEvidenceError):
+                normalize_kt00001_settlement({**row,'return_code':code},account_fingerprint=FP,captured_at=TS)
+        for body in (row,{**row,'return_code':0}):
+            out = normalize_kt00001_settlement(body,account_fingerprint=FP,captured_at=TS).report()
+            self.assertEqual(out['deposit_cash_krw'],'8999')
+            self.assertFalse(out['source_account_origin_authenticated'])
+            self.assertFalse(out['account_settlement_admitted'])
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,7 @@ from account_cashflow_reconciliation import SettledCashMovement, CashflowReconci
 from kiwoom_settlement_history import SettlementHistoryError
 from account_settlement_binding import SettlementAdmission
 from native_settlement_readiness import assess_native_settlement_readiness
+from kiwoom_account_settlement_evidence import SettlementEvidenceError
 
 
 class NativeReadinessTests(unittest.TestCase):
@@ -80,3 +81,10 @@ class NativeReadinessTests(unittest.TestCase):
         result = self.assess()
         self.assertFalse(result['ready_for_final_user_authorization'])
         self.assertIn('KILL_SWITCH_LATCHED',result['local_reconciliation_errors'])
+
+    def test_explicit_cash_response_failure_vetoes_even_supplied_external_flags(self):
+        before = self.local.journal.shadow_control(),self.local.journal.db.total_changes
+        for name in ('opening_body','closing_body'):
+            with self.assertRaises(SettlementEvidenceError):
+                self.assess(**{name:{**self.body,'return_code':1}})
+        self.assertEqual(before,(self.local.journal.shadow_control(),self.local.journal.db.total_changes))
