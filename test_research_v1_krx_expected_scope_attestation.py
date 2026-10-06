@@ -77,3 +77,20 @@ def test_scope_keys_cannot_be_weakened():
     data["expected_scope_rules"]["investor_flow"]["key"] = ["event_date", "symbol"]
     with pytest.raises(KRXExpectedScopeAttestationError, match="investor key drift"):
         validate_contract(data)
+
+
+@pytest.mark.parametrize("section", ["investor_flow", "security_status"])
+@pytest.mark.parametrize("value", [False, None, 1, "true"])
+def test_scope_fingerprint_output_requirement_must_remain_exact_true(section, value):
+    data = _data()
+    data["expected_scope_rules"][section]["output_requires_scope_contract_fingerprint"] = value
+    with pytest.raises(KRXExpectedScopeAttestationError, match="scope fingerprint requirement lost"):
+        validate_contract(data)
+
+
+@pytest.mark.parametrize("section", ["investor_flow", "security_status"])
+def test_scope_fingerprint_output_requirement_cannot_be_removed(section):
+    data = _data()
+    del data["expected_scope_rules"][section]["output_requires_scope_contract_fingerprint"]
+    with pytest.raises(KRXExpectedScopeAttestationError, match="scope fingerprint requirement lost"):
+        validate_contract(data)
