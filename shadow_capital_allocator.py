@@ -88,11 +88,22 @@ class ShadowCapitalAllocator:
         if row is None:
             raise OrderJournalError('missing shadow capital configuration')
         revision, enabled, maximum, baseline = row
+        try:
+            values = json.loads(baseline)
+        except (json.JSONDecodeError, RecursionError, TypeError):
+            raise OrderJournalError('invalid shadow capital configuration') from None
+        if (type(revision) is not int or not 0 <= revision <= 2**63-1
+            or type(enabled) is not int or enabled not in (0,1)
+            or type(maximum) is not int or not 0 <= maximum <= 2**63-1
+            or (enabled and maximum == 0)
+            or type(values) is not list or len(values) != 4
+            or any(type(value) is not int or not 0 <= value <= 2**63-1 for value in values)):
+            raise OrderJournalError('invalid shadow capital configuration')
         # Restoring a late-fill reservation can exceed the ceiling or even the
         # SQLite aggregate integer range. Preserve/report exposure exactly.
         reserve = validate_stored_capital_reservations(self.journal.db)
         return dict(revision=revision, controls=AutomationUserControls(bool(enabled), maximum),
-            capital=AutomationCapitalState(*json.loads(baseline)), managed_reserve_krw=reserve)
+            capital=AutomationCapitalState(*values), managed_reserve_krw=reserve)
 
     def _revision(self, expected):
         state = self.state()

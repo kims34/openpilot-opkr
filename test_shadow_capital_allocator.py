@@ -202,6 +202,31 @@ class ShadowCapitalTests(unittest.TestCase):
         finally:
             j.close()
 
+    def test_corrupt_stored_capital_configuration_blocks_claim_without_private_traceback(self):
+        baseline_faults = ('[]', 'null', '[0,0,0,0,0]', '[false,0,0,0]',
+            '[-1,0,0,0]', '[0.5,0,0,0]', '[NaN,0,0,0]',
+            '[18446744073709551616,0,0,0]', '[' * 20000 + '0' + ']' * 20000)
+        for baseline in baseline_faults:
+            with self.subTest(kind='deep' if len(baseline)>100 else baseline):
+                self.j.db.execute('UPDATE shadow_capital_config SET baseline=?', (baseline,))
+                before = tuple(self.j.db.iterdump())
+                with self.assertRaisesRegex(OrderJournalError, '^invalid shadow capital configuration$'):
+                    self.a.reserve_and_claim_buy('d1',limit_price_krw=8,fee_buffer_krw=0,
+                        expected_epoch=self.epoch,expected_capital_revision=1)
+                self.assertEqual(tuple(self.j.db.iterdump()), before)
+                self.assertEqual(self.j.get('d1')['state'], 'INTENT_CREATED')
+        self.j.db.execute("UPDATE shadow_capital_config SET baseline='[0,0,0,0]'")
+        for revision, maximum in ((-1,100), (1.5,100), (1,0), (1,-1), (1,99.5)):
+            with self.subTest(revision=revision, maximum=maximum):
+                self.j.db.execute('UPDATE shadow_capital_config SET revision=?,maximum=?', (revision,maximum))
+                before = tuple(self.j.db.iterdump())
+                with self.assertRaisesRegex(OrderJournalError, '^invalid shadow capital configuration$'):
+                    self.a.reserve_and_claim_buy('d1',limit_price_krw=8,fee_buffer_krw=0,
+                        expected_epoch=self.epoch,expected_capital_revision=1)
+                self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.j.db.execute('UPDATE shadow_capital_config SET revision=1,maximum=100')
+        self.assertEqual(self.claim()['reservation_krw'], 80)
+
 
 if __name__=='__main__':
     unittest.main()
