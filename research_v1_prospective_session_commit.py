@@ -209,6 +209,7 @@ def commit_structural_prospective_session(
     supervised_frame: pd.DataFrame,
     session_calendar: Sequence[Any],
     target_session: str,
+    producer_implementation_commit: str,
     decision_at: str,
     captured_at: str,
     root: str,
@@ -259,6 +260,7 @@ def commit_structural_prospective_session(
         supervised_frame,
         session_calendar=session_calendar,
         target_session=target,
+        producer_implementation_commit=producer_implementation_commit,
     )
     binding = producer["producer_binding"]
     bundle = producer["model_bundle"]
