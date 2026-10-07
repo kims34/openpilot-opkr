@@ -53,8 +53,14 @@ def test_verified_official_recovery_fully_closes_position_economics_only():
         expected_scope_attested=True,
     )
     assert out["structural_status_economics_satisfied"] is True
+    assert out["expected_scope_attestation_claimed"] is True
+    assert out["independent_expected_scope_admission_verified"] is False
+    assert out["expected_scope_attestation_claimed"] is False
+    assert out["independent_expected_scope_admission_verified"] is False
+    assert out["expected_scope_attested"] is False
     assert out["independent_economics_provenance_admission_verified"] is False
     assert out["exact_status_economics_ready"] is False
+    assert "INDEPENDENT_EXPECTED_SCOPE_ADMISSION_NOT_IMPLEMENTED" in out["blocking_conditions"]
     assert "INDEPENDENT_ECONOMICS_PROVENANCE_ADMISSION_NOT_IMPLEMENTED" in out["blocking_conditions"]
     assert out["unresolved_positions"] == 0
     assert out["unsupported_recovery_evidence_positions"] == 0
