@@ -1,9 +1,62 @@
+import base64
+import shutil
+import subprocess
 import pathlib
 import unittest
 
 S = pathlib.Path("kiwoom_real_account_scope_readonly_smoke.ps1").read_text(encoding="utf-8")
 
 class RealAccountScopeSmokeTests(unittest.TestCase):
+    def test_actual_paging_helpers_reject_unknown_rows_and_contradictory_cursor(self):
+        runtimes=list(dict.fromkeys(runtime for runtime in (shutil.which('pwsh'),shutil.which('powershell')) if runtime))
+        if not runtimes:
+            self.skipTest('Offline PowerShell paging behavior covered by CI matrix')
+        path=base64.b64encode(str(pathlib.Path('kiwoom_real_account_scope_readonly_smoke.ps1').resolve()).encode()).decode()
+        harness=r'''$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'
+$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('PATH_BASE64'))
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors)
+foreach ($name in @('Convert-ReadOnlyJson','Get-ReadOnlyReturnCode','Invoke-ReadOnlyPage','Get-PagedCount')) {
+ $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+ if ($null -eq $fn) { throw 'HELPER_MISSING' }
+ . ([ScriptBlock]::Create($fn.Extent.Text))
+}
+# Stub all HTTP. No credentials/configuration or full broker script are executed.
+function Invoke-WebRequest {
+ param([switch]$UseBasicParsing,[string]$Uri,[string]$Method,[object]$Headers,[string]$ContentType,[object]$Body)
+ $script:Calls++
+ return [pscustomobject]@{Content=$script:Reply;Headers=$script:ReplyHeaders}
+}
+$script:Token='fixture'; $script:Calls=0; $script:ReplyHeaders=@{'cont-yn'='N';'next-key'=''}
+foreach ($reply in @('{"return_code":0}','{"return_code":0,"cntr":null}','{"return_code":0,"cntr":{}}','{"return_code":0,"cntr":[null]}','{"return_code":0,"cntr":["row"]}')) {
+ $script:Reply=$reply; $rejected=$false
+ try {$null=Get-PagedCount -ApiId 'ka10076' -Body @{} -ArrayProperty 'cntr'}
+ catch {if ($_.Exception.Message -ne 'PAGE_SCHEMA_BLOCKED') {throw 'PRIVATE_SCHEMA_ERROR_REQUIRED'}; $rejected=$true}
+ if (-not $rejected) {throw 'UNKNOWN_ROWS_BECAME_COMPLETE'}
+}
+$script:Reply='{"return_code":0,"cntr":[]}'
+$result=Get-PagedCount -ApiId 'ka10076' -Body @{} -ArrayProperty 'cntr'
+if (-not $result.Complete -or $result.Count -ne 0) {throw 'EXPLICIT_EMPTY_REJECTED'}
+$script:Reply='{"return_code":0,"cntr":[{},{}]}'
+$result=Get-PagedCount -ApiId 'ka10076' -Body @{} -ArrayProperty 'cntr'
+if (-not $result.Complete -or $result.Count -ne 2) {throw 'VALID_ROWS_REJECTED'}
+foreach ($headers in @(@{'cont-yn'='N';'next-key'='unexpected'},@{'cont-yn'='Y';'next-key'=''})) {
+ $script:ReplyHeaders=$headers; $rejected=$false
+ try {$null=Invoke-ReadOnlyPage -ApiId 'ka10076' -Body @{}}
+ catch {if ($_.Exception.Message -ne 'CONTINUATION_BLOCKED') {throw 'PRIVATE_CURSOR_ERROR_REQUIRED'}; $rejected=$true}
+ if (-not $rejected) {throw 'CURSOR_CONTRADICTION_ACCEPTED'}
+}
+$script:ReplyHeaders=@{'cont-yn'='Y';'next-key'='fixture-cursor'}
+$before=$script:Calls
+$result=Get-PagedCount -ApiId 'ka10076' -Body @{} -ArrayProperty 'cntr'
+if ($result.Complete -or ($script:Calls-$before) -ne 10) {throw 'PAGING_CAP_BYPASSED'}
+'''.replace('PATH_BASE64',path)
+        encoded=base64.b64encode(harness.encode('utf-16le')).decode()
+        for runtime in runtimes:
+            with self.subTest(runtime=pathlib.Path(runtime).name):
+                result=subprocess.run([runtime,'-NoProfile','-NonInteractive','-EncodedCommand',encoded],capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr)
+
     def test_fixed_real_host_and_reviewed_query_ids_only(self):
         self.assertEqual(S.count("https://api.kiwoom.com/oauth2/token"), 1)
         self.assertIn("https://api.kiwoom.com/api/dostk/acnt", S)

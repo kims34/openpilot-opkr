@@ -10,6 +10,8 @@ on:
       - 'test_kiwoom_real_readonly_preparation.py'
       - 'test_kiwoom_real_readonly_transport.py'
       - 'test_kiwoom_real_settlement_readonly_smoke_ps1.py'
+      - 'test_kiwoom_real_settlement_date_readonly_smoke_ps1.py'
+      - 'test_kiwoom_real_account_scope_readonly_smoke_ps1.py'
       - '.github/workflows/kiwoom-real-settlement-readonly.yml'
   push:
     branches:
@@ -23,6 +25,8 @@ on:
       - 'test_kiwoom_real_readonly_preparation.py'
       - 'test_kiwoom_real_readonly_transport.py'
       - 'test_kiwoom_real_settlement_readonly_smoke_ps1.py'
+      - 'test_kiwoom_real_settlement_date_readonly_smoke_ps1.py'
+      - 'test_kiwoom_real_account_scope_readonly_smoke_ps1.py'
       - '.github/workflows/kiwoom-real-settlement-readonly.yml'
 jobs:
   test:
