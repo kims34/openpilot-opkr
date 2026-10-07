@@ -1,3 +1,39 @@
+# Continuation checkpoint — 2026-10-07 PR297–301 runtime inbox integrity
+
+GitHub is authoritative. This checkpoint supersedes older next-task pointers. Project is NOT complete; execution-boundary engineering continues. Do not repeat PR273–301.
+
+## Actual completed work
+- PR297: startup-only terminal marker verification also enforced under lock before direct replay, FIFO selection and inbox counts. Reproduced an APPLIED marker hiding an unapplied receipt and orphan DUPLICATE markers; original history retained, no synthesized fill. Feature 67c490fbc87aaf1618d12d208b0aa9bbdc1ec6a0; merge f551cfd36e1c8a2c603392c30f0aca84dc113884.
+- PR298: read-only operator diagnostics reject absent receipt references for every attempt outcome and unknown/NULL outcome values, retaining private unavailable output and unchanged DB. Feature 18f9c61d1823ab11db3bb027f00feae30004bafa; merge b2ead534c3161644ba4c041db40c42a0a5ccb37e. Structural check only: this does NOT authenticate source/native execution material.
+- PR299: runtime attempt audit extended to BLOCKED/orphan and unknown outcomes, reproducing their former ability to allow a fill despite invalid history. BLOCKED payloads remain countable for explicit recovery, never terminal. Feature be3a5aae621cb8ea281f91fefe0c1852ee792bc2; merge 6cce4c4c6084a3bbc74a1049f98fcce5cc5e4642.
+- PR300: all inbox runtime entry points check surviving receipts/attempts/conflicts tables under lock before SQL. Reproduced raw SQLite error on table loss; now existing private reconciliation quarantine, no history recreation. Feature 4d1ce5b83491f4b0d54f78761f3e8c68e5668613; merge a6e50cc57ccf9f964730341d7c684006f1d82928.
+- PR301: locked presence checks also cover native scope/order/fill tables used by terminal verification. All three missing-table errors reproduced; existing executions/filled quantities/attempts preserved, no recreation or new fill. Feature f1696448bccff92330a133d207c1ed9166324e71; merge 8b63fc210700e3652c890a0c6f7dd61051da9f2a.
+- Public native bridge apply/REST paths already validate component history. A targeted review found those table-loss paths already blocked; no bridge change or duplicate PR was made.
+
+## Verification
+- Failure reproduction preceded each defect fix. PR299 initially over-validated BLOCKED payload material; regression exposed this and the implementation was corrected before commit.
+- Final selected journal + operational status/dashboard/script regression: 381 passed in 8.01s. git diff --check clean. Existing crash after execution commit/before attempt commit, restart idempotence, late-fill, Kill latch, capital/reconciliation behavior pass.
+- PR297 exact-head Actions: 37578730904/job112653351836 settlement SUCCESS; 37578730929/job112653351658 journal SUCCESS (actual log 335 passed in 5.87s).
+- PR298 exact-head Actions: 37578836145/job112653675925 settlement SUCCESS; 37578836147/job112653676056 status SUCCESS; toolkit 37578836146/jobs112653676088,112653676367,112653676475 all SUCCESS, including Windows/Ubuntu/Chromium.
+- PR299 exact-head Actions: 37578978598,37578978632 / jobs112654116614,112654116603 all SUCCESS.
+- PR300 exact-head Actions: 37579126660/job112654575053 settlement SUCCESS; 37579126596/job112654574828 journal SUCCESS.
+- PR301 exact-head Account Settlement Binding: 37579293053/jobs112655059495 SUCCESS.
+- PR301 exact-head Offline Kiwoom Journal Binding: 37579293125/jobs112655060047 SUCCESS.
+
+## Authoritative resume
+- Recorded source HEAD: 8b63fc210700e3652c890a0c6f7dd61051da9f2a. This documentation commit descends from that SHA; resolve actual branch HEAD again before editing.
+- Other branches freshly unchanged: research 194da5016ad3aecc2ceb25944666daa74f038083; Android 144fad9c2ed178e04e4b92100210e53e07f77461; prereg 1d81eb526f59b87c528d63be9e3883e0f76fedf6.
+- Re-read only fresh branch HEAD/open PR/recent commits/Actions and changed canonical records. Do not dispatch duplicate CI. Preserve concurrent changes.
+- Next independent review point: shadow_operational_status.py inbox block currently audits sequence + attempt existence/outcome, but does not perform complete read-only terminal receipt/native execution material verification. Reproduce a concrete misleading diagnostic case before changing behavior; reuse pure read-only canonical checks, never construct a mutating bridge/inbox on operator inspection or infer LIVE authority from this. No new operator semantic implementation has been performed for this remaining point.
+- Continue remaining queue in order: durable reconciliation, crash/reconnect/Kill/late-fill, conservative capital reservation/reuse, read-only transport, independent admission composition, source/PIT/economics, Android. Neither this checkpoint nor successful tests conclude development.
+
+## Deferred external blockers and immutable boundaries
+Owner REAL whole-account read-only baseline COMPLETE; do not repeat. Kiwoom type00 DEVICE_AUTH 805004/8050 remains deferred external device authentication; Android original signing-key continuity remains deferred. No owner commands or credentials requested in this run; independent work remains available.
+All fixtures and checks above are offline/local structural evidence, NOT genuine LIVE provenance, source/PIT/economics PASS, Shadow/Early-Live admission, external signer proof or broker execution provenance. Final-user-ready remains false.
+ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED=false; FUNDS_MOVEMENT_AUTHORIZED=false; PERMISSION_CHANGE_AUTHORIZED=false. No broker calls, account identifiers, tokens, raw frames or real order/fill IDs persisted. Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/fill/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalid v1 holdout lineage unchanged. No sealed holdout access, research promotion or Champion change.
+
+---
+
 # Canonical checkpoint — 2026-10-07 14:48 KST
 
 Actual code HEAD 821fe99ac5fc624496016770ccf043aff4d12d9b (PR296). PR295–296 are merged after exact feature CI SUCCESS. Prior native/inbox audit resume was followed; nonpositive arrival-sequence bypass is completed, do not repeat. This checkpoint is docs only: requery current branch HEAD. Project INCOMPLETE; no continued background execution or exhausted-independent-work claim.
