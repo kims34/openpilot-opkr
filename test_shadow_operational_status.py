@@ -59,6 +59,20 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE-SAFETY-REASON', json.dumps(out))
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
+    def test_invalid_unclaimed_identity_cannot_report_complete_diagnostics(self):
+        self.journal.register('PRIVATE-KEY',symbol='PRIVATE-SYMBOL',side='BUY',quantity=1)
+        for key in (None, '', '   '):
+            with self.subTest(key=key):
+                self.journal.db.execute('UPDATE intents SET key=?', (key,))
+                before = tuple(self.journal.db.iterdump())
+                out = self.inspect()
+                self.assertFalse(out['diagnostics_complete'])
+                self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+                self.assertNotIn('capital', out)
+                self.assertFalse(out['real_orders_authorized'])
+                self.assertNotIn('PRIVATE-SYMBOL', json.dumps(out))
+                self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
     def test_complete_capital_history_loss_is_unavailable_without_mutation(self):
         for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
             self.journal.db.execute(f'DROP TABLE {table}')
