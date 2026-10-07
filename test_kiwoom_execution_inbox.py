@@ -177,6 +177,36 @@ class InboxTests(unittest.TestCase):
             self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_attempts').fetchone(),(0,))
             self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
 
+    def _assert_corrupt_conflict_material(self, *, malformed=False, bad_digest=False, bad_day=False):
+        self.append(); self.append('receipt-2')
+        record = self.j.db.execute('SELECT key,day,payload,digest FROM native_inbox_receipts LIMIT 1').fetchone()
+        key,day,payload,digest = record
+        if malformed:
+            payload = '{}'; digest = hashlib.sha256(payload.encode()).hexdigest()
+        if bad_digest:
+            digest = '0' * 64
+        if bad_day:
+            day = '2026-10-04'
+        self.j.db.execute('INSERT INTO native_inbox_conflicts(receipt_id,key,day,payload,digest) VALUES(?,?,?,?,?)',
+            ('receipt-2',key,day,payload,digest))
+        history = self.j.db.execute('SELECT * FROM native_inbox_conflicts').fetchall()
+        for operation in (self.i.replay_next,self.i.counts,lambda:self.i.replay('receipt-1'),lambda:self.append('receipt-3')):
+            with self.assertRaisesRegex(ExecutionInboxError,'^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_inbox_conflicts').fetchall(),history)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_receipts').fetchone(),(2,))
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_attempts').fetchone(),(0,))
+
+    def test_corrupt_conflict_payload_blocks_unrelated_runtime_fill(self):
+        self._assert_corrupt_conflict_material(malformed=True)
+
+    def test_corrupt_conflict_digest_blocks_unrelated_runtime_fill(self):
+        self._assert_corrupt_conflict_material(bad_digest=True)
+
+    def test_corrupt_conflict_day_blocks_unrelated_runtime_fill(self):
+        self._assert_corrupt_conflict_material(bad_day=True)
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):
