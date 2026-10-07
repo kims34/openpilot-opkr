@@ -116,6 +116,37 @@ function Get-ReadOnlyReturnCode([object]$Message, [string]$Raw, [bool]$ControlFr
     }
 }
 
+function Get-Type00ReadOnlyObservation([object]$Message, [string]$Account) {
+    try {
+        if ($Message -isnot [Management.Automation.PSCustomObject] -or
+            $Message.trnm -isnot [string] -or $Message.trnm.ToUpperInvariant() -ne 'REAL' -or
+            $Message.data -isnot [array] -or [string]::IsNullOrWhiteSpace($Account)) { throw 'invalid' }
+        $allowed = @('9201','9203','9205','9001','912','913','302','900','901','902','903',
+                     '904','905','906','907','908','909','910','911','10','27','28','914',
+                     '915','938','939','919','920','921','922','923','10010','2134','2135','2136')
+        $events = 0; $matched = 0; $execution = $false
+        foreach ($entry in $Message.data) {
+            if ($entry -isnot [Management.Automation.PSCustomObject] -or $entry.type -isnot [string]) { throw 'invalid' }
+            if ($entry.type -ne '00') { continue }
+            $values = $entry.values
+            if ($values -isnot [Management.Automation.PSCustomObject]) { throw 'invalid' }
+            foreach ($property in $values.PSObject.Properties) {
+                if ($property.Name -cnotin $allowed -or $property.Value -isnot [string] -or $property.Value.Length -gt 4096) { throw 'invalid' }
+            }
+            $events++
+            if ($values.'9201' -ceq $Account) {
+                $matched++
+                if ($values.'913' -ceq '체결' -and
+                    -not [string]::IsNullOrWhiteSpace($values.'909') -and
+                    -not [string]::IsNullOrWhiteSpace($values.'908') -and
+                    -not [string]::IsNullOrWhiteSpace($values.'914') -and
+                    -not [string]::IsNullOrWhiteSpace($values.'915')) { $execution = $true }
+            }
+        }
+        return @{ Events=$events; Matched=$matched; ExecutionFieldsObserved=$execution }
+    } catch { throw 'TYPE00_FRAME_SCHEMA_INVALID' }
+}
+
 function Emit-Failure([string]$Stage, [int]$Code = -1) {
     @{
         STAGE=$Stage
@@ -311,22 +342,11 @@ try {
             continue
         }
         if ($trnm -ne "REAL") { continue }
-        foreach ($entry in @($obj.data)) {
-            if ($null -eq $entry -or [string]$entry.type -ne "00") { continue }
-            $values = $entry.values
-            if ($null -eq $values) { continue }
-            $events++
-            if ([string]$values.'9201' -eq $script:Account) {
-                $accountMatched++
-                if (([string]$values.'913' -eq "체결") -and
-                    -not [string]::IsNullOrWhiteSpace([string]$values.'909') -and
-                    -not [string]::IsNullOrWhiteSpace([string]$values.'908') -and
-                    -not [string]::IsNullOrWhiteSpace([string]$values.'914') -and
-                    -not [string]::IsNullOrWhiteSpace([string]$values.'915')) {
-                    $executionObserved = $true
-                }
-            }
-        }
+        try { $observation = Get-Type00ReadOnlyObservation -Message $obj -Account $script:Account }
+        catch { Emit-Failure "TYPE00_FRAME_PROTOCOL" }
+        $events += $observation.Events
+        $accountMatched += $observation.Matched
+        $executionObserved = $executionObserved -or $observation.ExecutionFieldsObserved
     }
 
     if (-not $regAck -and $events -eq 0) { Emit-Failure "TYPE00_SUBSCRIPTION_UNOBSERVED" 0 }
