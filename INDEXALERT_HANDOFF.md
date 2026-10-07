@@ -1,3 +1,29 @@
+# Continuity checkpoint — 2026-10-07 09:57 KST
+
+GitHub authoritative code HEAD: `9884c1e61bceedc45898d0ed3b4088b920cd4a1c` on `index-alert-position-regen-fix-v1` (PR249 merge). This checkpoint commit is documentation only; retrieve the actual branch HEAD before resuming. No duplicate CI reruns or concurrent code movement observed.
+
+Completed and exact-head CI verified:
+- PR245 `1b4415492d7abec87ec17d2799b88e0826e8764f` → merge `d639306938ac47a1b2e5fcf78a3cb1e040489abf`: invalid/missing reconciliation revisions cannot admit or silently repair a batch. Actions 37553767948/112575110190 (291), 37553767942/112575110308 (113), 37553767913/112575109956 (86), 37553768031/112575110296 (28), 37553767884 jobs 112575109873 (Chromium2),112575110135/112575110136 (Ubuntu/Windows45 each): all SUCCESS.
+- PR246 `73188d8fddc57b086c9e01ac7a1268a99820f9f7` → merge `c7c580f80674ff1cd60abffefba011450565dbf0`: missing Kill/barrier rows remain missing at restart; atomic fresh initialization, no fabricated nonce or cleared latch. Actions 37553931559/112575641393 (293),37553931530/112575641691 (115),37553931493/112575641401 (86),37553931544/112575641571 (28),37553931484 jobs112575641325 (Chromium2),112575641577/112575641671 (Ubuntu/Windows45 each): all SUCCESS.
+- PR247 `26ce25a52292868357f257249f4f17309e513349` → merge `50dc3a27efd2fcee801892d486d850ce951ce45b`: missing safety tables are not recreated. Actions37554136998/112576307313 (294),37554137024/112576307845 (116),37554136999/112576307141 (86),37554137013/112576308689 (28),37554137103 jobs112576307532 (Chromium2),112576307730/112576307791 (Ubuntu/Windows): all SUCCESS.
+- PR248 `c7656583bc403ff1b4774d307e4d28c939af38e2` → merge `be2de7abf1bc9c5862406d8565e51eca5ac7cfc3`: missing capital config/partial initial capital tables cannot reset revision or fabricate history; surviving reservations/Kill retained. Actions37554291114/112576808854 (295),37554291183/112576809199 (117),37554291128/112576808991 (86),37554291236/112576809148 (28),37554291083 jobs112576808705 (Chromium2),112576808913/112576808986 (45 each): all SUCCESS.
+- PR249 `908f468a999e7bebb69852a1d690e167b57a8ec8` → merge `9884c1e61bceedc45898d0ed3b4088b920cd4a1c`: partial durable inbox schemas quarantine before CREATE; original receipts and Kill retained, missing attempts remain absent. Actions37554375585/112577079918 (295),37554375570/112577079917 (86): both SUCCESS; only these workflows triggered.
+
+In flight / exact resume:
+- PR250 `6754046186bed235c193347e0652e6eebe9f9ab1`, branch `index-alert-native-scope-startup-history-v1`: reject missing core journal tables and partial native schemas/missing native scope before reinitialization. Reproduced dropped native scope permitting a different caller account; added private quarantine retaining surviving order binding/Kill.
+- Latest local selected regression: 351 passed in6.67s, includes merged245–249 and PR250. This is offline structural safety only, never LIVE/source/PIT/admission evidence.
+- PR250 Actions already running:37554492197 journal,37554492076 durable,37554492090 settlement,37554492118 status,37554492130 toolkit. Read exact jobs and finished conclusions; do not restart. Merge only after all triggered jobs SUCCESS and expected feature HEAD matches. Then verify merge push and latest HEAD.
+- Subsequent independent audit: complete removal of all optional component tables can still be confused with first initialization. Reproduce capital config+reservations+releases removal and legacy BUY claim bypass; design durable component initialization lineage with backwards-compatible migration, fail-closed restart/enable/claim/readonly reporting, no reset of prior capital/receipt/native facts. Partial-loss guards are completed, do not repeat them.
+
+External / safety unchanged:
+- REAL whole-account read-only baseline COMPLETE; do not rerun. type00 LOGIN BLOCKED_EXTERNAL_DEVICE_AUTH805004/8050, token/account endpoint/WS connected true. Owner designated-device authentication deferred; no repeated PowerShell request. LOGIN/REG needs no order; zero fill events do not imply failed provenance.
+- ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED=false; FUNDS_MOVEMENT_AUTHORIZED=false; PERMISSION_CHANGE_AUTHORIZED=false; GENUINE_LIVE_PROVENANCE_VERIFIED=false. PR218 final-user-ready remains false. No real broker write, credential/raw account artifacts, permissions, cash movement or sealed holdout access.
+- Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/costs/execution/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalidv1 lineage unchanged. REJECT/INCONCLUSIVE/IDEA never operational; Champion unchanged.
+- Fresh branch checks this run: research `194da5016ad3aecc2ceb25944666daa74f038083`, Android `144fad9c2ed178e04e4b92100210e53e07f77461`, Early-Live prereg `1d81eb526f59b87c528d63be9e3883e0f76fedf6`; unchanged. Existing signer/device blockers deferred. Previous doc023 Actions37550054951 SUCCESS.
+- Project not complete. Preserve exact next pointer when run limits end; never claim continued execution after response.
+
+---
+
 # Canonical execution checkpoint — 2026-10-07 09:04 KST
 
 Actual development CODE HEAD: `750008e732cfb4462b969103fa3285bb82ef902e` (PR244 merge). This section supersedes every older in-flight/resume pointer. Resolve the live dev ref for this documentation commit's own HEAD. No open PRs at checkpoint. Project INCOMPLETE; this is a bounded execution/usage checkpoint, not project completion or a claim all independent engineering is exhausted.
