@@ -1,3 +1,33 @@
+# Continuation checkpoint — 2026-10-07 PR309–312 durable identity and receipt material
+
+GitHub is authoritative. Source HEAD at this checkpoint: d5a4054e2ff0e5a33e3fc9c61bf70c8ef6ab6d80; resolve the current ref before resuming. This checkpoint supersedes earlier next-task pointers. Project remains INCOMPLETE. Do not repeat completed PR273–312 or prior account/device setup.
+
+## Completed work
+- Restored actual dev aaf59b21bff83d55c11e385a5037950918c6810e (PR308) and open PR309, rather than relying on older conversation HEAD 1c180217. Research 194da5016ad3aecc2ceb25944666daa74f038083; Android 144fad9c2ed178e04e4b92100210e53e07f77461; prereg 1d81eb526f59b87c528d63be9e3883e0f76fedf6.
+- PR309: existing alternate conflict material audit reviewed; exact feature fa447f3a2d1fffdde64143ca2b1fc5fca5d60fa9 CI succeeded, merged 0d0b30a2da69b6dbb366db50983830913fa7d87d. Conflicting deliveries retain original material and require independent resolution.
+- PR310: feature fba8ec6aa9c62bee3f13a8a90d08412bed7035a4, merge 12149328d6237a1fe8a2d6542792e550d5ed9aa0. Reproduced an unrelated pending receipt with corrupt digest being ignored by counts, append and direct/FIFO replay; replay applied four units, operator diagnostics_complete=true. Shared existing startup receipt identity/scope/digest/strict normalized JSON validation with runtime and pure operator inspection. Added bad digest/day/key/shape/duplicate JSON coverage and retained original receipts/attempts. Deep corrupt pending JSON now reports unavailable counts instead of a trusted pending count; receipt remains in SQL.
+- PR311: feature 46edf3d378287c94f6a07da678ed9ec66f99cb9d, merge df6454f0613fbad1b043cf385e59334a42171ae2. Reproduced duplicate unclaimed intent keys after SQL constraint loss being accepted by get, Shadow enabling and complete operator diagnostics. Pure whole-table identity validation before row selection/register/batch admission/operator reads rejects ambiguity. Register explicitly skips an existing matching payload, retaining idempotency even without SQL uniqueness. Original duplicate rows preserved. Existing claim rowcount guard rejected submission in the pre-fix reproduction; no claim of a broker order.
+- PR312: feature aa51854cc23c739db439e0fad8bd05b6d605e3b8, merge d5a4054e2ff0e5a33e3fc9c61bf70c8ef6ab6d80. Reproduced two identical four-unit execution IDs with matching doubled intent total eight accepting an additional one-unit fill and complete diagnostics. Shared pure execution-total validator rejects duplicate (key,execution_id) before accumulation independently of SQL constraint survival. Original execution rows and quantities preserved, repeated/new execution attempts privately rejected, Shadow stopped, operator remains read-only/unavailable.
+
+## Verification and limits
+Selected journal/safety/capital/native/inbox/operator/dashboard/toolkit/settlement regression: PR310 318 passed in 8.79s; PR311 321 passed in 9.05s; PR312 323 passed in 8.84s. Counts overlap and must not be added. Exact final PR312 remote Offline Kiwoom Journal Binding job112705801555: 362 passed in 6.34s. Diff checks clean; remote feature blob hashes matched local bytes. Generic/offline synthetic corruption cases only, no broker origin or genuine LIVE evidence.
+Exact feature-head CI:
+- PR309: 37592666481 toolkit,37592666356 settlement,37592666291 status,37592666456 native — all SUCCESS.
+- PR310: 37594555116 toolkit,37594555138 settlement,37594555357 status,37594555209 native — all SUCCESS.
+- PR311: 37594892660 toolkit,37594892629 settlement,37594892681 journal,37594892597 status,37594892759 native — all SUCCESS.
+- PR312: 37595132859 toolkit (Ubuntu/Windows/Chromium),37595132934 settlement,37595132897 native,37595132842 status,37595132865 journal — all SUCCESS.
+Pure read paths use the existing SQLite snapshot, without recovery constructors, repair or writes. Full identity/material scans add operation cost; no production latency claim.
+
+## Platform and frozen authority
+Fresh Railway production health read: eight services, no pending work, no recent failures; runtime deployment eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00 SUCCESS/running1. Existing demo/PIT/KRX/verify deployments retain SUCCESS with no running replicas reported. Legacy push/backend and undeployed db-query remain offline with existing warnings. No worker restart, reexecution, deployment, variables, secrets or volume changes performed. These development fixes were not copied into a live broker loop.
+Master blob remains 798e658d2b3414f95ce648c58945425d9a579182. Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/execution/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalid v1 lineage preserved. No holdout access, retune, Champion change, source admission or performance experiment. ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED=false; FUNDS_MOVEMENT_AUTHORIZED=false; PERMISSION_CHANGE_AUTHORIZED=false; final-user-ready=false.
+
+## Resume
+Refresh live refs/openPRs/changed commits/Actions and these canonical records first; preserve concurrent advances. PR309–312 are complete, so do not repeat their successful checks without changes. Continue independent durable integrity/restart/reconnect/Kill/late-fill/capital and read-only transport-runtime work with a concrete reproduction before editing. A useful next review is singleton safety/reconciliation/capital metadata under lost SQLite uniqueness, ensuring operator/runtime do not ignore extra rows; no new reproduction or implementation of that review was completed here. Do not manufacture a failure or change contracts merely to create another PR.
+Whole-account REAL read-only baseline is already COMPLETE and must not be repeated. type00 DEVICE_AUTH 805004/8050 and original Android signer continuity remain owner-deferred; no repeated phone commands, reinstall, key search or secret requests. Genuine source/PIT/economics, independent prospective/Shadow/execution admissions and frozen LIVE evidence remain open. These external evidence requirements do not imply engineering is exhausted. This bounded checkpoint is neither project completion nor a promise of unattended work after the turn.
+
+---
+
 # Continuation checkpoint — 2026-10-07 PR302–306 canonical native integrity
 
 This checkpoint supersedes earlier next-task pointers. GitHub remains authoritative. Project is NOT complete; independent development remains available. Do not repeat PR273–306.
