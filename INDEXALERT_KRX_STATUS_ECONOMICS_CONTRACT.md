@@ -112,6 +112,15 @@ the supplied structural claim from independent scope admission and keep
 `expected_scope_attested=false` / `independent_expected_scope_admission_verified=false`
 until a trusted external verifier binds the exact expected-position scope.
 
+Completed-task counts, phase labels and task-set fingerprints are also completion metadata,
+not authentication of the underlying private historical acquisitions. The network-free
+historical/status economics admission compositor must therefore keep
+`krx_historical_scope_verified=false`, `per_security_history_complete=false` and
+`cleanup_price_context_complete=false` at the canonical admission layer until a trusted
+independent verifier binds those exact completion records to the underlying acquisition
+artifacts. Caller-supplied aggregate terminal-treatment resolution counts likewise cannot set
+`terminal_treatment_coverage_complete=true` without independent row-level resolution proof.
+
 Likewise, arithmetic over structurally acceptable rows may be surfaced only as
 `structural_candidate_position_economics`. The canonical
 `resolved_position_economics` output must remain empty until the independent provenance
