@@ -1,0 +1,64 @@
+{
+  "commission_round_trip_bps": 3,
+  "diagnostics": {
+    "ambiguity_policy": "stop_first_conservative",
+    "ambiguous_same_bar": 55604,
+    "applied_explicit_cost_bps_counts": {
+      "statutory_15.0_plus_commission_3.0": 225939,
+      "statutory_18.0_plus_commission_3.0": 227788,
+      "statutory_20.0_plus_commission_3.0": 388481,
+      "statutory_23.0_plus_commission_3.0": 455065,
+      "statutory_25.0_plus_commission_3.0": 352208,
+      "statutory_30.0_plus_commission_3.0": 834760
+    },
+    "commission_round_trip_bps": 3,
+    "corporate_action_return_gap_diagnostics": {
+      "abs_gap_gt_10pct": 517,
+      "abs_gap_gt_1pct": 1036,
+      "abs_gap_gt_5pct": 657,
+      "interpretation": "Large raw-close minus KRX-base-return gaps are corporate-action/discontinuity diagnostics, not automatic filters.",
+      "max_abs_gap": 45.848743037974685,
+      "p999_abs_gap": 0.000050000000000026586,
+      "rows": 2511039
+    },
+    "cost_policy": "historical_KOSPI_statutory_sell_tax_by_exact_entry_date_plus_round_trip_commission",
+    "eligible_rows_with_labels": 2484241,
+    "eligible_rows_without_label_no_fill": 2668,
+    "entry_no_fill": 2668,
+    "entry_no_fill_policy": "retain_for_ranking_leave_slot_empty_no_retroactive_backfill",
+    "entry_no_fill_retained_in_decision_universe": 2668,
+    "feature_return_policy": "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS",
+    "fixed_explicit_bps_override": null,
+    "half_spread_bps_one_way": 4,
+    "insufficient_global_future_horizon": 4561,
+    "post_entry_gap_policy": "planned_stop_on_first_missing_market_session_preliminary",
+    "post_entry_missing_future_bar_conservative_stop": 7274
+  },
+  "feature_return_policy": "KRX_FLUC_RT_BASE_PRICE_ADJUSTED_FOR_CORPORATE_ACTIONS",
+  "horizon": 5,
+  "participation": 0.0005,
+  "records": 2484241,
+  "rows": 2486909,
+  "source_fingerprint": {
+    "columns": [
+      "decision_date",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "value",
+      "krx_change_return"
+    ],
+    "date_max": "2026-09-23",
+    "date_min": "2015-06-15",
+    "hash_sum_u64": "17879387804724068608",
+    "hash_xor_u64": "17836462952802001740",
+    "rows": 2512128,
+    "symbols": 1089
+  },
+  "stop_return": -0.025,
+  "target_return": 0.04,
+  "version": "pit-supervised-cache-v3-ca-safe-source-fingerprint"
+}
