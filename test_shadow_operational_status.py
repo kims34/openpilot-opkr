@@ -73,6 +73,22 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE-SYMBOL', json.dumps(out))
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
+    def test_nonpositive_inbox_arrival_sequence_cannot_report_complete_diagnostics(self):
+        self.journal.db.executescript('''
+            CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY);
+            CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
+            CREATE TABLE native_inbox_conflicts(reason TEXT);
+        ''')
+        for sequence in (0, -1):
+            with self.subTest(sequence=sequence):
+                self.journal.db.execute('INSERT INTO native_inbox_receipts VALUES(?)', (sequence,))
+                before = tuple(self.journal.db.iterdump())
+                out = self.inspect()
+                self.assertFalse(out['diagnostics_complete'])
+                self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+                self.assertNotIn('capital', out)
+                self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
     def test_duplicate_surviving_broker_bindings_are_private_unavailable(self):
         epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
         for key, broker in (('PRIVATE-ONE','PRIVATE-BROKER-ONE'), ('PRIVATE-TWO','PRIVATE-BROKER-TWO')):
