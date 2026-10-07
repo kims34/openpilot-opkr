@@ -78,6 +78,7 @@ def inspect_shadow_operational_status(path):
         names = ('key','broker_order_id','symbol','side','quantity','filled_quantity','state')
         known = {}
         intent_fills = {}
+        broker_ids = set()
         for key,payload,broker_id,filled,state,terminal in connection.execute(
                 "SELECT key,payload,broker_order_id,filled,state,terminal_status FROM intents"):
             _require(type(key) is str and bool(key.strip()))
@@ -85,6 +86,9 @@ def inspect_shadow_operational_status(path):
                 identity = validate_stored_intent_row(payload,state,broker_id,filled,terminal)
             except OrderJournalError:
                 _require(False)
+            if broker_id is not None:
+                _require(broker_id not in broker_ids)
+                broker_ids.add(broker_id)
             intent_fills[key] = filled
             if state != 'INTENT_CREATED':
                 known[key] = dict(key=key,broker_order_id=broker_id,

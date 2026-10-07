@@ -73,6 +73,22 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE-SYMBOL', json.dumps(out))
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
+    def test_duplicate_surviving_broker_bindings_are_private_unavailable(self):
+        epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
+        for key, broker in (('PRIVATE-ONE','PRIVATE-BROKER-ONE'), ('PRIVATE-TWO','PRIVATE-BROKER-TWO')):
+            self.journal.register(key,symbol='PRIVATE-SYMBOL',side='SELL',quantity=1)
+            self.journal.claim_submission(key,expected_epoch=epoch)
+            self.journal.bind_acknowledgement(key,broker)
+        self.journal.db.execute('DROP INDEX single_broker_order_binding')
+        self.journal.db.execute("UPDATE intents SET broker_order_id='PRIVATE-BROKER-ONE'")
+        before = tuple(self.journal.db.iterdump())
+        out = self.inspect()
+        self.assertFalse(out['diagnostics_complete'])
+        self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertNotIn('capital', out)
+        self.assertNotIn('PRIVATE', json.dumps(out))
+        self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
     def test_complete_capital_history_loss_is_unavailable_without_mutation(self):
         for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
             self.journal.db.execute(f'DROP TABLE {table}')
