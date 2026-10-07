@@ -58,6 +58,35 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(self.j.db.execute('SELECT * FROM native_fill_bindings').fetchall(), history)
             self.assert_blocked()
 
+    def test_duplicate_native_order_bindings_cannot_choose_first_after_constraint_loss(self):
+        self.j.db.execute('DROP TABLE native_order_bindings')
+        self.j.db.execute('CREATE TABLE native_order_bindings(key TEXT,broker_order_id TEXT,native_side TEXT)')
+        self.j.db.executemany('INSERT INTO native_order_bindings VALUES(?,?,?)',
+            [('d1', 'native-order', '2'), ('d1', 'native-order', '3')])
+        original = self.j.db.execute('SELECT * FROM native_order_bindings').fetchall()
+        for operation in (lambda: KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY),
+                          lambda: self.b.bind_order('d1',broker_order_id='native-order',native_side='2'),
+                          self.apply, lambda: self.b.verify_rest_snapshot('d1',rest(filled=0,remaining=10),trading_date=DAY)):
+            with self.assertRaisesRegex(NativeBridgeError, '^NATIVE_BRIDGE_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_order_bindings').fetchall(), original)
+            self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+            self.assert_blocked()
+
+    def test_duplicate_native_fill_identity_after_constraint_loss_blocks_replay(self):
+        self.apply()
+        original = self.j.db.execute('SELECT * FROM native_fill_bindings').fetchall()
+        self.j.db.execute('DROP TABLE native_fill_bindings')
+        self.j.db.execute('CREATE TABLE native_fill_bindings(key TEXT,execution_id TEXT,digest TEXT,payload TEXT)')
+        self.j.db.executemany('INSERT INTO native_fill_bindings VALUES(?,?,?,?)', original + original)
+        for operation in (lambda: KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY), self.apply):
+            with self.assertRaisesRegex(NativeBridgeError, '^NATIVE_BRIDGE_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_fill_bindings').fetchall(),original + original)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(),(1,))
+            self.assert_blocked()
+
     def test_complete_native_schema_loss_cannot_bind_a_new_scope(self):
         for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
             self.j.db.execute(f'DROP TABLE {table}')

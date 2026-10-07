@@ -187,6 +187,14 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertEqual(tuple(self.journal.db.iterdump()), before)
         self.assertFalse(out['genuine_live_provenance_verified'])
 
+    def test_duplicate_native_order_after_constraint_loss_is_private_read_only(self):
+        self._terminal_inbox_fixture()
+        original = self.journal.db.execute('SELECT * FROM native_order_bindings').fetchall()
+        self.journal.db.execute('DROP TABLE native_order_bindings')
+        self.journal.db.execute('CREATE TABLE native_order_bindings(key TEXT,broker_order_id TEXT,native_side TEXT)')
+        self.journal.db.executemany('INSERT INTO native_order_bindings VALUES(?,?,?)',original + original)
+        self._assert_private_terminal_unavailable()
+
     def test_orphan_native_fill_without_receipt_cannot_report_complete(self):
         import hashlib
         self._terminal_inbox_fixture()
