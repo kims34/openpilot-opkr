@@ -78,6 +78,15 @@ def validate_stored_execution_totals(connection, intent_fills):
         raise OrderJournalError('inconsistent stored executions')
 
 
+def validate_stored_reconciliation_barrier(connection):
+    """Validate persisted safety metadata without repairing its revision."""
+    row = connection.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
+    if (row is None or type(row[0]) is not int or not 0 <= row[0] <= 2**63-1
+        or type(row[1]) is not int or row[1] not in (0,1)):
+        raise OrderJournalError('invalid reconciliation barrier')
+    return row
+
+
 def quarantine_conflict(method):
     @wraps(method)
     def guarded(self, key, *args, **kwargs):
@@ -402,8 +411,8 @@ class OrderIntentJournal:
                 raise OrderJournalError('unprocessed normalized inbox prevents shadow operation')
             if self.db.execute('SELECT 1 FROM native_inbox_conflicts LIMIT 1').fetchone():
                 raise OrderJournalError('conflicted normalized inbox prevents shadow operation')
-        row = self.db.execute("SELECT blocked FROM reconciliation_barrier WHERE id=1").fetchone()
-        if row is None or row[0]:
+        row = validate_stored_reconciliation_barrier(self.db)
+        if row[1]:
             raise OrderJournalError("unresolved batch reconciliation prevents shadow operation")
 
     def mark_cancel_requested(self, key):

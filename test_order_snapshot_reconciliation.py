@@ -38,6 +38,29 @@ class SnapshotBatchTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
+    def test_corrupt_barrier_cannot_enable_or_be_repaired_by_matching_batch(self):
+        for value in (-1, 1.5, float(2**63)):
+            with self.subTest(value=value):
+                self.j.disable_shadow()
+                self.j.db.execute('UPDATE reconciliation_barrier SET revision=?,blocked=0', (value,))
+                with self.assertRaises(OrderJournalError):
+                    self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+                out = self.apply(revision=2)
+                self.assertFalse(out['matched'])
+                self.assertIn('BARRIER_INTEGRITY_CONFLICT', out['errors'])
+                self.assertEqual(self.j.db.execute('SELECT revision,blocked FROM reconciliation_barrier').fetchone(), (value,1))
+                self.assertEqual(self.j.db.execute('SELECT quantity FROM executions').fetchone(), (4,))
+                self.assert_blocked()
+
+    def test_missing_barrier_quarantines_without_creating_a_new_revision(self):
+        self.j.db.execute('DELETE FROM reconciliation_barrier')
+        out = self.apply()
+        self.assertFalse(out['matched'])
+        self.assertIn('BARRIER_INTEGRITY_CONFLICT', out['errors'])
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM reconciliation_barrier').fetchone(), (0,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM reconciled_snapshot_bindings').fetchone(), (0,))
+        self.assert_blocked()
+
     def test_complete_snapshot_stays_off_without_broker_authority_or_network(self):
         self.j.recover()
         with patch('socket.socket', side_effect=AssertionError('network forbidden')):

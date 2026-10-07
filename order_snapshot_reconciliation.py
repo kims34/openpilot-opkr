@@ -7,7 +7,7 @@ No network, execution insertion, auto-enable, cancellation or submission.
 """
 import json
 
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_reconciliation_barrier
 
 
 FIELDS = {'key', 'broker_order_id', 'symbol', 'side', 'quantity', 'filled_quantity', 'status'}
@@ -49,10 +49,12 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
     if not valid_revision:
         errors.add('INVALID_SNAPSHOT_REVISION')
     with journal._atomic():
-        last = journal.db.execute('SELECT revision FROM reconciliation_barrier WHERE id=1').fetchone()
-        if last is None:
-            raise OrderJournalError('missing batch reconciliation safety state')
-        if valid_revision and revision <= last[0]:
+        try:
+            last = validate_stored_reconciliation_barrier(journal.db)
+        except OrderJournalError:
+            last = None
+            errors.add('BARRIER_INTEGRITY_CONFLICT')
+        if last is not None and valid_revision and revision <= last[0]:
             errors.add('STALE_OR_REPLAYED_SNAPSHOT')
         keys = [row[0] for row in journal.db.execute(
             "SELECT key FROM intents WHERE state!='INTENT_CREATED' ORDER BY key")]
@@ -109,8 +111,11 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
             journal.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE state!='INTENT_CREATED'")
         else:
             journal.db.executemany('UPDATE intents SET state=?,terminal_status=? WHERE key=?', matched)
-        journal.db.execute('UPDATE reconciliation_barrier SET revision=?,blocked=? WHERE id=1',
-            (max(last[0], revision) if valid_revision else last[0], int(bool(errors))))
+        if last is not None:
+            journal.db.execute('UPDATE reconciliation_barrier SET revision=?,blocked=? WHERE id=1',
+                (max(last[0], revision) if valid_revision else last[0], int(bool(errors))))
+        else:
+            journal.db.execute('UPDATE reconciliation_barrier SET blocked=1 WHERE id=1')
         journal._stop_shadow('BATCH_SNAPSHOT_CONFLICT' if errors else 'BATCH_RECONCILED_OFF')
         # A later event/startup/enable invalidates this snapshot's epoch binding.
         # Failed batches cannot leave previously accepted settlement bindings.
