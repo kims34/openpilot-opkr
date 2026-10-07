@@ -1,25 +1,9 @@
+# Historical experiment: no automatic replay on engineering changes.
+# Manual dispatch preserves the archived recipe; it does not authorize reuse
+# of consumed holdout or a new performance trial.
 name: IndexAlert Research v1 Fast Purged
 
 on:
-  push:
-    branches: [index-alert-research-v1]
-    paths:
-      - 'research_v1_fast_purged_candidate.py'
-      - 'research_v1_path_context.py'
-      - 'research_v1_fixed_horizon_label.py'
-      - 'research_v1_combined_challenger.py'
-      - 'research_v1_cross_sectional_label.py'
-      - 'research_v1_volatility_veto.py'
-      - 'research_v1_stage2_compare.py'
-      - 'research_v1_supervised_cache.py'
-      - 'research_v1_pit_labels.py'
-      - 'research_v1_pit_run_purged.py'
-      - 'research_v1_context.py'
-      - 'research_v1_holdaware.py'
-      - 'research_v1_core.py'
-      - 'research_v1_portfolio.py'
-      - 'research_v1_marcap.py'
-      - '.github/workflows/indexalert-research-v1-fast.yml'
   workflow_dispatch:
     inputs:
       pit_start:

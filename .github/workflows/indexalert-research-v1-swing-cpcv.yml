@@ -1,3 +1,6 @@
+# Historical experiment: no automatic replay on engineering changes.
+# Manual dispatch preserves the archived recipe; it does not authorize reuse
+# of consumed holdout or a new performance trial.
 name: IndexAlert Research v1 Short-Swing Purged CPCV
 
 concurrency:
@@ -5,24 +8,6 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    branches: [index-alert-research-v1]
-    paths:
-      - 'research_v1_swing_cpcv.py'
-      - 'test_research_v1_swing_cpcv.py'
-      - 'research_v1_swing_challenger.py'
-      - 'test_research_v1_swing_challenger.py'
-      - 'research_v1_short_swing_compare.py'
-      - 'test_research_v1_short_swing_compare.py'
-      - 'research_v1_selected_calibration.py'
-      - 'research_v1_distributional_long_history.py'
-      - 'research_v1_distributional_netev.py'
-      - 'research_v1_market_eligibility.py'
-      - 'research_v1_fixed_horizon_label.py'
-      - 'research_v1_supervised_cache.py'
-      - 'research_v1_pit_features.py'
-      - 'research_v1_pit_labels.py'
-      - '.github/workflows/indexalert-research-v1-swing-cpcv.yml'
   workflow_dispatch:
 
 jobs:
@@ -101,4 +86,3 @@ jobs:
           path: research_results/cpcv_h${{ matrix.horizon }}/
           if-no-files-found: warn
           retention-days: 30
-
