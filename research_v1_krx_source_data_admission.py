@@ -56,6 +56,7 @@ class KRXSourceDataAdmission:
     intended_use_scope: str
     dataset_identifier: str
     authorization_evidence_fingerprint_sha256: str
+    source_gate_claims_structurally_complete: bool
     source_contract_closed: bool
     acquisition_batch_integrity_valid: bool
     authorization_evidence_fingerprint_present: bool
@@ -65,6 +66,8 @@ class KRXSourceDataAdmission:
     pit_lineage_structurally_valid: bool
     historical_coverage_structurally_complete: bool
     source_family_and_scope_consistent: bool
+    source_data_structural_preconditions_satisfied: bool
+    independent_source_data_admission_verified: bool
     source_data_structurally_admissible: bool
     eligible_for_experiment_registry_review: bool
     feature_performance_testing_authorized: bool
@@ -205,8 +208,10 @@ def assess_investor_flow_source_data_admission(
         == public_evidence_fingerprint_sha256()
         and lineage.get("public_contract_evidence_matches_current") is True
     )
+    source_gate_claims_complete = gates.get("all_source_gate_claims_pass") is True
     source_closed = bool(
-        gates.get("all_source_gates_pass") is True
+        gates.get("independent_source_gate_admission_verified") is True
+        and gates.get("all_source_gates_pass") is True
         and gates.get("source_contract_closed_for_declared_scope") is True
     )
     lineage_valid = bool(lineage.get("lineage_structurally_valid") is True)
@@ -218,8 +223,8 @@ def assess_investor_flow_source_data_admission(
         and bool(str(gates.get("intended_use_scope") or "").strip())
     )
 
-    structurally_admissible = bool(
-        source_closed
+    structural_preconditions_satisfied = bool(
+        source_gate_claims_complete
         and batch_valid
         and auth_fingerprint_present
         and public_current
@@ -227,11 +232,14 @@ def assess_investor_flow_source_data_admission(
         and coverage_complete
         and family_scope_consistent
     )
+    independent_source_data_admission_verified = False
+    structurally_admissible = False
     result = KRXSourceDataAdmission(
         source_family="KRX_INVESTOR_FLOW",
         intended_use_scope=str(gates.get("intended_use_scope") or ""),
         dataset_identifier=str(batch.get("dataset_identifier") or ""),
         authorization_evidence_fingerprint_sha256=auth_evidence_fp,
+        source_gate_claims_structurally_complete=source_gate_claims_complete,
         source_contract_closed=source_closed,
         acquisition_batch_integrity_valid=batch_valid,
         authorization_evidence_fingerprint_present=auth_fingerprint_present,
@@ -241,6 +249,8 @@ def assess_investor_flow_source_data_admission(
         pit_lineage_structurally_valid=lineage_valid,
         historical_coverage_structurally_complete=coverage_complete,
         source_family_and_scope_consistent=family_scope_consistent,
+        source_data_structural_preconditions_satisfied=structural_preconditions_satisfied,
+        independent_source_data_admission_verified=independent_source_data_admission_verified,
         source_data_structurally_admissible=structurally_admissible,
         eligible_for_experiment_registry_review=structurally_admissible,
         feature_performance_testing_authorized=False,
@@ -263,11 +273,14 @@ def assess_investor_flow_source_data_admission(
         if not ok
     ]
     out["independent_admission_blocking_conditions"] = [
-        "INDEPENDENT_AUTHORIZATION_EVIDENCE_BINDING_NOT_IMPLEMENTED"
+        "INDEPENDENT_SOURCE_GATE_ADMISSION_NOT_IMPLEMENTED",
+        "INDEPENDENT_AUTHORIZATION_EVIDENCE_BINDING_NOT_IMPLEMENTED",
+        "INDEPENDENT_SOURCE_DATA_ADMISSION_NOT_IMPLEMENTED",
     ]
     out["guardrail"] = (
-        "Structural source-data admission requires one consistent structured authorization-evidence fingerprint, but a digest proves identity only and does not independently authenticate the underlying KRX authorization artifact. "
-        "authorization_evidence_provenance_bound and independent_authorization_evidence_binding_verified therefore remain false until a trusted external binding exists. "
-        "Structural admission remains only eligibility for the next governance review and never authorizes feature-performance testing, sealed holdout, promotion or live trading."
+        "Caller-supplied A-F PASS labels, lineage/coverage booleans and a consistent authorization-evidence fingerprint can satisfy only structural preconditions. "
+        "They cannot authenticate the underlying KRX gate evidence or independently admit source data. "
+        "authorization_evidence_provenance_bound, independent_authorization_evidence_binding_verified, independent_source_data_admission_verified, source_data_structurally_admissible and eligible_for_experiment_registry_review remain false until trusted external verification is composed. "
+        "Nothing here authorizes feature-performance testing, sealed holdout, promotion or live trading."
     )
     return out
