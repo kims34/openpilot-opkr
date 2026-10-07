@@ -63,7 +63,9 @@ class JournalSettlementBindingTests(unittest.TestCase):
         self.acknowledged()
         before = self.journal.db.total_changes
         out = self.assess()
-        self.assertTrue(out['account_settlement_admitted'])
+        self.assertTrue(out['account_settlement_structural_preconditions_satisfied'])
+        self.assertFalse(out['independent_settlement_admission_verified'])
+        self.assertFalse(out['account_settlement_admitted'])
         self.assertTrue(out['preconditions_structurally_satisfied'])
         self.assertFalse(out['independent_gate_admission_verified'])
         self.assertFalse(out['ready_for_final_user_authorization'])

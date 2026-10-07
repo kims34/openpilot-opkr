@@ -31,8 +31,16 @@ def settlement_admitted(e):
     return all(flags) and e.unresolved_reconciliation_count==0
 def bind_settlement_to_early_live(base,settlement):
     if type(base) is not EarlyLiveAdmissionEvidence: raise SettlementBindingError("SETTLEMENT_BINDING_BLOCKED")
-    admitted=settlement_admitted(settlement); fields=dict(base.__dict__); fields["account_settlement_tested"]=admitted
-    out=assess_early_live_readiness(EarlyLiveAdmissionEvidence(**fields)); out["account_settlement_admitted"]=admitted
+    structural=settlement_admitted(settlement)
+    fields=dict(base.__dict__)
+    fields["account_settlement_tested"]=structural
+    out=assess_early_live_readiness(EarlyLiveAdmissionEvidence(**fields))
+    # Caller-supplied attestations plus local consistency checks can establish
+    # only structural settlement preconditions. They are not an independent
+    # canonical admission and must never be reported as one.
+    out["account_settlement_structural_preconditions_satisfied"]=structural
+    out["independent_settlement_admission_verified"]=False
+    out["account_settlement_admitted"]=False
     out["real_orders_authorized"]=False; out["early_live_authorized"]=False
     return out
 
