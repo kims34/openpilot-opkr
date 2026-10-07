@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import inspect
 import tempfile
 import unittest
 
@@ -11,6 +12,7 @@ import pandas as pd
 
 from rehydrate_frozen_supervised_cache import (
     FROZEN_MODULE_BLOBS,
+    _attach_record_columns_low_memory,
     FrozenSupervisedRehydrationError,
     load_reference,
     require_exact_meta,
@@ -68,6 +70,62 @@ class FrozenSupervisedRehydrationTest(unittest.TestCase):
         b = supervised_logical_fingerprint(frame.iloc[::-1].reset_index(drop=True))
         self.assertEqual(a, b)
         self.assertEqual(a["record_rows"], 1)
+
+    def test_low_memory_record_attachment_matches_frozen_merge_semantics(self):
+        frozen_dir = ROOT / "frozen_supervised_v1"
+        import sys
+        sys.path.insert(0, str(frozen_dir))
+        try:
+            from research_v1_core import DecisionRecord
+        finally:
+            sys.path.pop(0)
+
+        frame = pd.DataFrame([
+            {
+                "decision_date": pd.Timestamp("2026-01-02"),
+                "symbol": "000001",
+                "x": 1.0,
+            },
+            {
+                "decision_date": pd.Timestamp("2026-01-02"),
+                "symbol": "000002",
+                "x": 2.0,
+            },
+        ])
+        rec = DecisionRecord(
+            decision_day=pd.Timestamp("2026-01-02").date(),
+            entry_day=pd.Timestamp("2026-01-05").date(),
+            symbol="000001",
+            score=0.0,
+            entry_price=100.0,
+            horizon=5,
+            target_return=0.04,
+            stop_return=-0.025,
+            cost_return=0.003,
+            outcome="TIME",
+            gross_return=0.01,
+            net_return=0.007,
+            exit_day=pd.Timestamp("2026-01-09").date(),
+            exit_price=101.0,
+        )
+        out = _attach_record_columns_low_memory(
+            frame.copy(), {(rec.decision_day, rec.symbol): rec}
+        )
+        self.assertEqual(out.loc[0, "rec_outcome"], "TIME")
+        self.assertEqual(float(out.loc[0, "rec_horizon"]), 5.0)
+        self.assertEqual(float(out.loc[0, "rec_net_return"]), 0.007)
+        self.assertTrue(pd.isna(out.loc[1, "rec_outcome"]))
+        self.assertTrue(pd.isna(out.loc[1, "rec_entry_price"]))
+        self.assertTrue(pd.isna(out.loc[1, "rec_entry_day"]))
+
+    def test_low_memory_writer_does_not_reintroduce_frozen_rec_rows_list(self):
+        source = inspect.getsource(
+            __import__("rehydrate_frozen_supervised_cache")
+            ._build_cache_low_memory
+        )
+        self.assertNotIn("rec_rows = []", source)
+        self.assertNotIn("rec_df =", source)
+        self.assertNotIn(".merge(rec_df", source)
 
     def test_verification_never_grants_model_alpha_or_live_authority(self):
         body = {
