@@ -80,6 +80,7 @@ def validate_stored_execution_totals(connection, intent_fills):
 
 COMPONENT_TABLES = {
     'safety_faults': frozenset(('shadow_control_faults',)),
+    'capital_restoration': frozenset(('shadow_capital_release_revocations',)),
     'capital': frozenset(('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases')),
     'native': frozenset(('native_journal_scope','native_order_bindings','native_fill_bindings')),
     'inbox': frozenset(('native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts')),
@@ -507,6 +508,7 @@ class OrderIntentJournal:
         self.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_release_revocations (
             key TEXT PRIMARY KEY, restored_principal INTEGER NOT NULL,
             execution_id TEXT NOT NULL)''')
+        record_component_initialization(self.db, 'capital_restoration')
         revoked = self.db.execute('SELECT restored_principal,execution_id FROM shadow_capital_release_revocations WHERE key=?', (key,)).fetchone()
         if revoked is not None:
             if (type(revoked[0]) is not int or revoked[0] != released[0]
