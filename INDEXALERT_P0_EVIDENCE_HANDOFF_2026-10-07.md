@@ -1,3 +1,20 @@
+# Owner-assisted broker verification — 2026-10-07 21:39 KST
+
+The owner explicitly rescinded deferral and is available for required actions. Owner-provided screenshots show no application history in the displayed terminal-designation/additional-authentication/overseas-IP-blocking sections. The REST account App Key management screen shows the current PC IP matches a registered IP; this is scoped to that PC/network, not cloud egress or every broker security setting. No security setting, key, permission or IP registration was changed.
+
+The owner reran the pinned read-only smoke script from development24c79cd4582ba71b53693f302caa9a359d090e57 (SHA25671524454eda194d71da895e24262cac7f6c48db11edf9a12a8f2e74de25ed8cd) and supplied the result at21:39KST:
+- TOKEN_OK=true; ACCOUNT_ENDPOINT_OK=true; WS_CONNECTED=true.
+- STAGE=WS_LOGIN; WS_LOGIN_OK=false; RETURN_CODE=805004; DETAIL_CODE=8050; ERROR_CLASS=DEVICE_AUTH.
+- TYPE00_REG_SENT=false; TYPE00_REG_ACK_OK=false; both event counts0.
+- ORDERING=DISABLED; real-orders/funds-movement/permission-change authorization=false.
+- BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED=false; GENUINE_LIVE_PROVENANCE_VERIFIED=false.
+
+Disposition: broker WebSocket device-authentication blocker reproduced after current-PC registered-IP inspection. Do not repeat the same smoke without a relevant new fact/change. Official Kiwoom client classifies8050 as device authentication; the public electronic-fraud-prevention page describes certificate issuance restrictions and does not establish the remediation for this REST WebSocket failure. Exact applicable official error-code remediation remains to be verified before any owner security change. Whole-account baseline remains complete. Raw keys/account identifiers/IPs were not recorded.
+
+Owner inputs still pending: applicable official8050 remediation; original KRX approval sender/date/body to compare with already-recorded HIST_ACQ_v3 scope (no repeat approval request); original Android signing-key backup availability (no private-key/password upload or repeat local search).
+
+---
+
 # Private-store inspection update — 2026-10-07 20:47 KST
 
 Autonomous one-shot read-only inspection of the existing /data and /pit stores is now complete. See INDEXALERT_PRIVATE_INPUT_INVENTORY_2026-10-07.md for scoped counts, exclusions, execution IDs and restored configurations. The earlier statement that private files had not been read described the previous checkpoint and is superseded by this metadata-only inspection. Actual prospective capture and original source/PIT admission remain unverified; no new trust root, model or dataset admission was introduced.
