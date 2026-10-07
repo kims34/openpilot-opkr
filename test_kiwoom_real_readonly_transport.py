@@ -139,27 +139,7 @@ class RealTransportTests(unittest.TestCase):
             with self.subTest(headers=headers):
                 self.auth()
                 self.responses.append(Response({"return_code": 0}, headers=headers))
-                with self.assertRaisesRegex(RealReadOnlyError, '^REAL_READ_ONLY_REQUEST_BLOCKED        self.auth()
-        count = len(self.requests)
-        for api in ("kt10000", "kt10001", "kt10002", "kt10003", "/oauth2/revoke", "KA00001"):
-            with self.assertRaises(Exception):
-                self.transport.query(api, {})
-        self.assertEqual(len(self.requests), count)
-
-    def test_ordering_enabled_or_wrong_host_block_before_connection(self):
-        for change in (
-            {"KIWOOM_ORDERING_ENABLED": "true"},
-            {"KIWOOM_ENV": "DEMO"},
-            {"KIWOOM_BASE_URL": "https://mockapi.kiwoom.com"},
-        ):
-            with self.assertRaises(Exception):
-                KiwoomRealReadOnlyTransport(dict(self.cfg, **change))
-        self.assertEqual(self.connections, [])
-
-
-if __name__ == "__main__":
-    unittest.main()
-):
+                with self.assertRaisesRegex(RealReadOnlyError, '^REAL_READ_ONLY_REQUEST_BLOCKED$'):
                     self.transport.query("ka00001", {})
                 count = len(self.requests)
                 with self.assertRaises(RealReadOnlyError):
