@@ -124,6 +124,14 @@ def test_excess_slippage_and_capacity_breach_fail_closed():
     assert "zero_capacity_breaches" in out2["failed_gates"]
 
 
+def test_empirical_assessment_rejects_numeric_schema_alias():
+    p, doc = load_frozen_project_protocol(ROOT)
+    p = dict(p)
+    p["schema_version"] = 2
+    with pytest.raises(ExecutionSufficiencyAssessmentError, match="exact string"):
+        assess_execution_sufficiency(_evidence(), p, protocol_document_text=doc)
+
+
 def test_protocol_frozen_after_live_is_rejected():
     p, doc = load_frozen_project_protocol(ROOT)
     p = dict(p)
