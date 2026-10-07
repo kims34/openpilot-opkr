@@ -26,6 +26,10 @@ function Invoke-WebRequest {
  param([switch]$UseBasicParsing,[string]$Uri,[string]$Method,[object]$Headers,[string]$ContentType,[object]$Body,[int]$TimeoutSec)
  if ($TimeoutSec -ne 15) {throw 'HTTP_TIMEOUT_NOT_BOUND'}
  $script:Calls++
+ if ($script:CycleThenEnd) {
+  $script:ReplyHeaders=if ($script:Calls -le 2) {@{'cont-yn'='Y';'next-key'='fixture-cycle'}} else {@{'cont-yn'='N';'next-key'=''}}
+ }
+ if ($script:UniqueCursors) {$script:ReplyHeaders=@{'cont-yn'='Y';'next-key'=('fixture-'+$script:Calls)}}
  return [pscustomobject]@{Content=$script:Reply;Headers=$script:ReplyHeaders}
 }
 $script:Token='fixture'; $script:Calls=0; $script:ReplyHeaders=@{'cont-yn'='N';'next-key'=''}
@@ -47,6 +51,12 @@ foreach ($headers in @(@{'cont-yn'='N';'next-key'='unexpected'},@{'cont-yn'='Y';
  catch {if ($_.Exception.Message -ne 'CONTINUATION_BLOCKED') {throw 'PRIVATE_CURSOR_ERROR_REQUIRED'}; $rejected=$true}
  if (-not $rejected) {throw 'CURSOR_CONTRADICTION_ACCEPTED'}
 }
+$script:CycleThenEnd=$true; $script:Calls=0; $rejected=$false
+try {$null=Get-PagedCount -ApiId 'ka10076' -Body @{} -ArrayProperty 'cntr'}
+catch {if ($_.Exception.Message -ne 'CONTINUATION_BLOCKED') {throw 'PRIVATE_CYCLE_ERROR_REQUIRED'}; $rejected=$true}
+if (-not $rejected) {throw 'REPEATED_CURSOR_BECAME_COMPLETE'}
+if ($script:Calls -ne 2) {throw 'CYCLE_WAS_NOT_STOPPED_EARLY'}
+$script:CycleThenEnd=$false; $script:UniqueCursors=$true
 $script:ReplyHeaders=@{'cont-yn'='Y';'next-key'='fixture-cursor'}
 $before=$script:Calls
 $result=Get-PagedCount -ApiId 'ka10076' -Body @{} -ArrayProperty 'cntr'
