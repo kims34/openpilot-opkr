@@ -120,7 +120,7 @@ class KiwoomRealReadOnlyTransport:
                 and "\r" not in next_key
                 and "\n" not in next_key
             )
-            _require(continuation != "Y" or bool(next_key))
+            _require((continuation == "Y") == bool(next_key))
             return PrivateRealPage(
                 data,
                 continuation,
