@@ -26,6 +26,10 @@ from research_v1_prospective_inputs import (
     ProspectiveInputError,
     input_snapshot_sha256 as compute_input_snapshot_sha256,
 )
+from research_v1_prospective_frozen_producer import (
+    FrozenProspectiveProducerError,
+    validate_producer_binding,
+)
 from research_v1_prospective_model_bundle import (
     ProspectiveModelBundleError,
     validate_model_bundle,
@@ -38,6 +42,8 @@ HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _CAPTURE_FIELDS = (
     "classification", "session", "decision_at", "captured_at",
     "capture_lag_seconds", "input_snapshot_sha256", "model_bundle_sha256",
+    "producer_binding_sha256", "producer_refit_policy_id",
+    "producer_test_block_index", "producer_test_block_start_session",
     "decision_policy_id", "selection_policy_id", "fresh_alpha_protocol_id",
     "ranked_scores", "eligible_lower_bound_positive_count", "original_top3",
     "vetoed_top3", "selected_candidates", "decision_count",
@@ -145,6 +151,7 @@ def build_decision_capture(
     snapshot: Mapping[str, Any],
     model_bundle: Mapping[str, Any],
     *,
+    producer_binding: Mapping[str, Any],
     input_snapshot_sha256: str,
     captured_at: str,
 ) -> dict[str, Any]:
@@ -181,6 +188,14 @@ def build_decision_capture(
     expected_session = decision_at.tz_convert("Asia/Seoul").strftime("%Y-%m-%d")
     if session != expected_session:
         raise ProspectiveDecisionCaptureError("decision timestamp/session mismatch")
+    try:
+        producer_validation = validate_producer_binding(
+            producer_binding, model_bundle, target_session=session
+        )
+    except FrozenProspectiveProducerError as exc:
+        raise ProspectiveDecisionCaptureError(
+            "invalid frozen producer binding"
+        ) from exc
     if snapshot.get("feature_columns") != list(CONTEXT_FEATURES):
         raise ProspectiveDecisionCaptureError("input feature schema mismatch")
 
@@ -274,6 +289,10 @@ def build_decision_capture(
         "capture_lag_seconds": float((capture_at - decision_at).total_seconds()),
         "input_snapshot_sha256": supplied_input_digest,
         "model_bundle_sha256": model_validation["model_bundle_sha256"],
+        "producer_binding_sha256": producer_validation["producer_binding_sha256"],
+        "producer_refit_policy_id": producer_binding["refit_policy_id"],
+        "producer_test_block_index": producer_binding["test_block_index"],
+        "producer_test_block_start_session": producer_binding["test_block_start_session"],
         "decision_policy_id": model_bundle["decision_policy_id"],
         "selection_policy_id": model_bundle["selection_policy_id"],
         "fresh_alpha_protocol_id": model_bundle["fresh_alpha_protocol_id"],
@@ -311,7 +330,19 @@ def validate_decision_capture(capture: Mapping[str, Any]) -> dict[str, Any]:
         raise ProspectiveDecisionCaptureError("decision capture classification mismatch")
     _digest(capture.get("input_snapshot_sha256"), "input_snapshot_sha256")
     _digest(capture.get("model_bundle_sha256"), "model_bundle_sha256")
+    _digest(capture.get("producer_binding_sha256"), "producer_binding_sha256")
     _digest(capture.get("decision_capture_sha256"), "decision_capture_sha256")
+    if type(capture.get("producer_refit_policy_id")) is not str or not capture[
+        "producer_refit_policy_id"
+    ]:
+        raise ProspectiveDecisionCaptureError("producer_refit_policy_id invalid")
+    if type(capture.get("producer_test_block_index")) is not int or capture[
+        "producer_test_block_index"
+    ] < 0:
+        raise ProspectiveDecisionCaptureError("producer_test_block_index invalid")
+    producer_start = capture.get("producer_test_block_start_session")
+    if type(producer_start) is not str:
+        raise ProspectiveDecisionCaptureError("producer_test_block_start_session invalid")
     decision = _aware(capture.get("decision_at"), "decision_at")
     captured = _aware(capture.get("captured_at"), "captured_at")
     if captured < decision:
@@ -323,6 +354,15 @@ def validate_decision_capture(capture: Mapping[str, Any]) -> dict[str, Any]:
         raise ProspectiveDecisionCaptureError("canonical session required")
     if capture["session"] != decision.tz_convert("Asia/Seoul").strftime("%Y-%m-%d"):
         raise ProspectiveDecisionCaptureError("decision session mismatch")
+    try:
+        start_day = pd.Timestamp(producer_start)
+        session_day = pd.Timestamp(capture["session"])
+    except (TypeError, ValueError) as exc:
+        raise ProspectiveDecisionCaptureError(
+            "producer/session date invalid"
+        ) from exc
+    if start_day.tzinfo is not None or session_day.tzinfo is not None or start_day > session_day:
+        raise ProspectiveDecisionCaptureError("producer test block/session chronology invalid")
     if type(capture.get("decision_count")) is not int:
         raise ProspectiveDecisionCaptureError("decision_count must be exact integer")
     selected = capture.get("selected_candidates")
