@@ -57,3 +57,15 @@ Read the owner-attached sender-details screenshot directly. Visible From: KRX Da
 
 This supplies the previously missing displayed sender address and Gmail mailed-by domain, consistent with the copied body and KRX domain. It is owner-presented header evidence, not a raw-message DKIM/DMARC verification; original .eml bytes/full authentication headers and document-to-receipt/source/scope fingerprint linkage remain unverified. No synthetic approval-document hash created. No additional owner email/header request is required for the present scope comparison. HIST_ACQ_v3 recorded scope remains unchanged; no approval reset, data admission or real-trading authorization follows.
 
+
+## Exact v3 identity comparison — 2026-10-07 22:00 KST
+
+New independent code inspection: research194da5016ad3aecc2ceb25944666daa74f038083, INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.json/.md and research_v1_krx_authorization_evidence.py. The validator's evidence_document_sha256 is an externally supplied document identity; validating64hex and normalized record hash does not authenticate document bytes.
+
+The existing v3 evidence preserves original screenshotSHA1983036114310ea42dd60ad49fc52c19a7378f7f1d3f1c1a65dabc7b4d1cf1e1 and redacted normalized email-recordSHA7361065e06599f947216233fc84e97126b1675de5af41068114cf6ef9577e304. These are distinct from a raw .eml hash and cannot be replaced with one.
+
+The owner-presented header has a different displayed subject (“RE: [이용문의] KRX Data Marketplace 통계 데이터의 자동 조회 허용 여부 및 공식 제공 경로 문의”) from the existing v3 subject (“[KRX Data Marketplace] 데이터 이용 문의에 대한 답변의 건”). Existing v3 observation is15:06KST on Oct2 with exactlatestreplytime unknown; newly shown message display says Oct2,15:30 with displaytimezone unspecified. Therefore scope agreement is established, but exact same-message identity/timestamp cannot be asserted or overwritten. This is an identity ambiguity, not a finding of invalid rights or forged mail.
+
+Minimum next original input: the specific KRX reply .eml from Gmail Show original > Download original, supplied privately by the owner. Parse only that message, retain original bytes identity separately from existing screenshot/redacted-record hashes, inspect its actual Date/From/authentication headers and whether the earlier thread is present. Do not replace existing metadata or backdate any capture. Even a verified .eml alone does not close raw/receipt/source/scope/PIT links.
+
+Earlier “no additional owner email/header request required” applied to scope comparison. Exact original-document binding now requires original bytes. No repeat approval is requested and GateFscopePASS remains recorded. No acquisition/performance/holdout/live authorization changed.
