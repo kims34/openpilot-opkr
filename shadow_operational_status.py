@@ -13,7 +13,7 @@ from indexalert_automation_control import AutomationCapitalState, AutomationUser
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history, valid_stored_safety_row
 from shadow_capital_allocator import validate_stored_capital_reservations
-from kiwoom_execution_inbox import verify_stored_terminal_inbox_attempts, validate_stored_inbox_receipt_identities, validate_stored_inbox_conflict_references
+from kiwoom_execution_inbox import verify_stored_terminal_inbox_attempts, validate_stored_inbox_receipt_identities, validate_stored_inbox_conflicts
 from kiwoom_order_journal_bridge import validate_stored_native_bindings
 
 
@@ -128,7 +128,7 @@ def inspect_shadow_operational_status(path):
         if tables & inbox_tables:
             _require(inbox_tables <= tables)
             validate_stored_inbox_receipt_identities(connection)
-            validate_stored_inbox_conflict_references(connection)
+            validate_stored_inbox_conflicts(connection)
             _require(connection.execute('''SELECT 1 FROM native_inbox_attempts a
                 LEFT JOIN native_inbox_receipts r ON r.sequence=a.receipt_sequence
                 WHERE r.sequence IS NULL OR a.outcome IS NULL

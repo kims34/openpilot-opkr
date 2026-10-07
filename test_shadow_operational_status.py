@@ -302,17 +302,36 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertEqual(self.journal.db.total_changes, before)
         self.assertNotIn('PRIVATE-SYMBOL', json.dumps(result))
 
+    def _pending_conflict_fixture(self):
+        from kiwoom_execution_inbox import KiwoomExecutionInbox, ExecutionInboxError
+        import test_kiwoom_order_journal_bridge as fixtures
+        bridge = self._native_bridge_fixture()
+        inbox = KiwoomExecutionInbox(bridge)
+        row = fixtures.fill(); row['symbol'] = 'PRIVATE-SYMBOL'
+        inbox.append('private-receipt','PRIVATE-INTENT',row,trading_date=fixtures.DAY)
+        row.update(fill_price='101',unit_fill_price='101')
+        with self.assertRaises(ExecutionInboxError):
+            inbox.append('private-receipt','PRIVATE-INTENT',row,trading_date=fixtures.DAY)
+
     def test_pending_conflicts_and_latch_are_visible(self):
-        self.journal.db.executescript('''CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);
-            CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
-            CREATE TABLE native_inbox_conflicts(receipt_id TEXT);
-            INSERT INTO native_inbox_receipts VALUES(1,'private-receipt');
-            INSERT INTO native_inbox_conflicts VALUES('private-receipt');''')
+        self._pending_conflict_fixture()
         self.journal.trip_kill_switch()
+        before = tuple(self.journal.db.iterdump())
         result = self.inspect()
+        self.assertTrue(result['diagnostics_complete'])
         self.assertEqual(result['native_inbox_pending_count'],1)
         self.assertEqual(result['native_inbox_conflict_count'],1)
         self.assertTrue({'KILL_SWITCH_LATCHED','NATIVE_INBOX_PENDING','NATIVE_INBOX_CONFLICTED'} <= set(result['local_blockers']))
+        self.assertEqual(tuple(self.journal.db.iterdump()),before)
+
+    def test_corrupt_conflict_payload_is_private_read_only_unavailable(self):
+        import hashlib
+        self._pending_conflict_fixture()
+        payload = '{}'
+        self.journal.db.execute('DROP TRIGGER native_inbox_conflicts_update_immutable')
+        self.journal.db.execute('UPDATE native_inbox_conflicts SET payload=?,digest=?',
+            (payload,hashlib.sha256(payload.encode()).hexdigest()))
+        self._assert_private_terminal_unavailable()
 
     def test_incomplete_schema_is_unavailable_not_zero_pending(self):
         self.journal.db.execute('CREATE TABLE native_inbox_receipts(sequence INTEGER)')

@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 
-from kiwoom_order_journal_bridge import NativeBridgeError, require, verify_stored_native_execution, validate_stored_native_bindings
+from kiwoom_order_journal_bridge import NativeBridgeError, require, verify_stored_native_execution, validate_stored_native_bindings, validate_native_scope
 from order_intent_journal import record_component_initialization, validate_stored_component_history
 from research_v1_kiwoom_native_execution import OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT
 
@@ -39,8 +39,8 @@ def validate_stored_inbox_receipt_identities(connection):
         sequences.add(sequence); receipt_ids.add(receipt_id)
 
 
-def validate_stored_inbox_conflict_references(connection):
-    """Referential integrity only; original/alternate payloads are retained."""
+def validate_stored_inbox_conflicts(connection):
+    """Existing reference/scope/digest/shape rules, pure reads and no repair."""
     if connection.execute('SELECT 1 FROM native_inbox_conflicts LIMIT 1').fetchone() is None:
         return
     for receipt_id, original in connection.execute('''SELECT c.receipt_id,r.receipt_id
@@ -48,6 +48,16 @@ def validate_stored_inbox_conflict_references(connection):
             ON r.receipt_id=c.receipt_id'''):
         require(isinstance(receipt_id,str) and bool(receipt_id.strip()) and len(receipt_id) <= 256)
         require(original is not None)
+    scopes=list(connection.execute('SELECT id,account,day FROM native_journal_scope'))
+    require(len(scopes) == 1 and type(scopes[0][0]) is int and scopes[0][0] == 1)
+    _,account,scope_day=scopes[0]
+    validate_native_scope(account,scope_day)
+    for key,day,payload,digest in connection.execute('SELECT key,day,payload,digest FROM native_inbox_conflicts'):
+        require(isinstance(key,str) and bool(key.strip()) and len(key) <= 256)
+        require(day == scope_day)
+        require(isinstance(payload,str) and isinstance(digest,str))
+        require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+        validate_normalized_inbox_row(decode_normalized_inbox_payload(payload),account)
 
 
 def validate_normalized_inbox_row(row, account):
@@ -142,7 +152,7 @@ class KiwoomExecutionInbox:
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
         validate_stored_inbox_receipt_identities(self.journal.db)
-        validate_stored_inbox_conflict_references(self.journal.db)
+        validate_stored_inbox_conflicts(self.journal.db)
         receipts = {}
         for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
@@ -153,14 +163,6 @@ class KiwoomExecutionInbox:
             row = self._decode_payload(payload)
             self._validate_row(row)
             receipts[sequence] = (key, day, row)
-        for receipt_id, key, day, payload, digest in self.journal.db.execute(
-                'SELECT receipt_id,key,day,payload,digest FROM native_inbox_conflicts'):
-            self._text(receipt_id); self._text(key); self.bridge._context(day)
-            require(isinstance(payload, str) and isinstance(digest, str))
-            require(hashlib.sha256(payload.encode()).hexdigest() == digest)
-            self._validate_row(self._decode_payload(payload))
-            require(self.journal.db.execute(
-                'SELECT 1 FROM native_inbox_receipts WHERE receipt_id=?', (receipt_id,)).fetchone() is not None)
         for receipt_sequence, outcome in self.journal.db.execute(
                 'SELECT receipt_sequence,outcome FROM native_inbox_attempts'):
             require(receipt_sequence in receipts and outcome in ('APPLIED', 'DUPLICATE', 'BLOCKED'))
@@ -175,7 +177,7 @@ class KiwoomExecutionInbox:
         require({'native_inbox_receipts', 'native_inbox_attempts', 'native_inbox_conflicts',
             'native_journal_scope', 'native_order_bindings', 'native_fill_bindings'} <= tables)
         validate_stored_inbox_receipt_identities(self.journal.db)
-        validate_stored_inbox_conflict_references(self.journal.db)
+        validate_stored_inbox_conflicts(self.journal.db)
 
     def _audit_attempts_locked(self):
         self._require_runtime_tables_locked()
