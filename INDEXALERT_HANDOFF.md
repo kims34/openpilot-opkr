@@ -1,3 +1,19 @@
+# Canonical checkpoint — 2026-10-07 12:18 KST
+
+Actual code HEAD f3960d5cb63ffff987d8ca4a1ed64c142e145e68 (PR272). Requery actual branch HEAD on resume. PR270 pending pointer below is superseded; PR270–272 implemented, exact feature CI SUCCESS and merged.
+
+- PR270 feature a38e45fd20c6df061bca30c5a38e898ba1b87e64 -> merge205c298eea38431e71745e3d8eb58351db262d82: explicit bounded integer LOGIN/REG codes, missing/null/boolean/fraction/duplicate/escaped/case-alias rejection; actual helper behavioral CI, not syntax alone. Actions37565706910 jobs112612805296 Windows/112612805579 Ubuntu SUCCESS; settlement37565706981/job112612805632 SUCCESS. Merge push37565795548 SUCCESS.
+- PR271 feature8e77bb95f5e0d0d8e7da6e782938c9bc93b4a55d -> merge56c6fed8869fcf2d55e220a6dd7537713acff0f9: exception-fallback UTF8 decoding after bounded frame assembly; reject invalid/overlong/truncated/surrogate sequences with fixed private error. Actions37565838532 jobs112613225111 Windows/112613225305 Ubuntu SUCCESS; settlement37565838744 SUCCESS. Merge push37565883245 SUCCESS.
+- PR272 feature3dc725636f131d26c72402c9ba6c3a96fdd20755 -> mergef3960d5cb63ffff987d8ca4a1ed64c142e145e68: same code guard for token/account REST; token/account values must be nonblank strings; preserve raw response only in process, no secrets logged. Actions37565909182 jobs112613443956 Windows/112613444173 Ubuntu SUCCESS; settlement37565909202/job112613443899 SUCCESS. Merge push37565959265 SUCCESS.
+- Local focused23 tests OK, one PowerShell behavior test skipped locally; real Windows/Ubuntu CI above executed it. Additional read-only regression24 tests OK. Broader journal pytest initially unavailable in renewed runtime; installing pytest8.4.2 restored dependency (initial unittest attempt had one pytest-dependent import error, not a passing regression). After dependency restoration, selected canonical journal regression320 passed in1.65s.
+- Recovery docs efd374bb5499b8b65323404f157aeb99b206d4f1 Actions37565785824 SUCCESS. Master Spec blob798e658d2b3414f95ce648c58945425d9a579182 unchanged. No research/build/prereg ref change.
+
+Exact next independent resume: requery HEAD/open PR/ongoing Actions, skip completed258–272. Review the remaining PowerShell JSON ambiguity boundary for duplicate token/account/data fields and nonstandard JSON acceptance; current hardening only protects return_code/trnm control keys and UTF8, not every REST or type00 field. Reproduce with synthetic private helper fixtures, then implement bounded strict decoding/schema checks without broker calls. Preserve stage booleans fail-closed; wire/schema safety is never genuine evidence admission. Subsequent operator/transport/restart review can proceed without designated-device auth. Project INCOMPLETE; no claim all independent work exhausted or execution continues after response.
+
+Safety unchanged: Frozen/consumed invalid v1 immutable; no sealed holdout; no research adoption. Ordering DISABLED; real orders/funds/permission changes false; genuine LIVE unverified; final-user-ready false. Whole-account baseline COMPLETE; designated-device805004/8050 owner-deferred, no repeated owner commands. Local/CI fixtures never evidence PASS.
+
+---
+
 # Canonical recovery checkpoint — 2026-10-07 12:13 KST
 
 Actual development code HEAD b1bc3d799647e2315c06b756494fe83dc036da16 (PR269). This section supersedes older next-work pointers. GitHub rechecked: PR258–269 all merged, all exact feature workflows completed SUCCESS; no older work repeated. Research/Android/prereg refs unchanged at their previously recorded hashes.
