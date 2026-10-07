@@ -35,3 +35,17 @@ Exact inspected blobs:
 
 ## Authority
 This review is not a contract replacement, ACCEPTED/CHALLENGER CANDIDATE, source gate PASS, trial preregistration or deployment instruction. No Champion/model/threshold/cutoff/PIT/labels/WF/Purged-CPCV/purge-embargo/cost/slippage/partial-fill/NetEV/Precision/PF/MDD/ES95-99/capacity/holdout-burn/promotion criterion changes. Performance, sealed-holdout and live-trading authorization remain false. Consumed failed invalid v1 holdout and its immutable lineage are never reused or repaired. No real order, fund movement or broker permission change.
+
+
+## Owner-supplied email scope comparison (2026-10-07)
+
+# Owner-supplied KRX email text — 2026-10-07 21:52 KST
+
+Owner supplied a copied email header/body in this chat. Display name: KRX Data Marketplace Team; displayed date: Oct2,2026,3:30PM (email display timezone not specified). Body identifies the KRX data business department. The copied text states personal research may download/query full historical periods, use programmatic low/high-frequency collection without separate advance approval, and prohibits external leakage/sale/third-party distribution.
+
+Scope comparison: consistent with the previously recorded HIST_ACQ_v3 personal/internal research, full-history, automated/high-frequency, no-redistribution scope. Existing permission/scope disposition is not reset; no repeat permission request is necessary. This email text does not separately authorize real orders, account permission changes, data resale or public distribution.
+
+Evidence limits: owner-supplied transcription is now available; actual sender email address, full message authentication headers, original message bytes and timezone are not supplied. Do not treat linked tracking images as sender authentication or fetch them. No original approval-document SHA256 was generated from pasted/normalized text. Original-document authentication and its exact linkage to existing authorization metadata/raw/receipts/source/scope contract identities remain independently open. Historical availability/PIT lineage and economics admission are not supplied by this usage statement.
+
+Next minimal owner input: expand email sender details and supply only the actual sender address; do not forward passwords/API keys or unrelated mail. Existing private-store audit and no-holdout/no-order boundaries remain unchanged.
+
