@@ -1,3 +1,12 @@
+# P0 handoff — real observation/source inputs required
+
+Follow INDEXALERT_P0_EVIDENCE_HANDOFF_2026-10-07.md and INDEXALERT_DELIVERY_PRIORITIES.md before earlier next-task pointers.
+Fresh Alpha registration/integrity CI is confirmed, but actual capture/storage is NOT_VERIFIED_ACTIVE by this scoped inspection. Do not promise validation after126 sessions until genuine eligible records and the exact producer are independently verified. Deployed production_v32 has no inspected fresh-alpha module; legacy probability/execution ledgers are distinct.
+Next required integration depends on the original frozen H5 decision producer/specification and permitted real source/availability inputs. No capture contract, trust-root or retrospective signal has been invented. Original KRX source/PIT/economics evidence remains open; Railway private volume files were not accessed with currently exposed tools.
+Owner type00 authentication/signing checks stay deferred, baseline stays COMPLETE, all real-order/funds/permission authority false. No hypothetical hardening or repeated successful tests in this inspection.
+
+---
+
 # Delivery priority override — 2026-10-07 user-directed efficiency
 
 User instruction: “효율적이게 일해 중요한것부터”. This supersedes older next-task pointers that start another open-ended integrity/schema review.
