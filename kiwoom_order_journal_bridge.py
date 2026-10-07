@@ -135,14 +135,20 @@ def validate_stored_native_bindings(connection):
     account,day=scope
     validate_native_scope(account,day)
     validate_stored_execution_totals(connection,dict(connection.execute('SELECT key,filled FROM intents')))
+    order_keys, broker_ids = set(), set()
     for key,broker_id,side in connection.execute('SELECT key,broker_order_id,native_side FROM native_order_bindings'):
+        require(key not in order_keys and broker_id not in broker_ids)
+        order_keys.add(key); broker_ids.add(broker_id)
         order=load_stored_intent(connection,key)
         require(order['state'] != 'INTENT_CREATED' and order['broker_order_id'] == broker_id)
         require(type(side) is str and bool(side.strip()))
     fields = {'account','day','order','symbol','native_side','execution_id',
         'quantity','price','time','remaining'}
+    fill_keys = set()
     for key, execution, payload in connection.execute(
             'SELECT key,execution_id,payload FROM native_fill_bindings'):
+        require((key, execution) not in fill_keys)
+        fill_keys.add((key, execution))
         try:
             material = json.loads(payload)
         except RecursionError:
