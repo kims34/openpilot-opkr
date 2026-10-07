@@ -97,7 +97,7 @@ def test_required_evidence_dimensions_cannot_be_disabled():
 
 
 def test_markouts_must_include_5m_30m_and_close():
-    with pytest.raises(ExecutionSufficiencyProtocolError, match="include 5m, 30m and close"):
+    with pytest.raises(ExecutionSufficiencyProtocolError, match="exactly 5m, 30m and close"):
         validate_execution_sufficiency_protocol(
             _protocol(required_markout_horizons=["5m", "close"])
         )
@@ -121,6 +121,57 @@ def test_protocol_document_hash_and_times_are_strict():
             _protocol(),
             first_live_recommendation_at=datetime(2026, 10, 10, 0, 0),
         )
+
+
+@pytest.mark.parametrize("field,value", [
+    ("schema_version", 1),
+    ("protocol_id", 123),
+    ("protocol_document_sha256", int("1" * 64)),
+    ("rationale", True),
+])
+def test_text_fields_require_original_strings(field, value):
+    with pytest.raises(ExecutionSufficiencyProtocolError, match="original string"):
+        validate_execution_sufficiency_protocol(_protocol(**{field: value}))
+
+
+@pytest.mark.parametrize("field,value", [
+    ("minimum_live_observations", "20"),
+    ("minimum_distinct_decision_dates", 10.0),
+    ("minimum_filled_observations", True),
+])
+def test_count_fields_require_exact_json_integers(field, value):
+    with pytest.raises(ExecutionSufficiencyProtocolError, match="exact integer"):
+        validate_execution_sufficiency_protocol(_protocol(**{field: value}))
+
+
+def test_markout_horizons_reject_extra_or_noncanonical_values():
+    for horizons in (
+        ["5m", "30m", "close", "1h"],
+        ["5M", "30m", "close"],
+        ["5m", "30m", 5],
+    ):
+        with pytest.raises(ExecutionSufficiencyProtocolError):
+            validate_execution_sufficiency_protocol(
+                _protocol(required_markout_horizons=horizons)
+            )
+
+
+def test_json_parser_rejects_duplicate_keys_and_nonstandard_constants():
+    encoded = json.dumps(_protocol())
+    duplicate = encoded.replace(
+        '"minimum_live_observations": 20',
+        '"minimum_live_observations": 20, "minimum_live_observations": 20',
+        1,
+    )
+    with pytest.raises(ExecutionSufficiencyProtocolError, match="duplicate key"):
+        parse_and_validate_execution_sufficiency_protocol_json(duplicate)
+    nonstandard = encoded.replace(
+        '"minimum_live_observations": 20',
+        '"minimum_live_observations": NaN',
+        1,
+    )
+    with pytest.raises(ExecutionSufficiencyProtocolError, match="non-standard constant"):
+        parse_and_validate_execution_sufficiency_protocol_json(nonstandard)
 
 
 def test_unknown_fields_are_rejected():

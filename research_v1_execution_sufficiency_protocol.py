@@ -76,7 +76,9 @@ def _canonical_sha256(value: Any) -> str:
 
 
 def _text(value: Any, field: str, max_len: int = 2000) -> str:
-    text = str(value or "").strip()
+    if not isinstance(value, str):
+        raise ExecutionSufficiencyProtocolError(f"{field} must be an original string")
+    text = value.strip()
     if not text:
         raise ExecutionSufficiencyProtocolError(f"{field} must be non-empty")
     if len(text) > max_len:
@@ -98,17 +100,11 @@ def _aware(value: Any, field: str) -> datetime:
 
 
 def _int(value: Any, field: str, *, minimum: int) -> int:
-    if isinstance(value, bool):
-        raise ExecutionSufficiencyProtocolError(f"{field} must be an integer")
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError) as exc:
-        raise ExecutionSufficiencyProtocolError(f"{field} must be an integer") from exc
-    if str(value).strip() not in {str(parsed), f"+{parsed}"} and not isinstance(value, int):
+    if type(value) is not int:
         raise ExecutionSufficiencyProtocolError(f"{field} must be an exact integer")
-    if parsed < minimum:
+    if value < minimum:
         raise ExecutionSufficiencyProtocolError(f"{field} must be >= {minimum}")
-    return parsed
+    return value
 
 
 def _float(
@@ -119,12 +115,9 @@ def _float(
     maximum: float | None = None,
     minimum_exclusive: bool = False,
 ) -> float:
-    if isinstance(value, bool):
-        raise ExecutionSufficiencyProtocolError(f"{field} must be numeric")
-    try:
-        x = float(value)
-    except (TypeError, ValueError) as exc:
-        raise ExecutionSufficiencyProtocolError(f"{field} must be numeric") from exc
+    if type(value) not in (int, float):
+        raise ExecutionSufficiencyProtocolError(f"{field} must be an exact JSON number")
+    x = float(value)
     if not (x == x and abs(x) != float("inf")):
         raise ExecutionSufficiencyProtocolError(f"{field} must be finite")
     if minimum is not None:
@@ -211,13 +204,17 @@ def validate_execution_sufficiency_protocol(
     horizons_raw = protocol["required_markout_horizons"]
     if not isinstance(horizons_raw, (list, tuple)):
         raise ExecutionSufficiencyProtocolError("required_markout_horizons must be a list")
-    horizons = tuple(str(x).strip().lower() for x in horizons_raw)
-    if not horizons or any(not x for x in horizons):
+    if any(not isinstance(item, str) for item in horizons_raw):
+        raise ExecutionSufficiencyProtocolError("required_markout_horizons must contain original strings only")
+    horizons = tuple(item.strip().lower() for item in horizons_raw)
+    if any(item != normalized for item, normalized in zip(horizons_raw, horizons)):
+        raise ExecutionSufficiencyProtocolError("required_markout_horizons must use canonical lowercase strings")
+    if not horizons or any(not item for item in horizons):
         raise ExecutionSufficiencyProtocolError("required_markout_horizons must not contain empty values")
     if len(set(horizons)) != len(horizons):
         raise ExecutionSufficiencyProtocolError("required_markout_horizons must not contain duplicates")
-    if not REQUIRED_MARKOUT_HORIZONS.issubset(set(horizons)):
-        raise ExecutionSufficiencyProtocolError("required_markout_horizons must include 5m, 30m and close")
+    if set(horizons) != REQUIRED_MARKOUT_HORIZONS:
+        raise ExecutionSufficiencyProtocolError("required_markout_horizons must be exactly 5m, 30m and close")
 
     normalized: dict[str, Any] = {
         "schema_version": schema,
@@ -301,15 +298,40 @@ def validate_execution_sufficiency_protocol(
     }
 
 
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ExecutionSufficiencyProtocolError(
+                f"execution sufficiency protocol JSON contains duplicate key: {key}"
+            )
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value):
+    raise ExecutionSufficiencyProtocolError(
+        f"execution sufficiency protocol JSON contains non-standard constant: {value}"
+    )
+
+
 def parse_and_validate_execution_sufficiency_protocol_json(
     raw_json: str | None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    text = str(raw_json or "").strip()
+    if raw_json is not None and not isinstance(raw_json, str):
+        raise ExecutionSufficiencyProtocolError(
+            "execution sufficiency protocol JSON must be original text"
+        )
+    text = (raw_json or "").strip()
     if not text:
         raise ExecutionSufficiencyProtocolError("execution sufficiency protocol JSON is not configured")
     try:
-        payload = json.loads(text)
+        payload = json.loads(
+            text,
+            object_pairs_hook=_unique_object,
+            parse_constant=_reject_json_constant,
+        )
     except json.JSONDecodeError as exc:
         raise ExecutionSufficiencyProtocolError("execution sufficiency protocol JSON is invalid") from exc
     if not isinstance(payload, dict):
