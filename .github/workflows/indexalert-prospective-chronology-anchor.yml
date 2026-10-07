@@ -1,0 +1,114 @@
+name: IndexAlert Prospective Chronology Anchor
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_chronology_anchor.py'
+      - 'test_research_v1_prospective_chronology_anchor.py'
+      - '.github/workflows/indexalert-prospective-chronology-anchor.yml'
+      - 'INDEXALERT_PROSPECTIVE_CHRONOLOGY_ANCHOR_2026-10-08.md'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_chronology_anchor.py'
+      - 'test_research_v1_prospective_chronology_anchor.py'
+      - '.github/workflows/indexalert-prospective-chronology-anchor.yml'
+      - 'INDEXALERT_PROSPECTIVE_CHRONOLOGY_ANCHOR_2026-10-08.md'
+  workflow_dispatch:
+    inputs:
+      session:
+        description: 'Canonical KRX session YYYY-MM-DD'
+        required: true
+        type: string
+      decision_at:
+        description: 'Timezone-aware decision timestamp'
+        required: true
+        type: string
+      source_receipt_sha256:
+        description: 'Source receipt SHA-256'
+        required: true
+        type: string
+      input_snapshot_sha256:
+        description: 'Input snapshot SHA-256'
+        required: true
+        type: string
+      producer_binding_sha256:
+        description: 'Producer binding SHA-256'
+        required: true
+        type: string
+      model_bundle_sha256:
+        description: 'Model bundle SHA-256'
+        required: true
+        type: string
+      decision_capture_sha256:
+        description: 'Decision capture SHA-256'
+        required: true
+        type: string
+      session_manifest_sha256:
+        description: 'Session manifest SHA-256'
+        required: true
+        type: string
+
+concurrency:
+  group: prospective-chronology-anchor-${{ inputs.session || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pandas==2.2.3 numpy==2.3.5 scikit-learn==1.8.0
+      - run: python -m unittest test_research_v1_prospective_chronology_anchor.py
+
+  anchor:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout producer code
+        uses: actions/checkout@v5
+        with:
+          ref: index-alert-position-regen-fix-v1
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pandas==2.2.3 numpy==2.3.5 scikit-learn==1.8.0
+      - name: Build hash-only anchor record
+        run: |
+          python research_v1_prospective_chronology_anchor.py             --session '${{ inputs.session }}'             --decision-at '${{ inputs.decision_at }}'             --source-receipt-sha256 '${{ inputs.source_receipt_sha256 }}'             --input-snapshot-sha256 '${{ inputs.input_snapshot_sha256 }}'             --producer-binding-sha256 '${{ inputs.producer_binding_sha256 }}'             --model-bundle-sha256 '${{ inputs.model_bundle_sha256 }}'             --decision-capture-sha256 '${{ inputs.decision_capture_sha256 }}'             --session-manifest-sha256 '${{ inputs.session_manifest_sha256 }}'             --workflow-ref-commit "$GITHUB_SHA"             --out /tmp/indexalert-anchor.json
+      - name: Append immutable record to chronology branch
+        env:
+          TARGET_BRANCH: index-alert-prospective-anchors-v1
+          TARGET_SESSION: ${{ inputs.session }}
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          git checkout "$TARGET_BRANCH"
+          mkdir -p prospective_anchors
+          target="prospective_anchors/${TARGET_SESSION}.json"
+          if [ -e "$target" ]; then
+            cmp -s /tmp/indexalert-anchor.json "$target" || {
+              echo "conflicting same-session chronology anchor" >&2
+              exit 1
+            }
+            echo "identical chronology anchor already exists"
+            exit 0
+          fi
+          cp /tmp/indexalert-anchor.json "$target"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "Anchor prospective session ${TARGET_SESSION}"
+          git push origin "$TARGET_BRANCH"
