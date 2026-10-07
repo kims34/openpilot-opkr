@@ -134,20 +134,20 @@ if ([string]::IsNullOrWhiteSpace($env:KIWOOM_APP_KEY) -or [string]::IsNullOrWhit
 
 try {
     $tokenBody = @{ grant_type="client_credentials"; appkey=$env:KIWOOM_APP_KEY; secretkey=$env:KIWOOM_APP_SECRET } | ConvertTo-Json -Compress
-    $tokenWire = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
+    $tokenWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
     $token = Convert-ReadOnlyJson -Raw $tokenWire.Content
     $tokenCode = Get-ReadOnlyReturnCode -Message $token -Raw $tokenWire.Content -ControlFrame $false
     if ($tokenCode -ne 0 -or $token.token -isnot [string] -or [string]::IsNullOrWhiteSpace($token.token)) { Fail-Closed "TOKEN" $tokenCode }
 
     $headers = @{ "authorization"="Bearer $($token.token)"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
-    $accountWire = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
+    $accountWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
     $account = Convert-ReadOnlyJson -Raw $accountWire.Content
     $accountCode = Get-ReadOnlyReturnCode -Message $account -Raw $accountWire.Content -ControlFrame $false
     if ($accountCode -ne 0 -or $account.acctNo -isnot [string] -or [string]::IsNullOrWhiteSpace($account.acctNo)) { Fail-Closed "ACCOUNT" $accountCode }
 
     $headers["api-id"] = "kt00001"
     $settlementBody = @{ qry_tp="2" } | ConvertTo-Json -Compress
-    $settlementWire = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body $settlementBody
+    $settlementWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body $settlementBody
     $settlement = Convert-ReadOnlyJson -Raw $settlementWire.Content
     $settlementCode = Get-ReadOnlyReturnCode -Message $settlement -Raw $settlementWire.Content -ControlFrame $false
     if ($settlementCode -ne 0) { Fail-Closed "SETTLEMENT" $settlementCode }
@@ -159,7 +159,7 @@ try {
     if (-not $settlementValid) { Fail-Closed "SETTLEMENT_FIELDS" 0 }
 
     $headers["api-id"] = "kt00017"
-    $todayResponse = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
+    $todayResponse = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
     $today = Convert-ReadOnlyJson -Raw $todayResponse.Content
     $todayCode = Get-ReadOnlyReturnCode -Message $today -Raw $todayResponse.Content -ControlFrame $false
     if ($todayCode -ne 0) { Fail-Closed "BROKER_TODAY" $todayCode }

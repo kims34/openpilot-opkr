@@ -131,14 +131,14 @@ if ([string]::IsNullOrWhiteSpace($env:KIWOOM_APP_KEY) -or [string]::IsNullOrWhit
 try {
     $tokenBody = @{ grant_type="client_credentials"; appkey=$env:KIWOOM_APP_KEY; secretkey=$env:KIWOOM_APP_SECRET } | ConvertTo-Json -Compress
     $tokenArgs = @{ Uri="https://api.kiwoom.com/oauth2/token"; Method="Post"; ContentType="application/json;charset=UTF-8"; Body=$tokenBody }
-    $tokenWire = Invoke-WebRequest -UseBasicParsing @tokenArgs
+    $tokenWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing @tokenArgs
     $token = Convert-ReadOnlyJson -Raw $tokenWire.Content
     $tokenCode = Get-ReadOnlyReturnCode -Message $token -Raw $tokenWire.Content -ControlFrame $false
     if ($tokenCode -ne 0 -or $token.token -isnot [string] -or [string]::IsNullOrWhiteSpace($token.token)) { Fail-Closed "TOKEN" $tokenCode }
 
     $headers = @{ "authorization"="Bearer $($token.token)"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
     $accountArgs = @{ Uri="https://api.kiwoom.com/api/dostk/acnt"; Method="Post"; Headers=$headers; ContentType="application/json;charset=UTF-8"; Body="{}" }
-    $accountWire = Invoke-WebRequest -UseBasicParsing @accountArgs
+    $accountWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing @accountArgs
     $account = Convert-ReadOnlyJson -Raw $accountWire.Content
     $accountCode = Get-ReadOnlyReturnCode -Message $account -Raw $accountWire.Content -ControlFrame $false
     if ($accountCode -ne 0 -or $account.acctNo -isnot [string] -or [string]::IsNullOrWhiteSpace($account.acctNo)) { Fail-Closed "ACCOUNT" $accountCode }
@@ -167,7 +167,7 @@ try {
     $headers["api-id"] = "kt00001"
     $settlementBody = @{ qry_tp="2" } | ConvertTo-Json -Compress
     $settlementArgs = @{ Uri="https://api.kiwoom.com/api/dostk/acnt"; Method="Post"; Headers=$headers; ContentType="application/json;charset=UTF-8"; Body=$settlementBody }
-    $settlementWire = Invoke-WebRequest -UseBasicParsing @settlementArgs
+    $settlementWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing @settlementArgs
     $settlement = Convert-ReadOnlyJson -Raw $settlementWire.Content
     $settlementCode = Get-ReadOnlyReturnCode -Message $settlement -Raw $settlementWire.Content -ControlFrame $false
     if ($settlementCode -ne 0) { Fail-Closed "SETTLEMENT" $settlementCode }

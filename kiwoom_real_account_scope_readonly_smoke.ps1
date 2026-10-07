@@ -167,7 +167,7 @@ function Invoke-ReadOnlyPage(
         ContentType = "application/json;charset=UTF-8"
         Body = $json
     }
-    $resp = Invoke-WebRequest @respArgs
+    $resp = Invoke-WebRequest -TimeoutSec 15 @respArgs
     $obj = Convert-ReadOnlyJson -Raw $resp.Content
     $responseCode = Get-ReadOnlyReturnCode -Message $obj -Raw $resp.Content -ControlFrame $false
     if ($responseCode -ne 0) {
@@ -229,7 +229,7 @@ if ([string]::IsNullOrWhiteSpace($env:KIWOOM_APP_KEY) -or [string]::IsNullOrWhit
 try {
     $tokenBody = @{ grant_type="client_credentials"; appkey=$env:KIWOOM_APP_KEY; secretkey=$env:KIWOOM_APP_SECRET } | ConvertTo-Json -Compress
     $tokenArgs = @{ Uri="https://api.kiwoom.com/oauth2/token"; Method="Post"; ContentType="application/json;charset=UTF-8"; Body=$tokenBody }
-    $tokenWire = Invoke-WebRequest -UseBasicParsing @tokenArgs
+    $tokenWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing @tokenArgs
     $tokenResp = Convert-ReadOnlyJson -Raw $tokenWire.Content
     $tokenCode = Get-ReadOnlyReturnCode -Message $tokenResp -Raw $tokenWire.Content -ControlFrame $false
     if ($tokenCode -ne 0 -or $tokenResp.token -isnot [string] -or [string]::IsNullOrWhiteSpace($tokenResp.token)) {
