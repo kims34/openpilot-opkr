@@ -181,6 +181,28 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertTrue(self.j.shadow_control()['killed'])
 
+    def test_restart_does_not_recreate_dropped_safety_tables(self):
+        for tables in (('shadow_control',), ('reconciliation_barrier',),
+                       ('shadow_control','reconciliation_barrier')):
+            with self.subTest(tables=tables):
+                path = Path(self.tmp.name) / ('-'.join(tables)+'.sqlite')
+                journal = OrderIntentJournal(path)
+                try:
+                    journal.register('retained', symbol='OFFLINE', side='BUY', quantity=1)
+                    journal.trip_kill_switch()
+                    for table in tables:
+                        journal.db.execute(f'DROP TABLE {table}')
+                    with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+                        OrderIntentJournal(path)
+                    names = {r[0] for r in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                    self.assertTrue(set(tables).isdisjoint(names))
+                    self.assertEqual(journal.get('retained')['quantity'], 1)
+                    if 'shadow_control' not in tables:
+                        self.assertTrue(journal.shadow_control()['killed'])
+                        self.assertEqual(journal.shadow_control()['mode'], 'MASTER_OFF')
+                finally:
+                    journal.close()
+
     def test_overfill_rolls_back_quantity_and_quarantines(self):
         self.acknowledged()
         self.fill()
