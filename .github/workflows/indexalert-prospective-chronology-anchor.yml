@@ -6,6 +6,8 @@ on:
     paths:
       - 'research_v1_prospective_chronology_anchor.py'
       - 'test_research_v1_prospective_chronology_anchor.py'
+      - 'research_v1_prospective_chronology_admission.py'
+      - 'test_research_v1_prospective_chronology_admission.py'
       - '.github/workflows/indexalert-prospective-chronology-anchor.yml'
       - 'INDEXALERT_PROSPECTIVE_CHRONOLOGY_ANCHOR_2026-10-08.md'
   push:
@@ -13,6 +15,8 @@ on:
     paths:
       - 'research_v1_prospective_chronology_anchor.py'
       - 'test_research_v1_prospective_chronology_anchor.py'
+      - 'research_v1_prospective_chronology_admission.py'
+      - 'test_research_v1_prospective_chronology_admission.py'
       - '.github/workflows/indexalert-prospective-chronology-anchor.yml'
       - 'INDEXALERT_PROSPECTIVE_CHRONOLOGY_ANCHOR_2026-10-08.md'
   workflow_dispatch:
@@ -68,7 +72,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install pandas==2.2.3 numpy==2.3.5 scikit-learn==1.8.0
-      - run: python -m unittest test_research_v1_prospective_chronology_anchor.py
+      - run: python -m unittest test_research_v1_prospective_chronology_anchor.py test_research_v1_prospective_chronology_admission.py
 
   anchor:
     if: github.event_name == 'workflow_dispatch'
@@ -88,7 +92,7 @@ jobs:
       - run: python -m pip install pandas==2.2.3 numpy==2.3.5 scikit-learn==1.8.0
       - name: Build hash-only anchor record
         run: |
-          python research_v1_prospective_chronology_anchor.py             --session '${{ inputs.session }}'             --decision-at '${{ inputs.decision_at }}'             --source-receipt-sha256 '${{ inputs.source_receipt_sha256 }}'             --input-snapshot-sha256 '${{ inputs.input_snapshot_sha256 }}'             --producer-binding-sha256 '${{ inputs.producer_binding_sha256 }}'             --model-bundle-sha256 '${{ inputs.model_bundle_sha256 }}'             --decision-capture-sha256 '${{ inputs.decision_capture_sha256 }}'             --session-manifest-sha256 '${{ inputs.session_manifest_sha256 }}'             --workflow-ref-commit "$GITHUB_SHA"             --out /tmp/indexalert-anchor.json
+          python research_v1_prospective_chronology_anchor.py             --session '${{ inputs.session }}'             --decision-at '${{ inputs.decision_at }}'             --source-receipt-sha256 '${{ inputs.source_receipt_sha256 }}'             --input-snapshot-sha256 '${{ inputs.input_snapshot_sha256 }}'             --producer-binding-sha256 '${{ inputs.producer_binding_sha256 }}'             --model-bundle-sha256 '${{ inputs.model_bundle_sha256 }}'             --decision-capture-sha256 '${{ inputs.decision_capture_sha256 }}'             --session-manifest-sha256 '${{ inputs.session_manifest_sha256 }}'             --workflow-ref-commit "$GITHUB_SHA"             --workflow-run-id "$GITHUB_RUN_ID"             --workflow-run-attempt "$GITHUB_RUN_ATTEMPT"             --out /tmp/indexalert-anchor.json
       - name: Append immutable record to chronology branch
         env:
           TARGET_BRANCH: index-alert-prospective-anchors-v1
@@ -110,5 +114,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$target"
-          git commit -m "Anchor prospective session ${TARGET_SESSION}"
+          git commit -m "Anchor prospective session ${TARGET_SESSION} (run ${GITHUB_RUN_ID})"
           git push origin "$TARGET_BRANCH"
