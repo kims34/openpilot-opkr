@@ -243,7 +243,8 @@ def test_zero_recovery_value_is_allowed_only_with_verified_recovery_record():
     )
     assert out["structural_status_economics_satisfied"] is True
     assert out["exact_status_economics_ready"] is False
-    assert out["resolved_position_economics"][0]["verified_recovery_cash"] == "0"
+    assert out["resolved_position_economics"] == []
+    assert out["structural_candidate_position_economics"][0]["verified_recovery_cash"] == "0"
 
 
 def test_wrong_contract_or_naive_pit_timestamp_blocks_exact_economics():
@@ -254,6 +255,8 @@ def test_wrong_contract_or_naive_pit_timestamp_blocks_exact_economics():
     )
     assert wrong_contract["exact_status_economics_ready"] is False
     assert wrong_contract["source_contract_mismatch_positions"] == 1
+    assert wrong_contract["structural_candidate_position_economics"] == []
+    assert wrong_contract["resolved_position_economics"] == []
 
     naive = audit_exact_status_economics(
         expected_positions=_expected(),
