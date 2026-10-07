@@ -123,6 +123,17 @@ foreach ($raw in @('{"trnm":["LOGIN"],"return_code":0}','{"trnm":["REG"],"return
 if (-not (Is-Ping -Obj $null -Raw 'PING')) { throw 'PLAIN_PING_REJECTED' }
 if (-not (Is-Ping -Obj (Convert-ReadOnlyJson -Raw '{"trnm":"ping"}') -Raw '{"trnm":"ping"}')) { throw 'JSON_PING_REJECTED' }
 if ((Get-ReadOnlyMessageName -Message (Convert-ReadOnlyJson -Raw '{"trnm":"login"}')) -cne 'LOGIN') { throw 'VALID_MESSAGE_REJECTED' }
+$guard=$ast.Find({param($node) $node -is [Management.Automation.Language.IfStatementAst] -and $node.Extent.Text.StartsWith('if (-not $regAck)')},$true)
+if ($null -eq $guard) { throw 'SUBSCRIPTION_GUARD_MISSING' }
+function Emit-Failure([string]$Stage, [int]$Code) { throw 'SUBSCRIPTION_UNACKNOWLEDGED' }
+foreach ($eventCount in @(0,8)) {
+ $events=$eventCount; $regAck=$false; $rejected=$false
+ try { . ([ScriptBlock]::Create($guard.Extent.Text)) }
+ catch { if ($_.Exception.Message -ne 'SUBSCRIPTION_UNACKNOWLEDGED') { throw 'GUARD_PRIVATE_ERROR_REQUIRED' }; $rejected=$true }
+ if (-not $rejected) { throw 'EVENTS_CANNOT_REPLACE_REG_ACK' }
+ $regAck=$true
+ . ([ScriptBlock]::Create($guard.Extent.Text))
+}
 $decode=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-StrictWebSocketText'},$true)
 if ($null -eq $decode) { throw 'UTF8_HELPER_MISSING' }
 . ([ScriptBlock]::Create($decode.Extent.Text))
