@@ -60,6 +60,23 @@ def validate_stored_inbox_conflicts(connection):
         validate_normalized_inbox_row(decode_normalized_inbox_payload(payload),account)
 
 
+def validate_stored_inbox_receipts(connection):
+    """Audit every stored receipt, including pending/BLOCKED, without repair."""
+    validate_stored_inbox_receipt_identities(connection)
+    if connection.execute('SELECT 1 FROM native_inbox_receipts LIMIT 1').fetchone() is None:
+        return
+    scopes = list(connection.execute('SELECT id,account,day FROM native_journal_scope'))
+    require(len(scopes) == 1 and type(scopes[0][0]) is int and scopes[0][0] == 1)
+    _, account, scope_day = scopes[0]
+    validate_native_scope(account, scope_day)
+    for key, day, payload, digest in connection.execute('SELECT key,day,payload,digest FROM native_inbox_receipts'):
+        require(isinstance(key,str) and bool(key.strip()) and len(key) <= 256)
+        require(day == scope_day)
+        require(isinstance(payload,str) and isinstance(digest,str))
+        require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+        validate_normalized_inbox_row(decode_normalized_inbox_payload(payload), account)
+
+
 def validate_normalized_inbox_row(row, account):
     require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
     require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
@@ -151,17 +168,13 @@ class KiwoomExecutionInbox:
 
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
-        validate_stored_inbox_receipt_identities(self.journal.db)
+        validate_stored_inbox_receipts(self.journal.db)
         validate_stored_inbox_conflicts(self.journal.db)
         receipts = {}
         for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
-            require(type(sequence) is int and sequence > 0)
-            self._text(receipt_id); self._text(key); self.bridge._context(day)
-            require(isinstance(payload, str) and isinstance(digest, str))
-            require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+            self.bridge._context(day)
             row = self._decode_payload(payload)
-            self._validate_row(row)
             receipts[sequence] = (key, day, row)
         for receipt_sequence, outcome in self.journal.db.execute(
                 'SELECT receipt_sequence,outcome FROM native_inbox_attempts'):
@@ -176,7 +189,7 @@ class KiwoomExecutionInbox:
         tables = {row[0] for row in self.journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         require({'native_inbox_receipts', 'native_inbox_attempts', 'native_inbox_conflicts',
             'native_journal_scope', 'native_order_bindings', 'native_fill_bindings'} <= tables)
-        validate_stored_inbox_receipt_identities(self.journal.db)
+        validate_stored_inbox_receipts(self.journal.db)
         validate_stored_inbox_conflicts(self.journal.db)
 
     def _audit_attempts_locked(self):

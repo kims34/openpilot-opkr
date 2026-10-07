@@ -207,6 +207,35 @@ class InboxTests(unittest.TestCase):
     def test_corrupt_conflict_day_blocks_unrelated_runtime_fill(self):
         self._assert_corrupt_conflict_material(bad_day=True)
 
+    def _assert_corrupt_pending_receipt(self, field, value):
+        self.append(); self.append('receipt-2')
+        self.j.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        self.j.db.execute(f"UPDATE native_inbox_receipts SET {field}=? WHERE receipt_id='receipt-2'", (value,))
+        if field == 'payload':
+            self.j.db.execute("UPDATE native_inbox_receipts SET digest=? WHERE receipt_id='receipt-2'", (hashlib.sha256(value.encode()).hexdigest(),))
+        history = self.j.db.execute('SELECT * FROM native_inbox_receipts').fetchall()
+        for operation in (self.i.counts, self.i.replay_next, lambda:self.i.replay('receipt-1'), lambda:self.append('receipt-3'), lambda:KiwoomExecutionInbox(self.b)):
+            with self.assertRaisesRegex(ExecutionInboxError,'^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_inbox_receipts').fetchall(),history)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_attempts').fetchone(),(0,))
+
+    def test_corrupt_pending_receipt_blocks_unrelated_fill_and_counts(self):
+        self._assert_corrupt_pending_receipt('digest', '0'*64)
+
+    def test_malformed_pending_receipt_blocks_unrelated_fill(self):
+        self._assert_corrupt_pending_receipt('payload', '{}')
+
+    def test_wrong_day_pending_receipt_blocks_unrelated_fill(self):
+        self._assert_corrupt_pending_receipt('day', '2026-10-04')
+
+    def test_blank_key_pending_receipt_blocks_unrelated_fill(self):
+        self._assert_corrupt_pending_receipt('key', '   ')
+
+    def test_duplicate_json_pending_receipt_blocks_unrelated_fill(self):
+        self._assert_corrupt_pending_receipt('payload', '{"fill_price":"999",' + json.dumps(fixtures.fill())[1:])
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):
@@ -422,7 +451,9 @@ class InboxTests(unittest.TestCase):
         with self.assertRaises(ExecutionInboxError):
             self.i.replay_next()
         self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
-        self.assertEqual(self.i.counts()['pending'], 1)
+        with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+            self.i.counts()
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_receipts').fetchone(), (1,))
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
 
     def test_restart_rejects_intent_fill_total_changed_under_processed_receipt(self):
