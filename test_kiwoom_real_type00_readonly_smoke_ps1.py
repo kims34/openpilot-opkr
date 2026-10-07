@@ -12,6 +12,7 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
     def test_acknowledgements_require_explicit_unambiguous_integer_codes(self):
         self.assertEqual(self.text.count('Get-ReadOnlyReturnCode -Message $obj -Raw $raw'), 2)
         self.assertNotIn('$code = 0', self.text)
+        self.assertIn('return Convert-StrictWebSocketText -Bytes $stream.ToArray()', self.text)
         runtimes = [shutil.which(name) for name in ('pwsh', 'powershell')]
         runtimes = list(dict.fromkeys(runtime for runtime in runtimes if runtime))
         if not runtimes:
@@ -32,6 +33,16 @@ foreach ($name in @('LOGIN','REG')) {
     $obj=$raw | ConvertFrom-Json
     if ((Get-ReadOnlyReturnCode -Message $obj -Raw $raw) -ne $expected) { throw 'VALID_CODE_REJECTED' }
   }
+}
+$decode=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-StrictWebSocketText'},$true)
+if ($null -eq $decode) { throw 'UTF8_HELPER_MISSING' }
+. ([ScriptBlock]::Create($decode.Extent.Text))
+if ((Convert-StrictWebSocketText -Bytes ([byte[]]@(65,66))) -ne 'AB') { throw 'UTF8_VALID_REJECTED' }
+foreach ($bytes in @(([byte[]]@(255)),([byte[]]@(192,128)),([byte[]]@(226,130)),([byte[]]@(237,160,128)))) {
+  $rejected=$false
+  try { $null=Convert-StrictWebSocketText -Bytes $bytes }
+  catch { if ($_.Exception.Message -ne 'WEBSOCKET_UTF8_INVALID') { throw 'UTF8_PRIVATE_ERROR_REQUIRED' }; $rejected=$true }
+  if (-not $rejected) { throw 'UTF8_INVALID_ACCEPTED' }
 }
 $invalid=@(
 '{"trnm":"LOGIN"}',

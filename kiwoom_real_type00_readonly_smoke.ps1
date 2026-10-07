@@ -87,6 +87,15 @@ function Send-Text([System.Net.WebSockets.ClientWebSocket]$Ws, [string]$Text) {
     }
 }
 
+function Convert-StrictWebSocketText([byte[]]$Bytes) {
+    try {
+        $utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false, $true
+        return $utf8.GetString($Bytes)
+    } catch {
+        throw "WEBSOCKET_UTF8_INVALID"
+    }
+}
+
 function Receive-Text([System.Net.WebSockets.ClientWebSocket]$Ws, [int]$TimeoutMs) {
     $buffer = New-Object byte[] 8192
     $stream = New-Object System.IO.MemoryStream
@@ -109,7 +118,7 @@ function Receive-Text([System.Net.WebSockets.ClientWebSocket]$Ws, [int]$TimeoutM
                 throw "WEBSOCKET_FRAME_TOO_LARGE"
             }
         } while (-not $result.EndOfMessage)
-        return [System.Text.Encoding]::UTF8.GetString($stream.ToArray())
+        return Convert-StrictWebSocketText -Bytes $stream.ToArray()
     } finally {
         $stream.Dispose()
         $cts.Dispose()
