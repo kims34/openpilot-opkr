@@ -125,13 +125,8 @@ def build_current_session_inputs(raw: pd.DataFrame, *, decision_at: str) -> dict
     }
 
 
-def store_input_snapshot(snapshot: dict, *, root: str, git_worktree: str) -> dict:
-    """Durably create one private immutable input checkpoint per session.
-
-    Identical retry is idempotent. A different checkpoint for the same session
-    is rejected; it cannot replace the original snapshot. Local durability does
-    not authenticate source claims or establish prospective decision chronology.
-    """
+def serialize_input_snapshot(snapshot: dict) -> bytes:
+    """Return the canonical bytes used by private durable input storage."""
     if snapshot.get("classification") != "INPUT_SNAPSHOT_ONLY_NOT_DECISION":
         raise ProspectiveInputError("input snapshot required")
     for key in ("independent_source_admission_verified", "signal_generation_complete",
@@ -142,10 +137,35 @@ def store_input_snapshot(snapshot: dict, *, root: str, git_worktree: str) -> dic
     if type(session) is not str or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", session):
         raise ProspectiveInputError("canonical session required")
     body = dict(snapshot)
-    frame = body.pop("features").copy()
-    frame["decision_date"] = frame.decision_date.dt.strftime("%Y-%m-%d")
+    frame = body.pop("features", None)
+    if not isinstance(frame, pd.DataFrame):
+        raise ProspectiveInputError("input snapshot features must be a DataFrame")
+    frame = frame.copy()
+    if "decision_date" not in frame.columns:
+        raise ProspectiveInputError("input snapshot features require decision_date")
+    dates = pd.to_datetime(frame["decision_date"], errors="coerce")
+    if dates.isna().any() or dates.dt.tz is not None:
+        raise ProspectiveInputError("input snapshot decision_date must be exact naive dates")
+    if not dates.dt.strftime("%Y-%m-%d").eq(session).all():
+        raise ProspectiveInputError("input snapshot feature session mismatch")
+    frame["decision_date"] = dates.dt.strftime("%Y-%m-%d")
     body["features"] = frame.to_dict("records")
-    payload = _canonical(body)
+    return _canonical(body)
+
+
+def input_snapshot_sha256(snapshot: dict) -> str:
+    return hashlib.sha256(serialize_input_snapshot(snapshot)).hexdigest()
+
+
+def store_input_snapshot(snapshot: dict, *, root: str, git_worktree: str) -> dict:
+    """Durably create one private immutable input checkpoint per session.
+
+    Identical retry is idempotent. A different checkpoint for the same session
+    is rejected; it cannot replace the original snapshot. Local durability does
+    not authenticate source claims or establish prospective decision chronology.
+    """
+    session = snapshot.get("session")
+    payload = serialize_input_snapshot(snapshot)
     digest = hashlib.sha256(payload).hexdigest()
     base = validate_private_root(root, git_worktree=git_worktree)
     target = base / f"input-{session}.json"
