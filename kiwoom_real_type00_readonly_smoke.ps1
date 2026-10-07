@@ -221,10 +221,19 @@ function Receive-Text([System.Net.WebSockets.ClientWebSocket]$Ws, [int]$TimeoutM
     }
 }
 
+function Get-ReadOnlyMessageName([object]$Message) {
+    if ($Message -isnot [Management.Automation.PSCustomObject] -or
+        $Message.trnm -isnot [string] -or [string]::IsNullOrWhiteSpace($Message.trnm)) {
+        throw 'READ_ONLY_MESSAGE_NAME_INVALID'
+    }
+    return $Message.trnm.ToUpperInvariant()
+}
+
 function Is-Ping([object]$Obj, [string]$Raw) {
     if ($Raw.Trim().ToUpperInvariant() -eq "PING") { return $true }
-    if ($null -ne $Obj -and [string]$Obj.trnm -ne "") {
-        return ([string]$Obj.trnm).ToUpperInvariant() -eq "PING"
+    if ($null -ne $Obj) {
+        try { return (Get-ReadOnlyMessageName -Message $Obj) -eq "PING" }
+        catch { return $false }
     }
     return $false
 }
@@ -288,7 +297,9 @@ try {
             Send-PingEcho -Ws $ws -Raw $raw
             continue
         }
-        if ($null -eq $obj -or ([string]$obj.trnm).ToUpperInvariant() -ne "LOGIN") {
+        try { $name = Get-ReadOnlyMessageName -Message $obj }
+        catch { Emit-Failure "WS_LOGIN_PROTOCOL" }
+        if ($name -ne "LOGIN") {
             Emit-Failure "WS_LOGIN_PROTOCOL" 0
         }
         try { $code = Get-ReadOnlyReturnCode -Message $obj -Raw $raw }
@@ -331,8 +342,8 @@ try {
             Send-PingEcho -Ws $ws -Raw $raw
             continue
         }
-        if ($null -eq $obj) { Emit-Failure "TYPE00_JSON_PROTOCOL" }
-        $trnm = ([string]$obj.trnm).ToUpperInvariant()
+        try { $trnm = Get-ReadOnlyMessageName -Message $obj }
+        catch { Emit-Failure "TYPE00_JSON_PROTOCOL" }
         if ($trnm -eq "REG") {
             try { $code = Get-ReadOnlyReturnCode -Message $obj -Raw $raw }
             catch { Emit-Failure "TYPE00_REG_PROTOCOL" }

@@ -107,6 +107,22 @@ if ($null -ne $observer) {
     if (-not $rejected) { throw 'SCHEMA_INVALID_ACCEPTED' }
   }
 }
+foreach ($name in @('Get-ReadOnlyMessageName','Is-Ping')) {
+ $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+ if ($null -eq $fn) { throw 'MESSAGE_HELPER_MISSING' }
+ . ([ScriptBlock]::Create($fn.Extent.Text))
+}
+foreach ($raw in @('{"trnm":["LOGIN"],"return_code":0}','{"trnm":["REG"],"return_code":0}','{"trnm":["PING"]}','{"trnm":null}','{"trnm":true}','{"trnm":1}','{}','{"trnm":" "}')) {
+ $obj=Convert-ReadOnlyJson -Raw $raw
+ $rejected=$false
+ try { $null=Get-ReadOnlyMessageName -Message $obj }
+ catch { if ($_.Exception.Message -ne 'READ_ONLY_MESSAGE_NAME_INVALID') { throw 'MESSAGE_PRIVATE_ERROR_REQUIRED' }; $rejected=$true }
+ if (-not $rejected) { throw 'COERCED_MESSAGE_ACCEPTED' }
+ if (Is-Ping -Obj $obj -Raw $raw) { throw 'COERCED_PING_ACCEPTED' }
+}
+if (-not (Is-Ping -Obj $null -Raw 'PING')) { throw 'PLAIN_PING_REJECTED' }
+if (-not (Is-Ping -Obj (Convert-ReadOnlyJson -Raw '{"trnm":"ping"}') -Raw '{"trnm":"ping"}')) { throw 'JSON_PING_REJECTED' }
+if ((Get-ReadOnlyMessageName -Message (Convert-ReadOnlyJson -Raw '{"trnm":"login"}')) -cne 'LOGIN') { throw 'VALID_MESSAGE_REJECTED' }
 $decode=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-StrictWebSocketText'},$true)
 if ($null -eq $decode) { throw 'UTF8_HELPER_MISSING' }
 . ([ScriptBlock]::Create($decode.Extent.Text))
