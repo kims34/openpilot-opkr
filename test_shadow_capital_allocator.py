@@ -57,6 +57,7 @@ class ShadowCapitalTests(unittest.TestCase):
     def test_legacy_complete_capital_schema_backfills_component_history(self):
         self.claim(fee=3)
         self.j.db.execute('DROP TABLE journal_component_history')
+        self.j.db.execute('PRAGMA user_version=0')  # Actual pre-registry schema.
         self.j.close()
         self.j = OrderIntentJournal(self.path)
         self.a = ShadowCapitalAllocator(self.j)

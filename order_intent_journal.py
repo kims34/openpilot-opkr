@@ -88,6 +88,9 @@ COMPONENT_TABLES = {
 def validate_stored_component_history(connection):
     """Optional modules cannot become fresh after all their tables disappear."""
     tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    version = connection.execute('PRAGMA user_version').fetchone()[0]
+    if version not in (0,1) or (version == 1 and 'journal_component_history' not in tables):
+        raise OrderJournalError('initialized component history missing')
     if 'journal_component_history' not in tables:
         return  # Pre-registry schema migration; no authority is inferred.
     for (component,) in connection.execute('SELECT component FROM journal_component_history'):
@@ -207,6 +210,7 @@ class OrderIntentJournal:
                 for component, required_tables in COMPONENT_TABLES.items():
                     if required_tables <= tables:
                         record_component_initialization(self.db, component)
+                self.db.execute('PRAGMA user_version=1')
         if missing:
             self.db.close()
             raise OrderJournalError('startup safety metadata missing')
