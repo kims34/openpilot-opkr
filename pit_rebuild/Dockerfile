@@ -1,8 +1,9 @@
-FROM python:3.12-slim
+FROM python:3.12.14-slim
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
-RUN python -m pip install --upgrade pip && pip install pandas==2.3.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+RUN python -m pip install --upgrade pip && pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
 COPY research_v1_marcap.py ./
+COPY rehydrate_frozen_long_history.py ./
 COPY verify_pit_volume.py ./
 COPY list_pit_layout.py ./
 COPY verify_build_stats.py ./
