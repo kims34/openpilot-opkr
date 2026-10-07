@@ -31,15 +31,16 @@ from research_v1_prospective_model_bundle import (
     build_model_bundle,
     validate_model_bundle,
 )
-from research_v1_selected_calibration import _selected_residual_quantiles
+from research_v1_policy_aligned_calibration import _policy_aligned_residual_quantiles
 
 
 CLASSIFICATION = "FROZEN_PRODUCER_BINDING_NOT_ADMITTED"
 FREEZE_ANCHOR_COMMIT = "5f19026e320ed8aec49f61b5273d03467d7437aa"
-FIT_CODE_PATH = "research_v1_selected_calibration.py"
+FIT_CODE_PATH = "research_v1_policy_aligned_calibration.py"
 REFIT_POLICY_ID = (
     "ANCHOR_EXPANDING_TRAIN_INITIAL504__CAL126__TEST126__"
-    "PURGE5_BOTH_SIDES__REFIT_PER_TEST_BLOCK_v1"
+    "PURGE5_BOTH_SIDES__POLICY_ALIGNED_CAL_TOP3_NORMAL_MARKET_VETO__"
+    "REFIT_PER_TEST_BLOCK_v2"
 )
 INITIAL_TRAIN_SESSIONS = 504
 CALIBRATION_SESSIONS = 126
@@ -286,9 +287,24 @@ def fit_frozen_model_for_target(
     ).all():
         raise FrozenProspectiveProducerError("no finite calibration labels")
     cal_for_hash["pred_mean"] = model.predict(cal_for_hash[CONTEXT_FEATURES])
-    quantiles = _selected_residual_quantiles(cal_for_hash, top_k=3)
+    quantiles, calibration_policy_diagnostics = _policy_aligned_residual_quantiles(
+        cal_for_hash, top_k=3
+    )
     if not quantiles:
-        raise FrozenProspectiveProducerError("selection-conditioned calibration failed")
+        raise FrozenProspectiveProducerError(
+            "policy-aligned selection-conditioned calibration failed"
+        )
+    if calibration_policy_diagnostics.get("backfill_allowed") is not False:
+        raise FrozenProspectiveProducerError(
+            "policy-aligned calibration illegally permits backfill"
+        )
+    expected_source = (
+        "calibration_daily_top3_by_pred_mean_then_same_normal_market_veto_no_backfill"
+    )
+    if quantiles.get("__global__", {}).get("source") != expected_source:
+        raise FrozenProspectiveProducerError(
+            "policy-aligned calibration source identity mismatch"
+        )
 
     train_sha = _hash_rows(train)
     cal_sha = _hash_rows(cal_for_hash, include_prediction=True)
