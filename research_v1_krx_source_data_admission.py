@@ -163,6 +163,8 @@ def _revalidate_source_gates(gates: Mapping[str, Any]) -> dict[str, Any]:
     except ValueError as exc:
         raise KRXSourceDataAdmissionError("source-gate audit cannot be revalidated") from exc
     for field in (
+        "all_source_gate_claims_pass",
+        "independent_source_gate_admission_verified",
         "all_source_gates_pass", "source_contract_closed_for_declared_scope",
         "alpha_or_final_judge_promotion_authorized",
         "sealed_holdout_authorized_by_source_audit_alone",
