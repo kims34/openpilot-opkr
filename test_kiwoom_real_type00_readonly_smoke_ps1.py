@@ -1,3 +1,4 @@
+import json
 import base64
 import shutil
 import subprocess
@@ -177,6 +178,39 @@ foreach ($raw in $invalid) {
             with self.subTest(runtime=pathlib.Path(runtime).name):
                 result = subprocess.run([runtime, '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_failure_keeps_valid_prior_event_counts_without_private_rows(self):
+        runtimes = list(dict.fromkeys(runtime for runtime in (shutil.which('pwsh'), shutil.which('powershell')) if runtime))
+        self.assertIn('$script:Type00EventCount = $events', self.text)
+        self.assertIn('$script:AccountMatchedType00EventCount = $accountMatched', self.text)
+        if not runtimes:
+            self.skipTest('Failure emitter behavioral matrix runs in CI')
+        path = base64.b64encode(str(pathlib.Path('kiwoom_real_type00_readonly_smoke.ps1').resolve()).encode()).decode()
+        harness = r'''$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'
+$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('PATH_BASE64'))
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors)
+$fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Emit-Failure'},$true)
+. ([ScriptBlock]::Create($fn.Extent.Text))
+$script:TokenOk=$true; $script:AccountEndpointOk=$true; $script:WsConnected=$true; $script:WsLoginOk=$true
+$script:Type00RegSent=$true; $script:Type00RegAckOk=$false
+$script:Type00EventCount=7; $script:AccountMatchedType00EventCount=4
+$script:DetailCode=$null; $script:ErrorClass=$null
+Emit-Failure 'TYPE00_SUBSCRIPTION_UNOBSERVED' 0
+'''.replace('PATH_BASE64', path)
+        encoded = base64.b64encode(harness.encode('utf-16le')).decode()
+        for runtime in runtimes:
+            with self.subTest(runtime=pathlib.Path(runtime).name):
+                result = subprocess.run([runtime, '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                report = json.loads(result.stdout.strip())
+                self.assertEqual(report['TYPE00_EVENT_COUNT'], 7)
+                self.assertEqual(report['ACCOUNT_MATCHED_TYPE00_EVENT_COUNT'], 4)
+                self.assertFalse(report['TYPE00_REG_ACK_OK'])
+                for field in ('BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED', 'GENUINE_LIVE_PROVENANCE_VERIFIED', 'REAL_ORDERS_AUTHORIZED', 'FUNDS_MOVEMENT_AUTHORIZED', 'PERMISSION_CHANGE_AUTHORIZED'):
+                    self.assertFalse(report[field])
+                self.assertEqual(report['ORDERING'], 'DISABLED')
+                self.assertNotIn('fixture-account', result.stdout)
 
     def test_fixed_real_hosts_and_read_only_account_query(self):
         self.assertIn('https://api.kiwoom.com/oauth2/token',self.text)

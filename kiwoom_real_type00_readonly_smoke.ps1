@@ -10,6 +10,8 @@ $script:WsConnected = $false
 $script:WsLoginOk = $false
 $script:Type00RegSent = $false
 $script:Type00RegAckOk = $false
+$script:Type00EventCount = 0
+$script:AccountMatchedType00EventCount = 0
 $script:DetailCode = $null
 $script:ErrorClass = $null
 
@@ -159,8 +161,8 @@ function Emit-Failure([string]$Stage, [int]$Code = -1) {
         WS_LOGIN_OK=$script:WsLoginOk
         TYPE00_REG_SENT=$script:Type00RegSent
         TYPE00_REG_ACK_OK=$script:Type00RegAckOk
-        TYPE00_EVENT_COUNT=0
-        ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=0
+        TYPE00_EVENT_COUNT=[int]$script:Type00EventCount
+        ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=[int]$script:AccountMatchedType00EventCount
         BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED=$false
         GENUINE_LIVE_PROVENANCE_VERIFIED=$false
         ORDERING="DISABLED"
@@ -357,6 +359,8 @@ try {
         catch { Emit-Failure "TYPE00_FRAME_PROTOCOL" }
         $events += $observation.Events
         $accountMatched += $observation.Matched
+        $script:Type00EventCount = $events
+        $script:AccountMatchedType00EventCount = $accountMatched
         $executionObserved = $executionObserved -or $observation.ExecutionFieldsObserved
     }
 
