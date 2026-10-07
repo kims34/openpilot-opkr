@@ -33,6 +33,23 @@ class InboxTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
+    def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
+        self.append()
+        for sequence in (0, -1):
+            with self.subTest(sequence=sequence):
+                receipt = 'invalid-sequence-' + str(sequence)
+                self.j.db.execute('''INSERT INTO native_inbox_receipts
+                    SELECT ?,?,key,day,payload,digest FROM native_inbox_receipts WHERE receipt_id='receipt-1' ''',
+                    (sequence, receipt))
+                with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                    KiwoomExecutionInbox(self.b)
+                with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                    self.i.replay(receipt)
+                self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+                self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_attempts').fetchone(), (0,))
+                self.assertEqual(self.j.db.execute('SELECT sequence FROM native_inbox_receipts WHERE receipt_id=?', (receipt,)).fetchone(), (sequence,))
+                self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
     def test_combined_control_corruption_and_fault_loss_keeps_receipt_pending_privately(self):
         self.append()
         self.j.db.execute('PRAGMA ignore_check_constraints=ON')

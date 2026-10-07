@@ -100,6 +100,7 @@ class KiwoomExecutionInbox:
         receipts = {}
         for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
+            require(type(sequence) is int and sequence > 0)
             self._text(receipt_id); self._text(key); self.bridge._context(day)
             require(isinstance(payload, str) and isinstance(digest, str))
             require(hashlib.sha256(payload.encode()).hexdigest() == digest)
@@ -161,7 +162,9 @@ class KiwoomExecutionInbox:
                 self._text(receipt_id)
                 record = self.journal.db.execute('SELECT sequence,key,day,payload,digest FROM native_inbox_receipts WHERE receipt_id=?', (receipt_id,)).fetchone()
                 require(record is not None)
-                sequence, key, day, payload, digest = record
+                stored_sequence, key, day, payload, digest = record
+                require(type(stored_sequence) is int and stored_sequence > 0)
+                sequence = stored_sequence
                 require(hashlib.sha256(payload.encode()).hexdigest() == digest)
                 row = self._decode_payload(payload)
                 # A conflicting receipt requires an independent resolution;
