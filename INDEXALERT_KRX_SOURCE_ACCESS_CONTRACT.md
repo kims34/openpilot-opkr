@@ -274,7 +274,21 @@ This contract freezes an engineering/compliance boundary; exact rights must be v
 - exact historical coverage structurally complete;
 - matching source family and intended-use scope.
 
-Even then, `source_data_structurally_admissible=true` means only `eligible_for_experiment_registry_review=true`. It must **not** directly set `feature_performance_testing_authorized=true`. A separate research-ledger/preregistration decision is required before any performance experiment, and all later statistical/execution/holdout/promotion gates remain independent.
+Even when all structural source-data preconditions are satisfied, caller-supplied A-F
+status labels, evidence notes, lineage/coverage booleans and hashes do not independently close
+the source contract. The executable A-F auditor must distinguish
+`all_source_gate_claims_pass=true` from `all_source_gates_pass=false` and
+`source_contract_closed_for_declared_scope=false` until a trusted independent verifier
+authenticates the exact gate evidence.
+
+Likewise, the source-data compositor may report
+`source_data_structural_preconditions_satisfied=true`, but must keep
+`independent_source_data_admission_verified=false`,
+`source_data_structurally_admissible=false` and
+`eligible_for_experiment_registry_review=false` until that independent source admission is
+implemented and bound to the exact dataset. A separate research-ledger/preregistration decision
+remains required after source admission before any performance experiment, and all later
+statistical/execution/holdout/promotion gates remain independent.
 
 The authorization-evidence fingerprint carried through acquisition receipts/batches is an
 identity/integrity binding only. A syntactically valid SHA-256 must not be reported as proof

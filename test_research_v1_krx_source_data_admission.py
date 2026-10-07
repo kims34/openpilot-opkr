@@ -77,20 +77,25 @@ def test_all_source_structure_can_only_reach_registry_review_not_performance():
         lineage_audit=_lineage(True, True),
         coverage_audit=_coverage(True),
     )
-    assert out["source_contract_closed"] is True
+    assert out["source_gate_claims_structurally_complete"] is True
+    assert out["source_contract_closed"] is False
     assert out["acquisition_batch_integrity_valid"] is True
     assert out["authorization_evidence_fingerprint_present"] is True
     assert out["authorization_evidence_provenance_bound"] is False
     assert out["independent_authorization_evidence_binding_verified"] is False
     assert out["independent_admission_blocking_conditions"] == [
-        "INDEPENDENT_AUTHORIZATION_EVIDENCE_BINDING_NOT_IMPLEMENTED"
+        "INDEPENDENT_SOURCE_GATE_ADMISSION_NOT_IMPLEMENTED",
+        "INDEPENDENT_AUTHORIZATION_EVIDENCE_BINDING_NOT_IMPLEMENTED",
+        "INDEPENDENT_SOURCE_DATA_ADMISSION_NOT_IMPLEMENTED",
     ]
     assert out["authorization_evidence_fingerprint_sha256"] == AUTH_EVIDENCE_FP
     assert out["pit_lineage_structurally_valid"] is True
     assert out["historical_coverage_structurally_complete"] is True
-    assert out["source_data_structurally_admissible"] is True
-    assert out["eligible_for_experiment_registry_review"] is True
-    assert out["blocking_conditions"] == []
+    assert out["source_data_structural_preconditions_satisfied"] is True
+    assert out["independent_source_data_admission_verified"] is False
+    assert out["source_data_structurally_admissible"] is False
+    assert out["eligible_for_experiment_registry_review"] is False
+    assert "SOURCE_CONTRACT_A_TO_F_NOT_CLOSED" in out["blocking_conditions"]
     assert out["feature_performance_testing_authorized"] is False
     assert out["sealed_holdout_authorized"] is False
     assert out["alpha_or_final_judge_promotion_authorized"] is False

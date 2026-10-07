@@ -139,22 +139,33 @@ def audit_source_gates(
             "rule": result.rule,
         }
 
-    all_pass = all(results[g]["status"] == "PASS" for g in "ABCDEF")
+    claimed_all_pass = all(results[g]["status"] == "PASS" for g in "ABCDEF")
+    # Status strings and free-form evidence notes are caller-supplied structural
+    # claims. This module cannot authenticate the underlying KRX artifacts,
+    # coverage, PIT lineage, rights evidence, or acquisition provenance.
+    independent_source_gate_admission_verified = False
     return {
         "contract": "INDEXALERT_KRX_SOURCE_GATES_A_TO_F",
         "source_family": source_family.strip(),
         "intended_use_scope": intended_use_scope.strip(),
         "gates": results,
-        "all_source_gates_pass": all_pass,
-        "source_contract_closed_for_declared_scope": all_pass,
+        "all_source_gate_claims_pass": claimed_all_pass,
+        "independent_source_gate_admission_verified": independent_source_gate_admission_verified,
+        "all_source_gates_pass": False,
+        "source_contract_closed_for_declared_scope": False,
+        "independent_admission_blocking_conditions": (
+            "INDEPENDENT_SOURCE_GATE_ADMISSION_NOT_IMPLEMENTED",
+        ),
         # Source governance can only unblock source use. It cannot promote a
         # model or authorize the sealed holdout/live execution by itself.
         "alpha_or_final_judge_promotion_authorized": False,
         "sealed_holdout_authorized_by_source_audit_alone": False,
         "live_trading_authorized_by_source_audit_alone": False,
         "guardrail": (
-            "A-F are necessary source-governance gates for the declared scope, "
-            "not Alpha evidence. Existing PIT, purged/WF/CPCV, cost, NetEV, tail, "
-            "execution, holdout and prospective-promotion gates remain independent."
+            "Caller-supplied A-F PASS labels and evidence notes establish only structural claims. "
+            "Until a trusted independent verifier authenticates the exact gate evidence, "
+            "all_source_gates_pass and source_contract_closed_for_declared_scope remain false. "
+            "Existing PIT, purged/WF/CPCV, cost, NetEV, tail, execution, holdout and "
+            "prospective-promotion gates remain independent."
         ),
     }
