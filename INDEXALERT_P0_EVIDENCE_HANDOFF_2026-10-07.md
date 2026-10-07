@@ -1,3 +1,14 @@
+# Official IP-error clarification and repeat result — 2026-10-07 21:47 KST
+
+Owner transcribed the official REST API error-code page at21:45KST:8050 means the IP is not registered and directs registration in REST API website > API usage application. This specific official description supersedes interpreting the SDK DEVICE_AUTH classification as a requirement to enrol a PC/phone in the certificate designated-terminal service.
+
+Following an instruction to clear only current PowerShell process credentials and re-enter the App Key/Secret from the previously inspected account App Key management screen, the owner supplied another unchanged result at21:47KST. Fresh credential entry is owner-flow context, not independently attested telemetry:
+TOKEN_OK=true, ACCOUNT_ENDPOINT_OK=true, WS_CONNECTED=true, WS_LOGIN_OK=false, STAGE=WS_LOGIN, RETURN_CODE=805004, DETAIL_CODE=8050, ERROR_CLASS=DEVICE_AUTH, TYPE00_REG_SENT=false, TYPE00_REG_ACK_OK=false, event counts0, ORDERING=DISABLED; all real-order/funds/permission authorizations and genuine execution/provenance flags remainfalse.
+
+No IP/security/key registration change was performed. Current browser IP matching registered IP does not independently establish the WebSocket path egress IP or broker-side registration application. Root cause remains unresolved; do not infer defective credentials or mandatory PC designation. Stop identical reruns pending a relevant new fact or applicable broker remediation. Prepare a concise official Q&A with HTTPS success versus WebSocket8050, registered current-PC IP and current account credentials; owner submission is required, no external message sent autonomously. No orders are needed for this investigation.
+
+---
+
 # Owner-assisted broker verification — 2026-10-07 21:39 KST
 
 The owner explicitly rescinded deferral and is available for required actions. Owner-provided screenshots show no application history in the displayed terminal-designation/additional-authentication/overseas-IP-blocking sections. The REST account App Key management screen shows the current PC IP matches a registered IP; this is scoped to that PC/network, not cloud egress or every broker security setting. No security setting, key, permission or IP registration was changed.
