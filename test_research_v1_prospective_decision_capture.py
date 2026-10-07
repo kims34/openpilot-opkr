@@ -25,6 +25,8 @@ from research_v1_prospective_frozen_producer import (
     CALIBRATION_SOURCE_ID,
     FIT_CODE_PATH,
     FREEZE_ANCHOR_COMMIT,
+    FROZEN_CALENDAR_ORIGIN_SESSION,
+    FROZEN_CALENDAR_REFERENCE_ACTION_ID,
     REFIT_POLICY_ID,
 )
 from research_v1_prospective_model_bundle import build_model_bundle
@@ -77,7 +79,7 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
             calibration_end_session=cal_end,
             refit_policy_id=REFIT_POLICY_ID,
         )
-        test_start = (target_day - pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+        test_start = "2018-02-19"
         producer_body = {
             "classification": "FROZEN_PRODUCER_BINDING_NOT_ADMITTED",
             "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
@@ -90,6 +92,10 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
             "test_block_end_ordinal_exclusive": 766,
             "test_block_start_session": test_start,
             "target_ordinal_in_test_block": 10,
+            "calendar_origin_session": FROZEN_CALENDAR_ORIGIN_SESSION,
+            "calendar_reference_action_id": FROZEN_CALENDAR_REFERENCE_ACTION_ID,
+            "calendar_milestones_verified_through_target": True,
+            "session_calendar_prefix_sha256": "d" * 64,
             "initial_train_sessions": 504,
             "actual_train_sessions": 504,
             "calibration_sessions": 126,
