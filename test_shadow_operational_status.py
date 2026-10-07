@@ -73,6 +73,20 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE-SYMBOL', json.dumps(out))
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
+    def test_duplicate_unclaimed_intent_key_is_private_read_only_unavailable(self):
+        self.journal.register('PRIVATE-KEY',symbol='PRIVATE-SYMBOL',side='BUY',quantity=1)
+        schema = self.journal.db.execute("SELECT sql FROM sqlite_master WHERE name='intents'").fetchone()[0]
+        rows = self.journal.db.execute('SELECT * FROM intents').fetchall()
+        self.journal.db.execute('DROP TABLE intents')
+        self.journal.db.execute(schema.replace('key TEXT PRIMARY KEY','key TEXT'))
+        self.journal.db.executemany('INSERT INTO intents VALUES(?,?,?,?,?,?)',rows+rows)
+        before = tuple(self.journal.db.iterdump())
+        out = self.inspect()
+        self.assertFalse(out['diagnostics_complete'])
+        self.assertEqual(out['local_blockers'],['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertNotIn('PRIVATE-SYMBOL',json.dumps(out))
+        self.assertEqual(tuple(self.journal.db.iterdump()),before)
+
     def test_nonpositive_inbox_arrival_sequence_cannot_report_complete_diagnostics(self):
         self.journal.db.executescript('''
             CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);

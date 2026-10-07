@@ -11,7 +11,7 @@ import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
-from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history, valid_stored_safety_row
+from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_intent_identities, validate_stored_execution_totals, validate_stored_component_history, valid_stored_safety_row
 from shadow_capital_allocator import validate_stored_capital_reservations
 from kiwoom_execution_inbox import verify_stored_terminal_inbox_attempts, validate_stored_inbox_receipts, validate_stored_inbox_conflicts
 from kiwoom_order_journal_bridge import validate_stored_native_bindings
@@ -56,6 +56,7 @@ def inspect_shadow_operational_status(path):
                 report['local_blockers'] = ['SAFETY_METADATA_QUARANTINED']
                 return report
         _require({'intents','executions','shadow_control','reconciliation_barrier','reconciled_snapshot_bindings'} <= tables)
+        validate_stored_intent_identities(connection)
         control = connection.execute('SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1').fetchone()
         barrier = connection.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
         _require(valid_stored_safety_row(control) and barrier is not None)
