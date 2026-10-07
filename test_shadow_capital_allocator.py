@@ -63,7 +63,7 @@ class ShadowCapitalTests(unittest.TestCase):
             OrderIntentJournal(self.path)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertEqual(self.j.get('d1')['state'], 'INTENT_CREATED')
-        self.assertEqual(self.j.db.execute('SELECT component FROM journal_component_history').fetchall(), [('capital',)])
+        self.assertEqual(self.j.db.execute("SELECT component FROM journal_component_history WHERE component='capital'").fetchall(), [('capital',)])
         self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_config'").fetchone())
 
     def test_legacy_complete_capital_schema_backfills_component_history(self):
@@ -75,7 +75,7 @@ class ShadowCapitalTests(unittest.TestCase):
         self.a = ShadowCapitalAllocator(self.j)
         self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
         self.assertEqual(self.a.state()['revision'], 1)
-        self.assertEqual(self.j.db.execute('SELECT component FROM journal_component_history').fetchall(), [('capital',)])
+        self.assertEqual(self.j.db.execute("SELECT component FROM journal_component_history WHERE component='capital'").fetchall(), [('capital',)])
 
     def test_reinitialization_does_not_reset_deleted_capital_configuration(self):
         self.claim(fee=3)

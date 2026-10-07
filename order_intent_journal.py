@@ -79,10 +79,17 @@ def validate_stored_execution_totals(connection, intent_fills):
 
 
 COMPONENT_TABLES = {
+    'safety_faults': frozenset(('shadow_control_faults',)),
     'capital': frozenset(('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases')),
     'native': frozenset(('native_journal_scope','native_order_bindings','native_fill_bindings')),
     'inbox': frozenset(('native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts')),
 }
+
+
+def valid_stored_safety_row(row):
+    return (row is not None and type(row[0]) is int and 0 <= row[0] <= 2**63-1
+        and row[1] in ('MASTER_OFF','SHADOW') and type(row[2]) is int and row[2] in (0,1)
+        and type(row[3]) is str and bool(row[3].strip()))
 
 
 def validate_stored_component_history(connection):
@@ -179,12 +186,16 @@ class OrderIntentJournal:
                 epoch INTEGER NOT NULL, payload TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS journal_component_history (
                 component TEXT PRIMARY KEY NOT NULL);
+            CREATE TABLE IF NOT EXISTS shadow_control_faults (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                epoch, mode, killed, reason);
             CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
                 ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
         """
         # Initialization must distinguish a fresh schema from deleted safety
         # records. Never recreate an existing table's lost Kill/nonce history.
         missing = False
+        invalid_control = False
         with self._atomic():
             tables = {row[0] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required = {
@@ -211,14 +222,28 @@ class OrderIntentJournal:
                     if required_tables <= tables:
                         record_component_initialization(self.db, component)
                 self.db.execute('PRAGMA user_version=1')
+                record_component_initialization(self.db, 'safety_faults')
+                for operation in ('UPDATE','DELETE'):
+                    self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS safety_faults_{operation.lower()}_immutable
+                        BEFORE {operation} ON shadow_control_faults BEGIN SELECT RAISE(ABORT,'immutable safety fault'); END''')
+                    self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS component_history_{operation.lower()}_immutable
+                        BEFORE {operation} ON journal_component_history BEGIN SELECT RAISE(ABORT,'immutable component history'); END''')
+                try:
+                    self.shadow_control()
+                except OrderJournalError:
+                    invalid_control = True
+                    self._stop_shadow('STARTUP_SAFETY_METADATA_INVALID')
+                    self.db.execute('UPDATE reconciliation_barrier SET blocked=1 WHERE id=1')
+                    self.db.execute('DELETE FROM reconciled_snapshot_bindings')
         if missing:
             self.db.close()
             raise OrderJournalError('startup safety metadata missing')
+        if invalid_control:
+            self.db.close()
+            raise OrderJournalError('startup safety metadata invalid')
         for operation in ('UPDATE', 'DELETE'):
             self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS executions_{operation.lower()}_immutable
                 BEFORE {operation} ON executions BEGIN SELECT RAISE(ABORT,'immutable execution'); END''')
-            self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS component_history_{operation.lower()}_immutable
-                BEFORE {operation} ON journal_component_history BEGIN SELECT RAISE(ABORT,'immutable component history'); END''')
         # Every new connection is treated conservatively as startup/reconnect.
         # An in-flight submission on another connection also becomes uncertain.
         self.recover()
@@ -275,6 +300,10 @@ class OrderIntentJournal:
             raise OrderJournalError("missing safety state")
         if type(row[0]) is not int or not 0 <= row[0] <= 2**63-1:
             raise OrderJournalError('invalid safety epoch')
+        faults_exist = self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_control_faults'").fetchone()
+        if (not valid_stored_safety_row(row) or (faults_exist and
+            self.db.execute('SELECT 1 FROM shadow_control_faults LIMIT 1').fetchone())):
+            raise OrderJournalError('invalid safety state')
         return dict(epoch=row[0], mode=row[1], killed=bool(row[2]), reason=row[3], live_ordering_authorized=False)
 
     def _check_epoch(self, expected_epoch):
@@ -288,10 +317,16 @@ class OrderIntentJournal:
     def _stop_shadow(self, reason, *, kill=False):
         # SQLite integer overflow silently becomes REAL and loses nonce
         # increments. Exhaustion must still stop safely and retain late fills.
+        row = self.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1').fetchone()
+        if row is not None and not valid_stored_safety_row(row):
+            self.db.execute('INSERT INTO shadow_control_faults(epoch,mode,killed,reason) VALUES(?,?,?,?)', row)
+            kill = True
         self.db.execute("""UPDATE shadow_control SET
             epoch=CASE WHEN typeof(epoch)='integer' AND epoch>=0 AND epoch<9223372036854775807
                 THEN epoch+1 ELSE epoch END,
-            mode='MASTER_OFF',killed=MAX(killed,?),reason=? WHERE id=1""", (int(kill), reason))
+            mode='MASTER_OFF',killed=CASE WHEN ?=1 OR typeof(killed)!='integer'
+                OR killed NOT IN (0,1) THEN 1 ELSE killed END,
+            reason=? WHERE id=1""", (int(kill), reason))
 
     def disable_shadow(self):
         with self._atomic():
@@ -393,6 +428,9 @@ class OrderIntentJournal:
     def _record_execution_locked(self, key, *, broker_order_id, execution_id, quantity):
         """Called only inside a journal transaction, including source binding."""
         validate_stored_component_history(self.db)
+        control = self.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1').fetchone()
+        if not valid_stored_safety_row(control):
+            self._stop_shadow('EXECUTION_SAFETY_METADATA_INVALID')
         self._text(broker_order_id)
         self._text(execution_id)
         if type(quantity) is not int or quantity <= 0:
