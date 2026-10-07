@@ -140,6 +140,30 @@ class JournalTests(unittest.TestCase):
             self.j.claim_submission('decision-1',expected_epoch=self.j.shadow_control()['epoch'])
         self.assertEqual(self.j.db.execute('SELECT state,payload FROM intents').fetchone(), ('INTENT_CREATED',payload))
 
+    def test_exhausted_epoch_stops_without_float_nonce_reuse_or_kill_reset(self):
+        self.j.db.execute('UPDATE shadow_control SET epoch=?', (2**63-1,))
+        out = self.j.disable_shadow()
+        self.assertEqual(out['epoch'], 2**63-1)
+        self.assertIs(type(out['epoch']), int)
+        self.assertEqual(out['mode'], 'MASTER_OFF')
+        with self.assertRaises(OrderJournalError):
+            self.j.enable_shadow(expected_epoch=2**63-1)
+        self.j.trip_kill_switch()
+        with self.assertRaises(OrderJournalError):
+            self.j.reset_kill_switch(expected_epoch=2**63-1)
+        self.assertTrue(self.j.shadow_control()['killed'])
+
+    def test_invalid_float_epoch_can_stop_but_cannot_authorize_claim(self):
+        self.j.db.execute('UPDATE shadow_control SET epoch=?', (float(2**63),))
+        with self.assertRaises(OrderJournalError):
+            self.j.disable_shadow()
+        self.assertEqual(self.j.db.execute('SELECT mode FROM shadow_control').fetchone(), ('MASTER_OFF',))
+        with self.assertRaises(OrderJournalError):
+            self.j.enable_shadow(expected_epoch=2**63)
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('decision-1',expected_epoch=2**63)
+        self.assertEqual(self.j.get('decision-1')['state'], 'INTENT_CREATED')
+
     def test_overfill_rolls_back_quantity_and_quarantines(self):
         self.acknowledged()
         self.fill()

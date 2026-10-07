@@ -200,6 +200,8 @@ class OrderIntentJournal:
         row = self.db.execute("SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1").fetchone()
         if row is None:
             raise OrderJournalError("missing safety state")
+        if type(row[0]) is not int or not 0 <= row[0] <= 2**63-1:
+            raise OrderJournalError('invalid safety epoch')
         return dict(epoch=row[0], mode=row[1], killed=bool(row[2]), reason=row[3], live_ordering_authorized=False)
 
     def _check_epoch(self, expected_epoch):
@@ -211,7 +213,12 @@ class OrderIntentJournal:
         return control
 
     def _stop_shadow(self, reason, *, kill=False):
-        self.db.execute("UPDATE shadow_control SET epoch=epoch+1,mode='MASTER_OFF',killed=MAX(killed,?),reason=? WHERE id=1", (int(kill), reason))
+        # SQLite integer overflow silently becomes REAL and loses nonce
+        # increments. Exhaustion must still stop safely and retain late fills.
+        self.db.execute("""UPDATE shadow_control SET
+            epoch=CASE WHEN typeof(epoch)='integer' AND epoch>=0 AND epoch<9223372036854775807
+                THEN epoch+1 ELSE epoch END,
+            mode='MASTER_OFF',killed=MAX(killed,?),reason=? WHERE id=1""", (int(kill), reason))
 
     def disable_shadow(self):
         with self._atomic():
@@ -226,7 +233,9 @@ class OrderIntentJournal:
 
     def reset_kill_switch(self, *, expected_epoch):
         with self._atomic():
-            self._check_epoch(expected_epoch)
+            control = self._check_epoch(expected_epoch)
+            if control['epoch'] == 2**63-1:
+                raise OrderJournalError('safety epoch exhausted')
             self._require_batch_reconciled()
             if self.db.execute("SELECT 1 FROM intents WHERE state IN ('SUBMITTING','RECONCILIATION_REQUIRED') LIMIT 1").fetchone():
                 raise OrderJournalError("unresolved state prevents kill reset")
@@ -237,6 +246,8 @@ class OrderIntentJournal:
         """Enable offline diagnostics only; never PAPER or LIVE authority."""
         with self._atomic():
             control = self._check_epoch(expected_epoch)
+            if control['epoch'] == 2**63-1:
+                raise OrderJournalError('safety epoch exhausted')
             if control["killed"]:
                 raise OrderJournalError("kill switch is latched")
             self._require_batch_reconciled()
