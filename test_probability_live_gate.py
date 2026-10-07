@@ -11,6 +11,16 @@ class ProspectiveBrierGateTests(unittest.TestCase):
         self.assertFalse(result["fallback"])
         self.assertEqual(result["n"], 10)
 
+    def test_zero_scored_rows_is_valid_historical_only_state(self):
+        verdict = gate.evaluate([])
+        self.assertEqual(verdict["status"], "historical_only")
+        self.assertFalse(verdict["fallback"])
+        self.assertTrue(verdict["score_rows_structurally_valid"])
+        raw = {"probability": 57.0, "base_rate": 52.0}
+        out = gate.apply(raw, verdict, "base_rate")
+        self.assertEqual(out["probability"], 57.0)
+        self.assertEqual(out["served_from"], "candidate")
+
     def test_confirmed_live_advantage_keeps_candidate(self):
         rows = [(0.90, 0.50, 1.0)] * 30
         result = gate.evaluate(rows)
