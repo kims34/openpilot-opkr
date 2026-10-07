@@ -140,6 +140,26 @@ class ShadowCapitalTests(unittest.TestCase):
         self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservation_history').fetchall(), [('d1',)])
         self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
 
+    def test_shadow_enable_and_kill_reset_audit_missing_filled_reservation(self):
+        self.claim(fee=3)
+        self.ack()
+        self.j.record_execution('d1',broker_order_id='o1',execution_id='offline-full',quantity=10)
+        result = reconcile_order_snapshot_batch(self.j,revision=1,orders=[
+            dict(key='d1',broker_order_id='o1',symbol='SYNTHETIC',side='BUY',
+                quantity=10,filled_quantity=10,status='FILLED')])
+        self.assertTrue(result['matched'])
+        self.j.db.execute('DELETE FROM shadow_capital_reservations WHERE key=?', ('d1',))
+        before = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'managed reservation history changed'):
+            self.j.enable_shadow(expected_epoch=before['epoch'])
+        self.assertEqual(self.j.shadow_control(), before)
+        self.j.trip_kill_switch()
+        killed = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'managed reservation history changed'):
+            self.j.reset_kill_switch(expected_epoch=killed['epoch'])
+        self.assertEqual(self.j.shadow_control(), killed)
+        self.assertTrue(killed['killed'])
+
     def test_initialized_reservation_history_loss_blocks_restart_without_recreation(self):
         self.claim(fee=3)
         self.j.db.execute('DROP TABLE shadow_capital_reservation_history')
@@ -232,6 +252,7 @@ class ShadowCapitalTests(unittest.TestCase):
         self.j.db.execute(
             'INSERT INTO shadow_capital_reservations VALUES(?,?,?,?)',
             ('d1', 8, 0, 80))
+        self.j.db.execute('INSERT INTO shadow_capital_reservation_history VALUES(?)', ('d1',))
         before = tuple(self.j.db.iterdump())
         with self.assertRaisesRegex(OrderJournalError, 'atomic capital allocator path'):
             self.j.claim_submission('d1', expected_epoch=self.epoch)

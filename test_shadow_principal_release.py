@@ -186,7 +186,11 @@ class PrincipalReleaseTests(unittest.TestCase):
         self.release()
         self.j.db.execute('DELETE FROM shadow_capital_reservations')
         self.j.register('d2', symbol='OTHER', side='BUY', quantity=20)
-        epoch = self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])['epoch']
+        control = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'managed reservation history changed'):
+            self.j.enable_shadow(expected_epoch=control['epoch'])
+        self.assertEqual(self.j.shadow_control(), control)
+        epoch = control['epoch']
         before = tuple(self.j.db.iterdump())
         with self.assertRaises(OrderJournalError):
             self.a.reserve_and_claim_buy('d2',limit_price_krw=5,fee_buffer_krw=0,
