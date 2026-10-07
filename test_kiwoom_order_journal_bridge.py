@@ -87,6 +87,18 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(),(1,))
             self.assert_blocked()
 
+    def test_extra_native_scope_after_constraint_loss_is_not_ignored(self):
+        original = self.j.db.execute('SELECT * FROM native_journal_scope').fetchall()
+        self.j.db.execute('DROP TABLE native_journal_scope')
+        self.j.db.execute('CREATE TABLE native_journal_scope(id INTEGER,account TEXT,day TEXT)')
+        self.j.db.executemany('INSERT INTO native_journal_scope VALUES(?,?,?)',original + [(2, ACCOUNT, DAY)])
+        for operation in (lambda: KiwoomOrderJournalBridge(self.j,account_fingerprint=ACCOUNT,trading_date=DAY), self.apply):
+            with self.assertRaisesRegex(NativeBridgeError, '^NATIVE_BRIDGE_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_journal_scope').fetchall(),original + [(2, ACCOUNT, DAY)])
+            self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+            self.assert_blocked()
+
     def test_complete_native_schema_loss_cannot_bind_a_new_scope(self):
         for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
             self.j.db.execute(f'DROP TABLE {table}')

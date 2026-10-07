@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 
-from kiwoom_order_journal_bridge import NativeBridgeError, require, verify_stored_native_execution
+from kiwoom_order_journal_bridge import NativeBridgeError, require, verify_stored_native_execution, validate_stored_native_bindings
 from order_intent_journal import record_component_initialization, validate_stored_component_history
 from research_v1_kiwoom_native_execution import OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT
 
@@ -154,6 +154,7 @@ class KiwoomExecutionInbox:
 
     def _audit_attempts_locked(self):
         self._require_runtime_tables_locked()
+        validate_stored_native_bindings(self.journal.db)
         # Runtime diagnostics and replay selection must not trust a marker
         # merely because startup once audited it. Preserve corrupt history.
         for outcome, sequence, key, day, payload, digest in self.journal.db.execute("""SELECT

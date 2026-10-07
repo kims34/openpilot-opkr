@@ -120,6 +120,20 @@ class InboxTests(unittest.TestCase):
     def test_runtime_native_order_history_loss_under_terminal_marker_is_private(self):
         self._assert_runtime_native_table_loss_under_terminal_marker('native_order_bindings')
 
+    def test_extra_native_scope_cannot_hide_under_runtime_terminal_marker(self):
+        self.append(); self.i.replay_next()
+        self.j.db.execute('DROP TABLE native_journal_scope')
+        self.j.db.execute('CREATE TABLE native_journal_scope(id INTEGER,account TEXT,day TEXT)')
+        self.j.db.executemany('INSERT INTO native_journal_scope VALUES(?,?,?)',
+            [(1, fixtures.ACCOUNT, fixtures.DAY), (2, fixtures.ACCOUNT, fixtures.DAY)])
+        original = self.j.db.execute('SELECT * FROM native_journal_scope').fetchall()
+        for operation in (self.i.counts, self.i.replay_next, lambda: self.i.replay('receipt-1')):
+            with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+        self.assertEqual(self.j.db.execute('SELECT * FROM native_journal_scope').fetchall(), original)
+        self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):
