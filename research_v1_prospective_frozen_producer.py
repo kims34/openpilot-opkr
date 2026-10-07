@@ -37,6 +37,9 @@ from research_v1_policy_aligned_calibration import _policy_aligned_residual_quan
 CLASSIFICATION = "FROZEN_PRODUCER_BINDING_NOT_ADMITTED"
 FREEZE_ANCHOR_COMMIT = "5f19026e320ed8aec49f61b5273d03467d7437aa"
 FIT_CODE_PATH = "research_v1_policy_aligned_calibration.py"
+CALIBRATION_SOURCE_ID = (
+    "calibration_daily_top3_by_pred_mean_then_same_normal_market_veto_no_backfill"
+)
 REFIT_POLICY_ID = (
     "ANCHOR_EXPANDING_TRAIN_INITIAL504__CAL126__TEST126__"
     "PURGE5_BOTH_SIDES__POLICY_ALIGNED_CAL_TOP3_NORMAL_MARKET_VETO__"
@@ -298,10 +301,7 @@ def fit_frozen_model_for_target(
         raise FrozenProspectiveProducerError(
             "policy-aligned calibration illegally permits backfill"
         )
-    expected_source = (
-        "calibration_daily_top3_by_pred_mean_then_same_normal_market_veto_no_backfill"
-    )
-    if quantiles.get("__global__", {}).get("source") != expected_source:
+    if quantiles.get("__global__", {}).get("source") != CALIBRATION_SOURCE_ID:
         raise FrozenProspectiveProducerError(
             "policy-aligned calibration source identity mismatch"
         )
@@ -448,6 +448,15 @@ def validate_producer_binding(
         raise FrozenProspectiveProducerError("model bundle fit-code path mismatch")
     if model_bundle.get("refit_policy_id") != REFIT_POLICY_ID:
         raise FrozenProspectiveProducerError("model bundle refit-policy mismatch")
+    if (
+        model_bundle.get("calibration_quantiles", {})
+        .get("__global__", {})
+        .get("source")
+        != CALIBRATION_SOURCE_ID
+    ):
+        raise FrozenProspectiveProducerError(
+            "model bundle calibration population is not policy-aligned"
+        )
     if model_bundle.get("training_input_sha256") != binding["training_input_sha256"]:
         raise FrozenProspectiveProducerError("training fingerprint mismatch")
     if model_bundle.get("calibration_input_sha256") != binding["calibration_input_sha256"]:
