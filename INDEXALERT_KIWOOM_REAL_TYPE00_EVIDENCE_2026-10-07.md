@@ -27,9 +27,11 @@ Interpretation:
 - Real read-only account endpoint succeeded.
 - REAL WebSocket TCP/TLS connection succeeded.
 - The broker rejected LOGIN with embedded detail code 8050.
-- Kiwoom's current official client classifies 8050 within DEVICE_AUTH_CODES and raises DeviceAuthenticationError.
-- Therefore this is an external device-authentication blocker, not evidence of an Alpha, execution, or order-authority failure.
+- A Kiwoom Open API Q&A reply received 2026-10-08 states that REST and WebSocket do not have different allowed-IP rules and asks the client to check whether the LOGIN token is incorrect or expired.
+- Therefore the prior local DEVICE_AUTH interpretation is superseded for this observed 8050. The safe classification is TOKEN_OR_LOGIN_AUTH until a fresh-token rerun resolves the discrepancy.
+- The official Kiwoom WebSocket guide uses the raw issued access token in the LOGIN packet, while REST uses the same access token as a Bearer token. The existing smoke already follows that shape.
+- This remains an authentication-path blocker, not evidence of an Alpha, execution, or order-authority failure.
 - No order, cancel/amend, funds movement, permission change, or genuine LIVE execution evidence occurred.
-- The validation remains incomplete until a later read-only rerun passes LOGIN/REG after the owner resolves broker-side designated-device authentication.
+- The validation remains incomplete until a later read-only rerun records the new redacted fresh-token diagnostics and passes LOGIN/REG, or produces enough evidence for a narrower broker escalation.
 
 No Champion/Frozen/research/promotion state changes.

@@ -221,6 +221,19 @@ Emit-Failure 'TYPE00_SUBSCRIPTION_UNOBSERVED' 0
                 self.assertEqual(report['ORDERING'], 'DISABLED')
                 self.assertNotIn('fixture-account', result.stdout)
 
+    def test_broker_8050_is_token_or_login_auth_not_ip_or_device_class(self):
+        self.assertIn('{ $_ -eq 8050 } { $script:ErrorClass = "TOKEN_OR_LOGIN_AUTH"; break }', self.text)
+        self.assertNotIn('{ $_ -in 8010,8040,8050,8103 }', self.text)
+        self.assertIn('REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN', self.text)
+        self.assertIn('WS_LOGIN_USED_ISSUED_TOKEN', self.text)
+        self.assertIn('TOKEN_AGE_SECONDS_AT_WS_LOGIN', self.text)
+        self.assertIn('TOKEN_CANONICAL_NO_EDGE_WHITESPACE', self.text)
+        self.assertIn('TOKEN_EXPIRY_FIELD_PRESENT', self.text)
+        self.assertIn('TOKEN_TYPE_FIELD_PRESENT', self.text)
+        self.assertIn('$script:RestAccountAcceptedIssuedToken = $true', self.text)
+        self.assertIn('$script:WsLoginUsedIssuedToken = $true', self.text)
+        self.assertIn('$script:Token -ceq $script:Token.Trim()', self.text)
+
     def test_fixed_real_hosts_and_read_only_account_query(self):
         self.assertIn('https://api.kiwoom.com/oauth2/token',self.text)
         self.assertIn('https://api.kiwoom.com/api/dostk/acnt',self.text)

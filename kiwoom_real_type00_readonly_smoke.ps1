@@ -14,6 +14,13 @@ $script:Type00EventCount = 0
 $script:AccountMatchedType00EventCount = 0
 $script:DetailCode = $null
 $script:ErrorClass = $null
+$script:TokenIssuedAt = $null
+$script:TokenCanonicalNoEdgeWhitespace = $false
+$script:TokenExpiryFieldPresent = $false
+$script:TokenTypeFieldPresent = $false
+$script:RestAccountAcceptedIssuedToken = $false
+$script:WsLoginUsedIssuedToken = $false
+$script:TokenAgeSecondsAtWsLogin = $null
 
 function Set-SanitizedErrorDetail([object]$Message) {
     $text = [string]$Message
@@ -24,7 +31,8 @@ function Set-SanitizedErrorDetail([object]$Message) {
             { $_ -in 8001,8002,8011,8012 } { $script:ErrorClass = "INVALID_CREDENTIALS"; break }
             { $_ -in 8003,8005,8006,8009,8015,8016 } { $script:ErrorClass = "INVALID_TOKEN"; break }
             { $_ -in 8030,8031 } { $script:ErrorClass = "MODE_MISMATCH"; break }
-            { $_ -in 8010,8040,8050,8103 } { $script:ErrorClass = "DEVICE_AUTH"; break }
+            { $_ -eq 8050 } { $script:ErrorClass = "TOKEN_OR_LOGIN_AUTH"; break }
+            { $_ -in 8010,8040,8103 } { $script:ErrorClass = "DEVICE_AUTH"; break }
             default { $script:ErrorClass = "UNCLASSIFIED" }
         }
     }
@@ -158,6 +166,12 @@ function Emit-Failure([string]$Stage, [int]$Code = -1) {
         RETURN_CODE=$Code
         DETAIL_CODE=$script:DetailCode
         ERROR_CLASS=$script:ErrorClass
+        TOKEN_CANONICAL_NO_EDGE_WHITESPACE=$script:TokenCanonicalNoEdgeWhitespace
+        TOKEN_EXPIRY_FIELD_PRESENT=$script:TokenExpiryFieldPresent
+        TOKEN_TYPE_FIELD_PRESENT=$script:TokenTypeFieldPresent
+        REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=$script:RestAccountAcceptedIssuedToken
+        WS_LOGIN_USED_ISSUED_TOKEN=$script:WsLoginUsedIssuedToken
+        TOKEN_AGE_SECONDS_AT_WS_LOGIN=$script:TokenAgeSecondsAtWsLogin
         TOKEN_OK=$script:TokenOk
         ACCOUNT_ENDPOINT_OK=$script:AccountEndpointOk
         WS_CONNECTED=$script:WsConnected
@@ -266,6 +280,21 @@ try {
         Emit-Failure "TOKEN" $tokenCode
     }
     $script:Token = [string]$tokenResp.token
+    $script:TokenIssuedAt = [DateTimeOffset]::UtcNow
+    $script:TokenCanonicalNoEdgeWhitespace = ($script:Token -ceq $script:Token.Trim())
+    $script:TokenExpiryFieldPresent = (
+        $tokenResp.PSObject.Properties['expires_dt'] -and
+        $tokenResp.expires_dt -is [string] -and
+        -not [string]::IsNullOrWhiteSpace($tokenResp.expires_dt)
+    )
+    $script:TokenTypeFieldPresent = (
+        $tokenResp.PSObject.Properties['token_type'] -and
+        $tokenResp.token_type -is [string] -and
+        -not [string]::IsNullOrWhiteSpace($tokenResp.token_type)
+    )
+    if (-not $script:TokenCanonicalNoEdgeWhitespace) {
+        Emit-Failure "TOKEN_CANONICALITY" $tokenCode
+    }
     $script:TokenOk = $true
 
     $headers = @{ authorization="Bearer $script:Token"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
@@ -279,6 +308,7 @@ try {
     }
     $script:Account = [string]$accountObj.acctNo
     $script:AccountEndpointOk = $true
+    $script:RestAccountAcceptedIssuedToken = $true
 
     $ws = New-Object System.Net.WebSockets.ClientWebSocket
     $connectCts = New-Object System.Threading.CancellationTokenSource
@@ -291,6 +321,12 @@ try {
     if ($ws.State -ne [System.Net.WebSockets.WebSocketState]::Open) { Emit-Failure "WS_CONNECT" 0 }
     $script:WsConnected = $true
 
+    if ($null -eq $script:TokenIssuedAt) { Emit-Failure "TOKEN_ISSUE_TIME_MISSING" 0 }
+    $script:TokenAgeSecondsAtWsLogin = [int][Math]::Max(
+        0,
+        [Math]::Floor(([DateTimeOffset]::UtcNow - $script:TokenIssuedAt).TotalSeconds)
+    )
+    $script:WsLoginUsedIssuedToken = $true
     Send-Text -Ws $ws -Text (@{ trnm="LOGIN"; token=$script:Token } | ConvertTo-Json -Compress)
     $loginOk = $false
     for ($i=0; $i -lt 10 -and -not $loginOk; $i++) {
@@ -380,6 +416,12 @@ try {
         TYPE00_REG_ACK_OK=$regAck
         TYPE00_EVENT_COUNT=[int]$events
         ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=[int]$accountMatched
+        TOKEN_CANONICAL_NO_EDGE_WHITESPACE=$script:TokenCanonicalNoEdgeWhitespace
+        TOKEN_EXPIRY_FIELD_PRESENT=$script:TokenExpiryFieldPresent
+        TOKEN_TYPE_FIELD_PRESENT=$script:TokenTypeFieldPresent
+        REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=$script:RestAccountAcceptedIssuedToken
+        WS_LOGIN_USED_ISSUED_TOKEN=$script:WsLoginUsedIssuedToken
+        TOKEN_AGE_SECONDS_AT_WS_LOGIN=$script:TokenAgeSecondsAtWsLogin
         BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED=[bool]$executionObserved
         GENUINE_LIVE_PROVENANCE_VERIFIED=$false
         ORDERING="DISABLED"
