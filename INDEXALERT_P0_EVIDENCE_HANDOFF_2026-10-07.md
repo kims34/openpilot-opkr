@@ -1,3 +1,9 @@
+# Private-store inspection update — 2026-10-07 20:47 KST
+
+Autonomous one-shot read-only inspection of the existing /data and /pit stores is now complete. See INDEXALERT_PRIVATE_INPUT_INVENTORY_2026-10-07.md for scoped counts, exclusions, execution IDs and restored configurations. The earlier statement that private files had not been read described the previous checkpoint and is superseded by this metadata-only inspection. Actual prospective capture and original source/PIT admission remain unverified; no new trust root, model or dataset admission was introduced.
+
+---
+
 # P0 evidence and real-observation handoff — 2026-10-07
 
 Scope: delivery-critical inspection after the user's efficiency instruction. No new strategy experiment, holdout read, broker request/order or speculative hardening.
