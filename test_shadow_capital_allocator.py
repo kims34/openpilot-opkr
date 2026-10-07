@@ -38,6 +38,33 @@ class ShadowCapitalTests(unittest.TestCase):
     def ack(self):
         self.j.bind_acknowledgement('d1','o1')
 
+    def test_complete_capital_schema_loss_cannot_become_fresh_or_skip_reservation(self):
+        for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
+            self.j.db.execute(f'DROP TABLE {table}')
+        with self.assertRaisesRegex(OrderJournalError, 'component history missing'):
+            self.j.claim_submission('d1',expected_epoch=self.epoch)
+        with self.assertRaisesRegex(OrderJournalError, 'component history missing'):
+            self.j.enable_shadow(expected_epoch=self.epoch)
+        with self.assertRaisesRegex(OrderJournalError, '^startup capital history missing$'):
+            ShadowCapitalAllocator(self.j)
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.get('d1')['state'], 'INTENT_CREATED')
+        self.assertEqual(self.j.db.execute('SELECT component FROM journal_component_history').fetchall(), [('capital',)])
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_config'").fetchone())
+
+    def test_legacy_complete_capital_schema_backfills_component_history(self):
+        self.claim(fee=3)
+        self.j.db.execute('DROP TABLE journal_component_history')
+        self.j.db.execute('PRAGMA user_version=0')  # Actual pre-registry schema.
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        self.a = ShadowCapitalAllocator(self.j)
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+        self.assertEqual(self.a.state()['revision'], 1)
+        self.assertEqual(self.j.db.execute('SELECT component FROM journal_component_history').fetchall(), [('capital',)])
+
     def test_reinitialization_does_not_reset_deleted_capital_configuration(self):
         self.claim(fee=3)
         self.j.db.execute('DELETE FROM shadow_capital_config')

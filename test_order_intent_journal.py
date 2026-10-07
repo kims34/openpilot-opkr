@@ -164,6 +164,15 @@ class JournalTests(unittest.TestCase):
             self.j.claim_submission('decision-1',expected_epoch=2**63)
         self.assertEqual(self.j.get('decision-1')['state'], 'INTENT_CREATED')
 
+    def test_upgraded_journal_missing_component_registry_is_not_legacy(self):
+        self.j.trip_kill_switch()
+        self.j.db.execute('DROP TABLE journal_component_history')
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='journal_component_history'").fetchone())
+        self.assertEqual(self.j.db.execute('PRAGMA user_version').fetchone(), (1,))
+        self.assertTrue(self.j.shadow_control()['killed'])
+
     def test_restart_does_not_recreate_deleted_kill_control(self):
         self.j.trip_kill_switch()
         self.j.db.execute('DELETE FROM shadow_control')

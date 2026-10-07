@@ -33,6 +33,14 @@ class InboxTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
+    def test_complete_inbox_schema_loss_cannot_become_fresh(self):
+        for table in ('native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts'):
+            self.j.db.execute(f'DROP TABLE {table}')
+        with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+            KiwoomExecutionInbox(self.b)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='native_inbox_receipts'").fetchone())
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
     def test_restart_does_not_recreate_missing_attempt_history(self):
         self.append()
         original = self.j.db.execute('SELECT receipt_id,digest FROM native_inbox_receipts').fetchall()
