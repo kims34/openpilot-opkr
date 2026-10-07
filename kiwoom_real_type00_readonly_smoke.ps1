@@ -28,7 +28,7 @@ function Set-SanitizedErrorDetail([object]$Message) {
     }
 }
 
-function Get-ReadOnlyReturnCode([object]$Message, [string]$Raw) {
+function Get-ReadOnlyReturnCode([object]$Message, [string]$Raw, [bool]$ControlFrame = $true) {
     try {
         if ($null -eq $Message -or $null -eq $Message.PSObject.Properties['return_code']) {
             throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID"
@@ -44,7 +44,7 @@ function Get-ReadOnlyReturnCode([object]$Message, [string]$Raw) {
             if ($key -ieq 'return_code') { $codeKeys++ }
             if ($key -ieq 'trnm') { $nameKeys++ }
         }
-        if ($codeKeys -ne 1 -or $nameKeys -ne 1) { throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID" }
+        if ($codeKeys -ne 1 -or ($ControlFrame -and $nameKeys -ne 1)) { throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID" }
         return [int]$code
     } catch {
         throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID"
@@ -147,18 +147,25 @@ $script:Token = $null
 $script:Account = $null
 try {
     $tokenBody = @{ grant_type="client_credentials"; appkey=$env:KIWOOM_APP_KEY; secretkey=$env:KIWOOM_APP_SECRET } | ConvertTo-Json -Compress
-    $tokenResp = Invoke-RestMethod -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
-    if ($tokenResp.return_code -ne 0 -or [string]::IsNullOrWhiteSpace([string]$tokenResp.token)) {
-        Emit-Failure "TOKEN" ([int]$tokenResp.return_code)
+    $tokenWire = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
+    try {
+        $tokenResp = $tokenWire.Content | ConvertFrom-Json -ErrorAction Stop
+        $tokenCode = Get-ReadOnlyReturnCode -Message $tokenResp -Raw $tokenWire.Content -ControlFrame $false
+    } catch { Emit-Failure "TOKEN_PROTOCOL" }
+    if ($tokenCode -ne 0 -or $tokenResp.token -isnot [string] -or [string]::IsNullOrWhiteSpace($tokenResp.token)) {
+        Emit-Failure "TOKEN" $tokenCode
     }
     $script:Token = [string]$tokenResp.token
     $script:TokenOk = $true
 
     $headers = @{ authorization="Bearer $script:Token"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
     $accountResp = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
-    $accountObj = $accountResp.Content | ConvertFrom-Json
-    if ($accountObj.return_code -ne 0 -or [string]::IsNullOrWhiteSpace([string]$accountObj.acctNo)) {
-        Emit-Failure "ACCOUNT" ([int]$accountObj.return_code)
+    try {
+        $accountObj = $accountResp.Content | ConvertFrom-Json -ErrorAction Stop
+        $accountCode = Get-ReadOnlyReturnCode -Message $accountObj -Raw $accountResp.Content -ControlFrame $false
+    } catch { Emit-Failure "ACCOUNT_PROTOCOL" }
+    if ($accountCode -ne 0 -or $accountObj.acctNo -isnot [string] -or [string]::IsNullOrWhiteSpace($accountObj.acctNo)) {
+        Emit-Failure "ACCOUNT" $accountCode
     }
     $script:Account = [string]$accountObj.acctNo
     $script:AccountEndpointOk = $true
