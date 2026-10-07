@@ -28,6 +28,71 @@ function Set-SanitizedErrorDetail([object]$Message) {
     }
 }
 
+function Convert-ReadOnlyJson([string]$Raw) {
+    # Validate grammar and every object's keys before PowerShell can collapse them.
+    # State is private to this invocation; no provider text is included in errors.
+    try {
+        if ($Raw.Length -gt 1048576 -or [Text.Encoding]::UTF8.GetByteCount($Raw) -gt 1048576) { throw 'invalid' }
+        $state = @{ Position = 0 }
+        $stringToken = [regex]::new('\G"(?:[^"\\\x00-\x1f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"')
+        $valueToken = [regex]::new('\G(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)')
+        function Skip-JsonSpace {
+            while ($state.Position -lt $Raw.Length -and $Raw[$state.Position] -in @(' ', "`t", "`r", "`n")) { $state.Position++ }
+        }
+        function Read-JsonString {
+            $match = $stringToken.Match($Raw, $state.Position)
+            if (-not $match.Success) { throw 'invalid' }
+            $state.Position += $match.Length
+            return $match.Value
+        }
+        function Read-JsonValue([int]$Depth) {
+            Skip-JsonSpace
+            if ($state.Position -ge $Raw.Length) { throw 'invalid' }
+            $first = $Raw[$state.Position]
+            if ($first -eq '{' -or $first -eq '[') {
+                if ($Depth -ge 64) { throw 'invalid' }
+                $object = $first -eq '{'
+                $close = if ($object) { '}' } else { ']' }
+                $state.Position++
+                $keys = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                Skip-JsonSpace
+                if ($state.Position -lt $Raw.Length -and $Raw[$state.Position] -eq $close) { $state.Position++; return }
+                while ($true) {
+                    if ($object) {
+                        $encoded = Read-JsonString
+                        $key = $encoded | ConvertFrom-Json -ErrorAction Stop
+                        if (-not $keys.Add([string]$key)) { throw 'invalid' }
+                        Skip-JsonSpace
+                        if ($state.Position -ge $Raw.Length -or $Raw[$state.Position] -ne ':') { throw 'invalid' }
+                        $state.Position++
+                    }
+                    Read-JsonValue ($Depth + 1)
+                    Skip-JsonSpace
+                    if ($state.Position -ge $Raw.Length) { throw 'invalid' }
+                    if ($Raw[$state.Position] -eq $close) { $state.Position++; return }
+                    if ($Raw[$state.Position] -ne ',') { throw 'invalid' }
+                    $state.Position++
+                    Skip-JsonSpace
+                    # The next iteration requires a real member/value, prohibiting trailing commas.
+                }
+            }
+            if ($first -eq '"') { $null = Read-JsonString; return }
+            $match = $valueToken.Match($Raw, $state.Position)
+            if (-not $match.Success) { throw 'invalid' }
+            $state.Position += $match.Length
+        }
+        Skip-JsonSpace
+        if ($state.Position -ge $Raw.Length -or $Raw[$state.Position] -ne '{') { throw 'invalid' }
+        Read-JsonValue 0
+        Skip-JsonSpace
+        if ($state.Position -ne $Raw.Length) { throw 'invalid' }
+        return $Raw | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        throw 'READ_ONLY_JSON_INVALID'
+    }
+}
+
+
 function Get-ReadOnlyReturnCode([object]$Message, [string]$Raw, [bool]$ControlFrame = $true) {
     try {
         if ($null -eq $Message -or $null -eq $Message.PSObject.Properties['return_code']) {
@@ -149,7 +214,7 @@ try {
     $tokenBody = @{ grant_type="client_credentials"; appkey=$env:KIWOOM_APP_KEY; secretkey=$env:KIWOOM_APP_SECRET } | ConvertTo-Json -Compress
     $tokenWire = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
     try {
-        $tokenResp = $tokenWire.Content | ConvertFrom-Json -ErrorAction Stop
+        $tokenResp = Convert-ReadOnlyJson -Raw $tokenWire.Content
         $tokenCode = Get-ReadOnlyReturnCode -Message $tokenResp -Raw $tokenWire.Content -ControlFrame $false
     } catch { Emit-Failure "TOKEN_PROTOCOL" }
     if ($tokenCode -ne 0 -or $tokenResp.token -isnot [string] -or [string]::IsNullOrWhiteSpace($tokenResp.token)) {
@@ -161,7 +226,7 @@ try {
     $headers = @{ authorization="Bearer $script:Token"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
     $accountResp = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
     try {
-        $accountObj = $accountResp.Content | ConvertFrom-Json -ErrorAction Stop
+        $accountObj = Convert-ReadOnlyJson -Raw $accountResp.Content
         $accountCode = Get-ReadOnlyReturnCode -Message $accountObj -Raw $accountResp.Content -ControlFrame $false
     } catch { Emit-Failure "ACCOUNT_PROTOCOL" }
     if ($accountCode -ne 0 -or $accountObj.acctNo -isnot [string] -or [string]::IsNullOrWhiteSpace($accountObj.acctNo)) {
@@ -187,7 +252,7 @@ try {
         $raw = Receive-Text -Ws $ws -TimeoutMs 5000
         if ($null -eq $raw) { Emit-Failure "WS_LOGIN_CLOSED" 0 }
         $obj = $null
-        try { $obj = $raw | ConvertFrom-Json } catch {}
+        try { $obj = Convert-ReadOnlyJson -Raw $raw } catch {}
         if (Is-Ping -Obj $obj -Raw $raw) {
             Send-PingEcho -Ws $ws -Raw $raw
             continue
@@ -230,11 +295,12 @@ try {
         }
         if ($null -eq $raw) { break }
         $obj = $null
-        try { $obj = $raw | ConvertFrom-Json } catch { continue }
+        try { $obj = Convert-ReadOnlyJson -Raw $raw } catch {}
         if (Is-Ping -Obj $obj -Raw $raw) {
             Send-PingEcho -Ws $ws -Raw $raw
             continue
         }
+        if ($null -eq $obj) { Emit-Failure "TYPE00_JSON_PROTOCOL" }
         $trnm = ([string]$obj.trnm).ToUpperInvariant()
         if ($trnm -eq "REG") {
             try { $code = Get-ReadOnlyReturnCode -Message $obj -Raw $raw }

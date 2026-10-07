@@ -12,6 +12,9 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
     def test_acknowledgements_require_explicit_unambiguous_integer_codes(self):
         self.assertEqual(self.text.count('Get-ReadOnlyReturnCode -Message $obj -Raw $raw'), 2)
         self.assertNotIn('$code = 0', self.text)
+        self.assertEqual(self.text.count('$obj = Convert-ReadOnlyJson -Raw $raw'), 2)
+        self.assertIn('$tokenResp = Convert-ReadOnlyJson -Raw $tokenWire.Content', self.text)
+        self.assertIn('$accountObj = Convert-ReadOnlyJson -Raw $accountResp.Content', self.text)
         self.assertEqual(self.text.count('-ControlFrame $false'), 2)
         self.assertIn('$tokenResp.token -isnot [string]', self.text)
         self.assertIn('$accountObj.acctNo -isnot [string]', self.text)
@@ -47,6 +50,33 @@ foreach ($raw in @('{}','{"return_code":false}','{"return_code":"0"}','{"return_
   catch { $rejected=$true }
   if (-not $rejected) { throw 'REST_INVALID_ACCEPTED' }
 }
+$json=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-ReadOnlyJson'},$true)
+if ($null -eq $json) { throw 'JSON_HELPER_MISSING' }
+. ([ScriptBlock]::Create($json.Extent.Text))
+$valid='{"return_code":0,"token":"fixture","data":[{"values":{"909":"0007","915":"1"}},{"values":{"909":"0008"}}],"nested":{"a":true,"b":null,"c":-12.5e2},"text":"quote\\\" : embedded"}'
+$obj=Convert-ReadOnlyJson -Raw $valid
+if ($obj.return_code -ne 0 -or $obj.data[0].values.'909' -cne '0007' -or $obj.nested.c -ne -1250) { throw 'JSON_VALID_CHANGED' }
+$invalidJson=@(
+'{"return_code":0,"token":"a","token":"b"}',
+'{"acctNo":"a","acctNo":"b"}',
+'{"a":{"909":"x","909":"y"}}',
+'{"a":1,"\u0061":2}',
+'{"a":1,"A":2}',
+'{"a":NaN}', '{"a":Infinity}', '{"a":undefined}',
+'{"a":01}', '{"a":+1}', '{"a":.5}', '{"a":1.}',
+'{"a":1,}', '{"a":[1,]}', '{/*comment*/"a":1}',
+'{"a":"\x41"}', '{"a":true}garbage', '[{}]',
+('{"a":"' + [char]1 + '"}'),
+('{"a":' + ('[' * 64) + '0' + (']' * 64) + '}'),
+('{"a":"' + ('x' * 1048576) + '"}')
+)
+foreach ($raw in $invalidJson) {
+  $rejected=$false
+  try { $null=Convert-ReadOnlyJson -Raw $raw }
+  catch { if ($_.Exception.Message -ne 'READ_ONLY_JSON_INVALID') { throw 'JSON_PRIVATE_ERROR_REQUIRED' }; $rejected=$true }
+  if (-not $rejected) { throw 'JSON_INVALID_ACCEPTED' }
+}
+$null=Convert-ReadOnlyJson -Raw ('{"a":' + ('[' * 63) + '0' + (']' * 63) + '}')
 $decode=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-StrictWebSocketText'},$true)
 if ($null -eq $decode) { throw 'UTF8_HELPER_MISSING' }
 . ([ScriptBlock]::Create($decode.Extent.Text))
