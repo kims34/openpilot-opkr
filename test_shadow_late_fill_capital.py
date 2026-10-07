@@ -62,6 +62,24 @@ class LateFillCapitalTests(unittest.TestCase):
         self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
         self.assert_stopped()
 
+    def test_filled_release_cannot_become_fee_only_when_restoration_row_is_lost(self):
+        self.released()
+        self.late()
+        self.j.db.execute('DELETE FROM shadow_capital_release_revocations')
+        self.j.db.execute('UPDATE shadow_capital_reservations SET reserve=fee_buffer')
+        with self.assertRaisesRegex(OrderJournalError, 'filled principal release lacks restoration'):
+            self.a.state()
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        self.a = ShadowCapitalAllocator(self.j)
+        with self.assertRaisesRegex(OrderJournalError, 'filled principal release lacks restoration'):
+            self.a.state()
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 1)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (1,))
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_capital_release_revocations').fetchone(), (0,))
+        self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (3,))
+        self.assert_stopped()
+
     def test_late_fill_after_released_principal_restores_reservation_and_stops(self):
         self.released()
         revision=self.a.state()['revision']

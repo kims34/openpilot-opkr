@@ -46,6 +46,11 @@ def validate_stored_capital_reservations(connection):
                 or type(released[1]) is not int or released[1] <= 0):
                 raise OrderJournalError('invalid managed principal release')
             expected = fee
+            # A durable fill contradicts the original zero-fill release.
+            # Missing restoration rows must never validate as reusable cash,
+            # even if a damaged reservation also matches the fee-only amount.
+            if row[3] > 0 and revoked is None:
+                raise OrderJournalError('filled principal release lacks restoration')
             if revoked is not None:
                 if (type(revoked[0]) is not int or revoked[0] != principal
                     or type(revoked[1]) is not str or not revoked[1].strip()
