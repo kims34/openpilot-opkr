@@ -121,6 +121,8 @@ def inspect_shadow_operational_status(path):
         inbox_tables = {'native_inbox_receipts','native_inbox_attempts','native_inbox_conflicts'}
         if tables & inbox_tables:
             _require(inbox_tables <= tables)
+            _require(connection.execute('''SELECT 1 FROM native_inbox_receipts
+                WHERE typeof(sequence)!='integer' OR sequence<=0 LIMIT 1''').fetchone() is None)
             pending = connection.execute('''SELECT COUNT(*) FROM native_inbox_receipts r
                 WHERE NOT EXISTS(SELECT 1 FROM native_inbox_attempts a WHERE
                 a.receipt_sequence=r.sequence AND a.outcome IN ('APPLIED','DUPLICATE'))''').fetchone()[0]
