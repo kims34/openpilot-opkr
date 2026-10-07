@@ -165,46 +165,11 @@ class TransportTests(unittest.TestCase):
             with self.subTest(headers=headers):
                 self.authenticate()
                 self.responses.append(Response({'return_code':0},headers=headers))
-                with self.assertRaisesRegex(DemoReadOnlyError, '^DEMO_READ_ONLY_REQUEST_BLOCKED        self.authenticate();count=len(self.requests)
-        for continuation,key in (('Y',''),('N','private'),('Y','bad\nheader'),('other','')):
-            with self.assertRaises(DemoReadOnlyError):self.transport.query('ka00001',{},continuation=continuation,next_key=key)
-        self.assertEqual(len(self.requests),count)
-
-    def test_external_configuration_mutation_cannot_change_host_or_credentials(self):
-        self.config.update(KIWOOM_ENV='REAL',KIWOOM_BASE_URL='https://api.kiwoom.com',KIWOOM_APP_KEY='changed')
-        self.authenticate()
-        self.assertEqual(self.connections[-1][0],'mockapi.kiwoom.com')
-        self.assertEqual(json.loads(self.requests[-1][1]['body'])['appkey'],'synthetic-private-key')
-
-
-
-
-
-    def test_missing_or_empty_header_is_not_explicit_terminal_marker(self):
-        self.authenticate()
-        for headers,present in (({},False),({'cont-yn':''},False),({'cont-yn':'N'},True)):
-            self.responses.append(Response({'return_code':0,'cntr':[]},headers=headers))
-            page=self.transport.query('ka10076',{'qry_tp':'0','sell_tp':'0','stex_tp':'1'})
-            self.assertEqual(page.continuation,'N')
-            self.assertEqual(page.continuation_header_present,present)
-
-    def test_individual_krx_holdings_is_the_only_new_allowed_scope(self):
-        self.authenticate();count=len(self.requests)
-        for body in ({'qry_tp':'1','dmst_stex_tp':'KRX'}, {'qry_tp':'2','dmst_stex_tp':'NXT'},
-            {'qry_tp':'2','dmst_stex_tp':'KRX','ord_no':'private'}):
-            with self.assertRaises(DemoReadOnlyError):self.transport.query('kt00018',body)
-        self.assertEqual(len(self.requests),count)
-        self.responses.append(Response({'return_code':0,'acnt_evlt_remn_indv_tot':[]},headers={'cont-yn':'N'}))
-        page=self.transport.query('kt00018',{'qry_tp':'2','dmst_stex_tp':'KRX'})
-        self.assertTrue(page.continuation_header_present)
-        self.assertEqual(self.requests[-1][1]['headers']['api-id'],'kt00018')
-
-
-if __name__=='__main__':unittest.main()
-):
+                with self.assertRaisesRegex(DemoReadOnlyError, '^DEMO_READ_ONLY_REQUEST_BLOCKED$'):
                     self.transport.query('ka00001',{})
                 count=len(self.requests)
-                with self.assertRaises(DemoReadOnlyError):self.transport.query('ka00001',{})
+                with self.assertRaises(DemoReadOnlyError):
+                    self.transport.query('ka00001',{})
                 self.assertEqual(len(self.requests),count)
 
     def test_header_injection_and_incomplete_continuation_are_rejected(self):
