@@ -13,7 +13,10 @@ from datetime import datetime
 import hashlib
 import json
 import math
+import os
+from pathlib import Path
 import re
+import tempfile
 from typing import Any, Mapping
 
 import numpy as np
@@ -28,6 +31,10 @@ from research_v1_krx_official_status import (
 from research_v1_krx_openapi_connectivity_evidence import (
     EXPECTED_SERVICES,
     validate_evidence,
+)
+from research_v1_krx_private_store import (
+    validate_private_root,
+    write_raw_object,
 )
 
 
@@ -375,6 +382,76 @@ def validate_source_receipt(source: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "valid": True,
         "source_receipt_sha256": actual,
+        "independent_source_admission_verified": False,
+        "fresh_alpha_observation_admitted": False,
+        "live_order_authorized": False,
+    }
+
+
+def store_current_session_openapi_source(
+    source: Mapping[str, Any],
+    *,
+    daily_raw: bytes,
+    master_raw: bytes,
+    root: str,
+    git_worktree: str,
+) -> dict[str, Any]:
+    """Persist raw OpenAPI objects plus one immutable same-session source receipt.
+
+    Identical retry is idempotent. A differing receipt for the same session is
+    rejected. The normalized panel remains an in-memory transformation; the raw
+    official responses and receipt fingerprints are the durable source record.
+    """
+    validation = validate_source_receipt(source)
+    daily_sha = _sha256(daily_raw, "daily_raw")
+    master_sha = _sha256(master_raw, "master_raw")
+    if daily_sha != source["daily_raw_sha256"]:
+        raise KRXProspectiveOpenAPISourceError("daily raw fingerprint mismatch")
+    if master_sha != source["master_raw_sha256"]:
+        raise KRXProspectiveOpenAPISourceError("master raw fingerprint mismatch")
+
+    base = validate_private_root(root, git_worktree=git_worktree)
+    daily_object = write_raw_object(
+        base, bytes(daily_raw), git_worktree=git_worktree
+    )
+    master_object = write_raw_object(
+        base, bytes(master_raw), git_worktree=git_worktree
+    )
+    receipt = {field: source[field] for field in _RECEIPT_FIELDS}
+    receipt["source_receipt_sha256"] = source["source_receipt_sha256"]
+    payload = _canonical(receipt)
+    target = base / f"source-{source['session']}.json"
+    fd, name = tempfile.mkstemp(prefix=".source-", dir=base)
+    temp = Path(name)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temp, 0o600)
+        try:
+            os.link(temp, target)
+            created = True
+        except FileExistsError:
+            if target.is_symlink() or target.read_bytes() != payload:
+                raise KRXProspectiveOpenAPISourceError(
+                    "conflicting or tampered same-session source receipt"
+                )
+            created = False
+        directory = os.open(base, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temp.unlink(missing_ok=True)
+    return {
+        "source_receipt_sha256": validation["source_receipt_sha256"],
+        "daily_raw_sha256": daily_object["raw_object_sha256"],
+        "master_raw_sha256": master_object["raw_object_sha256"],
+        "receipt_created": created,
+        "daily_raw_created": daily_object["created"],
+        "master_raw_created": master_object["created"],
         "independent_source_admission_verified": False,
         "fresh_alpha_observation_admitted": False,
         "live_order_authorized": False,
