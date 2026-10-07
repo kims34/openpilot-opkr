@@ -35,6 +35,18 @@ def require(condition):
         raise DemoReadOnlyError('DEMO_READ_ONLY_REQUEST_BLOCKED')
 
 
+def _unique_response_fields(pairs):
+    fields = {}
+    for key, value in pairs:
+        require(key not in fields)
+        fields[key] = value
+    return fields
+
+
+def _reject_non_json_constant(value):
+    require(False)
+
+
 class PrivateDemoPage:
     __slots__ = ('body', 'continuation', 'next_key', 'continuation_header_present')
 
@@ -71,7 +83,8 @@ class KiwoomDemoReadOnlyTransport:
             require(response.status == 200)
             raw = response.read(MAX_RESPONSE_BYTES + 1)
             require(len(raw) <= MAX_RESPONSE_BYTES)
-            data = json.loads(raw)
+            data = json.loads(raw, object_pairs_hook=_unique_response_fields,
+                              parse_constant=_reject_non_json_constant)
             require(type(data) is dict and type(data.get('return_code')) is int and data['return_code'] == 0)
             raw_continuation = response.getheader('cont-yn')
             continuation = raw_continuation or 'N'

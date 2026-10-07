@@ -78,6 +78,22 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(self.requests[-1][0],('POST','/api/dostk/acnt'))
         self.assertEqual(self.requests[-1][1]['headers']['api-id'],'ka00001')
 
+    def test_duplicate_and_non_json_responses_discard_token_without_retry(self):
+        for raw in (b'{"return_code":1,"return_code":0}',
+                    b'{"return_code":0,"items":[{"value":1,"value":2}]}',
+                    b'{"return_code":0,"value":NaN}',
+                    b'{"return_code":0,"value":Infinity}',
+                    b'{"return_code":0,"value":-Infinity}'):
+            with self.subTest(raw=raw):
+                self.authenticate()
+                self.responses.append(Response(raw))
+                with self.assertRaisesRegex(DemoReadOnlyError, '^DEMO_READ_ONLY_REQUEST_BLOCKED$'):
+                    self.transport.query('ka00001', {})
+                count = len(self.requests)
+                with self.assertRaises(DemoReadOnlyError):
+                    self.transport.query('ka00001', {})
+                self.assertEqual(len(self.requests), count)
+
     def test_all_order_cancel_amend_revoke_and_arbitrary_api_ids_are_blocked(self):
         self.authenticate();count=len(self.requests)
         for api in ('kt10000','kt10001','kt10002','kt10003','/oauth2/revoke','https://api.kiwoom.com','KA00001'):
