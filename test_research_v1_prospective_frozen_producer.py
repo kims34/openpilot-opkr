@@ -10,7 +10,9 @@ import pandas as pd
 from research_v1_context import CONTEXT_FEATURES
 from research_v1_prospective_frozen_producer import (
     CALIBRATION_SESSIONS,
+    CALIBRATION_SOURCE_ID,
     FIRST_TEST_START_ORDINAL,
+    FIT_CODE_PATH,
     FREEZE_ANCHOR_COMMIT,
     REFIT_POLICY_ID,
     TEST_SESSIONS,
@@ -84,13 +86,33 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         self.assertEqual(binding["freeze_anchor_commit"], FREEZE_ANCHOR_COMMIT)
         self.assertEqual(binding["refit_policy_id"], REFIT_POLICY_ID)
         self.assertEqual(bundle["fit_code_commit"], FREEZE_ANCHOR_COMMIT)
+        self.assertEqual(bundle["fit_code_path"], FIT_CODE_PATH)
         self.assertEqual(bundle["refit_policy_id"], REFIT_POLICY_ID)
+        self.assertEqual(
+            bundle["calibration_quantiles"]["__global__"]["source"],
+            CALIBRATION_SOURCE_ID,
+        )
         self.assertFalse(binding["consumed_v1_holdout_used"])
         self.assertFalse(binding["current_session_features_consumed_for_fit"])
         self.assertFalse(binding["current_or_test_outcomes_consumed_for_fit"])
         self.assertFalse(binding["independent_model_admission_verified"])
         self.assertFalse(binding["fresh_alpha_observation_admitted"])
         self.assertFalse(binding["live_order_authorized"])
+
+    def test_old_pre_policy_aligned_calibration_bundle_is_rejected(self):
+        target = self.sessions[FIRST_TEST_START_ORDINAL + 9]
+        out = fit_frozen_model_for_target(
+            self.z, session_calendar=self.sessions, target_session=target
+        )
+        changed = copy.deepcopy(out["model_bundle"])
+        changed["calibration_quantiles"]["__global__"]["source"] = (
+            "calibration_daily_top3_by_pred_mean"
+        )
+        # Rehashing a structurally altered bundle cannot bypass producer-level
+        # policy identity. The bundle validator itself will reject the stale
+        # fingerprint first; producer validation must never accept it.
+        with self.assertRaises(FrozenProspectiveProducerError):
+            validate_producer_binding(out["producer_binding"], changed)
 
     def test_mutating_current_or_test_outcomes_cannot_change_model_or_binding(self):
         target_index = FIRST_TEST_START_ORDINAL + 20
