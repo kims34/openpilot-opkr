@@ -21,6 +21,8 @@ def record():
         decision_capture_sha256="e"*64,
         session_manifest_sha256="f"*64,
         workflow_ref_commit="1"*40,
+        workflow_run_id=123456789,
+        workflow_run_attempt=1,
     )
 
 
@@ -41,6 +43,18 @@ class ProspectiveChronologyAnchorTest(unittest.TestCase):
             "selected_candidates", "outcome", "outcomes",
         }
         self.assertTrue(forbidden_payload_keys.isdisjoint(out.keys()))
+
+    def test_workflow_run_identity_requires_positive_exact_integers(self):
+        for field, value in (
+            ("workflow_run_id", 0),
+            ("workflow_run_attempt", -1),
+            ("workflow_run_id", True),
+            ("workflow_run_attempt", 1.0),
+        ):
+            out = record()
+            out[field] = value
+            with self.assertRaises(ProspectiveChronologyAnchorError):
+                validate_anchor_record(out)
 
     def test_external_commit_time_can_satisfy_structure_but_not_self_admit(self):
         out = assess_external_github_commit(
