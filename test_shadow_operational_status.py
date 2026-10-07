@@ -89,6 +89,26 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('capital', out)
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
+    def test_orphan_or_invalid_inbox_attempt_is_private_unavailable_read_only(self):
+        self.journal.db.executescript('''
+            CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY);
+            CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
+            CREATE TABLE native_inbox_conflicts(reason TEXT);
+            INSERT INTO native_inbox_receipts VALUES(1);
+        ''')
+        for sequence, outcome in ((999, 'APPLIED'), (999, 'DUPLICATE'), (999, 'BLOCKED'),
+                                  (1, 'PRIVATE-INVALID-OUTCOME'), (1, None)):
+            with self.subTest(sequence=sequence, outcome=outcome):
+                self.journal.db.execute('DELETE FROM native_inbox_attempts')
+                self.journal.db.execute('INSERT INTO native_inbox_attempts VALUES(?,?)', (sequence, outcome))
+                before = tuple(self.journal.db.iterdump())
+                out = self.inspect()
+                self.assertFalse(out['diagnostics_complete'])
+                self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+                self.assertNotIn('capital', out)
+                self.assertNotIn('PRIVATE-INVALID-OUTCOME', json.dumps(out))
+                self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
     def test_duplicate_surviving_broker_bindings_are_private_unavailable(self):
         epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
         for key, broker in (('PRIVATE-ONE','PRIVATE-BROKER-ONE'), ('PRIVATE-TWO','PRIVATE-BROKER-TWO')):
