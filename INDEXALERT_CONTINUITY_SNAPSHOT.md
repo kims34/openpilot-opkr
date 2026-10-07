@@ -1,3 +1,26 @@
+# Canonical checkpoint — 2026-10-07 12:43 KST
+
+Actual code HEAD 663a3bf9fc2c2f2f4f589aa6b006cb36b9fa48d5 (PR282). This supersedes PR279 in-flight and parser-budget next pointers below: completed, exact feature CI SUCCESS, merged. Requery current development HEAD before continuing.
+
+- PR279: Keep validated prior type00 counts when later connectivity fails; feature b96626976384f14707406a4c660813897a1c1b51; merge 44b577adb1100b9fac8282a6357ea44bf1f596b5; exact feature Actions 37567536384 success, 37567536463 success.
+- PR280: Bound strict read-only JSON grammar validation CPU work; feature 5f8f812583b55a57cf0acb1bd15e8a72cd5b6748; merge 8079793c3e6d0ab17be5a86adf0f690d551350b2; exact feature Actions 37567653208 success, 37567653201 success, 37567653217 success, 37567653178 success, 37567653190 success.
+- PR281: Reject unknown account row schemas and contradictory pagination; feature 4f88e53a19421dd494c9223dc3c0337fe44fe784; merge 25ed1c1122d5f500a27995584a387cdd56e324c4; exact feature Actions 37567799990 success, 37567799991 success, 37567799988 success.
+- PR282: Set explicit HTTP timeouts in user-operated read-only smoke scripts; feature d76d50c90e7e5667d2454ee1b68d9d52dd6aff76; merge 663a3bf9fc2c2f2f4f589aa6b006cb36b9fa48d5; exact feature Actions 37567903336 success, 37567903391 success, 37567903325 success, 37567903333 success, 37567903326 success.
+
+279 preserves previously validated event/account-match counts in failure summaries, never raw frames or provider identifiers; failure capture/provenance/authority remain false.280 adds per-regex1s/grammar5s budgets and anchored whitespace scanning consistently in four self-contained scripts; these are parser resource budgets, not any Frozen research/execution criterion.281 rejects missing/null/scalar/nonobject page rows and N+cursor contradiction; explicit empty arrays remain valid and10-page incomplete cap unchanged. Actual page/count helpers execute against a stubbed HTTP command only.282 sets explicit HTTP TimeoutSec15, no retries/new endpoints; stub verifies actual argument binding. No full broker flow or completed REAL baseline rerun.
+
+Local final expanded offline regression356 passed/4 skipped in1.75s (PowerShell-runtime tests skipped locally; exact Windows/Ubuntu CI above executes them). Diff whitespace and Python compile checks clean. Earlier selected355/2-skipped preceded279; do not sum overlapping tests as evidence. Initial274 legacy PowerShell failure was fixed before merge as documented below. Prior checkpoint61ed14c60f962b68f3f6f6d782453c4917e72656 must have its existing docs Actions checked, never rerun without failure.
+
+Exact next independent resume:
+1. Requery HEAD/open PR/ongoing Actions and this docs push; preserve concurrent edits, skip completed273–282 and unchanged passing tests. Project INCOMPLETE; this is a bounded Work execution checkpoint, not a claim independent engineering is exhausted or background execution continues.
+2. Continue highest-priority durable capital/journal audit, particularly the optional shadow_capital_release_revocations history: compare restart/component-lineage/capital auditing before attempting schema changes, reproduce any missing-history bypass first. Known reservation mismatch already fails closed; do not reimplement covered late-fill restoration or fabricate absent facts.
+3. Review whole-account read-only pagination header defaults/cycle handling against existing provider schema, and operator failure-state reporting. Missing row schemas and explicit cursor contradictions are now fixed; do not repeat them. A missing terminal header must not be tightened/accepted based on guessed provider behavior; verify governing source contract first.
+4. Maintain equivalent pure helper behavior across self-contained scripts; no extra local helper download dependency was introduced. Follow-up resource work must preserve valid empty frames, original FID strings, zero-event successful REG connectivity and private errors.
+
+Safety unchanged: Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/slippage/fill/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalid v1 immutable. No sealed holdout; no REJECT/INCONCLUSIVE/IDEA operational use. Ordering DISABLED; real orders/funds/permission changes false; genuine LIVE unverified; final-user-ready false. Whole-account read-only baseline COMPLETE; designated-device805004/8050 owner-deferred, no repeated owner command. Structural hashes/helpers/offline/green CI never admission proof. Research/Android/prereg refs and Master Spec unchanged during this run.
+
+---
+
 # Canonical continuation checkpoint — 2026-10-07 12:37 KST
 
 Actual code HEAD f4fab9207abe8544bf5e6d8e214a1f3b01164a0f (PR278). This supersedes the previous JSON-audit next pointer. Requery latest branch HEAD and preserve concurrent changes before resume.
