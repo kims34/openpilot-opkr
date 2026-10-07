@@ -157,12 +157,13 @@ class OrderIntentJournal:
         missing = False
         with self._atomic():
             tables = {row[0] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            journal_exists = bool(tables.intersection({
+            required = {
                 'intents','executions','shadow_control','reconciliation_barrier',
-                'reconciled_snapshot_bindings'}))
-            missing = journal_exists and any(table not in tables or self.db.execute(
+                'reconciled_snapshot_bindings'}
+            journal_exists = bool(tables & required)
+            missing = journal_exists and (not required <= tables or any(self.db.execute(
                 f'SELECT 1 FROM {table} WHERE id=1').fetchone() is None
-                for table in ('shadow_control','reconciliation_barrier'))
+                for table in ('shadow_control','reconciliation_barrier')))
             if missing:
                 if 'shadow_control' in tables:
                     self._stop_shadow('STARTUP_SAFETY_METADATA_MISSING')

@@ -181,8 +181,9 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
         self.assertTrue(self.j.shadow_control()['killed'])
 
-    def test_restart_does_not_recreate_dropped_safety_tables(self):
+    def test_restart_does_not_recreate_dropped_journal_history_tables(self):
         for tables in (('shadow_control',), ('reconciliation_barrier',),
+                       ('intents',), ('executions',), ('reconciled_snapshot_bindings',),
                        ('shadow_control','reconciliation_barrier')):
             with self.subTest(tables=tables):
                 path = Path(self.tmp.name) / ('-'.join(tables)+'.sqlite')
@@ -196,7 +197,8 @@ class JournalTests(unittest.TestCase):
                         OrderIntentJournal(path)
                     names = {r[0] for r in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
                     self.assertTrue(set(tables).isdisjoint(names))
-                    self.assertEqual(journal.get('retained')['quantity'], 1)
+                    if 'intents' not in tables:
+                        self.assertEqual(journal.get('retained')['quantity'], 1)
                     if 'shadow_control' not in tables:
                         self.assertTrue(journal.shadow_control()['killed'])
                         self.assertEqual(journal.shadow_control()['mode'], 'MASTER_OFF')

@@ -40,6 +40,17 @@ def rest(api='kt00007',filled=4,remaining=6):
 
 
 class BridgeTests(unittest.TestCase):
+    def test_restart_missing_scope_cannot_rebind_to_different_account(self):
+        original = self.j.db.execute('SELECT * FROM native_order_bindings').fetchall()
+        self.j.trip_kill_switch()
+        self.j.db.execute('DROP TABLE native_journal_scope')
+        with self.assertRaisesRegex(NativeBridgeError, '^NATIVE_BRIDGE_RECONCILIATION_REQUIRED$'):
+            KiwoomOrderJournalBridge(self.j,account_fingerprint='sha256:'+'b'*64,trading_date=DAY)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='native_journal_scope'").fetchone())
+        self.assertEqual(self.j.db.execute('SELECT * FROM native_order_bindings').fetchall(), original)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertTrue(self.j.shadow_control()['killed'])
+
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         self.path=Path(self.tmp.name)/'synthetic.sqlite'

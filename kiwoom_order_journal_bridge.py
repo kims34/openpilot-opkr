@@ -66,6 +66,10 @@ class KiwoomOrderJournalBridge:
         with self._guard():
             require(isinstance(self.account,str) and re.fullmatch(r'sha256:[0-9a-f]{64}',self.account))
             require(isinstance(self.day,str) and date.fromisoformat(self.day).isoformat()==self.day)
+            tables = {row[0] for row in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            required = {'native_journal_scope','native_order_bindings','native_fill_bindings'}
+            require(not tables & required or (required <= tables and
+                journal.db.execute('SELECT 1 FROM native_journal_scope WHERE id=1').fetchone() is not None))
             journal.db.execute('''CREATE TABLE IF NOT EXISTS native_journal_scope (
                 id INTEGER PRIMARY KEY CHECK(id=1), account TEXT NOT NULL, day TEXT NOT NULL)''')
             journal.db.execute('''CREATE TABLE IF NOT EXISTS native_order_bindings (
