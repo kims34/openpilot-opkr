@@ -75,13 +75,15 @@ def validate_stored_intent_identities(connection):
 def validate_stored_execution_totals(connection, intent_fills):
     """Read-only integrity check; caller must pin the surrounding snapshot."""
     totals = {key: 0 for key in intent_fills}
+    identities = set()
     if any(type(filled) is not int or filled < 0 for filled in intent_fills.values()):
         raise OrderJournalError('inconsistent stored executions')
     for key, execution_id, quantity in connection.execute(
             'SELECT key,execution_id,quantity FROM executions'):
         if (key not in intent_fills or type(execution_id) is not str or not execution_id.strip()
-            or type(quantity) is not int or quantity <= 0):
+            or type(quantity) is not int or quantity <= 0 or (key, execution_id) in identities):
             raise OrderJournalError('inconsistent stored executions')
+        identities.add((key, execution_id))
         totals[key] += quantity
     if totals != intent_fills:
         raise OrderJournalError('inconsistent stored executions')
