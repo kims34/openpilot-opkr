@@ -347,6 +347,11 @@ def audit_exact_status_economics(
     # artifacts or bind them row-by-row to independently admitted provenance.
     independent_economics_provenance_admission_verified = False
     exact_ready = False
+    # Numeric calculations remain diagnostic candidates until the exact scope
+    # and source artifacts are independently admitted. Do not expose any row
+    # as resolved economics through the canonical resolved field beforehand.
+    structural_candidate_economics = resolved_economics if structural_ready else []
+    independently_resolved_economics = []
 
     audit = StatusEconomicsAudit(
         expected_affected_positions=len(expected_ids),
@@ -388,12 +393,14 @@ def audit_exact_status_economics(
         "unsupported_recovery_position_ids_sample": unsupported_recovery[:10],
         "pit_invalid_position_ids_sample": pit_invalid[:10],
         "source_contract_mismatch_position_ids_sample": contract_mismatch[:10],
-        "resolved_position_economics": resolved_economics,
+        "structural_candidate_position_economics": structural_candidate_economics,
+        "resolved_position_economics": independently_resolved_economics,
         "guardrail": (
             "Exact status economics requires independently attested affected-position scope and full quantity closure with verified evidence. "
             "The expected_scope_attested input is only a caller-supplied structural claim; this auditor cannot authenticate that independent scope admission. "
             "Daily OHLC, modelled/synthetic fills, Shadow/Paper evidence and unresolved quantities cannot close this gate. "
             "Accepted evidence-class labels and opaque references are structural fields, not authenticity credentials. "
+            "Calculated rows remain structural candidates and are not exposed as resolved_position_economics before independent provenance admission. "
             "Until an independent provenance admission binds the exact broker/KRX/issuer artifacts, exact_status_economics_ready remains false. "
             "Even a future exact_status_economics_ready=true is only one Final-Judge input and grants no promotion, holdout or live authority."
         ),
