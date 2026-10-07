@@ -15,7 +15,7 @@ from indexalert_automation_control import (
     AutomationCapitalState, AutomationUserControls, DecisionAction,
     EngineOrderIntent, validate_engine_plan,
 )
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_intent_row
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_intent_row, validate_stored_reconciliation_barrier
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 
 
@@ -180,7 +180,7 @@ class ShadowCapitalAllocator:
                 dict(self.journal.db.execute('SELECT key,filled FROM intents')))
             if control['mode'] != 'MASTER_OFF':
                 raise OrderJournalError('principal release requires MASTER_OFF')
-            barrier = self.journal.db.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
+            barrier = validate_stored_reconciliation_barrier(self.journal.db)
             if (type(expected_snapshot_revision) is not int or expected_snapshot_revision <= 0
                 or barrier is None or barrier != (expected_snapshot_revision, 0)):
                 raise OrderJournalError('complete fresh batch required for principal release')
