@@ -91,7 +91,7 @@ def test_data_marketplace_does_not_accept_openapi_key_as_substitute():
     out = evaluate_auth_preflight(
         source_family="KRX_SECURITY_STATUS",
         access_route=DATA_MARKETPLACE_ROUTE,
-        environment=_consented(KRX_OPENAPI_AUTH_KEY="key"),
+        environment=_consented(KRX_AUTH_KEY="key"),
         authorization_evidence_reference="approval-ref-001",
         authorization_evidence_record_validated=True,
         automated_collection_authorized=True,
@@ -119,7 +119,7 @@ def test_openapi_requires_key_mapping_validated_evidence_and_explicit_consent():
     blocked = evaluate_auth_preflight(
         source_family="KRX_SECURITY_STATUS",
         access_route=OPENAPI_ROUTE,
-        environment=_consented(KRX_OPENAPI_AUTH_KEY="key"),
+        environment=_consented(KRX_AUTH_KEY="key"),
         authorization_evidence_reference="approval-ref-002",
         authorization_evidence_record_validated=True,
         automated_collection_authorized=True,
@@ -131,7 +131,7 @@ def test_openapi_requires_key_mapping_validated_evidence_and_explicit_consent():
     allowed = evaluate_auth_preflight(
         source_family="KRX_SECURITY_STATUS",
         access_route=OPENAPI_ROUTE,
-        environment=_consented(KRX_OPENAPI_AUTH_KEY="key"),
+        environment=_consented(KRX_AUTH_KEY="key"),
         authorization_evidence_reference="approval-ref-002",
         authorization_evidence_record_validated=True,
         automated_collection_authorized=True,
@@ -141,6 +141,35 @@ def test_openapi_requires_key_mapping_validated_evidence_and_explicit_consent():
     assert allowed["gate_a_status_hint"] == "PARTIAL"
 
 
+def test_openapi_legacy_key_alias_remains_presence_compatible_but_canonical_name_is_preferred():
+    out = evaluate_auth_preflight(
+        source_family="KRX_SECURITY_STATUS",
+        access_route=OPENAPI_ROUTE,
+        environment=_consented(KRX_OPENAPI_AUTH_KEY="legacy-key"),
+        authorization_evidence_reference="approval-ref-legacy",
+        authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
+        exact_service_mapping_confirmed=True,
+    )
+    assert out["openapi_auth_key_present"] is True
+    assert out["request_attempt_authorized"] is True
+
+
+def test_openapi_missing_key_reports_production_canonical_variable_name():
+    out = evaluate_auth_preflight(
+        source_family="KRX_SECURITY_STATUS",
+        access_route=OPENAPI_ROUTE,
+        environment=_consented(),
+        authorization_evidence_reference="approval-ref-missing",
+        authorization_evidence_record_validated=True,
+        automated_collection_authorized=True,
+        exact_service_mapping_confirmed=True,
+    )
+    assert out["request_attempt_authorized"] is False
+    assert "KRX_AUTH_KEY" in out["missing_requirements"]
+    assert "KRX_OPENAPI_AUTH_KEY" not in out["missing_requirements"]
+
+
 def test_purchased_product_never_infers_access_from_online_credentials():
     out = evaluate_auth_preflight(
         source_family="KRX_SECURITY_STATUS",
@@ -148,7 +177,7 @@ def test_purchased_product_never_infers_access_from_online_credentials():
         environment=_consented(
             KRX_ID="id",
             KRX_PW="pw",
-            KRX_OPENAPI_AUTH_KEY="key",
+            KRX_AUTH_KEY="key",
         ),
         authorization_evidence_reference="contract-ref-003",
         authorization_evidence_record_validated=True,
@@ -189,7 +218,7 @@ def test_individual_credential_presence_is_reported_without_values():
         environment={
             "KRX_ID": private_id,
             "KRX_PW": None,
-            "KRX_OPENAPI_AUTH_KEY": private_openapi_key,
+            "KRX_AUTH_KEY": private_openapi_key,
             EXPLICIT_PROBE_CONSENT_ENV: EXPLICIT_PROBE_CONSENT_SENTINEL,
         },
         authorization_evidence_reference="approval-ref-004",
