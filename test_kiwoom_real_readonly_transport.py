@@ -84,6 +84,22 @@ class RealTransportTests(unittest.TestCase):
         self.assertNotIn("private-account", repr(page))
         self.assertEqual(self.requests[-1][1]["headers"]["api-id"], "ka00001")
 
+    def test_ambiguous_or_non_json_response_fails_privately_and_discards_token(self):
+        for raw in (b'{"return_code":1,"return_code":0}',
+                    b'{"return_code":0,"items":[{"value":1,"value":2}]}',
+                    b'{"return_code":0,"value":NaN}',
+                    b'{"return_code":0,"value":Infinity}',
+                    b'{"return_code":0,"value":-Infinity}'):
+            with self.subTest(raw=raw):
+                self.auth()
+                self.responses.append(Response(raw))
+                with self.assertRaisesRegex(RealReadOnlyError, '^REAL_READ_ONLY_REQUEST_BLOCKED$'):
+                    self.transport.query('ka00001', {})
+                count = len(self.requests)
+                with self.assertRaises(RealReadOnlyError):
+                    self.transport.query('ka00001', {})
+                self.assertEqual(len(self.requests), count)
+
     def test_settlement_query_is_exact_readonly_scope(self):
         self.auth()
         self.responses.append(Response({
