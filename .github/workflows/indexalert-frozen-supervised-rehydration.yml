@@ -43,6 +43,11 @@ jobs:
         run: |
           python -m py_compile rehydrate_frozen_supervised_cache.py
           python -m unittest test_rehydrate_frozen_supervised_cache.py
+      - name: Verify PIT Docker image packages supervised rehydration
+        run: |
+          grep -Fx 'COPY rehydrate_frozen_supervised_cache.py ./' Dockerfile
+          grep -Fx 'COPY frozen_supervised_reference_36643183157.json ./' Dockerfile
+          grep -Fx 'COPY frozen_supervised_v1 ./frozen_supervised_v1' Dockerfile
       - name: Verify vendored frozen module blobs directly with git
         run: |
           test "$(git hash-object frozen_supervised_v1/research_v1_supervised_cache.py)" = "799d5b424c4055289f3d7b54fa03ecbb467dbb1f"
