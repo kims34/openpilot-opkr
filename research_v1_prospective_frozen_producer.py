@@ -49,6 +49,29 @@ INITIAL_TRAIN_SESSIONS = 504
 CALIBRATION_SESSIONS = 126
 TEST_SESSIONS = 126
 PURGE_SESSIONS = 5
+FROZEN_CALENDAR_ORIGIN_SESSION = "2015-06-15"
+FROZEN_CALENDAR_REFERENCE_ACTION_ID = 36643183157
+# Exact test-block starts emitted by the adopted policy-alignment Action.
+# These are schedule identity, not performance metrics.
+FROZEN_TEST_BLOCK_STARTS = {
+    640: "2018-02-19",
+    766: "2018-08-23",
+    892: "2019-03-05",
+    1018: "2019-09-03",
+    1144: "2020-03-10",
+    1270: "2020-09-09",
+    1396: "2021-03-18",
+    1522: "2021-09-15",
+    1648: "2022-03-25",
+    1774: "2022-09-27",
+    1900: "2023-03-30",
+    2026: "2023-10-05",
+    2152: "2024-04-09",
+    2278: "2024-10-18",
+    2404: "2025-04-24",
+    2530: "2025-11-03",
+    2656: "2026-05-11",
+}
 FIRST_TEST_START_ORDINAL = (
     INITIAL_TRAIN_SESSIONS + CALIBRATION_SESSIONS + 2 * PURGE_SESSIONS
 )
@@ -57,6 +80,9 @@ _BINDING_FIELDS = (
     "target_session", "target_session_ordinal", "test_block_index",
     "test_block_start_ordinal", "test_block_end_ordinal_exclusive",
     "test_block_start_session", "target_ordinal_in_test_block",
+    "calendar_origin_session", "calendar_reference_action_id",
+    "calendar_milestones_verified_through_target",
+    "session_calendar_prefix_sha256",
     "initial_train_sessions", "actual_train_sessions",
     "calibration_sessions", "test_sessions", "purge_sessions",
     "train_end_session", "calibration_start_session", "calibration_end_session",
@@ -110,6 +136,15 @@ def _session_calendar(values: Sequence[Any]) -> list[pd.Timestamp]:
         raise FrozenProspectiveProducerError("session_calendar contains duplicate sessions")
     if parsed != sorted(parsed):
         raise FrozenProspectiveProducerError("session_calendar must be strictly increasing")
+    if not parsed or parsed[0].strftime("%Y-%m-%d") != FROZEN_CALENDAR_ORIGIN_SESSION:
+        raise FrozenProspectiveProducerError(
+            "session_calendar must begin at frozen long-history origin 2015-06-15"
+        )
+    for ordinal, expected in FROZEN_TEST_BLOCK_STARTS.items():
+        if ordinal < len(parsed) and parsed[ordinal].strftime("%Y-%m-%d") != expected:
+            raise FrozenProspectiveProducerError(
+                f"session_calendar drift at frozen test-block ordinal {ordinal}"
+            )
     return parsed
 
 
@@ -128,6 +163,19 @@ def resolve_anchored_schedule(
     if target_ordinal < FIRST_TEST_START_ORDINAL:
         raise FrozenProspectiveProducerError(
             "target_session precedes first frozen anchored-WF test block"
+        )
+    prefix_dates = [
+        d.strftime("%Y-%m-%d") for d in sessions[: target_ordinal + 1]
+    ]
+    prefix_sha256 = hashlib.sha256(_canonical(prefix_dates)).hexdigest()
+    applicable_milestones = {
+        ordinal: expected
+        for ordinal, expected in FROZEN_TEST_BLOCK_STARTS.items()
+        if ordinal <= target_ordinal
+    }
+    if not applicable_milestones:
+        raise FrozenProspectiveProducerError(
+            "target lacks frozen calendar reference milestone"
         )
 
     block_index = (target_ordinal - FIRST_TEST_START_ORDINAL) // TEST_SESSIONS
@@ -154,6 +202,10 @@ def resolve_anchored_schedule(
         "test_block_end_ordinal_exclusive": int(test_end_exclusive),
         "test_block_start_session": sessions[test_start].strftime("%Y-%m-%d"),
         "target_ordinal_in_test_block": int(target_ordinal - test_start),
+        "calendar_origin_session": FROZEN_CALENDAR_ORIGIN_SESSION,
+        "calendar_reference_action_id": FROZEN_CALENDAR_REFERENCE_ACTION_ID,
+        "calendar_milestones_verified_through_target": True,
+        "session_calendar_prefix_sha256": prefix_sha256,
         "initial_train_sessions": INITIAL_TRAIN_SESSIONS,
         "actual_train_sessions": int(len(train_dates)),
         "calibration_sessions": CALIBRATION_SESSIONS,
@@ -255,6 +307,13 @@ def fit_frozen_model_for_target(
     cal_dates = set(schedule["calibration_dates"])
     protected_start = pd.Timestamp(schedule["test_block_start_session"])
 
+    observed_dates = set(frame["decision_date"].drop_duplicates())
+    missing_train_dates = sorted(train_dates - observed_dates)
+    missing_cal_dates = sorted(cal_dates - observed_dates)
+    if missing_train_dates or missing_cal_dates:
+        raise FrozenProspectiveProducerError(
+            "scheduled train/calibration session coverage is incomplete"
+        )
     train = frame[frame["decision_date"].isin(train_dates)].copy()
     cal = frame[frame["decision_date"].isin(cal_dates)].copy()
     if train.empty or cal.empty:
@@ -267,6 +326,10 @@ def fit_frozen_model_for_target(
     train = train[train["fh_label_available"].map(lambda v: v is True or v == True)].copy()
     if train.empty:
         raise FrozenProspectiveProducerError("no label-available training rows")
+    if set(train["decision_date"].drop_duplicates()) != train_dates:
+        raise FrozenProspectiveProducerError(
+            "training label availability does not cover every scheduled session"
+        )
     train["fh_net_return"] = pd.to_numeric(train["fh_net_return"], errors="coerce")
     if train["fh_net_return"].isna().any() or not np.isfinite(
         train["fh_net_return"].to_numpy(dtype=float)
@@ -285,6 +348,10 @@ def fit_frozen_model_for_target(
     cal_for_hash = cal_for_hash[
         cal_for_hash["fh_net_return"].notna()
     ].copy()
+    if set(cal_for_hash["decision_date"].drop_duplicates()) != cal_dates:
+        raise FrozenProspectiveProducerError(
+            "calibration label availability does not cover every scheduled session"
+        )
     if cal_for_hash.empty or not np.isfinite(
         cal_for_hash["fh_net_return"].to_numpy(dtype=float)
     ).all():
@@ -339,6 +406,14 @@ def fit_frozen_model_for_target(
         ],
         "test_block_start_session": schedule["test_block_start_session"],
         "target_ordinal_in_test_block": schedule["target_ordinal_in_test_block"],
+        "calendar_origin_session": schedule["calendar_origin_session"],
+        "calendar_reference_action_id": schedule["calendar_reference_action_id"],
+        "calendar_milestones_verified_through_target": schedule[
+            "calendar_milestones_verified_through_target"
+        ],
+        "session_calendar_prefix_sha256": schedule[
+            "session_calendar_prefix_sha256"
+        ],
         "initial_train_sessions": INITIAL_TRAIN_SESSIONS,
         "actual_train_sessions": schedule["actual_train_sessions"],
         "calibration_sessions": CALIBRATION_SESSIONS,
@@ -384,6 +459,18 @@ def validate_producer_binding(
     if binding.get("refit_policy_id") != REFIT_POLICY_ID:
         raise FrozenProspectiveProducerError("refit policy mismatch")
     session = _canonical_session(binding.get("target_session"), "target_session")
+    if binding.get("calendar_origin_session") != FROZEN_CALENDAR_ORIGIN_SESSION:
+        raise FrozenProspectiveProducerError("frozen calendar origin mismatch")
+    if binding.get("calendar_reference_action_id") != FROZEN_CALENDAR_REFERENCE_ACTION_ID:
+        raise FrozenProspectiveProducerError("frozen calendar reference action mismatch")
+    if binding.get("calendar_milestones_verified_through_target") is not True:
+        raise FrozenProspectiveProducerError("frozen calendar milestones are not verified")
+    calendar_sha = binding.get("session_calendar_prefix_sha256")
+    if (
+        type(calendar_sha) is not str or len(calendar_sha) != 64
+        or any(c not in "0123456789abcdef" for c in calendar_sha)
+    ):
+        raise FrozenProspectiveProducerError("session calendar prefix fingerprint invalid")
     if target_session is not None and session != _canonical_session(
         target_session, "target_session"
     ):
@@ -407,12 +494,34 @@ def validate_producer_binding(
         raise FrozenProspectiveProducerError("actual_train_sessions below frozen minimum")
     if not 0 <= binding["target_ordinal_in_test_block"] < TEST_SESSIONS:
         raise FrozenProspectiveProducerError("target outside frozen test block")
+    expected_start_ordinal = (
+        FIRST_TEST_START_ORDINAL + binding["test_block_index"] * TEST_SESSIONS
+    )
+    if binding["test_block_start_ordinal"] != expected_start_ordinal:
+        raise FrozenProspectiveProducerError("test block ordinal/refit index mismatch")
     if (
         binding["test_block_end_ordinal_exclusive"]
-        - binding["test_block_start_ordinal"]
-        != TEST_SESSIONS
+        != expected_start_ordinal + TEST_SESSIONS
     ):
         raise FrozenProspectiveProducerError("test block span mismatch")
+    if (
+        binding["target_session_ordinal"]
+        != expected_start_ordinal + binding["target_ordinal_in_test_block"]
+    ):
+        raise FrozenProspectiveProducerError("target ordinal/test-block offset mismatch")
+    if (
+        binding["actual_train_sessions"]
+        != INITIAL_TRAIN_SESSIONS + binding["test_block_index"] * TEST_SESSIONS
+    ):
+        raise FrozenProspectiveProducerError("expanding training span/refit index mismatch")
+    frozen_start = FROZEN_TEST_BLOCK_STARTS.get(expected_start_ordinal)
+    if (
+        frozen_start is not None
+        and binding.get("test_block_start_session") != frozen_start
+    ):
+        raise FrozenProspectiveProducerError(
+            "test block start session disagrees with frozen reference action"
+        )
     for field in (
         "test_block_start_session", "train_end_session",
         "calibration_start_session", "calibration_end_session",

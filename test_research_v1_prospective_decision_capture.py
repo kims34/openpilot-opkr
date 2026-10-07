@@ -25,6 +25,8 @@ from research_v1_prospective_frozen_producer import (
     CALIBRATION_SOURCE_ID,
     FIT_CODE_PATH,
     FREEZE_ANCHOR_COMMIT,
+    FROZEN_CALENDAR_ORIGIN_SESSION,
+    FROZEN_CALENDAR_REFERENCE_ACTION_ID,
     REFIT_POLICY_ID,
 )
 from research_v1_prospective_model_bundle import build_model_bundle
@@ -63,9 +65,10 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         model = _pipe(CONTEXT_FEATURES)
         model.fit(train, y)
         target_day = pd.Timestamp(self.dates[-1])
-        train_end = (target_day - pd.Timedelta(days=120)).strftime("%Y-%m-%d")
-        cal_start = (target_day - pd.Timedelta(days=100)).strftime("%Y-%m-%d")
-        cal_end = (target_day - pd.Timedelta(days=20)).strftime("%Y-%m-%d")
+        # Target lies inside the frozen block that started 2025-11-03.
+        train_end = "2025-04-09"
+        cal_start = "2025-04-17"
+        cal_end = "2025-10-24"
         self.bundle = build_model_bundle(
             model, _quantiles(),
             training_input_sha256="a" * 64,
@@ -77,21 +80,25 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
             calibration_end_session=cal_end,
             refit_policy_id=REFIT_POLICY_ID,
         )
-        test_start = (target_day - pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+        test_start = "2025-11-03"
         producer_body = {
             "classification": "FROZEN_PRODUCER_BINDING_NOT_ADMITTED",
             "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
             "fit_code_path": FIT_CODE_PATH,
             "refit_policy_id": REFIT_POLICY_ID,
             "target_session": target_day.strftime("%Y-%m-%d"),
-            "target_session_ordinal": 650,
-            "test_block_index": 0,
-            "test_block_start_ordinal": 640,
-            "test_block_end_ordinal_exclusive": 766,
+            "target_session_ordinal": 2580,
+            "test_block_index": 15,
+            "test_block_start_ordinal": 2530,
+            "test_block_end_ordinal_exclusive": 2656,
             "test_block_start_session": test_start,
-            "target_ordinal_in_test_block": 10,
+            "target_ordinal_in_test_block": 50,
+            "calendar_origin_session": FROZEN_CALENDAR_ORIGIN_SESSION,
+            "calendar_reference_action_id": FROZEN_CALENDAR_REFERENCE_ACTION_ID,
+            "calendar_milestones_verified_through_target": True,
+            "session_calendar_prefix_sha256": "d" * 64,
             "initial_train_sessions": 504,
-            "actual_train_sessions": 504,
+            "actual_train_sessions": 2394,
             "calibration_sessions": 126,
             "test_sessions": 126,
             "purge_sessions": 5,

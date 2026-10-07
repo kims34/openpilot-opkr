@@ -14,6 +14,9 @@ from research_v1_prospective_frozen_producer import (
     FIRST_TEST_START_ORDINAL,
     FIT_CODE_PATH,
     FREEZE_ANCHOR_COMMIT,
+    FROZEN_CALENDAR_ORIGIN_SESSION,
+    FROZEN_CALENDAR_REFERENCE_ACTION_ID,
+    FROZEN_TEST_BLOCK_STARTS,
     REFIT_POLICY_ID,
     TEST_SESSIONS,
     FrozenProspectiveProducerError,
@@ -25,7 +28,24 @@ from research_v1_prospective_frozen_producer import (
 
 
 def calendar(n=900):
-    return [d.strftime("%Y-%m-%d") for d in pd.bdate_range("2023-01-02", periods=n)]
+    # Synthetic dates preserve the exact frozen ordinal/date milestones without
+    # pretending to be an independently admitted KRX calendar.
+    sessions = [pd.Timestamp(FROZEN_CALENDAR_ORIGIN_SESSION)]
+    for ordinal, expected_text in sorted(FROZEN_TEST_BLOCK_STARTS.items()):
+        if ordinal >= n:
+            break
+        expected = pd.Timestamp(expected_text)
+        while len(sessions) < ordinal:
+            candidate = sessions[-1] + pd.Timedelta(days=1)
+            if candidate >= expected:
+                raise AssertionError("synthetic calendar cannot satisfy milestone")
+            sessions.append(candidate)
+        if len(sessions) != ordinal or sessions[-1] >= expected:
+            raise AssertionError("synthetic calendar milestone construction drift")
+        sessions.append(expected)
+    while len(sessions) < n:
+        sessions.append(sessions[-1] + pd.Timedelta(days=1))
+    return [d.strftime("%Y-%m-%d") for d in sessions]
 
 
 def supervised(cal):
@@ -65,7 +85,16 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         self.assertEqual(out["train_end_session"], self.sessions[503])
         self.assertEqual(out["calibration_start_session"], self.sessions[509])
         self.assertEqual(out["calibration_end_session"], self.sessions[634])
-        self.assertEqual(out["test_block_start_session"], self.sessions[640])
+        self.assertEqual(out["test_block_start_session"], "2018-02-19")
+        self.assertEqual(
+            out["calendar_origin_session"], FROZEN_CALENDAR_ORIGIN_SESSION
+        )
+        self.assertEqual(
+            out["calendar_reference_action_id"],
+            FROZEN_CALENDAR_REFERENCE_ACTION_ID,
+        )
+        self.assertTrue(out["calendar_milestones_verified_through_target"])
+        self.assertEqual(len(out["session_calendar_prefix_sha256"]), 64)
 
         second = resolve_anchored_schedule(
             self.sessions,
@@ -74,6 +103,55 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         self.assertEqual(second["test_block_index"], 1)
         self.assertEqual(second["actual_train_sessions"], 630)
         self.assertEqual(second["test_block_start_ordinal"], 766)
+
+    def test_calendar_cannot_rebase_frozen_schedule_at_2018_pit_volume(self):
+        shifted = [
+            d.strftime("%Y-%m-%d")
+            for d in pd.bdate_range("2018-01-02", periods=900)
+        ]
+        with self.assertRaisesRegex(
+            FrozenProspectiveProducerError, "frozen long-history origin"
+        ):
+            resolve_anchored_schedule(
+                shifted,
+                target_session=shifted[FIRST_TEST_START_ORDINAL + 1],
+            )
+
+    def test_calendar_milestone_drift_fails_closed(self):
+        changed = list(self.sessions)
+        changed[FIRST_TEST_START_ORDINAL] = (
+            pd.Timestamp(changed[FIRST_TEST_START_ORDINAL])
+            - pd.Timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+        with self.assertRaisesRegex(
+            FrozenProspectiveProducerError, "frozen test-block ordinal"
+        ):
+            resolve_anchored_schedule(
+                changed,
+                target_session=changed[FIRST_TEST_START_ORDINAL + 5],
+            )
+
+    def test_missing_scheduled_training_session_or_labels_fails_closed(self):
+        target = self.sessions[FIRST_TEST_START_ORDINAL + 4]
+        missing_day = pd.Timestamp(self.sessions[100])
+        missing = self.z[~self.z["decision_date"].eq(missing_day)].copy()
+        with self.assertRaisesRegex(
+            FrozenProspectiveProducerError, "session coverage is incomplete"
+        ):
+            fit_frozen_model_for_target(
+                missing, session_calendar=self.sessions, target_session=target
+            )
+
+        unavailable = self.z.copy()
+        unavailable.loc[
+            unavailable["decision_date"].eq(missing_day), "fh_label_available"
+        ] = False
+        with self.assertRaisesRegex(
+            FrozenProspectiveProducerError, "label availability"
+        ):
+            fit_frozen_model_for_target(
+                unavailable, session_calendar=self.sessions, target_session=target
+            )
 
     def test_frozen_fit_binds_exact_anchor_code_and_schedule_without_authority(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 11]
@@ -85,6 +163,15 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         self.assertTrue(valid["valid"])
         self.assertEqual(binding["freeze_anchor_commit"], FREEZE_ANCHOR_COMMIT)
         self.assertEqual(binding["refit_policy_id"], REFIT_POLICY_ID)
+        self.assertEqual(
+            binding["calendar_origin_session"], FROZEN_CALENDAR_ORIGIN_SESSION
+        )
+        self.assertEqual(
+            binding["calendar_reference_action_id"],
+            FROZEN_CALENDAR_REFERENCE_ACTION_ID,
+        )
+        self.assertTrue(binding["calendar_milestones_verified_through_target"])
+        self.assertEqual(len(binding["session_calendar_prefix_sha256"]), 64)
         self.assertEqual(bundle["fit_code_commit"], FREEZE_ANCHOR_COMMIT)
         self.assertEqual(bundle["fit_code_path"], FIT_CODE_PATH)
         self.assertEqual(bundle["refit_policy_id"], REFIT_POLICY_ID)
