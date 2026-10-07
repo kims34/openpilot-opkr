@@ -121,7 +121,7 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         changed = list(self.sessions)
         changed[FIRST_TEST_START_ORDINAL] = (
             pd.Timestamp(changed[FIRST_TEST_START_ORDINAL])
-            + pd.Timedelta(days=1)
+            - pd.Timedelta(days=1)
         ).strftime("%Y-%m-%d")
         with self.assertRaisesRegex(
             FrozenProspectiveProducerError, "frozen test-block ordinal"
