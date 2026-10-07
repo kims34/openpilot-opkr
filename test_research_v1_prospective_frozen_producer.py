@@ -27,6 +27,9 @@ from research_v1_prospective_frozen_producer import (
 )
 
 
+IMPLEMENTATION_COMMIT = "e" * 40
+
+
 def calendar(n=900):
     # Synthetic dates preserve the exact frozen ordinal/date milestones without
     # pretending to be an independently admitted KRX calendar.
@@ -139,7 +142,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
             FrozenProspectiveProducerError, "session coverage is incomplete"
         ):
             fit_frozen_model_for_target(
-                missing, session_calendar=self.sessions, target_session=target
+                missing, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
             )
 
         unavailable = self.z.copy()
@@ -150,13 +154,15 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
             FrozenProspectiveProducerError, "label availability"
         ):
             fit_frozen_model_for_target(
-                unavailable, session_calendar=self.sessions, target_session=target
+                unavailable, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
             )
 
     def test_frozen_fit_binds_exact_anchor_code_and_schedule_without_authority(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 11]
         out = fit_frozen_model_for_target(
-            self.z, session_calendar=self.sessions, target_session=target
+            self.z, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         binding, bundle = out["producer_binding"], out["model_bundle"]
         valid = validate_producer_binding(binding, bundle, target_session=target)
@@ -172,7 +178,10 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         )
         self.assertTrue(binding["calendar_milestones_verified_through_target"])
         self.assertEqual(len(binding["session_calendar_prefix_sha256"]), 64)
-        self.assertEqual(bundle["fit_code_commit"], FREEZE_ANCHOR_COMMIT)
+        self.assertEqual(
+            binding["producer_implementation_commit"], IMPLEMENTATION_COMMIT
+        )
+        self.assertEqual(bundle["fit_code_commit"], IMPLEMENTATION_COMMIT)
         self.assertEqual(bundle["fit_code_path"], FIT_CODE_PATH)
         self.assertEqual(bundle["refit_policy_id"], REFIT_POLICY_ID)
         self.assertEqual(
@@ -189,7 +198,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
     def test_old_pre_policy_aligned_calibration_bundle_is_rejected(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 9]
         out = fit_frozen_model_for_target(
-            self.z, session_calendar=self.sessions, target_session=target
+            self.z, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         changed = copy.deepcopy(out["model_bundle"])
         changed["calibration_quantiles"]["__global__"]["source"] = (
@@ -205,7 +215,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         target_index = FIRST_TEST_START_ORDINAL + 20
         target = self.sessions[target_index]
         first = fit_frozen_model_for_target(
-            self.z, session_calendar=self.sessions, target_session=target
+            self.z, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         changed = self.z.copy()
         test_dates = set(pd.to_datetime(
@@ -214,7 +225,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         mask = changed["decision_date"].isin(test_dates)
         changed.loc[mask, "fh_net_return"] = 999.0
         second = fit_frozen_model_for_target(
-            changed, session_calendar=self.sessions, target_session=target
+            changed, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         self.assertEqual(
             first["model_bundle"]["model_bundle_sha256"],
@@ -228,7 +240,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
     def test_mutating_calibration_outcome_changes_binding(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 2]
         first = fit_frozen_model_for_target(
-            self.z, session_calendar=self.sessions, target_session=target
+            self.z, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         changed = self.z.copy()
         cal_day = pd.Timestamp(self.sessions[509])
@@ -237,7 +250,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
             float(changed.loc[idx, "fh_net_return"]) + 0.5
         )
         second = fit_frozen_model_for_target(
-            changed, session_calendar=self.sessions, target_session=target
+            changed, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         self.assertNotEqual(
             first["producer_binding"]["calibration_input_sha256"],
@@ -254,7 +268,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
             )
         target = self.sessions[FIRST_TEST_START_ORDINAL + 1]
         out = fit_frozen_model_for_target(
-            self.z, session_calendar=self.sessions, target_session=target
+            self.z, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         changed = copy.deepcopy(out["producer_binding"])
         changed["live_order_authorized"] = True
@@ -264,7 +279,8 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
     def test_private_binding_store_is_append_only_and_idempotent(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 5]
         out = fit_frozen_model_for_target(
-            self.z, session_calendar=self.sessions, target_session=target
+            self.z, session_calendar=self.sessions, target_session=target,
+                producer_implementation_commit=IMPLEMENTATION_COMMIT
         )
         with tempfile.TemporaryDirectory() as folder:
             git = Path(folder) / "git"
