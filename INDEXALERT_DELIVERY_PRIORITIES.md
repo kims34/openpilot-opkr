@@ -1,3 +1,18 @@
+# Owner confirms no matching permission reply — 2026-10-07 22:05 KST
+
+Owner answered “없어” when asked whether another actual KRX reply contains the previously pasted unrestricted full-history/high-frequency permission. No additional matching original exists in the owner's supplied account of the correspondence. Close repeated owner-mail retrieval for this issue.
+
+Current original evidence is .eml SHA256bb548d64e81457b21d2203edcc8bab63ecca4b0e2cc4d922f675eeeca5477efa dated2026-10-02T15:30:03+09:00. It permits internal-research storage/analysis with third-party original-data redistribution restrictions, says automated screen collection is not an official delivery route and abnormal/excessive access can be restricted, and directs use of OpenAPI for items offered there. It does not establish unrestricted full-history/high-frequency DataMarketplace screen automation permission.
+
+The earlier unrestricted-use scope confirmation is withdrawn as a current evidentiary conclusion. Historical permissionv3 files/hashes are preserved as superseded conflicting owner-supplied records, not deleted or retroactively repaired. Existing research v3 documents/validators may still report their historical PASS; that is NOT the current operational disposition. This addendum is an evidence/operations correction, not a claim that code has already been changed to consume the correction.
+
+Operational restrictions: do not start/resume broader authenticated DataMarketplace screen collection based on v3. No source-data or feature-performance admission may rely on the conflicting permission record. This is not a blanket denial of all internal research or a revocation of separately verified OpenAPI service permissions. Exact separately approved basic-info/daily-trade OpenAPI plumbing remains distinct; it must not be substituted for halt/cleanup/delisting/investor-flow families absent exact schema/history/PIT mapping.
+
+Next independent engineering: inspect and apply this source-evidence disposition to relevant current admission/reporting paths without editing Frozen policy, manufacturing missing original evidence or retuning historical outcomes. Then assess exact official source alternatives for unavailable required families. No repeat mail/approval request, no new acquisition/holdout/model fit/order/account-setting change, and no claim of automatic signal accumulation.
+
+
+---
+
 # 2026-10-07 22:03 KST material source update
 
 Uploaded original KRX reply contradicts the earlier pasted unrestricted web-automation permission text. See INDEXALERT_KRX_ORIGINAL_MESSAGE_CONFLICT_2026-10-07.md. Preserve prior evidence, but do not initiate/resume broader authenticated Data Marketplace collection relying on that text pending a matching original/reconciliation. Exact approved OpenAPI services remain a separate route; no new source/PIT/economics/live admission. Owner matching-message input is now required.
