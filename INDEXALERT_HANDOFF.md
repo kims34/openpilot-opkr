@@ -1,3 +1,25 @@
+# Continuity checkpoint — 2026-10-07 10:09 KST
+
+Authoritative code HEAD: `c782d2d829fa43172952ca3887777b162fce8654` (PR254 merge), development branch `index-alert-position-regen-fix-v1`. Retrieve current HEAD; this checkpoint is docs only. Previous checkpoint's PR250 pending and complete-component-loss next pointer are superseded: both implemented, exact-head CI passed, merged.
+
+Additional completed work:
+- PR250 feature6754046186bed235c193347e0652e6eebe9f9ab1 → mergebf009ad53d8b589051e2b2def6e5fe33f1410c4e: no empty core history recreation or native account scope rebinding after loss. SUCCESS:37554492197/112577458762 (298),37554492076/112577458501 (118),37554492090/112577458553 (86),37554492118/112577458634 (28),37554492130 jobs112577458926/112577459166/112577459193 (Windows45/Ubuntu45/Chromium2).
+- PR251 final featurec92870bf13abd931d4572c4aa2eb5688e89d2ed9 → mergef64b04341296550b782368c9e3f6b389cee08dcb: append-only optional component registry, atomic schema version1, complete-family loss and upgraded-registry loss cannot become fresh; complete legacy schemas migrate without changing facts. Restart/enable/claim/readonly status fail closed. SUCCESS:37554905628/112578780452 (303),37554905510/112578779342 (121),37554905494/112578779327 (86),37554905531/112578779521 (29),37554905502 jobs112578779325/112578779702/112578779714 (Chromium2/Windows46/Ubuntu46). Superseded feature361d checks were not used for merge. Merge-push37555012085/37555012088 SUCCESS.
+- PR252 feature43fe5cb56dc6ec1243fef7a14818229dc4eeba58 → merge7b1f2e1f470a39b0c55c18eeab46d5924b3c5713: already-open runtime component loss blocks batch success, native/direct execution, native binding and REST verification; intake still persists late-fill arrival, application remains pending and Kill retained. SUCCESS:37555169632/112579621080 (305),37555169559/112579625752 (122),37555169604/112579621274 (86),37555169627/112579621039 (29),37555169526 jobs112579620848/112579620949/112579621023 (Chromium2/Windows46/Ubuntu46). Merge-push37555262379/112579917400 and37555262378/112579917291 SUCCESS.
+- PR253 featurec2006749b65185af0473358451f9794ac39cda9e → mergeaff118403bc8dda8d359f6e153396e7b35380a97: REAL read-only REST rejects duplicate JSON fields at any depth and non-JSON NaN/Infinity; private failure clears token, no retry. SUCCESS:37555381964/112580286932 (10),37555381956/112580286906 (15),37555382212/112580287993 (14),37555382274/112580288239 (86).
+- PR254 feature4916a5ddfdd02386195c42688abd178ba48ac4f0 → mergec782d2d829fa43172952ca3887777b162fce8654: equivalent DEMO response ambiguity rejection. SUCCESS:37555511272/112580697029 (306),37555511203/112580696703 (86).
+- Latest expanded local offline regression383 passed in7.08s; includes durable/native/capital/type00/operator/journal-settlement and REAL read-only fake transport/smoke contract tests. Additional settlement suite86 passed. No actual broker connection. Fourteen changed files matched authoritative PR253 tree; MASTER_SPEC blob798e658d2b3414f95ce648c58945425d9a579182 unchanged.
+- Prior checkpoint docs Actions37554596628/112577803556 SUCCESS98 tests,2 warnings. Prior PR245–249 verification below retained.
+
+Exact next independent resume:
+- Type00 Python extractor currently accepts already-parsed dicts only, so wire JSON duplicate FIDs can already be collapsed before strict extraction. Add bounded UTF-8 serialized-frame parsing, duplicate-key/non-JSON/depth fail-closed private errors, preserving original FID strings and offline/no-admission semantics. Connect serialized fixture→extractor→protected intake→durable receipt integration.
+- `.github/workflows/kiwoom-journal-binding.yml` sparse checkout currently omits `test_kiwoom_type00_frame_extractor.py` and `test_kiwoom_type00_protected_intake_integration.py`; include these and path triggers so actual CI validates this boundary. Do not claim old CI covered those local-only extra tests.
+- Before further edits recheck HEAD/open PR/ongoing runs, preserve concurrent work and do not rerun completed jobs. No currently open PR immediately after PR254 merge. Recheck merge-push254 and this doc commit Actions.
+
+Safety and blockers remain exactly as previous checkpoint: all ordering/funds/permission flags false, genuine LIVE unverified, PR218 readiness false, designated-device805004/8050 deferred, whole-account read-only baseline complete. No owner PowerShell request, actual broker writes, secret/raw account exports, sealed holdout or frozen consumedv1 changes. Local structural registry cannot authenticate rollback/restoration of an entire database or recover evidence lost before lineage existed. Project unfinished; next work remains independent and executable.
+
+---
+
 # Continuity checkpoint — 2026-10-07 09:57 KST
 
 GitHub authoritative code HEAD: `9884c1e61bceedc45898d0ed3b4088b920cd4a1c` on `index-alert-position-regen-fix-v1` (PR249 merge). This checkpoint commit is documentation only; retrieve the actual branch HEAD before resuming. No duplicate CI reruns or concurrent code movement observed.
