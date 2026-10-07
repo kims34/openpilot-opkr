@@ -326,8 +326,13 @@ def audit_exact_status_economics(
     pit_invalid = _unique(pit_invalid)
     contract_mismatch = _unique(contract_mismatch)
 
+    # The argument is a structural claim supplied by the caller. This
+    # executable cannot authenticate the independent affected-position scope
+    # audit that the frozen contract requires.
+    expected_scope_attestation_claimed = expected_scope_attested
+    independent_expected_scope_admission_verified = False
     structural_ready = bool(
-        expected_scope_attested
+        expected_scope_attestation_claimed
         and not missing_ids
         and not extra_ids
         and not accounting_mismatch
@@ -364,12 +369,17 @@ def audit_exact_status_economics(
     )
     out = asdict(audit)
     out.update({
-        "expected_scope_attested": expected_scope_attested,
+        "expected_scope_attestation_claimed": expected_scope_attestation_claimed,
+        "independent_expected_scope_admission_verified": independent_expected_scope_admission_verified,
+        "expected_scope_attested": False,
         "structural_status_economics_satisfied": structural_ready,
         "independent_economics_provenance_admission_verified": independent_economics_provenance_admission_verified,
         "blocking_conditions": (
             [] if structural_ready else ["STATUS_ECONOMICS_STRUCTURAL_EVIDENCE_INCOMPLETE"]
-        ) + ["INDEPENDENT_ECONOMICS_PROVENANCE_ADMISSION_NOT_IMPLEMENTED"],
+        ) + [
+            "INDEPENDENT_EXPECTED_SCOPE_ADMISSION_NOT_IMPLEMENTED",
+            "INDEPENDENT_ECONOMICS_PROVENANCE_ADMISSION_NOT_IMPLEMENTED",
+        ],
         "missing_position_ids_sample": missing_ids[:10],
         "extra_position_ids_sample": extra_ids[:10],
         "accounting_mismatch_position_ids_sample": accounting_mismatch[:10],
@@ -381,6 +391,7 @@ def audit_exact_status_economics(
         "resolved_position_economics": resolved_economics,
         "guardrail": (
             "Exact status economics requires independently attested affected-position scope and full quantity closure with verified evidence. "
+            "The expected_scope_attested input is only a caller-supplied structural claim; this auditor cannot authenticate that independent scope admission. "
             "Daily OHLC, modelled/synthetic fills, Shadow/Paper evidence and unresolved quantities cannot close this gate. "
             "Accepted evidence-class labels and opaque references are structural fields, not authenticity credentials. "
             "Until an independent provenance admission binds the exact broker/KRX/issuer artifacts, exact_status_economics_ready remains false. "
