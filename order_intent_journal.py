@@ -81,6 +81,7 @@ def validate_stored_execution_totals(connection, intent_fills):
 COMPONENT_TABLES = {
     'safety_faults': frozenset(('shadow_control_faults',)),
     'capital_restoration': frozenset(('shadow_capital_release_revocations',)),
+    'capital_reservation_keys': frozenset(('shadow_capital_reservation_history',)),
     'capital': frozenset(('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases')),
     'native': frozenset(('native_journal_scope','native_order_bindings','native_fill_bindings')),
     'inbox': frozenset(('native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts')),

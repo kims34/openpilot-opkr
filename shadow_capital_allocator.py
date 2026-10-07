@@ -23,6 +23,10 @@ def validate_stored_capital_reservations(connection):
     """Pure reservation audit; caller pins one surrounding SQLite snapshot."""
     reserve = 0
     keys = {row[0] for row in connection.execute('SELECT key FROM shadow_capital_reservations')}
+    if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_reservation_history'").fetchone():
+        initialized = {row[0] for row in connection.execute('SELECT key FROM shadow_capital_reservation_history')}
+        if initialized != keys:
+            raise OrderJournalError('managed reservation history changed')
     if not {row[0] for row in connection.execute('SELECT key FROM shadow_capital_releases')} <= keys:
         raise OrderJournalError('orphan managed principal release')
     revocations_exist = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_release_revocations'").fetchone()
@@ -96,7 +100,18 @@ class ShadowCapitalAllocator:
                 journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_releases (
                     key TEXT PRIMARY KEY, released_principal INTEGER NOT NULL,
                     snapshot_revision INTEGER NOT NULL)''')
+                if 'shadow_capital_reservation_history' not in tables:
+                    journal.db.execute('''CREATE TABLE shadow_capital_reservation_history (
+                        key TEXT PRIMARY KEY NOT NULL)''')
+                    # Migration records only rows that actually survive. It
+                    # cannot authenticate losses before this lineage existed.
+                    journal.db.execute('''INSERT INTO shadow_capital_reservation_history
+                        SELECT key FROM shadow_capital_reservations''')
+                for operation in ('UPDATE', 'DELETE'):
+                    journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS capital_reservation_history_{operation.lower()}_immutable
+                        BEFORE {operation} ON shadow_capital_reservation_history BEGIN SELECT RAISE(ABORT,'immutable reservation history'); END''')
                 record_component_initialization(journal.db, 'capital')
+                record_component_initialization(journal.db, 'capital_reservation_keys')
         if missing:
             raise OrderJournalError('startup capital history missing')
 
@@ -184,6 +199,7 @@ class ShadowCapitalAllocator:
             # Reservation and claim commit together or both roll back.
             self.journal.db.execute('INSERT INTO shadow_capital_reservations VALUES(?,?,?,?)',
                 (key, limit_price_krw, fee_buffer_krw, reserve))
+            self.journal.db.execute('INSERT INTO shadow_capital_reservation_history VALUES(?)', (key,))
             self.journal._claim_submission_locked(
                 key, expected_epoch=expected_epoch, capital_reservation_managed=True)
             claimed = self.journal.get(key)

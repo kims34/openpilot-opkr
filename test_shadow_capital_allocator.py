@@ -105,6 +105,68 @@ class ShadowCapitalTests(unittest.TestCase):
         self.assertFalse(out['live_ordering_authorized'])
         self.assertFalse(out['account_capital_provenance_verified'])
 
+    def test_deleted_filled_reservation_cannot_free_capacity_for_another_buy(self):
+        self.claim(fee=3)
+        self.ack()
+        self.j.record_execution('d1',broker_order_id='o1',execution_id='offline-full',quantity=10)
+        self.j.db.execute('DELETE FROM shadow_capital_reservations WHERE key=?', ('d1',))
+        with self.assertRaisesRegex(OrderJournalError, 'managed reservation history changed'):
+            self.a.state()
+        self.j.register('d2',symbol='OTHER',side='BUY',quantity=12)
+        with self.assertRaisesRegex(OrderJournalError, 'managed reservation history changed'):
+            self.a.reserve_and_claim_buy('d2',limit_price_krw=8,fee_buffer_krw=0,
+                expected_epoch=self.epoch,expected_capital_revision=1)
+        self.assertEqual(self.j.get('d2')['state'], 'INTENT_CREATED')
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 10)
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        self.a = ShadowCapitalAllocator(self.j)
+        with self.assertRaisesRegex(OrderJournalError, 'managed reservation history changed'):
+            self.a.state()
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservation_history').fetchall(), [('d1',)])
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservations').fetchall(), [])
+
+    def test_reservation_history_is_atomic_and_immutable(self):
+        import sqlite3
+        with self.assertRaises(OrderJournalError):
+            self.claim(epoch=self.epoch-1)
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservation_history').fetchall(), [])
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservations').fetchall(), [])
+        self.claim(fee=3)
+        for statement in ('DELETE FROM shadow_capital_reservation_history',
+                          "UPDATE shadow_capital_reservation_history SET key='changed'"):
+            with self.assertRaisesRegex(sqlite3.IntegrityError, 'immutable reservation history'):
+                self.j.db.execute(statement)
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservation_history').fetchall(), [('d1',)])
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+
+    def test_initialized_reservation_history_loss_blocks_restart_without_recreation(self):
+        self.claim(fee=3)
+        self.j.db.execute('DROP TABLE shadow_capital_reservation_history')
+        with self.assertRaisesRegex(OrderJournalError, 'component history missing'):
+            self.a.state()
+        self.j.close()
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        import sqlite3
+        with sqlite3.connect(self.path) as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_reservation_history'").fetchone())
+            self.assertEqual(db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (83,))
+
+    def test_pre_lineage_migration_records_only_surviving_reservations(self):
+        self.claim(fee=3)
+        before = self.j.db.execute('SELECT * FROM shadow_capital_reservations').fetchall()
+        # Model a database written by the preceding schema revision.
+        self.j.db.execute('DROP TABLE shadow_capital_reservation_history')
+        self.j.db.execute('DROP TRIGGER component_history_delete_immutable')
+        self.j.db.execute("DELETE FROM journal_component_history WHERE component='capital_reservation_keys'")
+        self.j.close()
+        self.j = OrderIntentJournal(self.path)
+        self.a = ShadowCapitalAllocator(self.j)
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservations').fetchall(), before)
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_reservation_history').fetchall(), [('d1',)])
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+
     def test_existing_positions_external_orders_uncertainty_and_fees_count(self):
         self.configure(baseline=AutomationCapitalState(10, 5, 5, 1))
         with self.assertRaises(AutomationControlError):
