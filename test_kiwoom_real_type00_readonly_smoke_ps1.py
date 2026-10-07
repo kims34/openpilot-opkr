@@ -79,6 +79,15 @@ foreach ($raw in $invalidJson) {
   if (-not $rejected) { throw 'JSON_INVALID_ACCEPTED' }
 }
 $null=Convert-ReadOnlyJson -Raw ('{"a":' + ('[' * 63) + '0' + (']' * 63) + '}')
+$timer=[Diagnostics.Stopwatch]::StartNew()
+# Large whitespace remains linear; it must not stall the decoder or alter FIDs.
+$large=Convert-ReadOnlyJson -Raw ((' ' * 300000) + '{"a":"0007"}' + (' ' * 300000))
+if ($large.a -cne '0007' -or $timer.ElapsedMilliseconds -gt 15000) { throw 'JSON_WHITESPACE_BUDGET_INVALID' }
+$timer.Restart()
+$private=$false
+try { $null=Convert-ReadOnlyJson -Raw ('{"a":"' + ('x' * 300000)) }
+catch { if ($_.Exception.Message -ne 'READ_ONLY_JSON_INVALID') { throw 'JSON_TIMEOUT_PRIVATE_ERROR_REQUIRED' }; $private=$true }
+if (-not $private -or $timer.ElapsedMilliseconds -gt 15000) { throw 'JSON_MALFORMED_BUDGET_INVALID' }
 $observer=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-Type00ReadOnlyObservation'},$true)
 if ($null -eq $observer) { throw 'OBSERVER_MISSING' }
 if ($null -ne $observer) {

@@ -9,10 +9,13 @@ function Convert-ReadOnlyJson([string]$Raw) {
     try {
         if ($Raw.Length -gt 1048576 -or [Text.Encoding]::UTF8.GetByteCount($Raw) -gt 1048576) { throw 'invalid' }
         $state = @{ Position = 0 }
-        $stringToken = [regex]::new('\G"(?:[^"\\\x00-\x1f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"')
-        $valueToken = [regex]::new('\G(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)')
+        $budget = [Diagnostics.Stopwatch]::StartNew()
+        $stringToken = [regex]::new('\G"(?:[^"\\\x00-\x1f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"', [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(1))
+        $valueToken = [regex]::new('\G(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)', [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(1))
+        $spaceToken = [regex]::new('\G[ \t\r\n]*', [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(1))
         function Skip-JsonSpace {
-            while ($state.Position -lt $Raw.Length -and $Raw[$state.Position] -in @(' ', "`t", "`r", "`n")) { $state.Position++ }
+            if ($budget.ElapsedMilliseconds -gt 5000) { throw 'invalid' }
+            $state.Position += $spaceToken.Match($Raw, $state.Position).Length
         }
         function Read-JsonString {
             $match = $stringToken.Match($Raw, $state.Position)
