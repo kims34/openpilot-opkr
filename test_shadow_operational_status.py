@@ -324,6 +324,27 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertTrue({'KILL_SWITCH_LATCHED','NATIVE_INBOX_PENDING','NATIVE_INBOX_CONFLICTED'} <= set(result['local_blockers']))
         self.assertEqual(tuple(self.journal.db.iterdump()),before)
 
+    def _assert_corrupt_pending_receipt(self, malformed=False):
+        from kiwoom_execution_inbox import KiwoomExecutionInbox
+        import test_kiwoom_order_journal_bridge as fixtures
+        inbox = KiwoomExecutionInbox(self._native_bridge_fixture())
+        row = fixtures.fill(); row['symbol'] = 'PRIVATE-SYMBOL'
+        inbox.append('private-receipt','PRIVATE-INTENT',row,trading_date=fixtures.DAY)
+        self.journal.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        if malformed:
+            import hashlib
+            payload = '{}'
+            self.journal.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?', (payload,hashlib.sha256(payload.encode()).hexdigest()))
+        else:
+            self.journal.db.execute('UPDATE native_inbox_receipts SET digest=?',('0'*64,))
+        self._assert_private_terminal_unavailable()
+
+    def test_corrupt_pending_receipt_is_private_read_only_unavailable(self):
+        self._assert_corrupt_pending_receipt()
+
+    def test_malformed_pending_receipt_is_private_read_only_unavailable(self):
+        self._assert_corrupt_pending_receipt(malformed=True)
+
     def test_corrupt_conflict_payload_is_private_read_only_unavailable(self):
         import hashlib
         self._pending_conflict_fixture()
