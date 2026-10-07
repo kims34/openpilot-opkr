@@ -112,6 +112,13 @@ the supplied structural claim from independent scope admission and keep
 `expected_scope_attested=false` / `independent_expected_scope_admission_verified=false`
 until a trusted external verifier binds the exact expected-position scope.
 
+Likewise, arithmetic over structurally acceptable rows may be surfaced only as
+`structural_candidate_position_economics`. The canonical
+`resolved_position_economics` output must remain empty until the independent provenance
+admission binds the exact source artifacts. If the structural batch itself is incomplete or
+contradictory, even the candidate economics list must be empty so unsupported rows cannot be
+reused downstream as if they were valid economic observations.
+
 ## 8. Closure semantics
 
 `exact_status_economics_ready=true` requires all of:
