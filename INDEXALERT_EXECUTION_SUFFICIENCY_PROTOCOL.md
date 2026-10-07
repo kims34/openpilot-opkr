@@ -96,6 +96,11 @@ Capacity ADV20 and cost-budget timestamps must be no later than the recommendati
 
 Duplicate observation IDs fail closed. A mixed policy window fails closed.
 
+The frozen protocol JSON is canonical and type-strict: text fields must be original strings,
+count fields exact JSON integers, numeric thresholds JSON numbers, required markout horizons
+exactly `5m`, `30m`, `close`, and duplicate JSON keys or non-standard constants are invalid.
+No parser coercion may create an equivalent-looking preregistration after the fact.
+
 ## 10. Statistical conventions
 
 - Continuous mean gates use deterministic date-cluster bootstrap intervals, clustered by `decision_date`, so multiple symbols on one day are not treated as independent days.
