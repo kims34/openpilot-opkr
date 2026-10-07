@@ -402,6 +402,22 @@ class InboxSettlementTests(unittest.TestCase):
     def append(self):
         self.i.append('receipt','d1',self.row,trading_date=fixtures.DAY)
 
+    def test_live_connection_component_loss_blocks_batch_and_keeps_late_fill_pending(self):
+        self.j.trip_kill_switch()
+        for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
+            self.j.db.execute(f'DROP TABLE {table}')
+        result = self.batch()
+        self.assertFalse(result['matched'])
+        self.assertIn('COMPONENT_HISTORY_CONFLICT', result['errors'])
+        self.append()  # Preserve the arrival before execution application.
+        with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+            self.i.replay_next()
+        self.assertEqual(self.i.counts()['pending'], 1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertTrue(self.j.shadow_control()['killed'])
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
     def test_zero_fill_snapshot_cannot_release_capital_with_unprocessed_fill(self):
         self.append()
         self.assertTrue(self.batch()['matched'])
