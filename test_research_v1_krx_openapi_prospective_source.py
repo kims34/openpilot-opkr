@@ -147,7 +147,7 @@ class KRXOpenAPIProspectiveSourceTest(unittest.TestCase):
         missing = _daily_rows()
         missing[0] = dict(missing[0])
         del missing[0]["FLUC_RT"]
-        with self.assertRaisesRegex(KRXProspectiveOpenAPISourceError, "missing fields"):
+        with self.assertRaisesRegex(KRXProspectiveOpenAPISourceError, "FLUC_RT"):
             build(daily=missing)
         out = build()
         changed = copy.copy(out)
