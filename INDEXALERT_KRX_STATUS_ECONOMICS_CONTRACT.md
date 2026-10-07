@@ -105,6 +105,13 @@ status-economics contract, but it must keep `exact_status_economics_ready=false`
 separate independent provenance admission binds the exact broker/KRX/issuer source artifacts
 to the affected-position rows. This clarification does not relax any existing requirement.
 
+The executable parameter `expected_scope_attested` is likewise only an input claim at this
+module boundary. The module cannot authenticate the separate independent affected-position
+scope audit merely because the caller passes `true`. Public output must therefore distinguish
+the supplied structural claim from independent scope admission and keep
+`expected_scope_attested=false` / `independent_expected_scope_admission_verified=false`
+until a trusted external verifier binds the exact expected-position scope.
+
 ## 8. Closure semantics
 
 `exact_status_economics_ready=true` requires all of:
