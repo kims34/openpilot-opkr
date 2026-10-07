@@ -24,6 +24,14 @@ class StaleSupervisedCache(RuntimeError):
     pass
 
 
+class SupervisedCachePolicyMismatch(StaleSupervisedCache):
+    """An existing cache belongs to a different research policy.
+
+    Keep the original cache intact. A different policy needs a distinct cache
+    directory; silently rebuilding here would overwrite research evidence.
+    """
+
+
 def _source_fingerprint(raw: pd.DataFrame) -> dict:
     """Return an order-insensitive fingerprint of the PIT source used by the cache."""
     required = ["decision_date", "symbol"]
@@ -113,7 +121,21 @@ def build_cache(
     return merged, record_map, diagnostics
 
 
-def _validate_meta(meta: dict, cache_dir: Path, expected_source_fingerprint: dict | None = None) -> None:
+def _validate_meta(
+    meta: dict, cache_dir: Path,
+    expected_source_fingerprint: dict | None = None,
+    *, expected_policy: dict | None = None,
+) -> None:
+    if expected_policy is not None:
+        mismatches = [
+            key for key, value in expected_policy.items()
+            if key not in meta or isinstance(meta[key], bool) or meta[key] != value
+        ]
+        if mismatches:
+            raise SupervisedCachePolicyMismatch(
+                f"supervised cache policy mismatch in {cache_dir}: {mismatches}; "
+                "use a distinct cache directory; existing evidence was not modified"
+            )
     if meta.get("version") != CACHE_VERSION:
         raise StaleSupervisedCache(
             f"stale supervised cache version in {cache_dir}: {meta.get('version')} != {CACHE_VERSION}"
@@ -130,14 +152,17 @@ def _validate_meta(meta: dict, cache_dir: Path, expected_source_fingerprint: dic
             )
 
 
-def load_cache(cache_dir: Path, raw: pd.DataFrame | None = None):
+def load_cache(
+    cache_dir: Path, raw: pd.DataFrame | None = None,
+    *, expected_policy: dict | None = None,
+):
     p = cache_dir / "supervised.parquet"
     m = cache_dir / "meta.json"
     if not p.exists() or not m.exists():
         raise FileNotFoundError(cache_dir)
     meta = json.loads(m.read_text(encoding="utf-8"))
     expected = _source_fingerprint(raw) if raw is not None else None
-    _validate_meta(meta, cache_dir, expected)
+    _validate_meta(meta, cache_dir, expected, expected_policy=expected_policy)
     frame = pd.read_parquet(p)
     frame["decision_date"] = pd.to_datetime(frame["decision_date"])
     record_map = {}
@@ -163,15 +188,30 @@ def load_cache(cache_dir: Path, raw: pd.DataFrame | None = None):
     return frame, record_map, meta.get("diagnostics", {}), meta
 
 
-def load_or_build(raw: pd.DataFrame, cache_dir: Path, **kwargs):
+def load_or_build(
+    raw: pd.DataFrame, cache_dir: Path, *, horizon: int = 5,
+    target_return: float = 0.04, stop_return: float = -0.025,
+    participation: float = 0.0005, commission_round_trip_bps: float = 3.0,
+):
+    policy = {
+        "horizon": horizon,
+        "target_return": target_return,
+        "stop_return": stop_return,
+        "participation": participation,
+        "commission_round_trip_bps": commission_round_trip_bps,
+    }
     try:
-        return load_cache(cache_dir, raw=raw)
+        return load_cache(cache_dir, raw=raw, expected_policy=policy)
+    except SupervisedCachePolicyMismatch:
+        # Do not let the generic stale-source rebuild delete another policy's
+        # cache, or accept its labels/costs under the new requested parameters.
+        raise
     except (FileNotFoundError, StaleSupervisedCache):
         cache_dir.mkdir(parents=True, exist_ok=True)
         for name in ("supervised.parquet", "meta.json"):
             p = cache_dir / name
             if p.exists():
                 p.unlink()
-        frame, record_map, diag = build_cache(raw, cache_dir, **kwargs)
+        frame, record_map, diag = build_cache(raw, cache_dir, **policy)
         meta = json.loads((cache_dir / "meta.json").read_text(encoding="utf-8"))
         return frame, record_map, diag, meta

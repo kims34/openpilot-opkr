@@ -1,24 +1,9 @@
+# Historical experiment: no automatic replay on engineering changes.
+# Manual dispatch preserves the archived recipe; it does not authorize reuse
+# of consumed holdout or a new performance trial.
 name: IndexAlert Research v1 Distributional NetEV
 
 on:
-  push:
-    branches: [index-alert-research-v1]
-    paths:
-      - 'INDEXALERT_MASTER_SPEC.md'
-      - 'research_v1_distributional_netev.py'
-      - 'research_v1_distributional_ablation.py'
-      - 'research_v1_distributional_recency.py'
-      - 'research_v1_pit_features.py'
-      - 'research_v1_pit_labels.py'
-      - 'research_v1_marcap.py'
-      - 'test_research_v1_distributional_netev.py'
-      - 'test_research_v1_corporate_action_returns.py'
-      - 'test_research_v1_pit_tax.py'
-      - 'test_research_v1_supervised_cache.py'
-      - 'research_v1_supervised_cache.py'
-      - 'research_v1_fixed_horizon_label.py'
-      - 'research_v1_context.py'
-      - '.github/workflows/indexalert-research-v1-distributional.yml'
   workflow_dispatch:
 
 jobs:

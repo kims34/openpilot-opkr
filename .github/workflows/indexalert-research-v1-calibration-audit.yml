@@ -1,20 +1,9 @@
+# Historical experiment: no automatic replay on engineering changes.
+# Manual dispatch preserves the archived recipe; it does not authorize reuse
+# of consumed holdout or a new performance trial.
 name: IndexAlert Research v1 Calibration Audit
 
 on:
-  push:
-    branches: [index-alert-research-v1]
-    paths:
-      - 'research_v1_calibration_audit.py'
-      - 'research_v1_distributional_netev.py'
-      - 'research_v1_distributional_long_history.py'
-      - 'research_v1_fixed_horizon_label.py'
-      - 'research_v1_context.py'
-      - 'research_v1_supervised_cache.py'
-      - 'research_v1_pit_features.py'
-      - 'research_v1_pit_labels.py'
-      - 'research_v1_marcap.py'
-      - 'test_research_v1_supervised_cache.py'
-      - '.github/workflows/indexalert-research-v1-calibration-audit.yml'
   workflow_dispatch:
 
 jobs:

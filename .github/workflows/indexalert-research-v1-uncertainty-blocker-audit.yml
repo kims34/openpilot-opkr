@@ -1,14 +1,9 @@
+# Historical experiment: no automatic replay on engineering changes.
+# Manual dispatch preserves the archived recipe; it does not authorize reuse
+# of consumed holdout or a new performance trial.
 name: IndexAlert Research v1 Uncertainty Blocker Audit
 
 on:
-  push:
-    branches: [index-alert-research-v1]
-    paths:
-      - 'research_v1_uncertainty_blocker_audit.py'
-      - 'research_v1_selected_calibration.py'
-      - 'research_v1_fixed_horizon_label.py'
-      - 'research_v1_supervised_cache.py'
-      - '.github/workflows/indexalert-research-v1-uncertainty-blocker-audit.yml'
   workflow_dispatch:
 
 jobs:
