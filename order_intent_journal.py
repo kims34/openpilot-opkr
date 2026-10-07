@@ -545,8 +545,8 @@ class OrderIntentJournal:
         if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_capital_config'").fetchone():
             # The allocator imports this journal, so resolve its pure audit
             # only at runtime. No constructor, migration or repair is invoked.
-            from shadow_capital_allocator import validate_stored_capital_reservations
-            validate_stored_capital_reservations(self.db)
+            from shadow_capital_allocator import validate_stored_capital_state
+            validate_stored_capital_state(self.db)
 
     def mark_cancel_requested(self, key):
         with self._atomic():
