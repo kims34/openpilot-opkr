@@ -76,7 +76,8 @@ FIRST_TEST_START_ORDINAL = (
     INITIAL_TRAIN_SESSIONS + CALIBRATION_SESSIONS + 2 * PURGE_SESSIONS
 )
 _BINDING_FIELDS = (
-    "classification", "freeze_anchor_commit", "fit_code_path", "refit_policy_id",
+    "classification", "freeze_anchor_commit", "producer_implementation_commit",
+    "fit_code_path", "refit_policy_id",
     "target_session", "target_session_ordinal", "test_block_index",
     "test_block_start_ordinal", "test_block_end_ordinal_exclusive",
     "test_block_start_session", "target_ordinal_in_test_block",
@@ -294,6 +295,7 @@ def fit_frozen_model_for_target(
     *,
     session_calendar: Sequence[Any],
     target_session: str,
+    producer_implementation_commit: str,
 ) -> dict[str, Any]:
     """Fit only the exact pre-existing train/cal block for one future target.
 
@@ -302,6 +304,14 @@ def fit_frozen_model_for_target(
     schedule = resolve_anchored_schedule(
         session_calendar, target_session=target_session
     )
+    if (
+        type(producer_implementation_commit) is not str
+        or len(producer_implementation_commit) != 40
+        or any(c not in "0123456789abcdef" for c in producer_implementation_commit)
+    ):
+        raise FrozenProspectiveProducerError(
+            "producer_implementation_commit must be lowercase 40-char git SHA"
+        )
     frame = _validate_supervised_frame(z)
     train_dates = set(schedule["train_dates"])
     cal_dates = set(schedule["calibration_dates"])
@@ -381,7 +391,7 @@ def fit_frozen_model_for_target(
             quantiles,
             training_input_sha256=train_sha,
             calibration_input_sha256=cal_sha,
-            fit_code_commit=FREEZE_ANCHOR_COMMIT,
+            fit_code_commit=producer_implementation_commit,
             fit_code_path=FIT_CODE_PATH,
             train_end_session=schedule["train_end_session"],
             calibration_start_session=schedule["calibration_start_session"],
@@ -395,6 +405,7 @@ def fit_frozen_model_for_target(
     body = {
         "classification": CLASSIFICATION,
         "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
+        "producer_implementation_commit": producer_implementation_commit,
         "fit_code_path": FIT_CODE_PATH,
         "refit_policy_id": REFIT_POLICY_ID,
         "target_session": schedule["target_session"],
@@ -454,6 +465,13 @@ def validate_producer_binding(
         raise FrozenProspectiveProducerError("producer classification mismatch")
     if binding.get("freeze_anchor_commit") != FREEZE_ANCHOR_COMMIT:
         raise FrozenProspectiveProducerError("freeze anchor mismatch")
+    implementation_commit = binding.get("producer_implementation_commit")
+    if (
+        type(implementation_commit) is not str
+        or len(implementation_commit) != 40
+        or any(c not in "0123456789abcdef" for c in implementation_commit)
+    ):
+        raise FrozenProspectiveProducerError("producer implementation commit invalid")
     if binding.get("fit_code_path") != FIT_CODE_PATH:
         raise FrozenProspectiveProducerError("fit code path mismatch")
     if binding.get("refit_policy_id") != REFIT_POLICY_ID:
@@ -551,8 +569,10 @@ def validate_producer_binding(
         raise FrozenProspectiveProducerError("invalid bound model bundle") from exc
     if model_validation["model_bundle_sha256"] != binding["model_bundle_sha256"]:
         raise FrozenProspectiveProducerError("producer/model bundle fingerprint mismatch")
-    if model_bundle.get("fit_code_commit") != FREEZE_ANCHOR_COMMIT:
-        raise FrozenProspectiveProducerError("model bundle fit-code commit mismatch")
+    if model_bundle.get("fit_code_commit") != implementation_commit:
+        raise FrozenProspectiveProducerError(
+            "model bundle does not match recorded producer implementation commit"
+        )
     if model_bundle.get("fit_code_path") != FIT_CODE_PATH:
         raise FrozenProspectiveProducerError("model bundle fit-code path mismatch")
     if model_bundle.get("refit_policy_id") != REFIT_POLICY_ID:
