@@ -109,6 +109,74 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE-INVALID-OUTCOME', json.dumps(out))
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
+    def _terminal_inbox_fixture(self, apply=True):
+        from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
+        from kiwoom_execution_inbox import KiwoomExecutionInbox
+        import test_kiwoom_order_journal_bridge as fixtures
+        self.claim()
+        self.journal.bind_acknowledgement('PRIVATE-INTENT', 'native-order')
+        bridge = KiwoomOrderJournalBridge(self.journal, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
+        bridge.bind_order('PRIVATE-INTENT', broker_order_id='native-order', native_side='2')
+        inbox = KiwoomExecutionInbox(bridge)
+        row = fixtures.fill(); row['symbol'] = 'PRIVATE-SYMBOL'
+        inbox.append('private-receipt', 'PRIVATE-INTENT', row, trading_date=fixtures.DAY)
+        if apply:
+            inbox.replay_next()
+        else:
+            self.journal.db.execute("INSERT INTO native_inbox_attempts(receipt_sequence,outcome) VALUES(1,'APPLIED')")
+        return row
+
+    def _assert_private_terminal_unavailable(self):
+        before = tuple(self.journal.db.iterdump())
+        out = self.inspect()
+        self.assertFalse(out['diagnostics_complete'])
+        self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertNotIn('capital', out)
+        self.assertNotIn('PRIVATE-SYMBOL', json.dumps(out))
+        self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
+    def test_terminal_inbox_marker_without_native_execution_is_unavailable_read_only(self):
+        self._terminal_inbox_fixture(apply=False)
+        self._assert_private_terminal_unavailable()
+
+    def test_valid_terminal_inbox_is_read_only_without_recovery_constructors(self):
+        self._terminal_inbox_fixture()
+        self.journal.db.execute("INSERT INTO native_inbox_attempts(receipt_sequence,outcome) VALUES(1,'DUPLICATE')")
+        before = tuple(self.journal.db.iterdump())
+        with patch('order_intent_journal.OrderIntentJournal.__init__', side_effect=AssertionError('recovery forbidden')), \
+             patch('kiwoom_order_journal_bridge.KiwoomOrderJournalBridge.__init__', side_effect=AssertionError('bridge constructor forbidden')), \
+             patch('kiwoom_execution_inbox.KiwoomExecutionInbox.__init__', side_effect=AssertionError('inbox constructor forbidden')), \
+             patch('socket.socket', side_effect=AssertionError('network forbidden')):
+            out = self.inspect()
+        self.assertTrue(out['diagnostics_complete'])
+        self.assertEqual(out['native_inbox_pending_count'], 0)
+        self.assertFalse(out['genuine_live_provenance_verified'])
+        self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
+    def test_terminal_receipt_changed_price_cannot_override_native_binding(self):
+        import hashlib
+        row = self._terminal_inbox_fixture()
+        row.update(fill_price='101', unit_fill_price='101')
+        payload = json.dumps(row, sort_keys=True, separators=(',', ':'))
+        self.journal.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        self.journal.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?', (payload, hashlib.sha256(payload.encode()).hexdigest()))
+        self._assert_private_terminal_unavailable()
+
+    def test_terminal_marker_missing_native_binding_is_unavailable_read_only(self):
+        self._terminal_inbox_fixture()
+        self.journal.db.execute('DROP TRIGGER native_fill_bindings_delete_immutable')
+        self.journal.db.execute('DELETE FROM native_fill_bindings')
+        self._assert_private_terminal_unavailable()
+
+    def test_terminal_receipt_duplicate_json_fields_is_unavailable(self):
+        import hashlib
+        self._terminal_inbox_fixture()
+        payload = self.journal.db.execute('SELECT payload FROM native_inbox_receipts').fetchone()[0]
+        payload = payload[:-1] + ',"symbol":"PRIVATE-SYMBOL"}'
+        self.journal.db.execute('DROP TRIGGER native_inbox_receipts_update_immutable')
+        self.journal.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?', (payload, hashlib.sha256(payload.encode()).hexdigest()))
+        self._assert_private_terminal_unavailable()
+
     def test_duplicate_surviving_broker_bindings_are_private_unavailable(self):
         epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
         for key, broker in (('PRIVATE-ONE','PRIVATE-BROKER-ONE'), ('PRIVATE-TWO','PRIVATE-BROKER-TWO')):

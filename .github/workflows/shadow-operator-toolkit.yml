@@ -8,6 +8,9 @@ on:
       - shadow_operational_*.py
       - test_shadow_dashboard_script.py
       - test_shadow_dashboard_browser.py
+      - kiwoom_execution_inbox.py
+      - kiwoom_order_journal_bridge.py
+      - research_v1_kiwoom_native_execution.py
       - order_intent_journal.py
       - order_snapshot_reconciliation.py
       - indexalert_automation_control.py

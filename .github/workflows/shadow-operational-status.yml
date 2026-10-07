@@ -7,6 +7,9 @@ on:
       - test_shadow_operational_status.py
       - shadow_operational_dashboard.py
       - test_shadow_operational_dashboard.py
+      - kiwoom_execution_inbox.py
+      - kiwoom_order_journal_bridge.py
+      - research_v1_kiwoom_native_execution.py
       - order_intent_journal.py
       - shadow_capital_allocator.py
       - indexalert_automation_control.py

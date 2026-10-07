@@ -15,7 +15,8 @@ MODULES = (
     'kiwoom_settlement_history.py','native_cashflow_binding.py',
     'native_cashflow_review_manifest.py','native_settlement_readiness.py',
     'native_settlement_review_cli.py','shadow_operational_status.py',
-    'shadow_operational_dashboard.py',
+    'shadow_operational_dashboard.py','kiwoom_execution_inbox.py',
+    'kiwoom_order_journal_bridge.py','research_v1_kiwoom_native_execution.py',
 )
 ARTIFACTS = MODULES + ('INDEXALERT_OPERATOR_TOOLKIT_README.md','operator-toolkit-requirements.txt')
 

@@ -145,6 +145,20 @@ def quarantine_conflict(method):
     return guarded
 
 
+def load_stored_intent(connection, key):
+    if not isinstance(key, str) or not key.strip():
+        raise OrderJournalError('identity must be a nonempty string')
+    row = connection.execute(
+        "SELECT payload,state,broker_order_id,filled,terminal_status FROM intents WHERE key=?", (key,)
+    ).fetchone()
+    if row is None:
+        raise OrderJournalError("unknown intent")
+    payload = validate_stored_intent_row(row[0], *row[1:])
+    return dict(key=key, **payload, state=row[1], broker_order_id=row[2],
+                filled_quantity=row[3], remaining_quantity=payload["quantity"]-row[3],
+                terminal_status=row[4], live_ordering_authorized=False, genuine_live_evidence=False)
+
+
 class OrderIntentJournal:
     @classmethod
     def open_readonly(cls, path):
@@ -281,16 +295,7 @@ class OrderIntentJournal:
         return value
 
     def get(self, key):
-        self._text(key)
-        row = self.db.execute(
-            "SELECT payload,state,broker_order_id,filled,terminal_status FROM intents WHERE key=?", (key,)
-        ).fetchone()
-        if row is None:
-            raise OrderJournalError("unknown intent")
-        payload = validate_stored_intent_row(row[0], *row[1:])
-        return dict(key=key, **payload, state=row[1], broker_order_id=row[2],
-                    filled_quantity=row[3], remaining_quantity=payload["quantity"]-row[3],
-                    terminal_status=row[4], live_ordering_authorized=False, genuine_live_evidence=False)
+        return load_stored_intent(self.db, key)
 
     @quarantine_conflict
     def register(self, key, *, symbol, side, quantity):
