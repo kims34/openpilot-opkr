@@ -63,6 +63,15 @@ def validate_stored_intent_row(raw_payload, state, broker_id, filled, terminal):
     return payload
 
 
+def validate_stored_intent_identities(connection):
+    """Do not trust lost SQL uniqueness constraints or select one identity."""
+    keys = set()
+    for (key,) in connection.execute('SELECT key FROM intents'):
+        if type(key) is not str or not key.strip() or key in keys:
+            raise OrderJournalError('invalid stored intent identity')
+        keys.add(key)
+
+
 def validate_stored_execution_totals(connection, intent_fills):
     """Read-only integrity check; caller must pin the surrounding snapshot."""
     totals = {key: 0 for key in intent_fills}
@@ -148,6 +157,7 @@ def quarantine_conflict(method):
 def load_stored_intent(connection, key):
     if not isinstance(key, str) or not key.strip():
         raise OrderJournalError('identity must be a nonempty string')
+    validate_stored_intent_identities(connection)
     row = connection.execute(
         "SELECT payload,state,broker_order_id,filled,terminal_status FROM intents WHERE key=?", (key,)
     ).fetchone()
@@ -305,10 +315,12 @@ class OrderIntentJournal:
             raise OrderJournalError("invalid order payload")
         payload = json.dumps(dict(symbol=symbol, side=side, quantity=quantity), sort_keys=True)
         with self._atomic():
+            validate_stored_intent_identities(self.db)
             existing = self.db.execute("SELECT payload FROM intents WHERE key=?", (key,)).fetchone()
             if existing and existing[0] != payload:
                 raise OrderJournalError("idempotency key collision")
-            self.db.execute("INSERT OR IGNORE INTO intents(key,payload,state) VALUES(?,?,'INTENT_CREATED')", (key, payload))
+            if existing is None:
+                self.db.execute("INSERT INTO intents(key,payload,state) VALUES(?,?,'INTENT_CREATED')", (key, payload))
         return self.get(key)
 
     def shadow_control(self):
@@ -533,6 +545,7 @@ class OrderIntentJournal:
 
     def _require_batch_reconciled(self):
         validate_stored_component_history(self.db)
+        validate_stored_intent_identities(self.db)
         intent_fills = {}
         broker_ids = set()
         for key, payload, state, broker_id, filled, terminal in self.db.execute(

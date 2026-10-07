@@ -33,6 +33,29 @@ class JournalTests(unittest.TestCase):
             self.j.register('decision-1', symbol='005930', side='BUY', quantity=11)
         self.assertEqual(self.j.get('decision-1')['quantity'], 10)
 
+    def _lose_intent_key_constraint(self, duplicate=False):
+        schema = self.j.db.execute("SELECT sql FROM sqlite_master WHERE name='intents'").fetchone()[0]
+        rows = self.j.db.execute('SELECT * FROM intents').fetchall()
+        self.j.db.execute('DROP TABLE intents')
+        self.j.db.execute(schema.replace('key TEXT PRIMARY KEY','key TEXT'))
+        self.j.db.executemany('INSERT INTO intents VALUES(?,?,?,?,?,?)',rows+rows if duplicate else rows)
+
+    def test_duplicate_intent_key_cannot_choose_one_or_enable_shadow(self):
+        self._lose_intent_key_constraint(duplicate=True)
+        history = self.j.db.execute('SELECT * FROM intents').fetchall()
+        for operation in (lambda:self.j.get('decision-1'),
+                lambda:self.j.register('decision-1',symbol='005930',side='BUY',quantity=10),
+                lambda:self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])):
+            with self.assertRaisesRegex(OrderJournalError,'^invalid stored intent identity$'):
+                operation()
+            self.assertEqual(self.j.db.execute('SELECT * FROM intents').fetchall(),history)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
+    def test_register_remains_idempotent_without_sql_unique_constraint(self):
+        self._lose_intent_key_constraint()
+        self.j.register('decision-1',symbol='005930',side='BUY',quantity=10)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM intents').fetchone(),(1,))
+
     def test_duplicate_stored_intent_fields_are_ambiguous_even_if_last_value_matches(self):
         for repeated in ('"quantity":1,', '"quantity":10,', '"side":"SELL",', '"symbol":"OTHER",'):
             with self.subTest(repeated=repeated):
