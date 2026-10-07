@@ -1,8 +1,9 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
-from kiwoom_type00_frame_extractor import extract_type00_events
+from kiwoom_type00_frame_extractor import extract_type00_events_json
 from kiwoom_protected_execution_intake import ProtectedAccountBinding, KiwoomProtectedExecutionIntake
 from kiwoom_execution_inbox import KiwoomExecutionInbox
 from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
@@ -28,7 +29,7 @@ class Type00ProtectedIntakeIntegrationTests(unittest.TestCase):
                     "909":"fill-1","910":"1000","911":"1","914":"1000","915":"1",
                     "913":"체결","919":""
                 }}]}
-                event=extract_type00_events(frame)[0]
+                event=extract_type00_events_json(json.dumps(frame).encode('utf-8'))[0]
                 out=intake.append("receipt-1","d",event,trading_date="2026-10-07")
                 self.assertEqual(out["result"],"RECEIPT_PERSISTED")
                 self.assertFalse(out["source_provenance_admitted"])

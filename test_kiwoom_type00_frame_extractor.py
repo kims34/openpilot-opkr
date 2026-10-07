@@ -1,9 +1,30 @@
 import unittest
+import json
 from kiwoom_type00_frame_extractor import (
     KiwoomType00FrameError, extract_type00_events, summarize_type00_frame,
+    extract_type00_events_json, MAX_FRAME_BYTES,
 )
 
 class KiwoomType00FrameExtractorTests(unittest.TestCase):
+    def test_serialized_utf8_preserves_fid_strings_without_source_admission(self):
+        message = {'trnm':'REAL','data':[{'type':'00','values':{'909':'0001','913':'체결'}}]}
+        payload = json.dumps(message,ensure_ascii=False)
+        for raw in (payload,payload.encode('utf-8')):
+            self.assertEqual(extract_type00_events_json(raw), ({'909':'0001','913':'체결'},))
+        self.assertFalse(summarize_type00_frame(message)['genuine_live_provenance_verified'])
+
+    def test_serialized_ambiguity_non_json_and_resource_limits_are_private(self):
+        for raw in ('{"trnm":"REG","trnm":"REAL","data":[]}',
+                    '{"trnm":"REAL","data":[{"type":"00","values":{"909":"first","909":"last"}}]}',
+                    '{"trnm":"REAL","data":[],"extra":NaN}',
+                    '{"trnm":"REAL","data":[],"extra":Infinity}',
+                    '['*2000+'0'+']'*2000,
+                    ' '* (MAX_FRAME_BYTES+1),
+                    '한'*(MAX_FRAME_BYTES//3+1), b'\xff', '{', None):
+            with self.subTest(kind=type(raw).__name__):
+                with self.assertRaisesRegex(KiwoomType00FrameError, '^TYPE00_JSON_INVALID$'):
+                    extract_type00_events_json(raw)
+
     def test_extracts_only_raw_type00_values(self):
         msg={"trnm":"REAL","data":[
             {"type":"0B","item":"005930","values":{"10":"1000"}},
