@@ -14,6 +14,7 @@ from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snap
 from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history, valid_stored_safety_row
 from shadow_capital_allocator import validate_stored_capital_reservations
 from kiwoom_execution_inbox import verify_stored_terminal_inbox_attempts
+from kiwoom_order_journal_bridge import validate_stored_native_bindings
 
 
 def _require(condition):
@@ -118,6 +119,10 @@ def inspect_shadow_operational_status(path):
             except (ValueError, TypeError, KeyError):
                 changed += 1
         if changed: blockers.add('ORDER_SNAPSHOT_CONTENT_CHANGED')
+        native_tables = {'native_journal_scope','native_order_bindings','native_fill_bindings'}
+        if tables & native_tables:
+            _require(native_tables <= tables)
+            validate_stored_native_bindings(connection)
         pending, conflicts = 0,0
         inbox_tables = {'native_inbox_receipts','native_inbox_attempts','native_inbox_conflicts'}
         if tables & inbox_tables:
