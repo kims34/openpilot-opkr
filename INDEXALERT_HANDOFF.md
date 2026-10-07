@@ -1,3 +1,24 @@
+# Canonical continuation checkpoint — 2026-10-07 12:37 KST
+
+Actual code HEAD f4fab9207abe8544bf5e6d8e214a1f3b01164a0f (PR278). This supersedes the previous JSON-audit next pointer. Requery latest branch HEAD and preserve concurrent changes before resume.
+
+- PR273: Reject ambiguous JSON throughout REAL read-only type00 smoke; feature ee3db0bfd4a62e12d4046a175207297ecaa21cf6; merge b65ef3db29ef093e56d434e919a0fd08a6b18108; exact feature Actions 37566848202 success, 37566848223 success.
+- PR274: Validate type00 schema before read-only smoke counters; feature a22ddd9bad69f536786285915b3c53eaf5b5d7cc; merge ee1afc9ab1c98d799de2e89487787c947cd4afb0; exact feature Actions 37567040374 success, 37567040367 success.
+- PR275: Reject ambiguous JSON and coerced codes in settlement read-only smoke; feature 2e54e8e81809692f770ece7883d1d9e6f7738edf; merge ec0bfe77a715cbc699b8b6c9c70e1ce1965865d5; exact feature Actions 37567116881 success, 37567116813 success, 37567116861 success.
+- PR276: Apply strict JSON response guards to broker-date and account-scope smoke; feature ea6b2f5573f4c063b0585fc7a75a6af0cdcd9c54; merge 9e6f75d92ec64772d91275f617a01520e851c5f6; exact feature Actions 37567204689 success, 37567204708 success, 37567204699 success, 37567204736 success, 37567204765 success.
+- PR277: Require string message names before LOGIN REG and PING routing; feature 8838538dc214c2933af8252fb0c1a21b0d8c6413; merge 46e56be0305bed29808cb505c988da0d61439029; exact feature Actions 37567305940 success, 37567305944 success.
+- PR278: Require explicit registration acknowledgement for type00 connectivity success; feature 6a71c0d3bea6b0e529abb09a482fa77d17f0db81; merge f4fab9207abe8544bf5e6d8e214a1f3b01164a0f; exact feature Actions 37567397310 success, 37567397317 success.
+
+Details:273 validates all JSON object keys before conversion, strict grammar/object root, 1MiB/64-container bounds, no duplicate token/account/FID collapse.274 validates REAL frame arrays/objects/canonical FID strings before counters, exact account matching, lifecycle separated from fill-field observation. Initial feature cfda1fd6fa20ec9b92d7279778d7c1a5ed15d788 had Windows PowerShell5.1 failure37566950347/job112616732950; corrected Korean fill marker to ASCII Unicode code-point expression, then exact final a22ddd9 CI succeeded. Superseded failing checks were never merge basis.275–276 extend strict response guards to settlement/date/scope scripts, preserve cash/date/scope/crypto/pagination/authority rules; independently test pure helpers from all three scripts on Windows/Ubuntu (legacy PowerShell when present).277 requires typed string message names, rejects one-element arrays routed through casts.278 requires explicit REG acknowledgement; zero events with a valid acknowledgement remains successful connectivity, no real order is needed.
+
+In flight: PR279 feature b96626976384f14707406a4c660813897a1c1b51, index-alert-type00-failure-counts-v1. Preserve prior validated event/account-match counts in subsequent private failure summaries; failed/malformed frames contribute no new counters, failure capture/admission flags remain false. Local focused24 tests OK with2 runtime skips; scoped combined38 OK with3 runtime skips. Earlier expanded regression355 passed/2 skipped in1.89s before279. Actual CI executes the PowerShell tests; local skips are not behavioral proof. Inspect existing279 runs; fix failures and merge only on exact final green jobs. Do not duplicate CI.
+
+Exact next independent resume after279: bound strict PowerShell JSON grammar validation's regex and wall-clock resource usage (size/depth guards alone do not bound token-count CPU work); keep private errors and Windows5.1 compatibility, no new broker calls. Then audit operator read-only failure-state rendering and REST pagination/header completeness against existing contracts. Self-contained scripts deliberately carry pure helper copies; verify equivalent behavior/parity when modifying them. Project remains INCOMPLETE; independent engineering is not claimed exhausted.
+
+All Frozen H5/504-126-126/PIT/label/WF/Purged-CPCV/purge/embargo/cost/holdout and consumed invalid v1 lineage unchanged. No sealed holdout. Ordering DISABLED; real orders/funds/permission changes false; genuine LIVE unverified; final-user-ready false. Whole-account read-only baseline COMPLETE, never rerun; type00 designated-device805004/8050 remains owner-deferred, no repeated PowerShell request. No REJECT/INCONCLUSIVE/IDEA operational use. No green CI/helper/fixture proves genuine broker provenance or admission.
+
+---
+
 # Canonical checkpoint — 2026-10-07 12:18 KST
 
 Actual code HEAD f3960d5cb63ffff987d8ca4a1ed64c142e145e68 (PR272). Requery actual branch HEAD on resume. PR270 pending pointer below is superseded; PR270–272 implemented, exact feature CI SUCCESS and merged.
