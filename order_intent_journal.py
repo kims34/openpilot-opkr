@@ -157,7 +157,10 @@ class OrderIntentJournal:
         missing = False
         with self._atomic():
             tables = {row[0] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            missing = any(table in tables and self.db.execute(
+            journal_exists = bool(tables.intersection({
+                'intents','executions','shadow_control','reconciliation_barrier',
+                'reconciled_snapshot_bindings'}))
+            missing = journal_exists and any(table not in tables or self.db.execute(
                 f'SELECT 1 FROM {table} WHERE id=1').fetchone() is None
                 for table in ('shadow_control','reconciliation_barrier'))
             if missing:
