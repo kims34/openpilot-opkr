@@ -51,6 +51,8 @@ def validate_stored_capital_reservations(connection):
             # even if a damaged reservation also matches the fee-only amount.
             if row[3] > 0 and revoked is None:
                 raise OrderJournalError('filled principal release lacks restoration')
+            if revoked is None and row[4] not in ('CANCELLED', 'REJECTED'):
+                raise OrderJournalError('principal release lacks zero-fill terminal fact')
             if revoked is not None:
                 if (type(revoked[0]) is not int or revoked[0] != principal
                     or type(revoked[1]) is not str or not revoked[1].strip()

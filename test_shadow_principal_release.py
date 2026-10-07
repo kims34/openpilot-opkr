@@ -55,6 +55,19 @@ class PrincipalReleaseTests(unittest.TestCase):
             expected_epoch=epoch,expected_capital_revision=self.a.state()['revision'])
         self.assertEqual(self.a.state()['managed_reserve_krw'],99)
 
+    def test_unconfirmed_order_cannot_validate_a_forged_zero_fill_release(self):
+        self.j.db.execute('INSERT INTO shadow_capital_releases VALUES(?,?,?)', ('d1',80,1))
+        self.j.db.execute('UPDATE shadow_capital_reservations SET reserve=fee_buffer')
+        with self.assertRaisesRegex(OrderJournalError, 'principal release lacks zero-fill terminal fact'):
+            self.a.state()
+        self.j.register('d2',symbol='OTHER',side='BUY',quantity=12)
+        with self.assertRaisesRegex(OrderJournalError, 'principal release lacks zero-fill terminal fact'):
+            self.a.reserve_and_claim_buy('d2',limit_price_krw=8,fee_buffer_krw=0,
+                expected_epoch=self.j.shadow_control()['epoch'],expected_capital_revision=1)
+        self.assertEqual(self.j.get('d2')['state'], 'INTENT_CREATED')
+        self.assertEqual(self.j.get('d1')['state'], 'ACKNOWLEDGED')
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_capital_reservations').fetchone(), (1,))
+
     def test_exhausted_capital_revision_cannot_release_or_reconfigure(self):
         self.batch()
         self.j.db.execute('UPDATE shadow_capital_config SET revision=?', (2**63-1,))
