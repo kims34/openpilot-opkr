@@ -8,7 +8,11 @@ import numpy as np
 import pandas as pd
 
 from research_v1_context import CONTEXT_FEATURES
-from research_v1_prospective_frozen_producer import FIRST_TEST_START_ORDINAL
+from research_v1_prospective_frozen_producer import (
+    FIRST_TEST_START_ORDINAL,
+    FROZEN_CALENDAR_ORIGIN_SESSION,
+    FROZEN_TEST_BLOCK_STARTS,
+)
 from research_v1_prospective_session_commit import (
     ProspectiveSessionCommitError,
     commit_structural_prospective_session,
@@ -25,7 +29,20 @@ EVIDENCE = json.loads(
 
 
 def sessions(n=800):
-    return [d.strftime("%Y-%m-%d") for d in pd.bdate_range("2023-01-02", periods=n)]
+    values = [pd.Timestamp(FROZEN_CALENDAR_ORIGIN_SESSION)]
+    for ordinal, expected_text in sorted(FROZEN_TEST_BLOCK_STARTS.items()):
+        if ordinal >= n:
+            break
+        expected = pd.Timestamp(expected_text)
+        while len(values) < ordinal:
+            candidate = values[-1] + pd.Timedelta(days=1)
+            if candidate >= expected:
+                raise AssertionError("synthetic calendar cannot satisfy milestone")
+            values.append(candidate)
+        values.append(expected)
+    while len(values) < n:
+        values.append(values[-1] + pd.Timedelta(days=1))
+    return [d.strftime("%Y-%m-%d") for d in values]
 
 
 def supervised(calendar):
