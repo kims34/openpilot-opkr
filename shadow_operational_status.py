@@ -46,7 +46,9 @@ def inspect_shadow_operational_status(path):
         validate_stored_component_history(connection)
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if 'shadow_control_faults' in tables:
-            _require(connection.execute('SELECT 1 FROM shadow_control_faults LIMIT 1').fetchone() is None)
+            if connection.execute('SELECT 1 FROM shadow_control_faults LIMIT 1').fetchone():
+                report['local_blockers'] = ['SAFETY_METADATA_QUARANTINED']
+                return report
         _require({'intents','executions','shadow_control','reconciliation_barrier','reconciled_snapshot_bindings'} <= tables)
         control = connection.execute('SELECT epoch,mode,killed FROM shadow_control WHERE id=1').fetchone()
         barrier = connection.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()

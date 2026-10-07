@@ -42,7 +42,7 @@ class OperationalStatusTests(unittest.TestCase):
         before = self.journal.db.total_changes
         out = self.inspect()
         self.assertFalse(out['diagnostics_complete'])
-        self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertEqual(out['local_blockers'], ['SAFETY_METADATA_QUARANTINED'])
         self.assertEqual(self.journal.db.total_changes, before)
         self.assertEqual(self.journal.db.execute('SELECT mode,killed FROM shadow_control').fetchone(), ('MASTER_OFF',1))
 
