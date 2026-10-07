@@ -38,15 +38,16 @@ CAPITAL_NOT_CONFIGURED:'Shadow 자금 설정이 없습니다',CAPITAL_CONTROL_DI
 CAPITAL_CEILING_EXCEEDED:'현재 예약 자금이 설정 한도를 넘었습니다',OPERATIONAL_SNAPSHOT_UNAVAILABLE:'저널을 읽을 수 없거나 필수 정보가 없습니다',
 INITIALIZED_HISTORY_MISSING:'초기화된 필수 이력이 누락되어 재시작과 활성화가 차단되어 있습니다',
 SAFETY_METADATA_QUARANTINED:'안전 이력에 손상이 기록되어 재시작과 활성화가 차단되어 있습니다'};
-function field(parent,label,value){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=String(value);parent.append(dt,dd);}
+function displayValue(value){return typeof value==='number'&&!Number.isSafeInteger(value)?'정확한 수치 확인 불가':String(value);}
+function field(parent,label,value){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=displayValue(value);parent.append(dt,dd);}
 async function refresh(){const button=byId('refresh');button.disabled=true;byId('error').textContent='';
 for(const id of ['state','blockers','capital','settlement'])byId(id).replaceChildren();
 try{const response=await fetch('/api/status',{cache:'no-store'});if(!response.ok)throw Error('status unavailable');const data=await response.json();
 field(byId('state'),'조회 결과',data.diagnostics_complete?'조회 완료':'조회 불가');
 field(byId('state'),'실제 주문','꺼짐');
 if(data.diagnostics_complete){field(byId('state'),'Shadow 상태',data.shadow_mode==='SHADOW'?'로컬 Shadow 활성':'정지');
-field(byId('state'),'저널 epoch / 대조 revision',data.journal_epoch+' / '+data.snapshot_revision);
-field(byId('state'),'미확인 주문',data.unresolved_intent_count);field(byId('state'),'미처리 / 충돌 체결',data.native_inbox_pending_count+' / '+data.native_inbox_conflict_count);}
+field(byId('state'),'저널 epoch / 대조 revision',displayValue(data.journal_epoch)+' / '+displayValue(data.snapshot_revision));
+field(byId('state'),'미확인 주문',data.unresolved_intent_count);field(byId('state'),'미처리 / 충돌 체결',displayValue(data.native_inbox_pending_count)+' / '+displayValue(data.native_inbox_conflict_count));}
 for(const key of data.local_blockers){const li=document.createElement('li');li.textContent=labels[key]||'추가 점검이 필요합니다';byId('blockers').append(li);}
 if(data.diagnostics_complete&&data.local_blockers.length===0){const li=document.createElement('li');li.textContent='로컬 진단 항목의 막힘은 없습니다. 외부 검증과 실제 운영 승인은 별도로 필요합니다.';byId('blockers').append(li);}
 if(data.capital){field(byId('capital'),'설정 한도 (원)',data.capital.maximum_krw);field(byId('capital'),'기존 사용·예약 (원)',data.capital.baseline_committed_krw);
@@ -69,9 +70,11 @@ ORDER_SNAPSHOT_SCOPE_CHANGED:'주문 대조 범위가 변경됐습니다',
 UNRESOLVED_DURABLE_INTENTS:'처리 여부가 확인되지 않은 주문이 있습니다'};
 for(const key of settlement.local_reconciliation_errors)
 field(byId('settlement'),'결제 연결 점검',settlementLabels[key]||'추가 점검이 필요합니다');
-field(byId('settlement'),'결제 조회 epoch / revision',settlement.journal_epoch+' / '+settlement.snapshot_revision);
+field(byId('settlement'),'결제 조회 epoch / revision',displayValue(settlement.journal_epoch)+' / '+displayValue(settlement.snapshot_revision));
 field(byId('settlement'),'독립 계좌·결제 승인','미확인');
-if(data.diagnostics_complete&&(data.journal_epoch!==settlement.journal_epoch||data.snapshot_revision!==settlement.snapshot_revision))
+if(data.diagnostics_complete&&![data.journal_epoch,data.snapshot_revision,settlement.journal_epoch,settlement.snapshot_revision].every(Number.isSafeInteger))
+field(byId('settlement'),'조회 시점 연결','정확한 수치 확인 불가');
+else if(data.diagnostics_complete&&(data.journal_epoch!==settlement.journal_epoch||data.snapshot_revision!==settlement.snapshot_revision))
 field(byId('settlement'),'조회 시점 차이','저널 상태가 변경됐습니다. 다시 조회하세요');
 }else field(byId('settlement'),'자료 점검',settlement.review_errors.includes('SETTLEMENT_INPUT_NOT_CONFIGURED')?'결제 자료 파일이 연결되지 않았습니다':'자료의 범위·형식·저널 연결을 확인하세요');
 }catch(error){for(const id of ['state','blockers','capital','settlement'])byId(id).replaceChildren();byId('error').textContent='상태를 가져오지 못했습니다. 이전 상태는 표시하지 않습니다.';}finally{button.disabled=false;}}
