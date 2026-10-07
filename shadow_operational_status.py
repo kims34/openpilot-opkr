@@ -11,7 +11,7 @@ import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
-from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals
+from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history
 from shadow_capital_allocator import validate_stored_capital_reservations
 
 
@@ -43,6 +43,7 @@ def inspect_shadow_operational_status(path):
         connection = sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro', uri=True, isolation_level=None)
         connection.execute('PRAGMA query_only=ON')
         connection.execute('BEGIN')
+        validate_stored_component_history(connection)
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         _require({'intents','executions','shadow_control','reconciliation_barrier','reconciled_snapshot_bindings'} <= tables)
         control = connection.execute('SELECT epoch,mode,killed FROM shadow_control WHERE id=1').fetchone()

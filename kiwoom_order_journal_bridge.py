@@ -13,7 +13,7 @@ import json
 import re
 import sqlite3
 
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals, record_component_initialization, validate_stored_component_history
 from research_v1_kiwoom_native_execution import (
     OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT, KT00007_SOURCE_CONTRACT,
     KA10076_SOURCE_CONTRACT,
@@ -64,6 +64,7 @@ class KiwoomOrderJournalBridge:
         self.account=account_fingerprint
         self.day=trading_date
         with self._guard():
+            validate_stored_component_history(journal.db)
             require(isinstance(self.account,str) and re.fullmatch(r'sha256:[0-9a-f]{64}',self.account))
             require(isinstance(self.day,str) and date.fromisoformat(self.day).isoformat()==self.day)
             tables = {row[0] for row in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -88,6 +89,7 @@ class KiwoomOrderJournalBridge:
                 require(order['state'] != 'INTENT_CREATED' and order['broker_order_id'] == broker_id)
                 require(type(side) is str and bool(side.strip()))
             self._audit_existing_fill_bindings_locked()
+            record_component_initialization(journal.db, 'native')
             for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
                 for operation in ('UPDATE','DELETE'):
                     journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS {table}_{operation.lower()}_immutable

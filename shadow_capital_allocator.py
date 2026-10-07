@@ -15,7 +15,7 @@ from indexalert_automation_control import (
     AutomationCapitalState, AutomationUserControls, DecisionAction,
     EngineOrderIntent, validate_engine_plan,
 )
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_intent_row, validate_stored_reconciliation_barrier
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_intent_row, validate_stored_reconciliation_barrier, record_component_initialization, validate_stored_component_history
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 
 
@@ -65,10 +65,15 @@ class ShadowCapitalAllocator:
         self.journal = journal
         missing = False
         with journal._atomic():
+            try:
+                validate_stored_component_history(journal.db)
+            except OrderJournalError:
+                missing = True
             tables = {row[0] for row in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required = {'shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'}
-            missing = bool(tables & required) and (not required <= tables or
+            missing = missing or (bool(tables & required) and (not required <= tables or
                 journal.db.execute('SELECT 1 FROM shadow_capital_config WHERE id=1').fetchone() is None)
+            )
             if missing:
                 journal._stop_shadow('CAPITAL_STARTUP_HISTORY_MISSING')
             else:
@@ -84,6 +89,7 @@ class ShadowCapitalAllocator:
                 journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_releases (
                     key TEXT PRIMARY KEY, released_principal INTEGER NOT NULL,
                     snapshot_revision INTEGER NOT NULL)''')
+                record_component_initialization(journal.db, 'capital')
         if missing:
             raise OrderJournalError('startup capital history missing')
 
@@ -93,6 +99,7 @@ class ShadowCapitalAllocator:
             return self._state_locked()
 
     def _state_locked(self):
+        validate_stored_component_history(self.journal.db)
         row = self.journal.db.execute(
             'SELECT revision,enabled,maximum,baseline FROM shadow_capital_config WHERE id=1').fetchone()
         if row is None:

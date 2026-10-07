@@ -78,6 +78,31 @@ def validate_stored_execution_totals(connection, intent_fills):
         raise OrderJournalError('inconsistent stored executions')
 
 
+COMPONENT_TABLES = {
+    'capital': frozenset(('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases')),
+    'native': frozenset(('native_journal_scope','native_order_bindings','native_fill_bindings')),
+    'inbox': frozenset(('native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts')),
+}
+
+
+def validate_stored_component_history(connection):
+    """Optional modules cannot become fresh after all their tables disappear."""
+    tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'journal_component_history' not in tables:
+        return  # Pre-registry schema migration; no authority is inferred.
+    for (component,) in connection.execute('SELECT component FROM journal_component_history'):
+        if component not in COMPONENT_TABLES or not COMPONENT_TABLES[component] <= tables:
+            raise OrderJournalError('initialized component history missing')
+
+
+def record_component_initialization(connection, component):
+    validate_stored_component_history(connection)
+    tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if component not in COMPONENT_TABLES or not COMPONENT_TABLES[component] <= tables:
+        raise OrderJournalError('initialized component history missing')
+    connection.execute('INSERT OR IGNORE INTO journal_component_history VALUES(?)', (component,))
+
+
 def validate_stored_reconciliation_barrier(connection):
     """Validate persisted safety metadata without repairing its revision."""
     row = connection.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
@@ -149,6 +174,8 @@ class OrderIntentJournal:
             CREATE TABLE IF NOT EXISTS reconciled_snapshot_bindings (
                 key TEXT PRIMARY KEY, revision INTEGER NOT NULL,
                 epoch INTEGER NOT NULL, payload TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS journal_component_history (
+                component TEXT PRIMARY KEY NOT NULL);
             CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
                 ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
         """
@@ -164,6 +191,10 @@ class OrderIntentJournal:
             missing = journal_exists and (not required <= tables or any(self.db.execute(
                 f'SELECT 1 FROM {table} WHERE id=1').fetchone() is None
                 for table in ('shadow_control','reconciliation_barrier')))
+            try:
+                validate_stored_component_history(self.db)
+            except OrderJournalError:
+                missing = True
             if missing:
                 if 'shadow_control' in tables:
                     self._stop_shadow('STARTUP_SAFETY_METADATA_MISSING')
@@ -171,12 +202,19 @@ class OrderIntentJournal:
                 for statement in schema.split(';'):
                     if statement.strip():
                         self.db.execute(statement)
+                # Backfill only present complete legacy schemas, without
+                # authenticating account/source evidence or repairing facts.
+                for component, required_tables in COMPONENT_TABLES.items():
+                    if required_tables <= tables:
+                        record_component_initialization(self.db, component)
         if missing:
             self.db.close()
             raise OrderJournalError('startup safety metadata missing')
         for operation in ('UPDATE', 'DELETE'):
             self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS executions_{operation.lower()}_immutable
                 BEFORE {operation} ON executions BEGIN SELECT RAISE(ABORT,'immutable execution'); END''')
+            self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS component_history_{operation.lower()}_immutable
+                BEFORE {operation} ON journal_component_history BEGIN SELECT RAISE(ABORT,'immutable component history'); END''')
         # Every new connection is treated conservatively as startup/reconnect.
         # An in-flight submission on another connection also becomes uncertain.
         self.recover()
@@ -422,6 +460,7 @@ class OrderIntentJournal:
                 THEN revision+1 ELSE revision END WHERE id=1''')
 
     def _require_batch_reconciled(self):
+        validate_stored_component_history(self.db)
         validate_stored_execution_totals(self.db,
             dict(self.db.execute('SELECT key,filled FROM intents')))
         # A caller-supplied matched batch cannot bypass durable unprocessed or

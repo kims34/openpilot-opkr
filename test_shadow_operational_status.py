@@ -34,6 +34,15 @@ class OperationalStatusTests(unittest.TestCase):
         self.capital.reserve_and_claim_buy('PRIVATE-INTENT',limit_price_krw=8,fee_buffer_krw=3,
             expected_epoch=epoch,expected_capital_revision=1)
 
+    def test_complete_capital_history_loss_is_unavailable_without_mutation(self):
+        for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
+            self.journal.db.execute(f'DROP TABLE {table}')
+        before = self.journal.db.total_changes
+        result = self.inspect()
+        self.assertFalse(result['diagnostics_complete'])
+        self.assertEqual(result['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertEqual(self.journal.db.total_changes, before)
+
     def test_live_shadow_inspection_never_runs_recovery_or_mutates(self):
         self.claim()
         before = self.journal.shadow_control(),self.journal.get('PRIVATE-INTENT'),self.journal.db.total_changes

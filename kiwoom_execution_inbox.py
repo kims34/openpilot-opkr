@@ -10,6 +10,7 @@ import hashlib
 import json
 
 from kiwoom_order_journal_bridge import NativeBridgeError, require
+from order_intent_journal import record_component_initialization, validate_stored_component_history
 from research_v1_kiwoom_native_execution import OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT
 
 
@@ -33,6 +34,7 @@ class KiwoomExecutionInbox:
         self.bridge = bridge
         self.journal = bridge.journal
         with self._guard():
+            validate_stored_component_history(self.journal.db)
             tables = {row[0] for row in self.journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required = {'native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts'}
             require(not tables & required or required <= tables)
@@ -46,6 +48,7 @@ class KiwoomExecutionInbox:
                     self.journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS {name}_{operation.lower()}_immutable
                         BEFORE {operation} ON {name} BEGIN SELECT RAISE(ABORT,'immutable normalized inbox'); END''')
             self._audit_existing_locked()
+            record_component_initialization(self.journal.db, 'inbox')
 
     @contextmanager
     def _guard(self):
