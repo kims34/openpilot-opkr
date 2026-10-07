@@ -1,3 +1,59 @@
+# Continuation checkpoint — 2026-10-07 PR302–306 canonical native integrity
+
+This checkpoint supersedes earlier next-task pointers. GitHub remains authoritative. Project is NOT complete; independent development remains available. Do not repeat PR273–306.
+
+## Actual completed work and source lineage
+- PR302, feature 034e8063bd3d8753a7929e8d39d3c0e4820130bb, merge 5ab28cfbcc2182be631758c23933e4e041dca9ca: operator could report complete diagnostics for APPLIED without a native execution. Shared pure stored-intent/native-material/normalized-inbox/strict-JSON readers now verify terminal receipt digest, scope, native binding and execution quantity in the existing read-only snapshot. No recovery-capable constructors. Valid APPLIED/DUPLICATE remains visible; missing execution/binding, altered price with recomputed hash and duplicate JSON fields are privately unavailable.
+- PR302 original feature bf81fb1d5d40861c7a4586581201dcf4eb81bace failed operator-toolkit CI 37589186664 (jobs112686321074,112686321393). Root cause: extracted archive omitted newly imported offline verifier/normalizer modules. Fixed on the same PR by adding the three allowlisted modules, workflow dependency paths and extracted terminal-history inspection with PYTHONPATH removed. The failed head was NOT merged; all exact final-head CI below passed.
+- PR303, feature c6bfe5893a23322cb1649162a1baf5ef5e00a657, merge 40259864798eb0abeeab5d3bff59f9c1b569df39: well-formed orphan native fill outside terminal receipts could still report complete. Existing complete startup native scope/order/fill audit extracted into a pure reader shared with operator inspection, including journals without inboxes. Orphan fill/order is unavailable; valid native order without inbox remains visible. Database snapshots preserved.
+- PR304, feature be43af37c706cb4dad4c6ce9638483fea5f602d8, merge 609ab7b41d15c5b376394c9e77a4e3bc93bf7ff4: runtime bridge bind/fill/REST methods now run that complete audit before processing under the existing transaction. Reproduced orphan native history ignored by REST comparison; no new fill or preferred resolution, original/corrupt history retained, MASTER_OFF/barrier blocked.
+- PR305, feature 9d3ffe83f20d0652db3bfcf32e6be710be932435, merge 18913bd065732aebc791605b56f73cd21fa859cb: duplicate native order key/broker identity and duplicate native (key, execution_id) are rejected independently of lost SQL uniqueness constraints. Reproduced startup choosing the first ambiguous order binding. Shared startup/runtime/operator checks retain original ambiguous rows.
+- PR306, feature fdafe7e0cef6d0e81adafe9f227fee83696e43ef, merge c005525bc07b40df710562628c8b1b14e490d9dd: entire native scope must satisfy the existing singleton id=1 invariant even after SQL CHECK/PK loss. Extra scope previously ignored was reproduced. Inbox direct/FIFO/counts also run complete native audit, so unreferenced ambiguity cannot hide under terminal markers. Existing scope rows and already-recorded fills remain intact.
+
+## Verification
+- Selected journal/operator/dashboard/script/toolkit/settlement CLI suite: 412 passed in 9.29s, final diff check clean. Actual final exact-head journal CI log: 348 passed in 5.01s.
+- Existing restart/crash-between-execution-and-marker, late-fill/Kill latch, capital/reconciliation and BLOCKED/pending diagnostics remain passing. Valid operator inspection forbids constructors/network and both success/failure preserve database snapshots.
+- Offline fixture tests and local structural reads only. No broker transport/device/credential operation performed. Full native scans add per-operation work; no genuine LIVE latency/performance claim was made.
+- PR302 exact feature HEAD 034e8063bd3d8753a7929e8d39d3c0e4820130bb:
+  Account Settlement Binding: run 37589485039, jobs 112687271696 — all SUCCESS.
+  Durable Order Intent Journal: run 37589485142, jobs 112687272028 — all SUCCESS.
+  Shadow Operational Status: run 37589485253, jobs 112687272852 — all SUCCESS.
+  Offline Kiwoom Journal Binding: run 37589485012, jobs 112687271618 — all SUCCESS.
+  Shadow Operator Toolkit: run 37589485122, jobs 112687272299,112687272552,112687272615 — all SUCCESS.
+- PR303 exact feature HEAD c6bfe5893a23322cb1649162a1baf5ef5e00a657:
+  Offline Kiwoom Journal Binding: run 37589647614, jobs 112687802352 — all SUCCESS.
+  Shadow Operational Status: run 37589647600, jobs 112687802731 — all SUCCESS.
+  Account Settlement Binding: run 37589647589, jobs 112687802511 — all SUCCESS.
+  Shadow Operator Toolkit: run 37589647561, jobs 112687802363,112687802627,112687802643 — all SUCCESS.
+- PR304 exact feature HEAD be43af37c706cb4dad4c6ce9638483fea5f602d8:
+  Account Settlement Binding: run 37589842522, jobs 112688435658 — all SUCCESS.
+  Shadow Operator Toolkit: run 37589842493, jobs 112688435334,112688435842,112688436087 — all SUCCESS.
+  Offline Kiwoom Journal Binding: run 37589842494, jobs 112688435466 — all SUCCESS.
+  Shadow Operational Status: run 37589842499, jobs 112688435644 — all SUCCESS.
+- PR305 exact feature HEAD 9d3ffe83f20d0652db3bfcf32e6be710be932435:
+  Shadow Operator Toolkit: run 37590078748, jobs 112689192311,112689192413,112689192491 — all SUCCESS.
+  Account Settlement Binding: run 37590078816, jobs 112689192750 — all SUCCESS.
+  Shadow Operational Status: run 37590078737, jobs 112689192418 — all SUCCESS.
+  Offline Kiwoom Journal Binding: run 37590078841, jobs 112689192773 — all SUCCESS.
+- PR306 exact feature HEAD fdafe7e0cef6d0e81adafe9f227fee83696e43ef:
+  Account Settlement Binding: run 37590334314, jobs 112690022931 — all SUCCESS.
+  Shadow Operational Status: run 37590334287, jobs 112690021650 — all SUCCESS.
+  Offline Kiwoom Journal Binding: run 37590334238, jobs 112690021521 — all SUCCESS.
+  Shadow Operator Toolkit: run 37590335175, jobs 112690024418,112690024688,112690024732 — all SUCCESS.
+
+## Resume from actual GitHub
+- Source HEAD at checkpoint: c005525bc07b40df710562628c8b1b14e490d9dd; the canonical documentation commit descends from it. Resolve actual branch HEAD/open PR/commits/Actions again before any edit, preserve concurrent advances, and do not dispatch duplicate CI.
+- Other freshly checked refs unchanged: research 194da5016ad3aecc2ceb25944666daa74f038083; Android 144fad9c2ed178e04e4b92100210e53e07f77461; prereg 1d81eb526f59b87c528d63be9e3883e0f76fedf6.
+- Exact next independent review point: kiwoom_execution_inbox.py _audit_existing_locked/append/replay/replay_next and receipt identity constraints under damaged SQLite schema. Audit whether loss of receipt_id/sequence uniqueness could make fetchone or sequence maps choose one receipt or strand another. No such new receipt-identity reproduction/implementation was completed in this checkpoint; prove a concrete failure before editing. Preserve append-only histories, explicitly fail closed rather than choosing/deleting/repairing identities, and use pure read validators for operator coverage.
+- Continue priority queue: durable integrity, restart/reconnect/crash/Kill/late-fill, capital conservation, read-only transport-runtime, independent admission/reporting, source/PIT/economics, Android, then frozen-contract successor research. Successful PR/CI is not project completion.
+
+## Deferred external items and immutable safety
+REAL whole-account read-only baseline COMPLETE; never repeat. type00 DEVICE_AUTH 805004/8050 remains owner-deferred external authentication. Android original signer continuity remains owner-deferred. No repeated owner commands/key search/reinstall/secret request. Independent engineering is not blocked by these.
+ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED=false; FUNDS_MOVEMENT_AUTHORIZED=false; PERMISSION_CHANGE_AUTHORIZED=false; final-user-ready=false. These checks authenticate neither broker origin nor genuine LIVE/source/PIT/economics/Shadow/Early-Live admission. Account/day/native side remain declared offline scope, not independent attestation.
+Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/execution/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalid v1 lineage unchanged; no sealed holdout access, promotion or Champion change. No sensitive account/token/raw-frame/broker identifiers disclosed.
+
+---
+
 # Continuation checkpoint — 2026-10-07 PR297–301 runtime inbox integrity
 
 GitHub is authoritative. This checkpoint supersedes older next-task pointers. Project is NOT complete; execution-boundary engineering continues. Do not repeat PR273–301.
