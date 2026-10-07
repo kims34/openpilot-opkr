@@ -1,0 +1,48 @@
+name: IndexAlert Frozen Long History Rehydration
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'pit_rebuild/rehydrate_frozen_long_history.py'
+      - 'pit_rebuild/test_rehydrate_frozen_long_history.py'
+      - 'pit_rebuild/research_v1_marcap.py'
+      - 'pit_rebuild/requirements.txt'
+      - 'pit_rebuild/.python-version'
+      - 'INDEXALERT_FROZEN_LONG_HISTORY_REHYDRATION_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-long-history-rehydration.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'pit_rebuild/rehydrate_frozen_long_history.py'
+      - 'pit_rebuild/test_rehydrate_frozen_long_history.py'
+      - 'pit_rebuild/research_v1_marcap.py'
+      - 'pit_rebuild/requirements.txt'
+      - 'pit_rebuild/.python-version'
+      - 'INDEXALERT_FROZEN_LONG_HISTORY_REHYDRATION_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-long-history-rehydration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pit_rebuild
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.14'
+      - name: Install frozen source-rebuild dependencies
+        run: python -m pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0
+      - name: Compile and test fail-closed rehydration contract
+        run: |
+          python -m py_compile rehydrate_frozen_long_history.py research_v1_marcap.py
+          python -m unittest test_rehydrate_frozen_long_history.py
+      - name: Verify frozen builder blob identity directly from git
+        run: |
+          test "$(git hash-object research_v1_marcap.py)" = "5b39887733473a6b4aff5a0fc097c0acc5f5d711"
