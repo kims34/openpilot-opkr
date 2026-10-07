@@ -20,6 +20,9 @@ from research_v1_prospective_session_commit import (
 )
 
 
+PRODUCER_IMPLEMENTATION_COMMIT = "e" * 40
+
+
 ROOT = Path(__file__).parent
 EVIDENCE = json.loads(
     (ROOT / "INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json").read_text(
@@ -168,6 +171,7 @@ class ProspectiveSessionCommitTest(unittest.TestCase):
             ),
             session_calendar=self.calendar,
             target_session=self.target,
+            producer_implementation_commit=PRODUCER_IMPLEMENTATION_COMMIT,
             decision_at=self.decision_at,
             captured_at=self.captured_at,
             root=str(root),
@@ -192,6 +196,46 @@ class ProspectiveSessionCommitTest(unittest.TestCase):
             self.assertTrue((root / f"producer-{self.target}.json").exists())
             self.assertTrue((root / f"decision-{self.target}.json").exists())
             self.assertTrue(any(root.glob("model-bundle-*.json")))
+            producer = json.loads(
+                (root / f"producer-{self.target}.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                producer["producer_implementation_commit"],
+                PRODUCER_IMPLEMENTATION_COMMIT,
+            )
+            model_path = next(root.glob("model-bundle-*.json"))
+            model = json.loads(model_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                model["fit_code_commit"], PRODUCER_IMPLEMENTATION_COMMIT
+            )
+            self.assertNotEqual(
+                producer["freeze_anchor_commit"],
+                producer["producer_implementation_commit"],
+            )
+
+    def test_invalid_producer_implementation_commit_fails_before_model_fit(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            (base / "git").mkdir()
+            with self.assertRaisesRegex(Exception, "producer_implementation_commit"):
+                commit_structural_prospective_session(
+                    daily_raw=self.daily,
+                    master_raw=self.master,
+                    daily_retrieved_at=self.daily_seen,
+                    master_retrieved_at=self.master_seen,
+                    connectivity_evidence=EVIDENCE,
+                    history_raw=self.history,
+                    supervised_frame=self.supervised,
+                    session_calendar=self.calendar,
+                    target_session=self.target,
+                    producer_implementation_commit="bad",
+                    decision_at=self.decision_at,
+                    captured_at=self.captured_at,
+                    root=str(base / "private"),
+                    git_worktree=str(base / "git"),
+                )
+            self.assertFalse((base / "private" / f"session-{self.target}.json").exists())
+
 
     def test_identical_retry_is_idempotent_at_every_same_session_boundary(self):
         with tempfile.TemporaryDirectory() as folder:
