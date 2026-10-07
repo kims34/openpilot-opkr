@@ -141,6 +141,27 @@ class JournalTests(unittest.TestCase):
             self.j.claim_submission('decision-1',expected_epoch=self.j.shadow_control()['epoch'])
         self.assertEqual(self.j.db.execute('SELECT state,payload FROM intents').fetchone(), ('INTENT_CREATED',payload))
 
+    def test_corrupt_unclaimed_other_intent_blocks_claim_enable_and_kill_reset(self):
+        self.j.register('decision-2',symbol='OTHER',side='SELL',quantity=1)
+        self.j.db.execute("UPDATE intents SET payload='{}' WHERE key='decision-1'")
+        before = tuple(self.j.db.iterdump())
+        with self.assertRaisesRegex(OrderJournalError, 'invalid stored intent payload'):
+            self.j.claim_submission('decision-2',expected_epoch=self.j.shadow_control()['epoch'])
+        self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.j.disable_shadow()
+        control = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'invalid stored intent payload'):
+            self.j.enable_shadow(expected_epoch=control['epoch'])
+        self.assertEqual(self.j.shadow_control(), control)
+        self.j.trip_kill_switch()
+        killed = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'invalid stored intent payload'):
+            self.j.reset_kill_switch(expected_epoch=killed['epoch'])
+        self.assertEqual(self.j.shadow_control(), killed)
+        self.assertTrue(killed['killed'])
+        self.assertEqual(self.j.get('decision-2')['state'], 'INTENT_CREATED')
+        self.assertEqual(self.j.db.execute("SELECT payload FROM intents WHERE key='decision-1'").fetchone(), ('{}',))
+
     def test_exhausted_epoch_stops_without_float_nonce_reuse_or_kill_reset(self):
         self.j.db.execute('UPDATE shadow_control SET epoch=?', (2**63-1,))
         out = self.j.disable_shadow()

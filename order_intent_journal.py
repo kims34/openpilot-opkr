@@ -528,8 +528,13 @@ class OrderIntentJournal:
 
     def _require_batch_reconciled(self):
         validate_stored_component_history(self.db)
-        validate_stored_execution_totals(self.db,
-            dict(self.db.execute('SELECT key,filled FROM intents')))
+        intent_fills = {}
+        for key, payload, state, broker_id, filled, terminal in self.db.execute(
+                'SELECT key,payload,state,broker_order_id,filled,terminal_status FROM intents'):
+            self._text(key)
+            validate_stored_intent_row(payload, state, broker_id, filled, terminal)
+            intent_fills[key] = filled
+        validate_stored_execution_totals(self.db, intent_fills)
         # A caller-supplied matched batch cannot bypass durable unprocessed or
         # conflicted normalized deliveries. No automatic discard/resolution.
         if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_inbox_receipts'").fetchone():
