@@ -75,13 +75,13 @@ class OperationalStatusTests(unittest.TestCase):
 
     def test_nonpositive_inbox_arrival_sequence_cannot_report_complete_diagnostics(self):
         self.journal.db.executescript('''
-            CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY);
+            CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);
             CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
             CREATE TABLE native_inbox_conflicts(reason TEXT);
         ''')
         for sequence in (0, -1):
             with self.subTest(sequence=sequence):
-                self.journal.db.execute('INSERT INTO native_inbox_receipts VALUES(?)', (sequence,))
+                self.journal.db.execute('INSERT INTO native_inbox_receipts VALUES(?,?)', (sequence, 'private-receipt-' + str(sequence)))
                 before = tuple(self.journal.db.iterdump())
                 out = self.inspect()
                 self.assertFalse(out['diagnostics_complete'])
@@ -91,10 +91,10 @@ class OperationalStatusTests(unittest.TestCase):
 
     def test_orphan_or_invalid_inbox_attempt_is_private_unavailable_read_only(self):
         self.journal.db.executescript('''
-            CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY);
+            CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);
             CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
             CREATE TABLE native_inbox_conflicts(reason TEXT);
-            INSERT INTO native_inbox_receipts VALUES(1);
+            INSERT INTO native_inbox_receipts VALUES(1,'private-receipt');
         ''')
         for sequence, outcome in ((999, 'APPLIED'), (999, 'DUPLICATE'), (999, 'BLOCKED'),
                                   (1, 'PRIVATE-INVALID-OUTCOME'), (1, None)):
@@ -214,6 +214,19 @@ class OperationalStatusTests(unittest.TestCase):
         self.journal.db.execute('UPDATE native_inbox_receipts SET payload=?,digest=?', (payload, hashlib.sha256(payload.encode()).hexdigest()))
         self._assert_private_terminal_unavailable()
 
+    def test_ambiguous_receipt_id_or_sequence_is_unavailable_read_only(self):
+        self.journal.db.executescript('''
+            CREATE TABLE native_inbox_receipts(sequence INTEGER,receipt_id TEXT);
+            CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
+            CREATE TABLE native_inbox_conflicts(reason TEXT);
+        ''')
+        for identities in ([(1,'PRIVATE-RECEIPT'),(2,'PRIVATE-RECEIPT')],
+                           [(1,'PRIVATE-ONE'),(1,'PRIVATE-TWO')]):
+            with self.subTest(identities=identities):
+                self.journal.db.execute('DELETE FROM native_inbox_receipts')
+                self.journal.db.executemany('INSERT INTO native_inbox_receipts VALUES(?,?)',identities)
+                self._assert_private_terminal_unavailable()
+
     def test_duplicate_surviving_broker_bindings_are_private_unavailable(self):
         epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
         for key, broker in (('PRIVATE-ONE','PRIVATE-BROKER-ONE'), ('PRIVATE-TWO','PRIVATE-BROKER-TWO')):
@@ -277,10 +290,10 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertNotIn('PRIVATE-SYMBOL', json.dumps(result))
 
     def test_pending_conflicts_and_latch_are_visible(self):
-        self.journal.db.executescript('''CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY);
+        self.journal.db.executescript('''CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);
             CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
             CREATE TABLE native_inbox_conflicts(reason TEXT);
-            INSERT INTO native_inbox_receipts VALUES(1);
+            INSERT INTO native_inbox_receipts VALUES(1,'private-receipt');
             INSERT INTO native_inbox_conflicts VALUES('PRIVATE');''')
         self.journal.trip_kill_switch()
         result = self.inspect()
