@@ -49,7 +49,9 @@ def _canonical(value) -> bytes:
                       separators=(",", ":"), allow_nan=False).encode("utf-8")
 
 
-def build_current_session_inputs(raw: pd.DataFrame, *, decision_at: str) -> dict:
+def build_current_session_inputs(
+    raw: pd.DataFrame, *, decision_at: str, source_receipt_sha256: str | None = None
+) -> dict:
     """Prepare today's matrix without training, predictions or future outcomes.
 
     Late rows fail the entire supplied cross-section instead of silently
@@ -114,10 +116,23 @@ def build_current_session_inputs(raw: pd.DataFrame, *, decision_at: str) -> dict
     current = current.sort_values("symbol").reset_index(drop=True)
     if current.empty or not np.isfinite(current[CONTEXT_FEATURES]).all().all():
         raise ProspectiveInputError("current feature matrix unavailable; not a NO_TRADE decision")
+    if source_receipt_sha256 is None:
+        receipt = None
+        receipt_bound = False
+    else:
+        if (
+            type(source_receipt_sha256) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", source_receipt_sha256)
+        ):
+            raise ProspectiveInputError("source_receipt_sha256 must be lowercase SHA-256")
+        receipt = source_receipt_sha256
+        receipt_bound = True
     return {
         "classification": "INPUT_SNAPSHOT_ONLY_NOT_DECISION",
         "decision_at": moment.isoformat(), "session": session.strftime("%Y-%m-%d"),
         "input_sha256": source_digest, "source_rows": len(x),
+        "source_receipt_sha256": receipt,
+        "source_receipt_bound": receipt_bound,
         "feature_columns": list(CONTEXT_FEATURES), "features": current,
         "independent_source_admission_verified": False,
         "signal_generation_complete": False, "decision_recorded": False,
