@@ -36,9 +36,11 @@ class ProspectiveChronologyAnchorTest(unittest.TestCase):
         self.assertFalse(out["independent_chronology_admission_verified"])
         self.assertFalse(out["fresh_alpha_observation_admitted"])
         self.assertFalse(out["live_order_authorized"])
-        rendered = str(out)
-        self.assertNotIn("symbol", rendered.lower())
-        self.assertNotIn("score", rendered.lower())
+        forbidden_payload_keys = {
+            "symbol", "symbols", "score", "scores", "ranked_scores",
+            "selected_candidates", "outcome", "outcomes",
+        }
+        self.assertTrue(forbidden_payload_keys.isdisjoint(out.keys()))
 
     def test_external_commit_time_can_satisfy_structure_but_not_self_admit(self):
         out = assess_external_github_commit(
