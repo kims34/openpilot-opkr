@@ -79,6 +79,9 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
             "ci_low": None,
             "ci_high": None,
             "fallback": False,
+            "score_rows_structurally_valid": True,
+            "independent_live_provenance_verified": False,
+            "status_scope": "PROSPECTIVE_SCORE_ONLY",
         }
 
     candidate_brier = sum((p - y) ** 2 for p, _, y in rows) / n
@@ -167,6 +170,23 @@ def _validate_gate_result(gate: dict) -> None:
             _score_value(value, f"gate {field}")
 
     status, n, min_n = gate["status"], gate["n"], gate["min_n"]
+    core_metrics = (gate["candidate_brier"], gate["previous_brier"], gate["mean_gain"])
+    interval_metrics = (gate["ci_low"], gate["ci_high"])
+    if n == 0:
+        if any(value is not None for value in core_metrics + interval_metrics):
+            raise ProbabilityLiveGateError("empty gate must not contain score metrics")
+    else:
+        if any(value is None for value in core_metrics):
+            raise ProbabilityLiveGateError("nonempty gate requires Brier metrics")
+        if not 0.0 <= gate["candidate_brier"] <= 1.0 or not 0.0 <= gate["previous_brier"] <= 1.0:
+            raise ProbabilityLiveGateError("gate Brier metrics out of range")
+        if not -1.0 <= gate["mean_gain"] <= 1.0:
+            raise ProbabilityLiveGateError("gate mean gain out of range")
+        if n == 1:
+            if any(value is not None for value in interval_metrics):
+                raise ProbabilityLiveGateError("single-row gate cannot claim finite interval")
+        elif any(value is None for value in interval_metrics):
+            raise ProbabilityLiveGateError("multi-row gate requires confidence interval")
     if status == "historical_only":
         if not n < min_n or gate["fallback"] is not False:
             raise ProbabilityLiveGateError("historical-only gate state inconsistent")
