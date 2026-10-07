@@ -1,0 +1,21 @@
+name: Probability Live Gate Boundary
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - probability_live_gate.py
+      - probability_live_gate_patch.py
+      - test_probability_live_gate.py
+      - .github/workflows/probability-live-gate.yml
+permissions:
+  contents: read
+jobs:
+  probability-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile probability_live_gate.py probability_live_gate_patch.py
+      - run: python -m unittest -v test_probability_live_gate

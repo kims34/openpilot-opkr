@@ -13,6 +13,13 @@ import probability_live_gate as gate
 _PATCHED = False
 
 
+def _fallback(out, previous_key, stage, exc):
+    print(stage, "live gate unavailable", type(exc).__name__, flush=True)
+    return gate.fail_safe_to_previous(
+        out, previous_key, error_code="PROSPECTIVE_GATE_UNAVAILABLE"
+    )
+
+
 def _scores(table: str, model: str, symbol: str, previous_column: str):
     allowed = {
         "preopen_futures_forecasts": "baseline_probability",
@@ -99,32 +106,44 @@ def install():
             return _score_preopen(symbol, item, out, now)
         except Exception as exc:
             out["prospective_error"] = "장전 선물모델 실시간 검증 기록 일시 중단"
-            print("preopen live gate unavailable", symbol, type(exc).__name__, flush=True)
-            return out
+            return _fallback(out, "baseline_probability", "preopen", exc)
 
     def gated_open(symbol, item, result, completed_rows, now):
-        # Original function freezes/scores the RAW candidate first.
-        out = original_open(symbol, item, result, completed_rows, now)
-        rows = _scores(
-            "open_nowcast_forecasts",
-            open_nowcast_v39.MODEL_VERSION,
-            symbol,
-            "preopen_probability",
-        )
-        verdict = gate.evaluate(rows)
-        return gate.apply(out, verdict, "preopen_probability")
+        # Original function freezes/scores the RAW candidate first. Any ledger
+        # or gate failure serves the prior validated stage, never the unchecked
+        # candidate that happened to be computed in this request.
+        out = result
+        try:
+            out = original_open(symbol, item, result, completed_rows, now)
+            rows = _scores(
+                "open_nowcast_forecasts",
+                open_nowcast_v39.MODEL_VERSION,
+                symbol,
+                "preopen_probability",
+            )
+            verdict = gate.evaluate(rows)
+            return gate.apply(out, verdict, "preopen_probability")
+        except Exception as exc:
+            out["prospective_error"] = "개장후 실시간 검증 게이트 일시 중단"
+            return _fallback(out, "preopen_probability", "open-nowcast", exc)
 
     def gated_hour(symbol, item, result, completed_rows, now):
-        # Original function freezes/scores the RAW candidate first.
-        out = original_hour(symbol, item, result, completed_rows, now)
-        rows = _scores(
-            "firsthour_nowcast_forecasts",
-            firsthour_nowcast_v40.MODEL_VERSION,
-            symbol,
-            "previous_probability",
-        )
-        verdict = gate.evaluate(rows)
-        return gate.apply(out, verdict, "previous_probability")
+        # Same fail-safe rule as the open nowcast: verification-path failures
+        # may stop the overlay, but must not silently pass its raw candidate.
+        out = result
+        try:
+            out = original_hour(symbol, item, result, completed_rows, now)
+            rows = _scores(
+                "firsthour_nowcast_forecasts",
+                firsthour_nowcast_v40.MODEL_VERSION,
+                symbol,
+                "previous_probability",
+            )
+            verdict = gate.evaluate(rows)
+            return gate.apply(out, verdict, "previous_probability")
+        except Exception as exc:
+            out["prospective_error"] = "첫 1시간 실시간 검증 게이트 일시 중단"
+            return _fallback(out, "previous_probability", "first-hour", exc)
 
     preopen_futures_v312_live.estimate = gated_preopen
     open_nowcast_v39._score_and_record = gated_open

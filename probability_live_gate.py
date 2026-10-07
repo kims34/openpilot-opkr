@@ -18,6 +18,7 @@ Positive gain = candidate has lower (better) Brier loss.
 from __future__ import annotations
 
 import math
+from numbers import Real
 from typing import Iterable, Sequence
 
 MIN_LIVE_N = 30
@@ -25,19 +26,44 @@ Z95 = 1.959963984540054
 SERVING_POLICY_VERSION = "prospective-brier-ci95-v1"
 
 
+class ProbabilityLiveGateError(ValueError):
+    pass
+
+
+def _score_value(value, field):
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise ProbabilityLiveGateError(f"{field} must be an original finite number")
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ProbabilityLiveGateError(f"{field} must be finite")
+    return parsed
+
+
+def _probability(value, field):
+    parsed = _score_value(value, field)
+    if not 0.0 <= parsed <= 1.0:
+        raise ProbabilityLiveGateError(f"{field} must be between 0 and 1")
+    return parsed
+
+
 def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict:
+    if type(min_n) is not int or min_n <= 0:
+        raise ProbabilityLiveGateError("min_n must be an exact positive integer")
+    if scores is None or isinstance(scores, (str, bytes)):
+        raise ProbabilityLiveGateError("scores must be an iterable of 3-field rows")
     rows = []
-    for row in scores:
-        if len(row) < 3:
-            continue
-        try:
-            candidate, previous, outcome = map(float, row[:3])
-        except (TypeError, ValueError):
-            continue
-        if not all(math.isfinite(v) for v in (candidate, previous, outcome)):
-            continue
-        if not (0.0 <= candidate <= 1.0 and 0.0 <= previous <= 1.0 and outcome in (0.0, 1.0)):
-            continue
+    try:
+        iterator = iter(scores)
+    except TypeError:
+        raise ProbabilityLiveGateError("scores must be an iterable of 3-field rows") from None
+    for index, row in enumerate(iterator):
+        if isinstance(row, (str, bytes)) or not isinstance(row, Sequence) or len(row) != 3:
+            raise ProbabilityLiveGateError(f"score row {index} must contain exactly 3 fields")
+        candidate = _probability(row[0], f"score row {index} candidate")
+        previous = _probability(row[1], f"score row {index} previous")
+        outcome = _score_value(row[2], f"score row {index} outcome")
+        if outcome not in (0.0, 1.0):
+            raise ProbabilityLiveGateError(f"score row {index} outcome must be 0 or 1")
         rows.append((candidate, previous, outcome))
 
     n = len(rows)
@@ -46,13 +72,16 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
             "policy_version": SERVING_POLICY_VERSION,
             "status": "historical_only",
             "n": 0,
-            "min_n": int(min_n),
+            "min_n": min_n,
             "candidate_brier": None,
             "previous_brier": None,
             "mean_gain": None,
             "ci_low": None,
             "ci_high": None,
             "fallback": False,
+            "score_rows_structurally_valid": True,
+            "independent_live_provenance_verified": False,
+            "status_scope": "PROSPECTIVE_SCORE_ONLY",
         }
 
     candidate_brier = sum((p - y) ** 2 for p, _, y in rows) / n
@@ -73,7 +102,7 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
         ci_low = None
         ci_high = None
 
-    if n < int(min_n):
+    if n < min_n:
         status = "historical_only"
         fallback = False
     elif ci_low is not None and ci_low > 0.0:
@@ -90,14 +119,124 @@ def evaluate(scores: Iterable[Sequence[float]], min_n: int = MIN_LIVE_N) -> dict
         "policy_version": SERVING_POLICY_VERSION,
         "status": status,
         "n": n,
-        "min_n": int(min_n),
+        "min_n": min_n,
         "candidate_brier": candidate_brier,
         "previous_brier": previous_brier,
         "mean_gain": mean_gain,
         "ci_low": ci_low,
         "ci_high": ci_high,
         "fallback": fallback,
+        "score_rows_structurally_valid": True,
+        "independent_live_provenance_verified": False,
+        "status_scope": "PROSPECTIVE_SCORE_ONLY",
     }
+
+
+_ALLOWED_STATUSES = frozenset({
+    "historical_only", "live_confirmed",
+    "fallback_underperforming", "fallback_inconclusive",
+})
+_REQUIRED_GATE_FIELDS = frozenset({
+    "policy_version", "status", "n", "min_n", "candidate_brier",
+    "previous_brier", "mean_gain", "ci_low", "ci_high", "fallback",
+    "score_rows_structurally_valid", "independent_live_provenance_verified",
+    "status_scope",
+})
+
+
+def _validate_gate_result(gate: dict) -> None:
+    if type(gate) is not dict or set(gate) != _REQUIRED_GATE_FIELDS:
+        raise ProbabilityLiveGateError("gate result must be the canonical evaluator output")
+    if gate["policy_version"] != SERVING_POLICY_VERSION:
+        raise ProbabilityLiveGateError("gate policy version mismatch")
+    if gate["status"] not in _ALLOWED_STATUSES:
+        raise ProbabilityLiveGateError("gate status invalid")
+    if type(gate["n"]) is not int or gate["n"] < 0:
+        raise ProbabilityLiveGateError("gate n must be a nonnegative integer")
+    if type(gate["min_n"]) is not int or gate["min_n"] <= 0:
+        raise ProbabilityLiveGateError("gate min_n must be a positive integer")
+    if type(gate["fallback"]) is not bool:
+        raise ProbabilityLiveGateError("gate fallback must be boolean")
+    if gate["score_rows_structurally_valid"] is not True:
+        raise ProbabilityLiveGateError("gate rows are not structurally valid")
+    if gate["independent_live_provenance_verified"] is not False:
+        raise ProbabilityLiveGateError("probability gate cannot self-verify LIVE provenance")
+    if gate["status_scope"] != "PROSPECTIVE_SCORE_ONLY":
+        raise ProbabilityLiveGateError("gate status scope invalid")
+    numeric = ("candidate_brier", "previous_brier", "mean_gain", "ci_low", "ci_high")
+    for field in numeric:
+        value = gate[field]
+        if value is not None:
+            _score_value(value, f"gate {field}")
+
+    status, n, min_n = gate["status"], gate["n"], gate["min_n"]
+    core_metrics = (gate["candidate_brier"], gate["previous_brier"], gate["mean_gain"])
+    interval_metrics = (gate["ci_low"], gate["ci_high"])
+    if n == 0:
+        if any(value is not None for value in core_metrics + interval_metrics):
+            raise ProbabilityLiveGateError("empty gate must not contain score metrics")
+    else:
+        if any(value is None for value in core_metrics):
+            raise ProbabilityLiveGateError("nonempty gate requires Brier metrics")
+        if not 0.0 <= gate["candidate_brier"] <= 1.0 or not 0.0 <= gate["previous_brier"] <= 1.0:
+            raise ProbabilityLiveGateError("gate Brier metrics out of range")
+        if not -1.0 <= gate["mean_gain"] <= 1.0:
+            raise ProbabilityLiveGateError("gate mean gain out of range")
+        if n == 1:
+            if any(value is not None for value in interval_metrics):
+                raise ProbabilityLiveGateError("single-row gate cannot claim finite interval")
+        elif any(value is None for value in interval_metrics):
+            raise ProbabilityLiveGateError("multi-row gate requires confidence interval")
+    if status == "historical_only":
+        if not n < min_n or gate["fallback"] is not False:
+            raise ProbabilityLiveGateError("historical-only gate state inconsistent")
+    elif status == "live_confirmed":
+        if n < min_n or gate["fallback"] is not False or gate["ci_low"] is None or gate["ci_low"] <= 0:
+            raise ProbabilityLiveGateError("confirmed gate state inconsistent")
+    elif status == "fallback_underperforming":
+        if n < min_n or gate["fallback"] is not True or gate["ci_high"] is None or gate["ci_high"] >= 0:
+            raise ProbabilityLiveGateError("underperforming gate state inconsistent")
+    elif status == "fallback_inconclusive":
+        if n < min_n or gate["fallback"] is not True:
+            raise ProbabilityLiveGateError("inconclusive gate state inconsistent")
+        if gate["ci_low"] is not None and gate["ci_low"] > 0:
+            raise ProbabilityLiveGateError("inconclusive gate contradicts positive lower bound")
+        if gate["ci_high"] is not None and gate["ci_high"] < 0:
+            raise ProbabilityLiveGateError("inconclusive gate contradicts negative upper bound")
+
+
+def _display_probability(value, field):
+    parsed = _score_value(value, field)
+    if not 0.0 <= parsed <= 100.0:
+        raise ProbabilityLiveGateError(f"{field} must be between 0 and 100")
+    return value
+
+
+def fail_safe_to_previous(result: dict, previous_key: str, *, error_code: str) -> dict:
+    """Serve only the already-available reference probability after gate failure."""
+    if type(result) is not dict or not isinstance(previous_key, str) or not previous_key:
+        raise ProbabilityLiveGateError("invalid probability fallback input")
+    if not isinstance(error_code, str) or not error_code.strip():
+        raise ProbabilityLiveGateError("error_code must be non-empty")
+    previous = result.get(previous_key)
+    _display_probability(previous, previous_key)
+    candidate = result.get("probability")
+    if candidate is not None:
+        _display_probability(candidate, "probability")
+    out = result
+    out["live_candidate_probability"] = candidate
+    if "candidate_probability" not in out:
+        out["candidate_probability"] = candidate
+    out["probability"] = previous
+    out["served_probability"] = previous
+    out["served_from"] = "previous_stage"
+    out["live_gate_status"] = "fallback_gate_unavailable"
+    out["live_gate_error_code"] = error_code.strip()
+    out["live_gate_independent_provenance_verified"] = False
+    status = str(out.get("status") or "").strip()
+    note = "실시간 검증 게이트 확인 불가 · 안전 확률 사용"
+    out["status"] = f"{status} · {note}" if status else note
+    return out
 
 
 def apply(result: dict, gate: dict, previous_key: str) -> dict:
@@ -107,9 +246,17 @@ def apply(result: dict, gate: dict, previous_key: str) -> dict:
     guarantees that a fallback candidate remains observable in shadow mode and
     can automatically return if later prospective evidence becomes convincing.
     """
+    if type(result) is not dict or not isinstance(previous_key, str) or not previous_key:
+        raise ProbabilityLiveGateError("invalid probability gate input")
+    _validate_gate_result(gate)
     out = result
     candidate = out.get("probability")
     previous = out.get(previous_key)
+    _display_probability(candidate, "probability")
+    if previous is not None:
+        _display_probability(previous, previous_key)
+    if gate["fallback"] and previous is None:
+        raise ProbabilityLiveGateError("fallback reference probability is unavailable")
     out["live_candidate_probability"] = candidate
     # Preserve any model-internal candidate field already present.
     if "candidate_probability" not in out:
@@ -123,8 +270,10 @@ def apply(result: dict, gate: dict, previous_key: str) -> dict:
     out["live_gate_ci_high"] = gate.get("ci_high")
     out["live_candidate_brier"] = gate.get("candidate_brier")
     out["live_previous_brier"] = gate.get("previous_brier")
+    out["live_gate_independent_provenance_verified"] = False
+    out["live_gate_status_scope"] = "PROSPECTIVE_SCORE_ONLY"
 
-    if gate.get("fallback") and previous is not None:
+    if gate["fallback"]:
         out["probability"] = previous
         out["served_probability"] = previous
         out["served_from"] = "previous_stage"
