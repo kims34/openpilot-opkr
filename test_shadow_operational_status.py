@@ -87,6 +87,17 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertNotIn('PRIVATE-SYMBOL',json.dumps(out))
         self.assertEqual(tuple(self.journal.db.iterdump()),before)
 
+    def test_duplicate_execution_identity_is_private_read_only_unavailable(self):
+        self.claim()
+        self.journal.bind_acknowledgement('PRIVATE-INTENT','PRIVATE-BROKER')
+        self.journal.record_execution('PRIVATE-INTENT',broker_order_id='PRIVATE-BROKER',execution_id='PRIVATE-FILL',quantity=4)
+        history = self.journal.db.execute('SELECT * FROM executions').fetchall()
+        self.journal.db.execute('DROP TABLE executions')
+        self.journal.db.execute('CREATE TABLE executions(key TEXT,execution_id TEXT,quantity INTEGER)')
+        self.journal.db.executemany('INSERT INTO executions VALUES(?,?,?)',history+history)
+        self.journal.db.execute('UPDATE intents SET filled=8')
+        self._assert_private_terminal_unavailable()
+
     def test_nonpositive_inbox_arrival_sequence_cannot_report_complete_diagnostics(self):
         self.journal.db.executescript('''
             CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);

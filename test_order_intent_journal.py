@@ -56,6 +56,21 @@ class JournalTests(unittest.TestCase):
         self.j.register('decision-1',symbol='005930',side='BUY',quantity=10)
         self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM intents').fetchone(),(1,))
 
+    def test_duplicate_execution_identity_cannot_accept_another_fill(self):
+        self.acknowledged(); self.fill(quantity=4)
+        history = self.j.db.execute('SELECT * FROM executions').fetchall()
+        self.j.db.execute('DROP TABLE executions')
+        self.j.db.execute('CREATE TABLE executions(key TEXT,execution_id TEXT,quantity INTEGER)')
+        self.j.db.executemany('INSERT INTO executions VALUES(?,?,?)',history+history)
+        self.j.db.execute('UPDATE intents SET filled=8')
+        before = self.j.db.execute('SELECT * FROM executions').fetchall()
+        for execution_id in ('fill-1','fill-2'):
+            with self.assertRaisesRegex(OrderJournalError,'^inconsistent stored executions$'):
+                self.fill(execution_id=execution_id,quantity=4 if execution_id=='fill-1' else 1)
+            self.assertEqual(self.j.db.execute('SELECT * FROM executions').fetchall(),before)
+            self.assertEqual(self.j.get('decision-1')['filled_quantity'],8)
+        self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
     def test_duplicate_stored_intent_fields_are_ambiguous_even_if_last_value_matches(self):
         for repeated in ('"quantity":1,', '"quantity":10,', '"side":"SELL",', '"symbol":"OTHER",'):
             with self.subTest(repeated=repeated):
