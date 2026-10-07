@@ -7,7 +7,7 @@ import tempfile
 from threading import Thread
 import unittest
 
-from order_intent_journal import OrderIntentJournal
+from order_intent_journal import OrderIntentJournal, OrderJournalError
 from shadow_operational_dashboard import create_dashboard_server
 
 
@@ -41,6 +41,23 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(before,(self.journal.shadow_control(),self.journal.db.total_changes))
         self.assertEqual(self.server.server_address[0],'127.0.0.1')
         self.assertNotIn(str(self.path),body)
+
+    def test_retained_safety_quarantine_is_specific_private_and_read_only(self):
+        self.journal.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.journal.db.execute("UPDATE shadow_control SET killed=-1,reason='PRIVATE-FAULT-ARTIFACT'")
+        with self.assertRaises(OrderJournalError):
+            self.journal.disable_shadow()
+        before = self.journal.db.total_changes
+        status,_,body = self.request('/api/status')
+        report = json.loads(body)
+        self.assertEqual(status,200)
+        self.assertFalse(report['diagnostics_complete'])
+        self.assertEqual(report['local_blockers'], ['SAFETY_METADATA_QUARANTINED'])
+        self.assertFalse(report['real_orders_authorized'])
+        self.assertNotIn('PRIVATE-FAULT-ARTIFACT',body)
+        self.assertNotIn('shadow_control_faults',body)
+        self.assertNotIn(str(self.path),body)
+        self.assertEqual(self.journal.db.total_changes,before)
 
     def test_foreign_host_and_path_selection_are_rejected(self):
         self.assertEqual(self.request('/api/status',headers={'Host':'external.invalid'})[0],403)

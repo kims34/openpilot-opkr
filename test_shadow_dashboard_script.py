@@ -15,9 +15,9 @@ class DashboardScriptTests(unittest.TestCase):
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const script=fs.readFileSync(0,'utf8');
 (async()=>{
- for(const fail of ['status','settlement']){
+ for(const fail of ['status','settlement','quarantine']){
   const elements=Object.fromEntries(['refresh','error','state','blockers','capital','settlement'].map(id=>[id,{
-   textContent:'',disabled:false,children:[],append(...nodes){this.children.push(...nodes)},
+   textContent:'',disabled:false,children:[{textContent:'STALE_VALUE'}],append(...nodes){this.children.push(...nodes)},
    replaceChildren(){this.children=[]},addEventListener(){}
   }]));
   let completion;
@@ -26,10 +26,14 @@ const script=fs.readFileSync(0,'utf8');
    fetch:async url=>{
     if(url==='/api/status'){
      if(fail==='status')throw Error('transport');
+     if(fail==='quarantine')return {ok:true,json:async()=>({diagnostics_complete:false,
+      local_blockers:['SAFETY_METADATA_QUARANTINED'],real_orders_authorized:false})};
      return {ok:true,json:async()=>({diagnostics_complete:true,shadow_mode:'SHADOW',journal_epoch:1,
       snapshot_revision:1,unresolved_intent_count:0,native_inbox_pending_count:0,native_inbox_conflict_count:0,
       local_blockers:[],capital:{maximum_krw:100,total_committed_krw:0}})};
     }
+    if(fail==='quarantine')return {ok:true,json:async()=>({assessment_completed:false,
+     review_errors:['SETTLEMENT_INPUT_NOT_CONFIGURED']})};
     throw Error('settlement transport');
    }
   };
@@ -37,9 +41,21 @@ const script=fs.readFileSync(0,'utf8');
   // Await the script's automatic refresh instead of starting a second request.
   vm.runInContext(script.replace(/refresh\(\);$/, 'globalThis.completion=refresh();'),context);
   await context.completion;
-  for(const id of ['state','blockers','capital','settlement'])
-   assert.equal(elements[id].children.length,0,fail+' leaves partial '+id);
-  assert.ok(elements.error.textContent.length>0);
+  if(fail==='quarantine'){
+   assert.equal(elements.error.textContent,'');
+   assert.equal(elements.blockers.children.length,1);
+   assert.ok(elements.blockers.children[0].textContent.includes('재시작과 활성화가 차단'));
+   const text=['state','blockers','capital','settlement'].flatMap(id=>elements[id].children.map(n=>n.textContent)).join(' ');
+   assert.ok(!text.includes('STALE_VALUE'));
+   assert.ok(!text.includes('로컬 Shadow 활성'));
+   assert.ok(!text.includes('로컬 진단 항목의 막힘은 없습니다'));
+   assert.ok(text.includes('꺼짐'));
+   assert.ok(text.includes('확인되지 않음'));
+  }else{
+   for(const id of ['state','blockers','capital','settlement'])
+    assert.equal(elements[id].children.length,0,fail+' leaves partial '+id);
+   assert.ok(elements.error.textContent.length>0);
+  }
   assert.equal(elements.refresh.disabled,false);
  }
 })().catch(e=>{process.stderr.write(String(e));process.exitCode=1});
