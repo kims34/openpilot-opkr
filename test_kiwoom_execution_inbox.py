@@ -73,6 +73,30 @@ class InboxTests(unittest.TestCase):
     def test_runtime_unknown_attempt_outcome_blocks_fill(self):
         self._assert_invalid_runtime_attempt(1, 'PRIVATE-INVALID')
 
+    def _assert_runtime_inbox_table_loss(self, table):
+        self.append()
+        self.j.db.execute('DROP TABLE ' + table)
+        surviving = {name: self.j.db.execute('SELECT * FROM ' + name).fetchall()
+            for name in ('native_inbox_receipts', 'native_inbox_attempts', 'native_inbox_conflicts') if name != table}
+        for operation in (self.i.replay_next, lambda: self.i.replay('receipt-1'), self.i.counts, lambda: self.append('receipt-2')):
+            with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+        for name, original in surviving.items():
+            self.assertEqual(self.j.db.execute('SELECT * FROM ' + name).fetchall(), original)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone())
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
+    def test_runtime_attempt_table_loss_is_private_and_preserves_receipt(self):
+        self._assert_runtime_inbox_table_loss('native_inbox_attempts')
+
+    def test_runtime_receipt_table_loss_is_private_without_recreation(self):
+        self._assert_runtime_inbox_table_loss('native_inbox_receipts')
+
+    def test_runtime_conflict_table_loss_is_private_without_recreation(self):
+        self._assert_runtime_inbox_table_loss('native_inbox_conflicts')
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):

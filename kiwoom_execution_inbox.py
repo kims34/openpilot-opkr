@@ -124,7 +124,12 @@ class KiwoomExecutionInbox:
                 # durable native binding/execution disappeared or never existed.
                 self.bridge._verify_existing_execution_locked(key,row,trading_date=day)
 
+    def _require_inbox_tables_locked(self):
+        tables = {row[0] for row in self.journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        require({'native_inbox_receipts', 'native_inbox_attempts', 'native_inbox_conflicts'} <= tables)
+
     def _audit_attempts_locked(self):
+        self._require_inbox_tables_locked()
         # Runtime diagnostics and replay selection must not trust a marker
         # merely because startup once audited it. Preserve corrupt history.
         for outcome, sequence, key, day, payload, digest in self.journal.db.execute("""SELECT
@@ -147,6 +152,7 @@ class KiwoomExecutionInbox:
         """Persist a normalized copy before any execution-journal mutation."""
         conflict = False
         with self._guard():
+            self._require_inbox_tables_locked()
             self._text(receipt_id); self._text(key)
             self.bridge._context(trading_date)
             self._validate_row(row)
