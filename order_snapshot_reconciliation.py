@@ -7,7 +7,7 @@ No network, execution insertion, auto-enable, cancellation or submission.
 """
 import json
 
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_reconciliation_barrier
+from order_intent_journal import OrderJournalError, validate_stored_execution_totals, validate_stored_reconciliation_barrier, validate_stored_component_history
 
 
 FIELDS = {'key', 'broker_order_id', 'symbol', 'side', 'quantity', 'filled_quantity', 'status'}
@@ -49,6 +49,10 @@ def reconcile_order_snapshot_batch(journal, *, revision, orders):
     if not valid_revision:
         errors.add('INVALID_SNAPSHOT_REVISION')
     with journal._atomic():
+        try:
+            validate_stored_component_history(journal.db)
+        except OrderJournalError:
+            errors.add('COMPONENT_HISTORY_CONFLICT')
         try:
             last = validate_stored_reconciliation_barrier(journal.db)
         except OrderJournalError:

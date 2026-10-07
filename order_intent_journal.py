@@ -392,6 +392,7 @@ class OrderIntentJournal:
 
     def _record_execution_locked(self, key, *, broker_order_id, execution_id, quantity):
         """Called only inside a journal transaction, including source binding."""
+        validate_stored_component_history(self.db)
         self._text(broker_order_id)
         self._text(execution_id)
         if type(quantity) is not int or quantity <= 0:

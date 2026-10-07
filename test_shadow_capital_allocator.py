@@ -38,6 +38,18 @@ class ShadowCapitalTests(unittest.TestCase):
     def ack(self):
         self.j.bind_acknowledgement('d1','o1')
 
+    def test_direct_execution_cannot_skip_lost_capital_lineage(self):
+        self.claim()
+        self.ack()
+        self.j.trip_kill_switch()
+        for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
+            self.j.db.execute(f'DROP TABLE {table}')
+        with self.assertRaisesRegex(OrderJournalError, 'component history missing'):
+            self.j.record_execution('d1',broker_order_id='o1',execution_id='offline-fill',quantity=1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertTrue(self.j.shadow_control()['killed'])
+
     def test_complete_capital_schema_loss_cannot_become_fresh_or_skip_reservation(self):
         for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
             self.j.db.execute(f'DROP TABLE {table}')
