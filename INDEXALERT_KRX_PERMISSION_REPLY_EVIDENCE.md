@@ -1,3 +1,9 @@
+# Current disposition — 2026-10-07
+
+The unrestricted web-automation claims in the historical v3 record below are superseded by the owner-supplied original email and confirmation that no matching unrestricted reply exists. Current validator returns automation/high-frequency/full-history web acquisition rights false. Internal research storage/analysis and separately approved OpenAPI services are distinct. See INDEXALERT_KRX_ORIGINAL_MESSAGE_CONFLICT_2026-10-07.md. Historical hashes/content below are preserved, not rewritten.
+
+---
+
 # IndexAlert KRX Permission Reply Evidence
 
 Updated: 2026-10-02 KST  

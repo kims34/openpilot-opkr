@@ -16,12 +16,12 @@ def _data():
     return json.loads(PATH.read_text(encoding="utf-8"))
 
 
-def test_current_permission_grants_history_rights_not_execution():
+def test_superseded_permission_blocks_web_history_rights_and_execution():
     out = validate_file()
     assert out["valid"] is True
-    assert out["rights_authorized"] is True
-    assert out["high_frequency_collection_authorized"] is True
-    assert out["full_historical_download_rights_authorized"] is True
+    assert out["rights_authorized"] is False
+    assert out["high_frequency_collection_authorized"] is False
+    assert out["full_historical_download_rights_authorized"] is False
     assert out["redistribution_authorized"] is False
     assert out["external_sale_authorized"] is False
     assert out["project_network_execution_authorized"] is False
