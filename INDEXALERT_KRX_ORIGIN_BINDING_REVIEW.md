@@ -49,3 +49,11 @@ Evidence limits: owner-supplied transcription is now available; actual sender em
 
 Next minimal owner input: expand email sender details and supply only the actual sender address; do not forward passwords/API keys or unrelated mail. Existing private-store audit and no-holdout/no-order boundaries remain unchanged.
 
+
+
+## Owner email header screenshot — 2026-10-07 21:53 KST
+
+Read the owner-attached sender-details screenshot directly. Visible From: KRX Data Marketplace Team <krxdata@krx.co.kr>; Reply-To:krxdata@krx.co.kr; mailed-by:krx.co.kr; date:Oct2,2026,3:30PM (display timezone not specified). Subject concerns KRX Data Marketplace statistics automated-query permission and official delivery route. Recipient personal name/address omitted from this record.
+
+This supplies the previously missing displayed sender address and Gmail mailed-by domain, consistent with the copied body and KRX domain. It is owner-presented header evidence, not a raw-message DKIM/DMARC verification; original .eml bytes/full authentication headers and document-to-receipt/source/scope fingerprint linkage remain unverified. No synthetic approval-document hash created. No additional owner email/header request is required for the present scope comparison. HIST_ACQ_v3 recorded scope remains unchanged; no approval reset, data admission or real-trading authorization follows.
+
