@@ -124,6 +124,21 @@ class KiwoomExecutionInbox:
                 # durable native binding/execution disappeared or never existed.
                 self.bridge._verify_existing_execution_locked(key,row,trading_date=day)
 
+    def _verify_terminal_attempts_locked(self):
+        # Runtime diagnostics and replay selection must not trust a marker
+        # merely because startup once audited it. Preserve corrupt history.
+        for sequence, key, day, payload, digest in self.journal.db.execute("""SELECT
+                r.sequence,r.key,r.day,r.payload,r.digest FROM native_inbox_attempts a
+                LEFT JOIN native_inbox_receipts r ON r.sequence=a.receipt_sequence
+                WHERE a.outcome IN ('APPLIED','DUPLICATE')"""):
+            require(type(sequence) is int and sequence > 0)
+            self._text(key); self.bridge._context(day)
+            require(isinstance(payload, str) and isinstance(digest, str))
+            require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+            row = self._decode_payload(payload)
+            self._validate_row(row)
+            self.bridge._verify_existing_execution_locked(key, row, trading_date=day)
+
     def append(self, receipt_id, key, row, *, trading_date):
         """Persist a normalized copy before any execution-journal mutation."""
         conflict = False
@@ -160,6 +175,7 @@ class KiwoomExecutionInbox:
         try:
             with self._guard():
                 self._text(receipt_id)
+                self._verify_terminal_attempts_locked()
                 record = self.journal.db.execute('SELECT sequence,key,day,payload,digest FROM native_inbox_receipts WHERE receipt_id=?', (receipt_id,)).fetchone()
                 require(record is not None)
                 stored_sequence, key, day, payload, digest = record
@@ -186,6 +202,7 @@ class KiwoomExecutionInbox:
     def replay_next(self):
         """Arrival order only. Missing-first recovery needs explicit replay()."""
         with self._guard():
+            self._verify_terminal_attempts_locked()
             row = self.journal.db.execute('''SELECT r.receipt_id FROM native_inbox_receipts r
                 WHERE NOT EXISTS (SELECT 1 FROM native_inbox_attempts a WHERE
                     a.receipt_sequence=r.sequence AND a.outcome IN ('APPLIED','DUPLICATE'))
@@ -195,6 +212,7 @@ class KiwoomExecutionInbox:
     def counts(self):
         """Public-safe diagnostics: no identifiers, payloads, hashes or account."""
         with self._guard():
+            self._verify_terminal_attempts_locked()
             counts = {name: self.journal.db.execute(f'SELECT COUNT(*) FROM native_inbox_{name}').fetchone()[0]
                 for name in ('receipts', 'conflicts', 'attempts')}
             counts['pending'] = self.journal.db.execute('''SELECT COUNT(*) FROM native_inbox_receipts r
