@@ -34,7 +34,8 @@ HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _BODY_FIELDS = (
     "classification", "repository_full_name", "anchor_branch",
-    "workflow_name", "workflow_ref_commit", "session", "decision_at",
+    "workflow_name", "workflow_ref_commit", "workflow_run_id",
+    "workflow_run_attempt", "session", "decision_at",
     "source_receipt_sha256", "input_snapshot_sha256",
     "producer_binding_sha256", "model_bundle_sha256",
     "decision_capture_sha256", "session_manifest_sha256",
@@ -98,6 +99,8 @@ def build_anchor_record(
     decision_capture_sha256: str,
     session_manifest_sha256: str,
     workflow_ref_commit: str,
+    workflow_run_id: int,
+    workflow_run_attempt: int,
 ) -> dict[str, Any]:
     session = _session(session)
     decision = _aware(decision_at, "decision_at")
@@ -111,6 +114,8 @@ def build_anchor_record(
         "workflow_ref_commit": _sha(
             workflow_ref_commit, "workflow_ref_commit", pattern=HEX40
         ),
+        "workflow_run_id": workflow_run_id,
+        "workflow_run_attempt": workflow_run_attempt,
         "session": session,
         "decision_at": decision.isoformat(),
         "source_receipt_sha256": _sha(
@@ -159,6 +164,11 @@ def validate_anchor_record(record: Mapping[str, Any]) -> dict[str, Any]:
     if record.get("workflow_name") != WORKFLOW_NAME:
         raise ProspectiveChronologyAnchorError("workflow identity mismatch")
     _sha(record.get("workflow_ref_commit"), "workflow_ref_commit", pattern=HEX40)
+    for field in ("workflow_run_id", "workflow_run_attempt"):
+        if type(record.get(field)) is not int or record[field] <= 0:
+            raise ProspectiveChronologyAnchorError(
+                f"{field} must be a positive exact integer"
+            )
     session = _session(record.get("session"))
     decision = _aware(record.get("decision_at"), "decision_at")
     if decision.tz_convert("Asia/Seoul").strftime("%Y-%m-%d") != session:
@@ -275,6 +285,8 @@ def main() -> None:
     parser.add_argument("--decision-capture-sha256", required=True)
     parser.add_argument("--session-manifest-sha256", required=True)
     parser.add_argument("--workflow-ref-commit", required=True)
+    parser.add_argument("--workflow-run-id", required=True, type=int)
+    parser.add_argument("--workflow-run-attempt", required=True, type=int)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
     record = build_anchor_record(
@@ -287,6 +299,8 @@ def main() -> None:
         decision_capture_sha256=args.decision_capture_sha256,
         session_manifest_sha256=args.session_manifest_sha256,
         workflow_ref_commit=args.workflow_ref_commit,
+        workflow_run_id=args.workflow_run_id,
+        workflow_run_attempt=args.workflow_run_attempt,
     )
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
