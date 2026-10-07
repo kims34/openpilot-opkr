@@ -224,6 +224,7 @@ class LateFillCapitalTests(unittest.TestCase):
         # Fixture individual reservations are representable; total exceeds int64.
         self.j.register('other', symbol='OTHER', side='BUY', quantity=2**63-1)
         self.j.db.execute('INSERT INTO shadow_capital_reservations VALUES(?,?,?,?)',('other',1,0,2**63-1))
+        self.j.db.execute('INSERT INTO shadow_capital_reservation_history VALUES(?)', ('other',))
         self.late()
         self.assertEqual(self.a.state()['managed_reserve_krw'],2**63-1+83)
         self.assert_stopped()
