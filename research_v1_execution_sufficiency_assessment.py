@@ -140,9 +140,14 @@ def load_frozen_project_protocol(base_dir: str | Path = ".") -> tuple[dict[str, 
     root = Path(base_dir)
     raw = (root / PROJECT_PROTOCOL_JSON).read_text(encoding="utf-8")
     document = (root / PROJECT_PROTOCOL_DOCUMENT).read_text(encoding="utf-8")
-    payload = json.loads(raw)
-    validate_execution_sufficiency_protocol(payload, protocol_document_text=document)
-    return payload, document
+    from research_v1_execution_sufficiency_protocol import (
+        parse_and_validate_execution_sufficiency_protocol_json,
+    )
+    validated = parse_and_validate_execution_sufficiency_protocol_json(
+        raw,
+        protocol_document_text=document,
+    )
+    return validated["protocol"], document
 
 
 def prepare_live_execution_sufficiency_evidence(
@@ -303,8 +308,8 @@ def assess_execution_sufficiency(
     *,
     protocol_document_text: str | None = None,
 ) -> dict[str, Any]:
-    if str(protocol.get("schema_version")) != "2":
-        raise ExecutionSufficiencyAssessmentError("empirical assessment requires schema_version 2")
+    if protocol.get("schema_version") != "2":
+        raise ExecutionSufficiencyAssessmentError("empirical assessment requires exact string schema_version 2")
     if protocol_document_text is None:
         raise ExecutionSufficiencyAssessmentError(
             "exact frozen protocol document text is required for SHA-256 binding"
