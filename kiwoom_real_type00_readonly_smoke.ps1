@@ -28,6 +28,29 @@ function Set-SanitizedErrorDetail([object]$Message) {
     }
 }
 
+function Get-ReadOnlyReturnCode([object]$Message, [string]$Raw) {
+    try {
+        if ($null -eq $Message -or $null -eq $Message.PSObject.Properties['return_code']) {
+            throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID"
+        }
+        $code = $Message.return_code
+        if (($code -isnot [int] -and $code -isnot [long]) -or $code -lt 0 -or $code -gt [int]::MaxValue) {
+            throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID"
+        }
+        $codeKeys = 0
+        $nameKeys = 0
+        foreach ($match in [regex]::Matches($Raw, '(?<!\\)"((?:[^"\\]|\\.)*)"\s*:')) {
+            $key = ('"' + $match.Groups[1].Value + '"') | ConvertFrom-Json -ErrorAction Stop
+            if ($key -ieq 'return_code') { $codeKeys++ }
+            if ($key -ieq 'trnm') { $nameKeys++ }
+        }
+        if ($codeKeys -ne 1 -or $nameKeys -ne 1) { throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID" }
+        return [int]$code
+    } catch {
+        throw "READ_ONLY_PROTOCOL_RESPONSE_INVALID"
+    }
+}
+
 function Emit-Failure([string]$Stage, [int]$Code = -1) {
     @{
         STAGE=$Stage
@@ -156,8 +179,8 @@ try {
         if ($null -eq $obj -or ([string]$obj.trnm).ToUpperInvariant() -ne "LOGIN") {
             Emit-Failure "WS_LOGIN_PROTOCOL" 0
         }
-        $code = 0
-        if ($null -ne $obj.return_code) { $code = [int]$obj.return_code }
+        try { $code = Get-ReadOnlyReturnCode -Message $obj -Raw $raw }
+        catch { Emit-Failure "WS_LOGIN_PROTOCOL" }
         if ($code -ne 0) { Set-SanitizedErrorDetail $obj.return_msg; Emit-Failure "WS_LOGIN" $code }
         $loginOk = $true
     }
@@ -198,8 +221,8 @@ try {
         }
         $trnm = ([string]$obj.trnm).ToUpperInvariant()
         if ($trnm -eq "REG") {
-            $code = 0
-            if ($null -ne $obj.return_code) { $code = [int]$obj.return_code }
+            try { $code = Get-ReadOnlyReturnCode -Message $obj -Raw $raw }
+            catch { Emit-Failure "TYPE00_REG_PROTOCOL" }
             if ($code -ne 0) { Set-SanitizedErrorDetail $obj.return_msg; Emit-Failure "TYPE00_REG" $code }
             $regAck = $true
             $script:Type00RegAckOk = $true

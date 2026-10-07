@@ -1,3 +1,6 @@
+import base64
+import shutil
+import subprocess
 import pathlib
 import unittest
 
@@ -5,6 +8,64 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text=pathlib.Path("kiwoom_real_type00_readonly_smoke.ps1").read_text(encoding="utf-8")
+
+    def test_acknowledgements_require_explicit_unambiguous_integer_codes(self):
+        self.assertEqual(self.text.count('Get-ReadOnlyReturnCode -Message $obj -Raw $raw'), 2)
+        self.assertNotIn('$code = 0', self.text)
+        runtimes = [shutil.which(name) for name in ('pwsh', 'powershell')]
+        runtimes = list(dict.fromkeys(runtime for runtime in runtimes if runtime))
+        if not runtimes:
+            self.skipTest('PowerShell unavailable locally; behavioral matrix runs in CI')
+        path = base64.b64encode(str(pathlib.Path('kiwoom_real_type00_readonly_smoke.ps1').resolve()).encode()).decode()
+        harness = r'''$ErrorActionPreference = 'Stop'
+$path = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('PATH_BASE64'))
+$tokens=$null; $errors=$null
+$ast=[System.Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors)
+if ($errors.Count -ne 0) { throw 'SYNTAX_INVALID' }
+$fn=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-ReadOnlyReturnCode'},$true)
+if ($null -eq $fn) { throw 'HELPER_MISSING' }
+# Only the pure helper is executed. Never dot-source broker/credential flow.
+. ([ScriptBlock]::Create($fn.Extent.Text))
+foreach ($name in @('LOGIN','REG')) {
+  foreach ($expected in @(0,805004)) {
+    $raw='{"trnm":"'+$name+'","return_code":'+$expected+'}'
+    $obj=$raw | ConvertFrom-Json
+    if ((Get-ReadOnlyReturnCode -Message $obj -Raw $raw) -ne $expected) { throw 'VALID_CODE_REJECTED' }
+  }
+}
+$invalid=@(
+'{"trnm":"LOGIN"}',
+'{"trnm":"LOGIN","return_code":null}',
+'{"trnm":"LOGIN","return_code":false}',
+'{"trnm":"LOGIN","return_code":"0"}',
+'{"trnm":"LOGIN","return_code":0.5}',
+'{"trnm":"LOGIN","return_code":-1}',
+'{"trnm":"LOGIN","return_code":2147483648}',
+'{"trnm":"LOGIN","return_code":805004,"return_code":0}',
+'{"trnm":"LOGIN","return_code":0,"return_code":0}',
+'{"trnm":"LOGIN","return_code":0,"return_\u0063ode":0}',
+'{"trnm":"LOGIN","return_code":0,"RETURN_CODE":0}',
+'{"trnm":"LOGIN","trnm":"LOGIN","return_code":0}',
+'{"trnm":"REG","return_code":0,"nested":{"return_code":0}}'
+)
+foreach ($raw in $invalid) {
+  $rejected=$false
+  try { $obj=$raw | ConvertFrom-Json -ErrorAction Stop } catch { $rejected=$true }
+  if (-not $rejected) {
+    try { $null=Get-ReadOnlyReturnCode -Message $obj -Raw $raw }
+    catch {
+      if ($_.Exception.Message -ne 'READ_ONLY_PROTOCOL_RESPONSE_INVALID') { throw 'PRIVATE_ERROR_REQUIRED' }
+      $rejected=$true
+    }
+  }
+  if (-not $rejected) { throw 'AMBIGUOUS_ACK_ACCEPTED' }
+}
+'''.replace('PATH_BASE64', path)
+        encoded = base64.b64encode(harness.encode('utf-16le')).decode()
+        for runtime in runtimes:
+            with self.subTest(runtime=pathlib.Path(runtime).name):
+                result = subprocess.run([runtime, '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_fixed_real_hosts_and_read_only_account_query(self):
         self.assertIn('https://api.kiwoom.com/oauth2/token',self.text)
