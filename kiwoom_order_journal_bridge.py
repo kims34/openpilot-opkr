@@ -130,9 +130,9 @@ def verify_stored_native_execution(connection,account,day,key,row,*,trading_date
 def validate_stored_native_bindings(connection):
     """Structural durable audit only; never authenticates stored source."""
     require(connection.in_transaction)
-    scope=connection.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
-    require(scope is not None)
-    account,day=scope
+    scopes=list(connection.execute('SELECT id,account,day FROM native_journal_scope'))
+    require(len(scopes) == 1 and type(scopes[0][0]) is int and scopes[0][0] == 1)
+    _,account,day=scopes[0]
     validate_native_scope(account,day)
     validate_stored_execution_totals(connection,dict(connection.execute('SELECT key,filled FROM intents')))
     order_keys, broker_ids = set(), set()
