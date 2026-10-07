@@ -1,3 +1,15 @@
+# Delivery priority override — 2026-10-07 user-directed efficiency
+
+User instruction: “효율적이게 일해 중요한것부터”. This supersedes older next-task pointers that start another open-ended integrity/schema review.
+
+Follow INDEXALERT_DELIVERY_PRIORITIES.md before choosing the next task: original data/source/PIT/economics and valid Alpha evidence, registered future observations, genuine read-only broker/settlement connection, then required module integration and delivery. An external/time-bound path does not prevent an actionable independent required task.
+
+PR309–312 and their successful CI are complete. Additional hypothetical schema-corruption cases are lower priority unless a concrete critical failure blocks the required usage path. Do not create another PR or research sweep merely to keep work active. Stop exploratory coding when only unavailable external evidence/time/owner actions remain, and record the exact blocker.
+
+This changes work order only. No Frozen/model/cost/holdout/promotion/real-order criterion is relaxed. Whole-account REAL read-only baseline stays COMPLETE; type00 DEVICE_AUTH and original signer owner checks remain deferred without repeated requests. Research future-alpha protocol remains a diagnostic, not ACCEPTED successor/formal Shadow/LIVE evidence. All actual ordering/funds/account-permission authority remains false.
+
+---
+
 # Continuation checkpoint — 2026-10-07 PR309–312 durable identity and receipt material
 
 GitHub is authoritative. Source HEAD at this checkpoint: d5a4054e2ff0e5a33e3fc9c61bf70c8ef6ab6d80; resolve the current ref before resuming. This checkpoint supersedes earlier next-task pointers. Project remains INCOMPLETE. Do not repeat completed PR273–312 or prior account/device setup.
