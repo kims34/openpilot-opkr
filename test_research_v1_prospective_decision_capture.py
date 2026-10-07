@@ -22,6 +22,8 @@ from research_v1_prospective_inputs import (
     input_snapshot_sha256,
 )
 from research_v1_prospective_frozen_producer import (
+    CALIBRATION_SOURCE_ID,
+    FIT_CODE_PATH,
     FREEZE_ANCHOR_COMMIT,
     REFIT_POLICY_ID,
 )
@@ -30,7 +32,10 @@ from test_research_v1_causal_evidence_integrity import synthetic_panel
 
 
 def _quantiles(offset=-0.001):
-    base = {"low": offset, "med": offset + 0.005, "high": offset + 0.01, "n": 126}
+    base = {
+        "low": offset, "med": offset + 0.005, "high": offset + 0.01,
+        "n": 126, "source": CALIBRATION_SOURCE_ID,
+    }
     return {
         "__global__": dict(base),
         "low": {**base, "fallback_global": False, "bucket_n": 42},
@@ -66,7 +71,7 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
             training_input_sha256="a" * 64,
             calibration_input_sha256="b" * 64,
             fit_code_commit=FREEZE_ANCHOR_COMMIT,
-            fit_code_path="research_v1_selected_calibration.py",
+            fit_code_path=FIT_CODE_PATH,
             train_end_session=train_end,
             calibration_start_session=cal_start,
             calibration_end_session=cal_end,
@@ -76,7 +81,7 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         producer_body = {
             "classification": "FROZEN_PRODUCER_BINDING_NOT_ADMITTED",
             "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
-            "fit_code_path": "research_v1_selected_calibration.py",
+            "fit_code_path": FIT_CODE_PATH,
             "refit_policy_id": REFIT_POLICY_ID,
             "target_session": target_day.strftime("%Y-%m-%d"),
             "target_session_ordinal": 650,
