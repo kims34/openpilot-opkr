@@ -148,7 +148,7 @@ def test_secret_values_and_raw_evidence_json_are_not_rendered_in_readiness_repor
         environment={
             "KRX_ID": private_id,
             "KRX_PW": private_pw,
-            "KRX_OPENAPI_AUTH_KEY": private_key,
+            "KRX_AUTH_KEY": private_key,
         },
         authorization_evidence_reference=REF,
         authorization_evidence_json=raw,
