@@ -1,13 +1,48 @@
 """Strict offline extractor for Kiwoom REAL type 00 order/fill frames.
 
-Input is an already parsed WebSocket frame. This module opens no network and
+Input is a parsed frame or bounded serialized UTF-8 JSON. This module opens no network and
 authenticates no source. It preserves raw FID strings for protected account and
 broker-native execution binding downstream.
 """
+import json
 from kiwoom_realtime_order_fill_subscription_contract import TYPE00_FIELDS
+
+MAX_FRAME_BYTES = 1024 * 1024
+MAX_FRAME_DEPTH = 64
 
 class KiwoomType00FrameError(ValueError):
     pass
+
+def extract_type00_events_json(payload) -> tuple[dict, ...]:
+    """Bounded serialized UTF-8 input; parsing never authenticates its origin."""
+    def unique_fields(pairs):
+        fields = {}
+        for key, value in pairs:
+            if key in fields:
+                raise KiwoomType00FrameError('TYPE00_JSON_INVALID')
+            fields[key] = value
+        return fields
+    def reject_constant(value):
+        raise KiwoomType00FrameError('TYPE00_JSON_INVALID')
+    try:
+        if type(payload) not in (str, bytes) or len(payload) > MAX_FRAME_BYTES:
+            raise KiwoomType00FrameError('TYPE00_JSON_INVALID')
+        encoded = payload.encode('utf-8') if type(payload) is str else payload
+        if len(encoded) > MAX_FRAME_BYTES:
+            raise KiwoomType00FrameError('TYPE00_JSON_INVALID')
+        message = json.loads(encoded.decode('utf-8'), object_pairs_hook=unique_fields,
+                             parse_constant=reject_constant)
+        pending = [(message,0)]
+        while pending:
+            value, depth = pending.pop()
+            if type(value) in (dict,list):
+                if depth >= MAX_FRAME_DEPTH:
+                    raise KiwoomType00FrameError('TYPE00_JSON_INVALID')
+                children = value.values() if type(value) is dict else value
+                pending.extend((child,depth+1) for child in children)
+    except (ValueError, UnicodeError, RecursionError):
+        raise KiwoomType00FrameError('TYPE00_JSON_INVALID') from None
+    return extract_type00_events(message)
 
 def extract_type00_events(message) -> tuple[dict, ...]:
     if type(message) is not dict or str(message.get("trnm", "")).upper() != "REAL":
