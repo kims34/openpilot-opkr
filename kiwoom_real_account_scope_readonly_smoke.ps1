@@ -202,6 +202,7 @@ function Get-PagedCount(
     $count = 0
     $cont = "N"
     $next = ""
+    $seenCursors = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     for ($pageNo = 1; $pageNo -le 10; $pageNo++) {
         $page = Invoke-ReadOnlyPage -ApiId $ApiId -Body $Body -ContYn $cont -NextKey $next
         if ($page.Body -isnot [Management.Automation.PSCustomObject] -or
@@ -215,6 +216,7 @@ function Get-PagedCount(
         if ($page.ContYn -ne "Y") {
             return @{ Count=$count; Complete=$true }
         }
+        if (-not $seenCursors.Add([string]$page.NextKey)) { throw "CONTINUATION_BLOCKED" }
         $cont = "Y"
         $next = $page.NextKey
     }
