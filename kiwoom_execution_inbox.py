@@ -33,6 +33,9 @@ class KiwoomExecutionInbox:
         self.bridge = bridge
         self.journal = bridge.journal
         with self._guard():
+            tables = {row[0] for row in self.journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            required = {'native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts'}
+            require(not tables & required or required <= tables)
             for name, columns in (
                 ('native_inbox_receipts', 'sequence INTEGER PRIMARY KEY AUTOINCREMENT, receipt_id TEXT UNIQUE NOT NULL, key TEXT NOT NULL, day TEXT NOT NULL, payload TEXT NOT NULL, digest TEXT NOT NULL'),
                 ('native_inbox_conflicts', 'sequence INTEGER PRIMARY KEY AUTOINCREMENT, receipt_id TEXT NOT NULL, key TEXT NOT NULL, day TEXT NOT NULL, payload TEXT NOT NULL, digest TEXT NOT NULL'),

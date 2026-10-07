@@ -33,6 +33,19 @@ class InboxTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
+    def test_restart_does_not_recreate_missing_attempt_history(self):
+        self.append()
+        original = self.j.db.execute('SELECT receipt_id,digest FROM native_inbox_receipts').fetchall()
+        self.j.trip_kill_switch()
+        self.j.db.execute('DROP TABLE native_inbox_attempts')
+        with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+            KiwoomExecutionInbox(self.b)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='native_inbox_attempts'").fetchone())
+        self.assertEqual(self.j.db.execute('SELECT receipt_id,digest FROM native_inbox_receipts').fetchall(), original)
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertTrue(self.j.shadow_control()['killed'])
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
     def test_persist_first_then_apply_without_network_and_no_auto_enable(self):
         with patch('socket.socket',side_effect=AssertionError('network forbidden')):
             self.append()
