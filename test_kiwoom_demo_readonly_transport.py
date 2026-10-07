@@ -158,6 +158,20 @@ class TransportTests(unittest.TestCase):
         self.transport.query('ka00001',{},continuation='Y',next_key=page.next_key)
         self.assertEqual(len(self.requests),3)
 
+    def test_provider_response_cursor_must_match_continuation_marker(self):
+        for headers in ({'cont-yn':'N','next-key':'unexpected-cursor'},
+                        {'cont-yn':'Y','next-key':''},
+                        {'next-key':'unexpected-cursor'}):
+            with self.subTest(headers=headers):
+                self.authenticate()
+                self.responses.append(Response({'return_code':0},headers=headers))
+                with self.assertRaisesRegex(DemoReadOnlyError, '^DEMO_READ_ONLY_REQUEST_BLOCKED$'):
+                    self.transport.query('ka00001',{})
+                count=len(self.requests)
+                with self.assertRaises(DemoReadOnlyError):
+                    self.transport.query('ka00001',{})
+                self.assertEqual(len(self.requests),count)
+
     def test_header_injection_and_incomplete_continuation_are_rejected(self):
         self.authenticate();count=len(self.requests)
         for continuation,key in (('Y',''),('N','private'),('Y','bad\nheader'),('other','')):

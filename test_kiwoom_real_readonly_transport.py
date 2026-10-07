@@ -130,6 +130,22 @@ class RealTransportTests(unittest.TestCase):
                 self.transport.query("kt00017", body)
         self.assertEqual(len(self.requests), count)
 
+    def test_contradictory_response_pagination_fails_closed_and_discards_token(self):
+        for headers in (
+            {"cont-yn": "N", "next-key": "unexpected-cursor"},
+            {"cont-yn": "Y", "next-key": ""},
+            {"next-key": "unexpected-cursor"},
+        ):
+            with self.subTest(headers=headers):
+                self.auth()
+                self.responses.append(Response({"return_code": 0}, headers=headers))
+                with self.assertRaisesRegex(RealReadOnlyError, '^REAL_READ_ONLY_REQUEST_BLOCKED$'):
+                    self.transport.query("ka00001", {})
+                count = len(self.requests)
+                with self.assertRaises(RealReadOnlyError):
+                    self.transport.query("ka00001", {})
+                self.assertEqual(len(self.requests), count)
+
     def test_order_cancel_amend_and_arbitrary_ids_never_send(self):
         self.auth()
         count = len(self.requests)

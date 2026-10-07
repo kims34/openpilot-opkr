@@ -91,7 +91,7 @@ class KiwoomDemoReadOnlyTransport:
             next_key = response.getheader('next-key') or ''
             require(continuation in ('N', 'Y'))
             require(type(next_key) is str and len(next_key) <= 4096 and '\r' not in next_key and '\n' not in next_key)
-            require(continuation != 'Y' or bool(next_key))
+            require((continuation == 'Y') == bool(next_key))
             return PrivateDemoPage(data, continuation, next_key,
                 continuation_header_present=raw_continuation in ('N', 'Y'))
         except Exception:
