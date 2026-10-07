@@ -1,0 +1,34 @@
+name: IndexAlert Causal Evidence Integrity
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_fixed_horizon_label.py'
+      - 'research_v1_supervised_cache.py'
+      - 'test_research_v1_causal_evidence_integrity.py'
+      - '.github/workflows/indexalert-causal-evidence-integrity.yml'
+  push:
+    branches: [index-alert-research-v1, index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_fixed_horizon_label.py'
+      - 'research_v1_supervised_cache.py'
+      - 'test_research_v1_causal_evidence_integrity.py'
+      - '.github/workflows/indexalert-causal-evidence-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0 requests==2.32.3
+      - name: Verify synthetic evidence boundaries and unchanged complete-path returns
+        run: python -m unittest test_research_v1_causal_evidence_integrity.py test_research_v1_corporate_action_returns.py test_research_v1_distributional_netev.py test_research_v1_supervised_cache.py

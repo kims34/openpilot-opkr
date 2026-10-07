@@ -33,6 +33,10 @@ from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
 
 
+class IncompleteFixedHorizonEvidence(RuntimeError):
+    """An entered position cannot be silently omitted or bridged in evaluation."""
+
+
 def build_economic_mark_panel(raw: pd.DataFrame) -> pd.DataFrame:
     """Return raw rows plus a per-symbol corporate-action-safe close index.
 
@@ -58,6 +62,14 @@ def economic_mark_panel_for_portfolio(raw: pd.DataFrame) -> pd.DataFrame:
 
 def add_fixed_horizon_target(raw: pd.DataFrame, frame: pd.DataFrame, record_map: dict, horizon: int) -> pd.DataFrame:
     econ = build_economic_mark_panel(raw)
+    # Prefix counts let us check the entire held interval without expanding
+    # every decision into H rows. A missing bar must not erase an entered trade;
+    # a missing return must not be silently skipped by cumprod(skipna=True).
+    econ["_fh_step"] = econ.groupby("symbol", sort=False).cumcount()
+    factor = 1.0 + econ["krx_change_return"]
+    invalid = ~np.isfinite(factor) | (factor <= 0)
+    invalid |= ~np.isfinite(econ["close"]) | (econ["close"] <= 0)
+    econ["_fh_bad"] = invalid.astype(int).groupby(econ["symbol"], sort=False).cumsum()
     dates = sorted(pd.Timestamp(x) for x in raw["decision_date"].drop_duplicates())
     pairs = []
     for i, d in enumerate(dates):
@@ -67,21 +79,25 @@ def add_fixed_horizon_target(raw: pd.DataFrame, frame: pd.DataFrame, record_map:
     pair_df = pd.DataFrame(pairs)
     z = frame.merge(pair_df, on="decision_date", how="left", validate="many_to_one")
 
-    entry = econ[["decision_date", "symbol", "open", "economic_open"]].rename(columns={
+    entry = econ[["decision_date", "symbol", "open", "economic_open", "_fh_step", "_fh_bad"]].rename(columns={
         "decision_date": "entry_date",
         "open": "fh_entry_open",
         "economic_open": "fh_entry_economic_price",
+        "_fh_step": "_fh_entry_step",
+        "_fh_bad": "_fh_entry_bad",
     })
-    exit_ = econ[["decision_date", "symbol", "close", "economic_close"]].rename(columns={
+    exit_ = econ[["decision_date", "symbol", "close", "economic_close", "_fh_step", "_fh_bad"]].rename(columns={
         "decision_date": "exit_date",
         "close": "fh_exit_close",
         "economic_close": "fh_exit_economic_price",
+        "_fh_step": "_fh_exit_step",
+        "_fh_bad": "_fh_exit_bad",
     })
     z = z.merge(entry, on=["entry_date", "symbol"], how="left", validate="many_to_one")
     z = z.merge(exit_, on=["exit_date", "symbol"], how="left", validate="many_to_one")
 
     cost_rows = [
-        {"decision_date": pd.Timestamp(day), "symbol": str(symbol), "fh_cost": float(rec.cost_return)}
+        {"decision_date": pd.Timestamp(day), "symbol": str(symbol), "fh_cost": float(rec.cost_return), "_fh_entered": True}
         for (day, symbol), rec in record_map.items()
     ]
     cost_df = pd.DataFrame(cost_rows)
@@ -93,6 +109,21 @@ def add_fixed_horizon_target(raw: pd.DataFrame, frame: pd.DataFrame, record_map:
     z["fh_label_available"] = z[[
         "fh_entry_economic_price", "fh_exit_economic_price", "fh_cost"
     ]].notna().all(axis=1)
+    # A legacy record proves that the preliminary replay entered the position;
+    # it does not prove its fixed-horizon outcome. Unknown economics must block
+    # evaluation, never become a no-fill/NO_TRADE or an invented stop recovery.
+    entered = z["_fh_entered"].eq(True)
+    complete_path = (z["_fh_exit_step"] - z["_fh_entry_step"] + 1).eq(horizon)
+    complete_path &= z["_fh_exit_bad"].eq(z["_fh_entry_bad"])
+    prices = z[["fh_entry_economic_price", "fh_exit_economic_price"]]
+    complete_path &= (np.isfinite(prices) & (prices > 0)).all(axis=1)
+    incomplete = entered & (~z["fh_label_available"] | ~complete_path)
+    if incomplete.any():
+        raise IncompleteFixedHorizonEvidence(
+            f"{int(incomplete.sum())} entered fixed-horizon observations have "
+            "incomplete price/return paths; evaluation requires resolved economics"
+        )
+    z = z.drop(columns=["_fh_entry_step", "_fh_entry_bad", "_fh_exit_step", "_fh_exit_bad", "_fh_entered"])
     z["fh_positive_net"] = np.where(
         z["fh_label_available"], (z["fh_net_return"] > 0).astype(int), np.nan
     )
