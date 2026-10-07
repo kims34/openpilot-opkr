@@ -38,6 +38,25 @@ class ShadowCapitalTests(unittest.TestCase):
     def ack(self):
         self.j.bind_acknowledgement('d1','o1')
 
+    def test_reinitialization_does_not_reset_deleted_capital_configuration(self):
+        self.claim(fee=3)
+        self.j.db.execute('DELETE FROM shadow_capital_config')
+        with self.assertRaisesRegex(OrderJournalError, '^startup capital history missing$'):
+            ShadowCapitalAllocator(self.j)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_capital_config').fetchone(), (0,))
+        self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (83,))
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+
+    def test_reinitialization_does_not_recreate_dropped_capital_history(self):
+        self.claim(fee=3)
+        self.j.trip_kill_switch()
+        self.j.db.execute('DROP TABLE shadow_capital_releases')
+        with self.assertRaisesRegex(OrderJournalError, '^startup capital history missing$'):
+            ShadowCapitalAllocator(self.j)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_releases'").fetchone())
+        self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations').fetchone(), (83,))
+        self.assertTrue(self.j.shadow_control()['killed'])
+
     def test_reservation_includes_quantity_price_fee_and_no_broker_request(self):
         with patch('socket.socket', side_effect=AssertionError('network forbidden')):
             out = self.claim(fee=3)
