@@ -160,6 +160,24 @@ class ShadowCapitalTests(unittest.TestCase):
         self.assertEqual(self.j.shadow_control(), killed)
         self.assertTrue(killed['killed'])
 
+    def test_shadow_enable_and_kill_reset_reject_invalid_capital_configuration(self):
+        self.assertTrue(reconcile_order_snapshot_batch(self.j,revision=1,orders=[])['matched'])
+        for baseline in ('[0,0]', '[true,0,0,0]', 'PRIVATE-CORRUPT-CAPITAL'):
+            with self.subTest(baseline=baseline):
+                self.j.db.execute('UPDATE shadow_capital_config SET baseline=?', (baseline,))
+                before = tuple(self.j.db.iterdump())
+                with self.assertRaisesRegex(OrderJournalError, '^invalid shadow capital configuration$'):
+                    self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
+                self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.j.db.execute("UPDATE shadow_capital_config SET baseline='[0,0,0,0]'")
+        self.j.trip_kill_switch()
+        self.j.db.execute("UPDATE shadow_capital_config SET baseline='[0,0]'")
+        killed = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, '^invalid shadow capital configuration$'):
+            self.j.reset_kill_switch(expected_epoch=killed['epoch'])
+        self.assertEqual(self.j.shadow_control(), killed)
+        self.assertTrue(killed['killed'])
+
     def test_initialized_reservation_history_loss_blocks_restart_without_recreation(self):
         self.claim(fee=3)
         self.j.db.execute('DROP TABLE shadow_capital_reservation_history')
