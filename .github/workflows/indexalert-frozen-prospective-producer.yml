@@ -5,6 +5,7 @@ on:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'research_v1_prospective_frozen_producer.py'
+      - 'research_v1_policy_aligned_calibration.py'
       - 'test_research_v1_prospective_frozen_producer.py'
       - 'research_v1_prospective_model_bundle.py'
       - 'research_v1_prospective_decision_capture.py'
@@ -15,6 +16,7 @@ on:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'research_v1_prospective_frozen_producer.py'
+      - 'research_v1_policy_aligned_calibration.py'
       - 'test_research_v1_prospective_frozen_producer.py'
       - 'research_v1_prospective_model_bundle.py'
       - 'research_v1_prospective_decision_capture.py'
