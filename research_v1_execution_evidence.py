@@ -13,10 +13,10 @@ markouts are outcomes to preserve, not records to drop. Backtest/synthetic
 fills and Shadow would-be fills are rejected.
 
 Important terminology boundary:
-- structurally valid LIVE rows only prove that real-account observations exist
-  in the expected schema;
-- they do NOT establish sample sufficiency, capacity, tail behavior or closure
-  of the empirical execution blocker.
+- structurally valid rows carrying the LIVE source label prove only that the
+  supplied rows claim LIVE classification and match the expected schema;
+- they do NOT prove genuine real-account origin, sample sufficiency, capacity,
+  tail behavior or closure of the empirical execution blocker.
 """
 from __future__ import annotations
 
@@ -83,6 +83,10 @@ class ExecutionAudit:
     median_markout_close_bps: float | None
     accepted_execution_sources_only: bool
     contains_paper_execution_evidence: bool
+    contains_live_labelled_rows: bool
+    live_source_label_only: bool
+    live_labelled_structural_rows_present: bool
+    independent_live_provenance_verified: bool
     contains_live_execution_evidence: bool
     live_execution_source_only: bool
     complete_markout_for_fills: bool
@@ -332,11 +336,17 @@ def audit_execution_evidence(table: pd.DataFrame) -> dict:
         median_markout_close_bps=_finite_median(x["markout_close_bps"]),
         accepted_execution_sources_only=bool(x["source"].isin(ACCEPTED_EXECUTION_SOURCES).all()),
         contains_paper_execution_evidence=bool(paper.any()),
-        contains_live_execution_evidence=bool(live.any()),
-        live_execution_source_only=bool(live.all()),
+        contains_live_labelled_rows=bool(live.any()),
+        live_source_label_only=bool(live.all()),
+        live_labelled_structural_rows_present=live_structural,
+        independent_live_provenance_verified=False,
+        # Compatibility-looking evidence fields stay false until an independent
+        # broker-native verifier authenticates the exact rows.
+        contains_live_execution_evidence=False,
+        live_execution_source_only=False,
         complete_markout_for_fills=complete_markout,
         structural_execution_evidence_ready=bool(filled.any() and complete_markout),
-        live_structural_execution_evidence_present=live_structural,
+        live_structural_execution_evidence_present=False,
         # One or more structurally valid LIVE rows are not sufficient to close
         # the empirical execution blocker. Keep the legacy-looking field false
         # until a separately frozen sufficiency protocol exists and passes.
@@ -347,8 +357,10 @@ def audit_execution_evidence(table: pd.DataFrame) -> dict:
     out = asdict(audit)
     out["promotion_ready"] = False
     out["promotion_note"] = (
-        "Paper observations validate broker/execution plumbing only. Structurally valid LIVE observations may contribute to empirical evidence, "
-        "but this audit does not invent a sample-sufficiency threshold. live_empirical_execution_evidence_ready and empirical_execution_blocker_closed therefore remain false until a separately frozen, preregistered sufficiency protocol exists and passes. "
+        "Paper-labelled observations validate only the accepted structural schema in this audit. "
+        "Structurally valid LIVE-labelled rows are candidate input shape, not proof of genuine broker origin. "
+        "contains_live_execution_evidence, live_execution_source_only and live_structural_execution_evidence_present remain false until independent broker-native provenance admission. "
+        "live_empirical_execution_evidence_ready and empirical_execution_blocker_closed also remain false until the frozen sufficiency protocol and independent provenance both pass. "
         "Capacity, tails, sealed holdout and prospective confirmation remain separate requirements."
     )
     return out
