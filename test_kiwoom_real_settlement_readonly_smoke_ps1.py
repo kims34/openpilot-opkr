@@ -14,7 +14,6 @@ class RealSettlementPowerShellSmokeTests(unittest.TestCase):
         runtimes = list(dict.fromkeys(runtime for runtime in (shutil.which('pwsh'), shutil.which('powershell')) if runtime))
         if not runtimes:
             self.skipTest('PowerShell runtime behavior covered by CI matrix')
-        path = base64.b64encode(str(pathlib.Path('kiwoom_real_settlement_readonly_smoke.ps1').resolve()).encode()).decode()
         harness = r'''$ErrorActionPreference='Stop'
 $path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('PATH_BASE64'))
 $tokens=$null; $errors=$null
@@ -35,12 +34,21 @@ foreach ($raw in @('{"return_code":false}','{"return_code":"0"}','{"return_code"
  if (-not $rejected) { throw 'AMBIGUITY_ACCEPTED' }
 }
 if (Require-Nonnegative-CashText (-1)) { throw 'INVALID_CASH_ACCEPTED' }
-'''.replace('PATH_BASE64', path)
-        encoded = base64.b64encode(harness.encode('utf-16le')).decode()
-        for runtime in runtimes:
-            with self.subTest(runtime=pathlib.Path(runtime).name):
-                result = subprocess.run([runtime, '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], capture_output=True, text=True, timeout=30)
-                self.assertEqual(result.returncode, 0, result.stderr)
+'''
+        for filename in ('kiwoom_real_settlement_readonly_smoke.ps1', 'kiwoom_real_settlement_date_readonly_smoke.ps1', 'kiwoom_real_account_scope_readonly_smoke.ps1'):
+            path = base64.b64encode(str(pathlib.Path(filename).resolve()).encode()).decode()
+            encoded = base64.b64encode(harness.replace('PATH_BASE64', path).encode('utf-16le')).decode()
+            for runtime in runtimes:
+                with self.subTest(script=filename, runtime=pathlib.Path(runtime).name):
+                    result = subprocess.run([runtime, '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], capture_output=True, text=True, timeout=30)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_date_and_scope_success_paths_use_strict_response_guards(self):
+        for filename, count in (('kiwoom_real_settlement_date_readonly_smoke.ps1',4), ('kiwoom_real_account_scope_readonly_smoke.ps1',2)):
+            text = pathlib.Path(filename).read_text(encoding='utf-8')
+            self.assertEqual(text.count('-ControlFrame $false'), count)
+            self.assertNotIn('Invoke-RestMethod', text)
+            self.assertIn('acctNo -isnot [string]', text)
 
     def test_fixed_real_host_and_exact_readonly_calls(self):
         self.assertEqual(S.count("https://api.kiwoom.com/oauth2/token"), 1)
