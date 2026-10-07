@@ -1,9 +1,47 @@
+import base64
+import shutil
+import subprocess
 import pathlib
 import unittest
 
 S = pathlib.Path("kiwoom_real_settlement_readonly_smoke.ps1").read_text(encoding="utf-8")
 
 class RealSettlementPowerShellSmokeTests(unittest.TestCase):
+    def test_settlement_responses_use_strict_offline_helpers(self):
+        self.assertEqual(S.count('-ControlFrame $false'), 3)
+        for name in ('token', 'account', 'settlement'):
+            self.assertIn(f'${name} = Convert-ReadOnlyJson -Raw ${name}Wire.Content', S)
+        runtimes = list(dict.fromkeys(runtime for runtime in (shutil.which('pwsh'), shutil.which('powershell')) if runtime))
+        if not runtimes:
+            self.skipTest('PowerShell runtime behavior covered by CI matrix')
+        path = base64.b64encode(str(pathlib.Path('kiwoom_real_settlement_readonly_smoke.ps1').resolve()).encode()).decode()
+        harness = r'''$ErrorActionPreference='Stop'
+$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('PATH_BASE64'))
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors)
+if ($errors.Count -ne 0) { throw 'SYNTAX_INVALID' }
+foreach ($name in @('Convert-ReadOnlyJson','Get-ReadOnlyReturnCode','Require-Nonnegative-CashText')) {
+ $fn=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
+ if ($null -eq $fn) { throw 'HELPER_MISSING' }
+ . ([ScriptBlock]::Create($fn.Extent.Text))
+}
+$obj=Convert-ReadOnlyJson -Raw '{"return_code":0,"entr":"1,000","pymn_alow_amt":"900","d2_entra":"800","ord_alow_amt":"700"}'
+if ((Get-ReadOnlyReturnCode -Message $obj -Raw '{"return_code":0}' -ControlFrame $false) -ne 0) { throw 'VALID_REJECTED' }
+if (-not (Require-Nonnegative-CashText $obj.entr)) { throw 'VALID_CASH_REJECTED' }
+foreach ($raw in @('{"return_code":false}','{"return_code":"0"}','{"return_code":0.5}','{"return_code":0,"return_code":0}','{"return_code":0,"entr":"10","entr":"1000"}','{"return_code":0,"nested":{"a":1,"a":2}}','{"return_code":0,"entr":NaN}')) {
+ $rejected=$false
+ try { $obj=Convert-ReadOnlyJson -Raw $raw; $null=Get-ReadOnlyReturnCode -Message $obj -Raw $raw -ControlFrame $false }
+ catch { if ($_.Exception.Message -notin @('READ_ONLY_JSON_INVALID','READ_ONLY_PROTOCOL_RESPONSE_INVALID')) { throw 'PRIVATE_ERROR_REQUIRED' }; $rejected=$true }
+ if (-not $rejected) { throw 'AMBIGUITY_ACCEPTED' }
+}
+if (Require-Nonnegative-CashText (-1)) { throw 'INVALID_CASH_ACCEPTED' }
+'''.replace('PATH_BASE64', path)
+        encoded = base64.b64encode(harness.encode('utf-16le')).decode()
+        for runtime in runtimes:
+            with self.subTest(runtime=pathlib.Path(runtime).name):
+                result = subprocess.run([runtime, '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_fixed_real_host_and_exact_readonly_calls(self):
         self.assertEqual(S.count("https://api.kiwoom.com/oauth2/token"), 1)
         self.assertEqual(S.count("https://api.kiwoom.com/api/dostk/acnt"), 2)
