@@ -430,10 +430,13 @@ def assess_execution_sufficiency(
         "protocol_id": p["protocol_id"],
         "protocol_fingerprint_sha256": validated["protocol_fingerprint_sha256"],
         "protocol_document_sha256_verified": validated["protocol_document_sha256_verified"],
-        "first_live_recommendation_at": validated["first_live_recommendation_at"],
-        "preregistered_before_first_live_observation": validated[
+        "supplied_live_labelled_first_recommendation_at": validated["first_live_recommendation_at"],
+        "preregistered_before_supplied_live_labelled_observation": validated[
             "preregistered_before_first_live_observation"
         ],
+        "independent_live_window_provenance_verified": False,
+        "first_live_recommendation_at": None,
+        "preregistered_before_first_live_observation": False,
         "counts": {
             "live_observations": live_n,
             "distinct_decision_dates": dates_n,
