@@ -59,6 +59,24 @@ class DashboardTests(unittest.TestCase):
         self.assertNotIn(str(self.path),body)
         self.assertEqual(self.journal.db.total_changes,before)
 
+    def test_initialized_history_loss_reports_private_blocker_without_recreating(self):
+        from shadow_capital_allocator import ShadowCapitalAllocator
+        ShadowCapitalAllocator(self.journal)
+        self.journal.register('PRIVATE-INTENT',symbol='PRIVATE-SYMBOL',side='BUY',quantity=1)
+        self.journal.db.execute('DROP TABLE shadow_capital_releases')
+        before = self.journal.db.total_changes
+        status,_,body = self.request('/api/status')
+        report = json.loads(body)
+        self.assertEqual(status,200)
+        self.assertFalse(report['diagnostics_complete'])
+        self.assertEqual(report['local_blockers'], ['INITIALIZED_HISTORY_MISSING'])
+        for field in ('real_orders_authorized','exact_policy_shadow_admitted','genuine_live_provenance_verified','journal_mutation_attempted'):
+            self.assertFalse(report[field])
+        for private in ('PRIVATE-INTENT','PRIVATE-SYMBOL','shadow_capital_releases',str(self.path)):
+            self.assertNotIn(private,body)
+        self.assertEqual(self.journal.db.total_changes,before)
+        self.assertIsNone(self.journal.db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_releases'").fetchone())
+
     def test_foreign_host_and_path_selection_are_rejected(self):
         self.assertEqual(self.request('/api/status',headers={'Host':'external.invalid'})[0],403)
         self.assertEqual(self.request('/api/status?journal=another.sqlite')[0],404)

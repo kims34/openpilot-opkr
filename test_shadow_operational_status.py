@@ -52,7 +52,7 @@ class OperationalStatusTests(unittest.TestCase):
         before = self.journal.db.total_changes
         result = self.inspect()
         self.assertFalse(result['diagnostics_complete'])
-        self.assertEqual(result['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertEqual(result['local_blockers'], ['INITIALIZED_HISTORY_MISSING'])
         self.assertEqual(self.journal.db.total_changes, before)
 
     def test_live_shadow_inspection_never_runs_recovery_or_mutates(self):

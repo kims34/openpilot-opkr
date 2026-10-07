@@ -43,7 +43,11 @@ def inspect_shadow_operational_status(path):
         connection = sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro', uri=True, isolation_level=None)
         connection.execute('PRAGMA query_only=ON')
         connection.execute('BEGIN')
-        validate_stored_component_history(connection)
+        try:
+            validate_stored_component_history(connection)
+        except OrderJournalError:
+            report['local_blockers'] = ['INITIALIZED_HISTORY_MISSING']
+            return report
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if 'shadow_control_faults' in tables:
             if connection.execute('SELECT 1 FROM shadow_control_faults LIMIT 1').fetchone():
