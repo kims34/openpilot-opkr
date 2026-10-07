@@ -164,6 +164,23 @@ class JournalTests(unittest.TestCase):
             self.j.claim_submission('decision-1',expected_epoch=2**63)
         self.assertEqual(self.j.get('decision-1')['state'], 'INTENT_CREATED')
 
+    def test_restart_does_not_recreate_deleted_kill_control(self):
+        self.j.trip_kill_switch()
+        self.j.db.execute('DELETE FROM shadow_control')
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM shadow_control').fetchone(), (0,))
+        self.assertEqual(self.j.get('decision-1')['state'], 'INTENT_CREATED')
+
+    def test_restart_missing_barrier_stays_off_and_retains_kill_without_new_revision(self):
+        self.j.trip_kill_switch()
+        self.j.db.execute('DELETE FROM reconciliation_barrier')
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM reconciliation_barrier').fetchone(), (0,))
+        self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertTrue(self.j.shadow_control()['killed'])
+
     def test_overfill_rolls_back_quantity_and_quarantines(self):
         self.acknowledged()
         self.fill()

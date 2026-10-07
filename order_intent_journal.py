@@ -128,7 +128,7 @@ class OrderIntentJournal:
         # REPLACE must execute DELETE triggers too; otherwise it can silently
         # bypass append-only receipt/binding safeguards on this connection.
         self.db.execute("PRAGMA recursive_triggers=ON")
-        self.db.executescript("""
+        schema = """
             CREATE TABLE IF NOT EXISTS intents (
                 key TEXT PRIMARY KEY, payload TEXT NOT NULL,
                 state TEXT NOT NULL, broker_order_id TEXT, terminal_status TEXT,
@@ -151,7 +151,25 @@ class OrderIntentJournal:
                 epoch INTEGER NOT NULL, payload TEXT NOT NULL);
             CREATE UNIQUE INDEX IF NOT EXISTS single_broker_order_binding
                 ON intents(broker_order_id) WHERE broker_order_id IS NOT NULL;
-        """)
+        """
+        # Initialization must distinguish a fresh schema from deleted safety
+        # records. Never recreate an existing table's lost Kill/nonce history.
+        missing = False
+        with self._atomic():
+            tables = {row[0] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            missing = any(table in tables and self.db.execute(
+                f'SELECT 1 FROM {table} WHERE id=1').fetchone() is None
+                for table in ('shadow_control','reconciliation_barrier'))
+            if missing:
+                if 'shadow_control' in tables:
+                    self._stop_shadow('STARTUP_SAFETY_METADATA_MISSING')
+            else:
+                for statement in schema.split(';'):
+                    if statement.strip():
+                        self.db.execute(statement)
+        if missing:
+            self.db.close()
+            raise OrderJournalError('startup safety metadata missing')
         for operation in ('UPDATE', 'DELETE'):
             self.db.execute(f'''CREATE TRIGGER IF NOT EXISTS executions_{operation.lower()}_immutable
                 BEFORE {operation} ON executions BEGIN SELECT RAISE(ABORT,'immutable execution'); END''')
