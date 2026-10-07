@@ -48,8 +48,13 @@ def test_all_source_gates_pass_still_does_not_authorize_promotion_or_holdout():
         statuses={gate: "PASS" for gate in "ABCDEF"},
         evidence=_evidence(),
     )
-    assert out["all_source_gates_pass"] is True
-    assert out["source_contract_closed_for_declared_scope"] is True
+    assert out["all_source_gate_claims_pass"] is True
+    assert out["independent_source_gate_admission_verified"] is False
+    assert out["all_source_gates_pass"] is False
+    assert out["source_contract_closed_for_declared_scope"] is False
+    assert out["independent_admission_blocking_conditions"] == (
+        "INDEPENDENT_SOURCE_GATE_ADMISSION_NOT_IMPLEMENTED",
+    )
     assert out["alpha_or_final_judge_promotion_authorized"] is False
     assert out["sealed_holdout_authorized_by_source_audit_alone"] is False
     assert out["live_trading_authorized_by_source_audit_alone"] is False
@@ -203,6 +208,9 @@ def test_valid_string_normalization_preserves_source_only_boundary():
     )
     assert out["source_family"] == "KRX_INVESTOR_FLOW"
     assert out["intended_use_scope"] == "INTERNAL_RESEARCH"
-    assert out["all_source_gates_pass"] is True
+    assert out["all_source_gate_claims_pass"] is True
+    assert out["all_source_gates_pass"] is False
+    assert out["source_contract_closed_for_declared_scope"] is False
+    assert out["independent_source_gate_admission_verified"] is False
     assert out["alpha_or_final_judge_promotion_authorized"] is False
     assert out["live_trading_authorized_by_source_audit_alone"] is False
