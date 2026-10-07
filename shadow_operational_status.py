@@ -11,7 +11,7 @@ import sqlite3
 
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
-from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history
+from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history, valid_stored_safety_row
 from shadow_capital_allocator import validate_stored_capital_reservations
 
 
@@ -54,10 +54,10 @@ def inspect_shadow_operational_status(path):
                 report['local_blockers'] = ['SAFETY_METADATA_QUARANTINED']
                 return report
         _require({'intents','executions','shadow_control','reconciliation_barrier','reconciled_snapshot_bindings'} <= tables)
-        control = connection.execute('SELECT epoch,mode,killed FROM shadow_control WHERE id=1').fetchone()
+        control = connection.execute('SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1').fetchone()
         barrier = connection.execute('SELECT revision,blocked FROM reconciliation_barrier WHERE id=1').fetchone()
-        _require(control is not None and barrier is not None)
-        epoch, mode, killed = control
+        _require(valid_stored_safety_row(control) and barrier is not None)
+        epoch, mode, killed = control[:3]
         revision, blocked = barrier
         _amount(epoch); _amount(revision)
         _require(mode in ('MASTER_OFF','SHADOW') and killed in (0,1) and blocked in (0,1))

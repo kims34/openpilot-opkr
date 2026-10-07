@@ -46,6 +46,19 @@ class OperationalStatusTests(unittest.TestCase):
         self.assertEqual(self.journal.db.total_changes, before)
         self.assertEqual(self.journal.db.execute('SELECT mode,killed FROM shadow_control').fetchone(), ('MASTER_OFF',1))
 
+    def test_unquarantined_invalid_safety_reason_is_unavailable_read_only(self):
+        for reason in ('', '   ', b'PRIVATE-SAFETY-REASON'):
+            with self.subTest(reason=reason):
+                self.journal.db.execute('UPDATE shadow_control SET reason=?', (reason,))
+                before = tuple(self.journal.db.iterdump())
+                out = self.inspect()
+                self.assertFalse(out['diagnostics_complete'])
+                self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+                self.assertNotIn('capital', out)
+                self.assertFalse(out['real_orders_authorized'])
+                self.assertNotIn('PRIVATE-SAFETY-REASON', json.dumps(out))
+                self.assertEqual(tuple(self.journal.db.iterdump()), before)
+
     def test_complete_capital_history_loss_is_unavailable_without_mutation(self):
         for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):
             self.journal.db.execute(f'DROP TABLE {table}')
