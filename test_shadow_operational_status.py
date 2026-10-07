@@ -109,14 +109,19 @@ class OperationalStatusTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE-INVALID-OUTCOME', json.dumps(out))
                 self.assertEqual(tuple(self.journal.db.iterdump()), before)
 
-    def _terminal_inbox_fixture(self, apply=True):
+    def _native_bridge_fixture(self):
         from kiwoom_order_journal_bridge import KiwoomOrderJournalBridge
-        from kiwoom_execution_inbox import KiwoomExecutionInbox
         import test_kiwoom_order_journal_bridge as fixtures
         self.claim()
         self.journal.bind_acknowledgement('PRIVATE-INTENT', 'native-order')
         bridge = KiwoomOrderJournalBridge(self.journal, account_fingerprint=fixtures.ACCOUNT, trading_date=fixtures.DAY)
         bridge.bind_order('PRIVATE-INTENT', broker_order_id='native-order', native_side='2')
+        return bridge
+
+    def _terminal_inbox_fixture(self, apply=True):
+        from kiwoom_execution_inbox import KiwoomExecutionInbox
+        import test_kiwoom_order_journal_bridge as fixtures
+        bridge = self._native_bridge_fixture()
         inbox = KiwoomExecutionInbox(bridge)
         row = fixtures.fill(); row['symbol'] = 'PRIVATE-SYMBOL'
         inbox.append('private-receipt', 'PRIVATE-INTENT', row, trading_date=fixtures.DAY)
@@ -166,6 +171,30 @@ class OperationalStatusTests(unittest.TestCase):
         self._terminal_inbox_fixture()
         self.journal.db.execute('DROP TRIGGER native_fill_bindings_delete_immutable')
         self.journal.db.execute('DELETE FROM native_fill_bindings')
+        self._assert_private_terminal_unavailable()
+
+    def test_orphan_native_order_without_inbox_is_unavailable_read_only(self):
+        self._native_bridge_fixture()
+        self.journal.db.execute('INSERT INTO native_order_bindings VALUES(?,?,?)',
+            ('PRIVATE-ORPHAN', 'PRIVATE-ORDER', '2'))
+        self._assert_private_terminal_unavailable()
+
+    def test_native_order_without_inbox_is_visible_without_mutation(self):
+        self._native_bridge_fixture()
+        before = tuple(self.journal.db.iterdump())
+        out = self.inspect()
+        self.assertTrue(out['diagnostics_complete'])
+        self.assertEqual(tuple(self.journal.db.iterdump()), before)
+        self.assertFalse(out['genuine_live_provenance_verified'])
+
+    def test_orphan_native_fill_without_receipt_cannot_report_complete(self):
+        import hashlib
+        self._terminal_inbox_fixture()
+        payload = self.journal.db.execute('SELECT payload FROM native_fill_bindings').fetchone()[0]
+        material = json.loads(payload); material['execution_id'] = 'PRIVATE-ORPHAN'
+        payload = json.dumps(material, sort_keys=True, separators=(',', ':'))
+        self.journal.db.execute('INSERT INTO native_fill_bindings VALUES(?,?,?,?)',
+            ('PRIVATE-INTENT', 'PRIVATE-ORPHAN', hashlib.sha256(payload.encode()).hexdigest(), payload))
         self._assert_private_terminal_unavailable()
 
     def test_terminal_receipt_duplicate_json_fields_is_unavailable(self):
