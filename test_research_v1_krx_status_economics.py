@@ -62,8 +62,9 @@ def test_verified_official_recovery_fully_closes_position_economics_only():
     assert "INDEPENDENT_ECONOMICS_PROVENANCE_ADMISSION_NOT_IMPLEMENTED" in out["blocking_conditions"]
     assert out["unresolved_positions"] == 0
     assert out["unsupported_recovery_evidence_positions"] == 0
-    assert out["resolved_position_economics"][0]["verified_recovery_cash"] == "300"
-    assert out["resolved_position_economics"][0]["exact_net_return"] == "-0.7"
+    assert out["resolved_position_economics"] == []
+    assert out["structural_candidate_position_economics"][0]["verified_recovery_cash"] == "300"
+    assert out["structural_candidate_position_economics"][0]["exact_net_return"] == "-0.7"
     assert out["judge_security_status_ready"] is False
     assert out["sealed_holdout_authorized"] is False
     assert out["alpha_or_final_judge_promotion_authorized"] is False
@@ -87,7 +88,8 @@ def test_live_fill_plus_official_recovery_can_close_split_quantity():
     assert out["structural_status_economics_satisfied"] is True
     assert out["exact_status_economics_ready"] is False
     assert out["independent_economics_provenance_admission_verified"] is False
-    row = out["resolved_position_economics"][0]
+    assert out["resolved_position_economics"] == []
+    row = out["structural_candidate_position_economics"][0]
     assert row["verified_fill_cash"] == "200"
     assert row["verified_recovery_cash"] == "120"
     assert row["verified_net_exit_cash"] == "315"
@@ -123,6 +125,8 @@ def test_non_live_or_synthetic_fill_sources_cannot_close_exact_economics(evidenc
     )
     assert out["exact_status_economics_ready"] is False
     assert out["unsupported_fill_evidence_positions"] == 1
+    assert out["structural_candidate_position_economics"] == []
+    assert out["resolved_position_economics"] == []
 
 
 def test_unresolved_quantity_blocks_exact_economics():
@@ -137,6 +141,8 @@ def test_unresolved_quantity_blocks_exact_economics():
     assert out["exact_status_economics_ready"] is False
     assert out["accounting_mismatch_positions"] == 1
     assert out["unresolved_positions"] == 1
+    assert out["structural_candidate_position_economics"] == []
+    assert out["resolved_position_economics"] == []
 
 
 def test_over_resolved_quantity_is_accounting_mismatch():
