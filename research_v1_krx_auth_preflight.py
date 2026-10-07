@@ -115,7 +115,15 @@ def evaluate_auth_preflight(
 
     krx_id = bool(str(environment.get("KRX_ID") or "").strip())
     krx_pw = bool(str(environment.get("KRX_PW") or "").strip())
-    openapi_key = bool(str(environment.get("KRX_OPENAPI_AUTH_KEY") or "").strip())
+    # Production KRX OpenAPI plumbing and Railway use KRX_AUTH_KEY.  Keep the
+    # earlier KRX_OPENAPI_AUTH_KEY name only as a compatibility alias so the
+    # shared preflight cannot falsely report the real configured credential as
+    # missing while older dry-run tooling migrates.
+    canonical_openapi_key = bool(str(environment.get("KRX_AUTH_KEY") or "").strip())
+    legacy_openapi_key = bool(
+        str(environment.get("KRX_OPENAPI_AUTH_KEY") or "").strip()
+    )
+    openapi_key = canonical_openapi_key or legacy_openapi_key
     explicit_consent = (
         str(environment.get(EXPLICIT_PROBE_CONSENT_ENV) or "").strip()
         == EXPLICIT_PROBE_CONSENT_SENTINEL
@@ -133,7 +141,7 @@ def evaluate_auth_preflight(
     elif route == OPENAPI_ROUTE:
         route_credentials_complete = openapi_key
         if not openapi_key:
-            missing.append("KRX_OPENAPI_AUTH_KEY")
+            missing.append("KRX_AUTH_KEY")
         if not exact_service_mapping_confirmed:
             missing.append("EXACT_APPROVED_OPENAPI_SERVICE_MAPPING")
     else:
@@ -182,7 +190,7 @@ def evaluate_auth_preflight(
     out = asdict(result)
     out["missing_requirements"] = list(result.missing_requirements)
     out["guardrail"] = (
-        "Credentials are not authorization, an opaque reference is not validated evidence, and authorization metadata is not runtime consent. For the Data Marketplace web-session route, ordinary account access is insufficient: explicit KRX permission for automated collection must also be present in the validated evidence. "
+        "Credentials are not authorization, an opaque reference is not validated evidence, and authorization metadata is not runtime consent. The canonical KRX OpenAPI credential variable is KRX_AUTH_KEY; KRX_OPENAPI_AUTH_KEY is compatibility-only during migration. For the Data Marketplace web-session route, ordinary account access is insufficient: explicit KRX permission for automated collection must also be present in the validated evidence. "
         "A separately validated structured evidence record plus the exact explicit-consent sentinel are required before one declared tiny request. "
         "Gate A remains at most PARTIAL and all bulk/performance/holdout/promotion/live authorities remain false."
     )

@@ -111,6 +111,7 @@ def build_readiness_report(
     safe_environment = {
         "KRX_ID": environment.get("KRX_ID"),
         "KRX_PW": environment.get("KRX_PW"),
+        "KRX_AUTH_KEY": environment.get("KRX_AUTH_KEY"),
         "KRX_OPENAPI_AUTH_KEY": environment.get("KRX_OPENAPI_AUTH_KEY"),
         EXPLICIT_PROBE_CONSENT_ENV: "",
     }
@@ -177,6 +178,7 @@ def main() -> None:
         environment={
             "KRX_ID": os.getenv("KRX_ID"),
             "KRX_PW": os.getenv("KRX_PW"),
+            "KRX_AUTH_KEY": os.getenv("KRX_AUTH_KEY"),
             "KRX_OPENAPI_AUTH_KEY": os.getenv("KRX_OPENAPI_AUTH_KEY"),
             EXPLICIT_PROBE_CONSENT_ENV: os.getenv(EXPLICIT_PROBE_CONSENT_ENV),
         },
