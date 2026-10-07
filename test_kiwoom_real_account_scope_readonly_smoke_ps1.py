@@ -23,7 +23,8 @@ foreach ($name in @('Convert-ReadOnlyJson','Get-ReadOnlyReturnCode','Invoke-Read
 }
 # Stub all HTTP. No credentials/configuration or full broker script are executed.
 function Invoke-WebRequest {
- param([switch]$UseBasicParsing,[string]$Uri,[string]$Method,[object]$Headers,[string]$ContentType,[object]$Body)
+ param([switch]$UseBasicParsing,[string]$Uri,[string]$Method,[object]$Headers,[string]$ContentType,[object]$Body,[int]$TimeoutSec)
+ if ($TimeoutSec -ne 15) {throw 'HTTP_TIMEOUT_NOT_BOUND'}
  $script:Calls++
  return [pscustomobject]@{Content=$script:Reply;Headers=$script:ReplyHeaders}
 }
@@ -56,6 +57,14 @@ if ($result.Complete -or ($script:Calls-$before) -ne 10) {throw 'PAGING_CAP_BYPA
             with self.subTest(runtime=pathlib.Path(runtime).name):
                 result=subprocess.run([runtime,'-NoProfile','-NonInteractive','-EncodedCommand',encoded],capture_output=True,text=True,timeout=30)
                 self.assertEqual(result.returncode,0,result.stderr)
+
+    def test_every_readonly_http_request_has_explicit_timeout(self):
+        for filename in ('kiwoom_real_type00_readonly_smoke.ps1', 'kiwoom_real_settlement_readonly_smoke.ps1', 'kiwoom_real_settlement_date_readonly_smoke.ps1', 'kiwoom_real_account_scope_readonly_smoke.ps1'):
+            text=pathlib.Path(filename).read_text(encoding='utf-8')
+            calls=[line.strip() for line in text.splitlines() if '= Invoke-WebRequest ' in line]
+            self.assertTrue(calls)
+            for call in calls:
+                self.assertIn('Invoke-WebRequest -TimeoutSec 15 ', call)
 
     def test_fixed_real_host_and_reviewed_query_ids_only(self):
         self.assertEqual(S.count("https://api.kiwoom.com/oauth2/token"), 1)

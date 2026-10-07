@@ -257,7 +257,7 @@ $script:Token = $null
 $script:Account = $null
 try {
     $tokenBody = @{ grant_type="client_credentials"; appkey=$env:KIWOOM_APP_KEY; secretkey=$env:KIWOOM_APP_SECRET } | ConvertTo-Json -Compress
-    $tokenWire = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
+    $tokenWire = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing -Uri "https://api.kiwoom.com/oauth2/token" -Method Post -ContentType "application/json;charset=UTF-8" -Body $tokenBody
     try {
         $tokenResp = Convert-ReadOnlyJson -Raw $tokenWire.Content
         $tokenCode = Get-ReadOnlyReturnCode -Message $tokenResp -Raw $tokenWire.Content -ControlFrame $false
@@ -269,7 +269,7 @@ try {
     $script:TokenOk = $true
 
     $headers = @{ authorization="Bearer $script:Token"; "api-id"="ka00001"; "cont-yn"="N"; "next-key"="" }
-    $accountResp = Invoke-WebRequest -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
+    $accountResp = Invoke-WebRequest -TimeoutSec 15 -UseBasicParsing -Uri "https://api.kiwoom.com/api/dostk/acnt" -Method Post -Headers $headers -ContentType "application/json;charset=UTF-8" -Body "{}"
     try {
         $accountObj = Convert-ReadOnlyJson -Raw $accountResp.Content
         $accountCode = Get-ReadOnlyReturnCode -Message $accountObj -Raw $accountResp.Content -ControlFrame $false
