@@ -163,6 +163,20 @@ class InboxTests(unittest.TestCase):
     def test_duplicate_receipt_sequence_after_constraint_loss_cannot_hide_delivery(self):
         self._assert_ambiguous_receipt_identity(duplicate_sequence=True)
 
+    def test_orphan_conflict_history_blocks_runtime_fill_without_discarding_receipt(self):
+        self.append()
+        self.j.db.execute('''INSERT INTO native_inbox_conflicts(receipt_id,key,day,payload,digest)
+            SELECT 'orphan-conflict',key,day,payload,digest FROM native_inbox_receipts''')
+        original = self.j.db.execute('SELECT * FROM native_inbox_conflicts').fetchall()
+        for operation in (self.i.replay_next, self.i.counts, lambda: self.i.replay('receipt-1'),lambda: self.append('receipt-2')):
+            with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.get('d1')['filled_quantity'],0)
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_inbox_conflicts').fetchall(),original)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_receipts').fetchone(),(1,))
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM native_inbox_attempts').fetchone(),(0,))
+            self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):
