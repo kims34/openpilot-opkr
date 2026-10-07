@@ -29,6 +29,39 @@ class LateFillCapitalTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
+    def test_lost_restoration_history_blocks_runtime_and_restart_without_recreation(self):
+        self.released()
+        self.late()
+        self.assertEqual(self.j.db.execute("SELECT component FROM journal_component_history WHERE component='capital_restoration'").fetchall(), [('capital_restoration',)])
+        self.j.db.execute('DROP TABLE shadow_capital_release_revocations')
+        with self.assertRaisesRegex(OrderJournalError, 'component history missing'):
+            self.late()
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 1)
+        self.assertEqual(self.j.db.execute('SELECT reserve FROM shadow_capital_reservations WHERE key=?', ('d1',)).fetchone(), (83,))
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_release_revocations'").fetchone())
+        self.j.close()
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        import sqlite3
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute('SELECT filled FROM intents WHERE key=?', ('d1',)).fetchone(), (1,))
+            self.assertEqual(db.execute('SELECT reserve FROM shadow_capital_reservations WHERE key=?', ('d1',)).fetchone(), (83,))
+            self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_capital_release_revocations'").fetchone())
+
+    def test_present_legacy_restoration_history_backfills_without_changing_facts(self):
+        self.released()
+        self.late()
+        before=self.j.db.execute('SELECT * FROM shadow_capital_release_revocations').fetchall()
+        self.j.db.execute('DROP TABLE journal_component_history')
+        self.j.db.execute('PRAGMA user_version=0')
+        self.j.close()
+        self.j=OrderIntentJournal(self.path)
+        self.a=ShadowCapitalAllocator(self.j)
+        self.assertEqual(self.j.db.execute('SELECT * FROM shadow_capital_release_revocations').fetchall(), before)
+        self.assertEqual(self.j.db.execute("SELECT component FROM journal_component_history WHERE component='capital_restoration'").fetchall(), [('capital_restoration',)])
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+        self.assert_stopped()
+
     def test_late_fill_after_released_principal_restores_reservation_and_stops(self):
         self.released()
         revision=self.a.state()['revision']
