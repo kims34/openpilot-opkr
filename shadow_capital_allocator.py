@@ -109,6 +109,8 @@ class ShadowCapitalAllocator:
         state = self.state()
         if type(expected) is not int or expected != state['revision']:
             raise OrderJournalError('stale or invalid shadow capital revision')
+        if state['revision'] == 2**63-1:
+            raise OrderJournalError('shadow capital revision exhausted')
         return state
 
     def configure(self, *, controls, baseline, expected_revision):

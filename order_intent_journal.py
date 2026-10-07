@@ -386,7 +386,9 @@ class OrderIntentJournal:
             raise OrderJournalError('released capital reservation inconsistent')
         self.db.execute('UPDATE shadow_capital_reservations SET reserve=reserve+? WHERE key=?', (released[0], key))
         self.db.execute('INSERT INTO shadow_capital_release_revocations VALUES(?,?,?)', (key, released[0], execution_id))
-        self.db.execute('UPDATE shadow_capital_config SET revision=revision+1 WHERE id=1')
+        self.db.execute('''UPDATE shadow_capital_config SET revision=
+            CASE WHEN typeof(revision)='integer' AND revision>=0 AND revision<9223372036854775807
+                THEN revision+1 ELSE revision END WHERE id=1''')
 
     def _require_batch_reconciled(self):
         validate_stored_execution_totals(self.db,

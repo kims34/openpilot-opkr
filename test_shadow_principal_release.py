@@ -55,6 +55,18 @@ class PrincipalReleaseTests(unittest.TestCase):
             expected_epoch=epoch,expected_capital_revision=self.a.state()['revision'])
         self.assertEqual(self.a.state()['managed_reserve_krw'],99)
 
+    def test_exhausted_capital_revision_cannot_release_or_reconfigure(self):
+        self.batch()
+        self.j.db.execute('UPDATE shadow_capital_config SET revision=?', (2**63-1,))
+        before = tuple(self.j.db.iterdump())
+        with self.assertRaises(OrderJournalError):
+            self.release()
+        with self.assertRaises(OrderJournalError):
+            self.a.configure(controls=AutomationUserControls(True,100),
+                baseline=AutomationCapitalState(0,0),expected_revision=2**63-1)
+        self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+
     def test_zero_fill_rejection_can_return_only_principal(self):
         self.assertTrue(self.batch(status='REJECTED')['matched'])
         self.assertEqual(self.release()['retained_fee_buffer_krw'],3)
