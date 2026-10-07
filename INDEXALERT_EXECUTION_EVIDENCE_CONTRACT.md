@@ -70,11 +70,18 @@ For PAPER or LIVE broker execution rows:
 
 `research_v1_execution_evidence.py` must distinguish these concepts explicitly.
 
-A structurally valid LIVE filled row with required markouts may set:
-- `contains_live_execution_evidence=true`;
-- `live_structural_execution_evidence_present=true`.
+A structurally valid row carrying the LIVE source label may set only:
+- `contains_live_labelled_rows=true`;
+- `live_source_label_only=true` when every supplied row carries that label;
+- `live_labelled_structural_rows_present=true` when the labelled row shape is complete.
 
-It must **not** merely from that fact set:
+Without independent broker-native provenance admission it must keep:
+- `independent_live_provenance_verified=false`;
+- `contains_live_execution_evidence=false`;
+- `live_execution_source_only=false`;
+- `live_structural_execution_evidence_present=false`.
+
+It must also **not** merely from the LIVE label/shape set:
 - `live_empirical_execution_evidence_ready=true`;
 - `empirical_execution_blocker_closed=true`;
 - `promotion_ready=true`.
@@ -97,6 +104,13 @@ A valid protocol record must include at least:
 - rationale.
 
 If LIVE evidence already exists, `frozen_at` must be **strictly earlier** than the first LIVE recommendation being evaluated. A protocol frozen at or after that first LIVE observation is rejected as post-hoc.
+
+When the evaluator receives only self-labelled LIVE rows without independent provenance, this
+chronology is a structural comparison only. It may report
+`preregistered_before_supplied_live_labelled_observation=true`, but must keep
+`independent_live_window_provenance_verified=false`,
+`first_live_recommendation_at=null` and
+`preregistered_before_first_live_observation=false` at the canonical project-evidence layer.
 
 Unit-test fixture values remain non-evidence. The canonical IndexAlert project thresholds are frozen in `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.md` and its SHA-256-bound `INDEXALERT_EXECUTION_SUFFICIENCY_PROTOCOL.json`; they were fixed before any genuine LIVE observation.
 

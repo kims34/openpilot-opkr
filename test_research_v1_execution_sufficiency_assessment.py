@@ -84,6 +84,11 @@ def test_synthetic_fixture_can_pass_metric_path_but_cannot_close_project_blocker
     # LIVE CSV is not genuine project evidence and cannot close the blocker.
     assert out["execution_metric_gates_passed"] is True
     assert out["failed_gates"] == []
+    assert out["supplied_live_labelled_first_recommendation_at"] is not None
+    assert out["preregistered_before_supplied_live_labelled_observation"] is True
+    assert out["independent_live_window_provenance_verified"] is False
+    assert out["first_live_recommendation_at"] is None
+    assert out["preregistered_before_first_live_observation"] is False
     assert out["genuine_live_provenance_verified"] is False
     assert out["provenance_admission_required"] is True
     assert out["project_failed_gates"] == ["independent_live_provenance_admission"]
