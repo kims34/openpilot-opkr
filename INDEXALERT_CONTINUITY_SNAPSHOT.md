@@ -1,3 +1,22 @@
+# Canonical checkpoint — 2026-10-07 12:54 KST
+
+Actual code HEAD 4eda2cb32ae01f46f3f5a6dc94d71ce6dcddaa5c (PR285). The operator-history-reporting and cursor-cycle next pointers below are now completed. Requery current development HEAD; this record is docs only. Project INCOMPLETE; no background/unlimited execution or exhausted-independent-work claim.
+
+- PR284 feature936636060e81fa30915c49155b243e8f3bbb7e97 -> merge2b97df0b0a88476e72a9ad592c41d512d656373f: fixed INITIALIZED_HISTORY_MISSING blocker, diagnostics and all admission false; Korean explanation, no raw identities/table/path, no missing-table reconstruction/control route. Loopback and JavaScript tests clear stale state/capital/readiness. Exact feature Actions37568496480 status/37568496560 settlement/37568496448 toolkit SUCCESS; toolkit jobs112621594060 Chromium/112621594158 Ubuntu/112621594267 Windows SUCCESS. Local33 passed in6.44s.
+- PR285 initial reproducer1fb7769b79bf7996e9abd355e269bea471b84b52 exposed Y/A,Y/A,N falsely completing:37568608248/job112621947423 FAILED with REPEATED_CURSOR_BECAME_COMPLETE. HTTP fully stubbed; never genuine evidence. Corrected final featuref3f58119c6dcc22ed6d3ba95116ab1cf4880f3c6 -> merge4eda2cb32ae01f46f3f5a6dc94d71ce6dcddaa5c: per-operation exact cursor set fails privately on reuse, valid unique paging and10-page incomplete cap preserved. Exact corrected Actions37568679821 Windows/Ubuntu (jobs112622172393/112622172115),37568679876,37568679832 SUCCESS. Superseded failing checks were not merge basis.
+- Latest expanded offline regression371 passed/4 PowerShell-runtime skips in8.13s; actual Windows/Ubuntu CI executes those behaviors. Prior PR283 source/CI and PR273–282 completions retained below; do not repeat them. Prior docs12e17cfb8f2fe7caa49a39057aa3c0937f79217e push should be read directly with this docs push, no duplicate restart.
+- Fresh other refs unchanged: research194da5016ad3aecc2ceb25944666daa74f038083; Android144fad9c2ed178e04e4b92100210e53e07f77461; prereg1d81eb526f59b87c528d63be9e3883e0f76fedf6. Master Spec798e658d2b3414f95ce648c58945425d9a579182 unchanged. Tracked source overlays are preserved and compared to authoritative merge before checkout; scratch caches remain untracked, historical stashes retained.
+
+Exact next independent resume:
+1. Query dev/ref/open PR/recent commits/ongoing Actions and this docs/285 merge pushes. Preserve concurrent work. Skip completed273–285 and unchanged passing suites.
+2. Continue durable capital/journal conservation review: surviving release/restoration-record integrity and lifecycle transitions at restart/enable/claim/native execution. Missing initialized restoration table lineage is already fixed. Reproduce a concrete untested bypass before changes; do not invent provenance, reconstruct missing original facts or relax ceilings/nonce bounds/Kill.
+3. Review read-only REST/operator boundary tasks still grounded in contracts. Missing/nonarray page rows, explicit cursor contradictions, repeated cursors, typed control names, REG acknowledgement, failure counters and parser/HTTP resource budgets are completed. Missing terminal headers must follow verified provider source, not guessed semantics. Generic unreadable-corruption and specific initialized-history/safety quarantine reporting remain fail-closed.
+4. Independent canonical admission still requires actual external roots; no locally composed helper/fixture/hash/green CI can promote readiness. Continue independent engineering where an actual gap exists; when bounded execution ends preserve exact latest point instead of claiming project completion.
+
+Safety unchanged: Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/slippage/execution/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalid v1 immutable; no sealed holdout access, no REJECT/INCONCLUSIVE/IDEA operational use. Ordering DISABLED; real orders/funds/permission changes false; genuine LIVE unverified; final-user-ready false. Whole-account read-only baseline COMPLETE, never rerun; designated-device805004/8050 owner-deferred, no repeated commands. No actual broker/network/credential flow was executed in this Work; loopback/fake transport tests are engineering evidence only.
+
+---
+
 # Canonical checkpoint — 2026-10-07 12:47 KST
 
 Actual code HEAD 7f3770ea643c4046a89388a445e25b7cec0a0479 (PR283). The prior optional-restoration-history audit pointer is now completed. Requery current branch HEAD; this checkpoint is docs only. No claim of project completion or continued execution after response.
