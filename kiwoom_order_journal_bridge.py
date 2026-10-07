@@ -106,7 +106,13 @@ class KiwoomOrderJournalBridge:
                 self.journal.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE state!='INTENT_CREATED'")
                 self.journal.db.execute('UPDATE reconciliation_barrier SET blocked=1 WHERE id=1')
                 self.journal.db.execute('DELETE FROM reconciled_snapshot_bindings')
-                self.journal._stop_shadow('NATIVE_BRIDGE_CONFLICT')
+                try:
+                    self.journal._stop_shadow('NATIVE_BRIDGE_CONFLICT')
+                except OrderJournalError as stop_error:
+                    # A corrupt control row plus lost fault storage cannot be
+                    # rewritten safely. Keep quarantine and the private error.
+                    if str(stop_error) != 'safety fault history missing':
+                        raise
             raise NativeBridgeError('NATIVE_BRIDGE_RECONCILIATION_REQUIRED') from None
 
     def _context(self,day):

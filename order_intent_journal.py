@@ -132,7 +132,11 @@ def quarantine_conflict(method):
             with self._atomic():
                 if isinstance(key, str):
                     self.db.execute("UPDATE intents SET state='RECONCILIATION_REQUIRED' WHERE key=? AND state!='INTENT_CREATED'", (key,))
-                self._stop_shadow("EVENT_CONFLICT")
+                try:
+                    self._stop_shadow("EVENT_CONFLICT")
+                except OrderJournalError as stop_error:
+                    if str(stop_error) != 'safety fault history missing':
+                        raise
             if isinstance(error, sqlite3.IntegrityError):
                 raise OrderJournalError('journal persistence conflict') from None
             raise
@@ -211,7 +215,13 @@ class OrderIntentJournal:
                 missing = True
             if missing:
                 if 'shadow_control' in tables:
-                    self._stop_shadow('STARTUP_SAFETY_METADATA_MISSING')
+                    try:
+                        self._stop_shadow('STARTUP_SAFETY_METADATA_MISSING')
+                    except OrderJournalError:
+                        # Preserve corrupt originals when their immutable
+                        # fault store is itself missing; do not fabricate it.
+                        if 'reconciliation_barrier' in tables:
+                            self.db.execute('UPDATE reconciliation_barrier SET blocked=1 WHERE id=1')
             else:
                 for statement in schema.split(';'):
                     if statement.strip():
@@ -319,6 +329,8 @@ class OrderIntentJournal:
         # increments. Exhaustion must still stop safely and retain late fills.
         row = self.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control WHERE id=1').fetchone()
         if row is not None and not valid_stored_safety_row(row):
+            if not self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_control_faults'").fetchone():
+                raise OrderJournalError('safety fault history missing')
             self.db.execute('INSERT INTO shadow_control_faults(epoch,mode,killed,reason) VALUES(?,?,?,?)', row)
             kill = True
         self.db.execute("""UPDATE shadow_control SET
