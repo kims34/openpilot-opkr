@@ -55,6 +55,24 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
 
+    def _assert_invalid_runtime_attempt(self, receipt_sequence, outcome):
+        self.append()
+        self.j.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.j.db.execute('INSERT INTO native_inbox_attempts(receipt_sequence,outcome) VALUES(?,?)', (receipt_sequence, outcome))
+        original = self.j.db.execute('SELECT receipt_sequence,outcome FROM native_inbox_attempts').fetchall()
+        for operation in (lambda: self.i.replay('receipt-1'), self.i.replay_next, self.i.counts):
+            with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+            self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
+        self.assertEqual(self.j.db.execute('SELECT receipt_sequence,outcome FROM native_inbox_attempts').fetchall(), original)
+
+    def test_runtime_orphan_blocked_history_blocks_fill(self):
+        self._assert_invalid_runtime_attempt(999, 'BLOCKED')
+
+    def test_runtime_unknown_attempt_outcome_blocks_fill(self):
+        self._assert_invalid_runtime_attempt(1, 'PRIVATE-INVALID')
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):
