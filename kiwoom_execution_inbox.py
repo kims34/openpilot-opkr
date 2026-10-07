@@ -29,6 +29,16 @@ broker_native_structure_normalized genuine_live_provenance_verified
 project_live_evidence_admitted'''.split())
 
 
+def validate_stored_inbox_receipt_identities(connection):
+    """Existing identity invariants, independent of SQL constraint survival."""
+    sequences, receipt_ids = set(), set()
+    for sequence, receipt_id in connection.execute('SELECT sequence,receipt_id FROM native_inbox_receipts'):
+        require(type(sequence) is int and sequence > 0 and sequence not in sequences)
+        require(isinstance(receipt_id,str) and bool(receipt_id.strip()) and len(receipt_id) <= 256)
+        require(receipt_id not in receipt_ids)
+        sequences.add(sequence); receipt_ids.add(receipt_id)
+
+
 def validate_normalized_inbox_row(row, account):
     require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
     require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
@@ -120,6 +130,7 @@ class KiwoomExecutionInbox:
 
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
+        validate_stored_inbox_receipt_identities(self.journal.db)
         receipts = {}
         for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
@@ -151,6 +162,7 @@ class KiwoomExecutionInbox:
         tables = {row[0] for row in self.journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         require({'native_inbox_receipts', 'native_inbox_attempts', 'native_inbox_conflicts',
             'native_journal_scope', 'native_order_bindings', 'native_fill_bindings'} <= tables)
+        validate_stored_inbox_receipt_identities(self.journal.db)
 
     def _audit_attempts_locked(self):
         self._require_runtime_tables_locked()

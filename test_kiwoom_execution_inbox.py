@@ -134,6 +134,35 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.j.get('d1')['filled_quantity'],4)
         self.assertEqual(self.j.shadow_control()['mode'], 'MASTER_OFF')
 
+    def _assert_ambiguous_receipt_identity(self, duplicate_sequence=False):
+        self.append(); self.i.replay_next()
+        original = self.j.db.execute('SELECT * FROM native_inbox_receipts').fetchone()
+        alternate = list(original)
+        alternate[0] = 1 if duplicate_sequence else 2
+        alternate[1] = 'receipt-2' if duplicate_sequence else original[1]
+        if not duplicate_sequence:
+            payload = json.dumps(fixtures.fill('native-fill-2', 6, 0, '091502'),sort_keys=True,separators=(',', ':'))
+            alternate[4],alternate[5] = payload,hashlib.sha256(payload.encode()).hexdigest()
+        self.j.db.execute('DROP TABLE native_inbox_receipts')
+        self.j.db.execute('CREATE TABLE native_inbox_receipts(sequence INTEGER,receipt_id TEXT,key TEXT,day TEXT,payload TEXT,digest TEXT)')
+        self.j.db.executemany('INSERT INTO native_inbox_receipts VALUES(?,?,?,?,?,?)',[original,alternate])
+        history = self.j.db.execute('SELECT * FROM native_inbox_receipts').fetchall()
+        attempts = self.j.db.execute('SELECT * FROM native_inbox_attempts').fetchall()
+        for operation in (lambda: KiwoomExecutionInbox(self.b), self.i.counts, self.i.replay_next,
+                          lambda: self.i.replay('receipt-1'), lambda: self.append('receipt-3')):
+            with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_inbox_receipts').fetchall(),history)
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_inbox_attempts').fetchall(),attempts)
+            self.assertEqual(self.j.get('d1')['filled_quantity'],4)
+            self.assertEqual(self.j.shadow_control()['mode'],'MASTER_OFF')
+
+    def test_duplicate_receipt_id_after_constraint_loss_cannot_strand_later_fill(self):
+        self._assert_ambiguous_receipt_identity()
+
+    def test_duplicate_receipt_sequence_after_constraint_loss_cannot_hide_delivery(self):
+        self._assert_ambiguous_receipt_identity(duplicate_sequence=True)
+
     def test_nonpositive_receipt_sequence_blocks_startup_and_runtime_without_fill(self):
         self.append()
         for sequence in (0, -1):
