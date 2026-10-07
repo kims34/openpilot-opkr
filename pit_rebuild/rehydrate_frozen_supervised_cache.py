@@ -228,6 +228,134 @@ def supervised_logical_fingerprint(frame: pd.DataFrame) -> dict[str, Any]:
     }
 
 
+def _attach_record_columns_low_memory(
+    frame: pd.DataFrame,
+    record_map: Mapping[Any, Any],
+) -> pd.DataFrame:
+    """Attach frozen DecisionRecord fields without a multi-million dict-list.
+
+    The frozen cache wrapper built a rec_rows list and merged it back into the
+    already-sorted feature frame.  That duplicates millions of Python dicts.
+    Here we allocate typed output columns once and perform exact key lookups.
+    The resulting cache schema/values are checked against the recovered Action
+    metadata before publication.
+    """
+    n = len(frame)
+    entry_day = np.full(n, np.datetime64("NaT"), dtype="datetime64[ns]")
+    entry_price = np.full(n, np.nan, dtype=np.float64)
+    horizon = np.full(n, np.nan, dtype=np.float64)
+    target_return = np.full(n, np.nan, dtype=np.float64)
+    stop_return = np.full(n, np.nan, dtype=np.float64)
+    cost_return = np.full(n, np.nan, dtype=np.float64)
+    outcome = np.empty(n, dtype=object)
+    outcome[:] = None
+    gross_return = np.full(n, np.nan, dtype=np.float64)
+    net_return = np.full(n, np.nan, dtype=np.float64)
+    exit_day = np.full(n, np.datetime64("NaT"), dtype="datetime64[ns]")
+    exit_price = np.full(n, np.nan, dtype=np.float64)
+
+    matched = 0
+    for i, (decision_day, symbol) in enumerate(
+        frame[["decision_date", "symbol"]].itertuples(index=False, name=None)
+    ):
+        rec = record_map.get((pd.Timestamp(decision_day).date(), str(symbol)))
+        if rec is None:
+            continue
+        matched += 1
+        entry_day[i] = np.datetime64(pd.Timestamp(rec.entry_day), "ns")
+        entry_price[i] = float(rec.entry_price)
+        horizon[i] = float(rec.horizon)
+        target_return[i] = float(rec.target_return)
+        stop_return[i] = float(rec.stop_return)
+        cost_return[i] = float(rec.cost_return)
+        outcome[i] = str(rec.outcome)
+        gross_return[i] = float(rec.gross_return)
+        net_return[i] = float(rec.net_return)
+        exit_day[i] = np.datetime64(pd.Timestamp(rec.exit_day), "ns")
+        exit_price[i] = float(rec.exit_price)
+
+    if matched != len(record_map):
+        raise FrozenSupervisedRehydrationError(
+            f"record-map attachment mismatch: matched={matched} records={len(record_map)}"
+        )
+
+    frame["rec_entry_day"] = entry_day
+    frame["rec_entry_price"] = entry_price
+    frame["rec_horizon"] = horizon
+    frame["rec_target_return"] = target_return
+    frame["rec_stop_return"] = stop_return
+    frame["rec_cost_return"] = cost_return
+    frame["rec_outcome"] = outcome
+    frame["rec_gross_return"] = gross_return
+    frame["rec_net_return"] = net_return
+    frame["rec_exit_day"] = exit_day
+    frame["rec_exit_price"] = exit_price
+    return frame
+
+
+def _build_cache_low_memory(
+    raw: pd.DataFrame,
+    cache_dir: Path,
+    *,
+    reference: Mapping[str, Any],
+):
+    """Execute exact frozen feature/label semantics with bounded cache assembly."""
+    from research_v1_pit_labels import make_pit_supervised
+    from research_v1_supervised_cache import (
+        CACHE_VERSION,
+        _source_fingerprint,
+    )
+
+    source_fingerprint = _source_fingerprint(raw)
+    if source_fingerprint != reference["source_fingerprint"]:
+        raise FrozenSupervisedRehydrationError(
+            "source fingerprint changed before frozen supervised build"
+        )
+
+    frame, record_map, diagnostics = make_pit_supervised(
+        raw,
+        horizon=5,
+        target_return=0.04,
+        stop_return=-0.025,
+        participation=0.0005,
+        commission_round_trip_bps=3.0,
+    )
+    record_count = len(record_map)
+    if record_count != reference["records"]:
+        raise FrozenSupervisedRehydrationError(
+            f"record_map count drift: {record_count} != {reference['records']}"
+        )
+    if diagnostics != reference["diagnostics"]:
+        raise FrozenSupervisedRehydrationError("diagnostics object drift")
+
+    frame = _attach_record_columns_low_memory(frame, record_map)
+    del record_map
+    gc.collect()
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    parquet_path = cache_dir / "supervised.parquet"
+    frame.to_parquet(parquet_path, index=False)
+    meta = {
+        "version": CACHE_VERSION,
+        "feature_return_policy": diagnostics.get("feature_return_policy"),
+        "source_fingerprint": source_fingerprint,
+        "horizon": 5,
+        "target_return": 0.04,
+        "stop_return": -0.025,
+        "participation": 0.0005,
+        "commission_round_trip_bps": 3.0,
+        "rows": int(len(frame)),
+        "records": int(record_count),
+        "diagnostics": diagnostics,
+    }
+    require_exact_meta(meta, reference)
+    (cache_dir / "meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return frame, diagnostics, record_count
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -432,7 +560,9 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
     frozen_module_dir = code_root / FROZEN_MODULE_DIR_NAME
     sys.path.insert(0, str(frozen_module_dir))
     try:
-        from research_v1_supervised_cache import build_cache
+        # Import exact frozen modules into the isolated dependency closure.
+        import research_v1_supervised_cache  # noqa: F401
+        import research_v1_pit_labels  # noqa: F401
     finally:
         # Keep imported modules loaded, but avoid changing later import resolution.
         if sys.path and sys.path[0] == str(frozen_module_dir):
@@ -455,14 +585,10 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
     attempts.mkdir(parents=True, exist_ok=True)
     attempt = Path(tempfile.mkdtemp(prefix="attempt-", dir=attempts))
     try:
-        frame, record_map, diagnostics = build_cache(
+        frame, diagnostics, record_count = _build_cache_low_memory(
             raw,
             attempt,
-            horizon=5,
-            target_return=0.04,
-            stop_return=-0.025,
-            participation=0.0005,
-            commission_round_trip_bps=3.0,
+            reference=reference,
         )
         del raw
         gc.collect()
@@ -471,8 +597,8 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
         meta_raw = meta_path.read_bytes()
         meta = json.loads(meta_raw.decode("utf-8"))
         require_exact_meta(meta, reference)
-        if len(record_map) != reference["records"]:
-            raise FrozenSupervisedRehydrationError("record_map count drift")
+        if record_count != reference["records"]:
+            raise FrozenSupervisedRehydrationError("record count drift")
         if diagnostics != reference["diagnostics"]:
             raise FrozenSupervisedRehydrationError("diagnostics object drift")
 
@@ -493,7 +619,7 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
             meta_sha256=meta_sha,
         )
         record = _write_verification(attempt, body)
-        del frame, record_map, diagnostics
+        del frame, diagnostics
         gc.collect()
         try:
             os.rename(attempt, final)
