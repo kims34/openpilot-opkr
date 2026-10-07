@@ -76,11 +76,14 @@ class KiwoomOrderJournalBridge:
             scope=journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
             require(scope is None or scope==(self.account,self.day))
             journal.db.execute('INSERT OR IGNORE INTO native_journal_scope VALUES(1,?,?)',(self.account,self.day))
+            validate_stored_execution_totals(journal.db,
+                dict(journal.db.execute('SELECT key,filled FROM intents')))
             for key, broker_id, side in journal.db.execute(
                     'SELECT key,broker_order_id,native_side FROM native_order_bindings'):
                 order = journal.get(key)
                 require(order['state'] != 'INTENT_CREATED' and order['broker_order_id'] == broker_id)
                 require(type(side) is str and bool(side.strip()))
+            self._audit_existing_fill_bindings_locked()
             for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
                 for operation in ('UPDATE','DELETE'):
                     journal.db.execute(f'''CREATE TRIGGER IF NOT EXISTS {table}_{operation.lower()}_immutable
@@ -103,6 +106,33 @@ class KiwoomOrderJournalBridge:
     def _context(self,day):
         require(day==self.day)
         require(self.journal.db.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()==(self.account,self.day))
+
+    def _audit_existing_fill_bindings_locked(self):
+        """Structural durable audit only; never authenticates stored source."""
+        fields = {'account','day','order','symbol','native_side','execution_id',
+            'quantity','price','time','remaining'}
+        for key, execution, payload in self.journal.db.execute(
+                'SELECT key,execution_id,payload FROM native_fill_bindings'):
+            try:
+                material = json.loads(payload)
+            except RecursionError:
+                require(False)
+            require(type(material) is dict and set(material) == fields)
+            require(material['execution_id'] == execution)
+            order = self.journal.get(key)
+            row = dict(source_contract=SOURCE_CONTRACT,official_schema_commit=OFFICIAL_SCHEMA_COMMIT,
+                broker='KIWOOM',record_granularity='broker_execution_event',
+                broker_native_structure_normalized=True,genuine_live_provenance_verified=False,
+                project_live_evidence_admitted=False,account_fingerprint=material['account'],
+                broker_order_id=material['order'],symbol=material['symbol'],
+                order_qty=str(order['quantity']),original_order_id='',
+                source_api='domestic_realtime_order_fill_00',broker_execution_id_available_in_source=True,
+                side=material['native_side'],order_status='체결',rejection_reason='',
+                broker_execution_id=execution,fill_qty=str(material['quantity']),
+                unit_fill_qty=str(material['quantity']),fill_price=material['price'],
+                unit_fill_price=material['price'],remaining_qty=str(material['remaining']),
+                broker_lifecycle_time=material['time'])
+            self._verify_existing_execution_locked(key,row,trading_date=material['day'])
 
     def bind_order(self,key,*,broker_order_id,native_side):
         with self._guard():
@@ -163,6 +193,7 @@ class KiwoomOrderJournalBridge:
         price=number(row.get('fill_price'),positive=True)
         require(price==number(row.get('unit_fill_price'),positive=True))
         remaining=number(row.get('remaining_qty'),integer=True)
+        require(qty + remaining <= order['quantity'])
         time=row.get('broker_lifecycle_time')
         require(isinstance(time,str) and re.fullmatch(r'[0-9]{6}',time))
         datetime.strptime(time,'%H%M%S')
