@@ -1,3 +1,17 @@
+# Canonical checkpoint — 2026-10-07 12:47 KST
+
+Actual code HEAD 7f3770ea643c4046a89388a445e25b7cec0a0479 (PR283). The prior optional-restoration-history audit pointer is now completed. Requery current branch HEAD; this checkpoint is docs only. No claim of project completion or continued execution after response.
+
+PR283 feature2c617c08a4eb8f7eb55bde6299083d154ad4d3d0 -> merge7f3770ea643c4046a89388a445e25b7cec0a0479: reproduced restart accepting a dropped late-fill capital restoration table. Existing allocator reservation mismatch already failed closed; added independent append-only component initialization lineage for shadow_capital_release_revocations. Missing initialized history now blocks execution/restart before recreation, preserves original filled quantity/reservation/release facts. Present legacy tables backfill without rewriting rows; loss before lineage and whole-DB rollback remain unauthenticated. Original restoration accounting, ceiling and Kill rules unchanged.
+
+Exact feature Actions all SUCCESS:37568204262/job112620677734 journal322 tests;37568204215/job112620680451 durable126;37568204309/job112620677746 settlement86;37568204223/job112620677660 status;37568204133 jobs112620677364 Windows/112620677599 Ubuntu/112620677602 Chromium toolkit. Local focused84 passed in0.44s; expanded358 passed/4 PowerShell-runtime skips in1.74s. CI for earlier273–282 remains recorded below and is not repeated. Prior docs daa7e166fdb85b1fa252d6fcdb0fc48303788684 Actions37568032433 SUCCESS; checkpoint61ed14c60f962b68f3f6f6d782453c4917e72656 Actions37567580345 SUCCESS. All8 preceding source/test/workflow overlays matched authoritative282 tree before switching to actual GitHub HEAD; original stashes preserved, only scratch cache untracked. Master Spec798e658d2b3414f95ce648c58945425d9a579182 unchanged.
+
+Exact next independent resume: requery HEAD/open PR/ongoing runs and this docs/283 merge pushes without restarting existing CI. Skip completed273–283. Continue durable release/restoration audit: compare protection of surviving restoration records, component history, reservation conservation and journal restart/enable/claim entry points; reproduce any bypass before edits. Missing-table restoration lineage is fixed and must not be reimplemented. Also review privacy-safe operator reporting of missing initialized component history versus generic snapshot unavailable, without readiness/admission/control endpoints. If no reproduced defect in an area, move to the next independent transport/operator task instead of speculative schema changes.
+
+Project INCOMPLETE; independent work is not claimed exhausted. Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/slippage/execution/NetEV/PF/MDD/ES95/99/Holdout Burn and consumed invalid v1 unchanged; no sealed holdout. Ordering DISABLED; real orders/funds/permission changes false; genuine LIVE unverified; final-user-ready false. Whole-account baseline COMPLETE, never rerun; designated-device805004/8050 owner-deferred, no repeated commands. Offline/helper/hash/green CI never genuine provenance or gate admission. No REJECT/INCONCLUSIVE/IDEA operational use.
+
+---
+
 # Canonical checkpoint — 2026-10-07 12:43 KST
 
 Actual code HEAD 663a3bf9fc2c2f2f4f589aa6b006cb36b9fa48d5 (PR282). This supersedes PR279 in-flight and parser-budget next pointers below: completed, exact feature CI SUCCESS, merged. Requery current development HEAD before continuing.
