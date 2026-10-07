@@ -360,7 +360,7 @@ try {
         $executionObserved = $executionObserved -or $observation.ExecutionFieldsObserved
     }
 
-    if (-not $regAck -and $events -eq 0) { Emit-Failure "TYPE00_SUBSCRIPTION_UNOBSERVED" 0 }
+    if (-not $regAck) { Emit-Failure "TYPE00_SUBSCRIPTION_UNOBSERVED" 0 }
 
     @{
         STAGE="REAL_TYPE00_READ_ONLY_SMOKE"
