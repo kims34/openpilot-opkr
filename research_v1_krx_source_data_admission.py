@@ -58,7 +58,9 @@ class KRXSourceDataAdmission:
     authorization_evidence_fingerprint_sha256: str
     source_contract_closed: bool
     acquisition_batch_integrity_valid: bool
+    authorization_evidence_fingerprint_present: bool
     authorization_evidence_provenance_bound: bool
+    independent_authorization_evidence_binding_verified: bool
     public_contract_evidence_current: bool
     pit_lineage_structurally_valid: bool
     historical_coverage_structurally_complete: bool
@@ -192,7 +194,11 @@ def assess_investor_flow_source_data_admission(
     auth_evidence_fp = str(
         batch.get("authorization_evidence_fingerprint_sha256") or ""
     ).strip().lower()
-    auth_provenance_bound = bool(SHA256_RE.fullmatch(auth_evidence_fp))
+    auth_fingerprint_present = bool(SHA256_RE.fullmatch(auth_evidence_fp))
+    # A digest binds identity only. This compositor does not receive or
+    # independently authenticate the underlying KRX authorization artifact.
+    authorization_evidence_provenance_bound = False
+    independent_authorization_evidence_binding_verified = False
     public_current = bool(
         batch.get("public_contract_evidence_version") == PUBLIC_EVIDENCE_VERSION
         and batch.get("public_contract_evidence_fingerprint_sha256")
@@ -215,7 +221,7 @@ def assess_investor_flow_source_data_admission(
     structurally_admissible = bool(
         source_closed
         and batch_valid
-        and auth_provenance_bound
+        and auth_fingerprint_present
         and public_current
         and lineage_valid
         and coverage_complete
@@ -228,7 +234,9 @@ def assess_investor_flow_source_data_admission(
         authorization_evidence_fingerprint_sha256=auth_evidence_fp,
         source_contract_closed=source_closed,
         acquisition_batch_integrity_valid=batch_valid,
-        authorization_evidence_provenance_bound=auth_provenance_bound,
+        authorization_evidence_fingerprint_present=auth_fingerprint_present,
+        authorization_evidence_provenance_bound=authorization_evidence_provenance_bound,
+        independent_authorization_evidence_binding_verified=independent_authorization_evidence_binding_verified,
         public_contract_evidence_current=public_current,
         pit_lineage_structurally_valid=lineage_valid,
         historical_coverage_structurally_complete=coverage_complete,
@@ -246,7 +254,7 @@ def assess_investor_flow_source_data_admission(
         for name, ok in (
             ("SOURCE_CONTRACT_A_TO_F_NOT_CLOSED", source_closed),
             ("ACQUISITION_BATCH_INTEGRITY_INVALID", batch_valid),
-            ("STRUCTURED_AUTHORIZATION_EVIDENCE_PROVENANCE_NOT_BOUND", auth_provenance_bound),
+            ("STRUCTURED_AUTHORIZATION_EVIDENCE_FINGERPRINT_MISSING", auth_fingerprint_present),
             ("PUBLIC_CONTRACT_EVIDENCE_NOT_CURRENT", public_current),
             ("PIT_LINEAGE_NOT_STRUCTURALLY_VALID", lineage_valid),
             ("HISTORICAL_COVERAGE_NOT_STRUCTURALLY_COMPLETE", coverage_complete),
@@ -254,8 +262,12 @@ def assess_investor_flow_source_data_admission(
         )
         if not ok
     ]
+    out["independent_admission_blocking_conditions"] = [
+        "INDEPENDENT_AUTHORIZATION_EVIDENCE_BINDING_NOT_IMPLEMENTED"
+    ]
     out["guardrail"] = (
-        "Structural source-data admission requires acquisition provenance bound to one validated structured authorization-evidence fingerprint, but remains only eligibility for the next governance review. "
-        "It never authorizes feature-performance testing, sealed holdout, promotion or live trading."
+        "Structural source-data admission requires one consistent structured authorization-evidence fingerprint, but a digest proves identity only and does not independently authenticate the underlying KRX authorization artifact. "
+        "authorization_evidence_provenance_bound and independent_authorization_evidence_binding_verified therefore remain false until a trusted external binding exists. "
+        "Structural admission remains only eligibility for the next governance review and never authorizes feature-performance testing, sealed holdout, promotion or live trading."
     )
     return out

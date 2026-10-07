@@ -276,6 +276,14 @@ This contract freezes an engineering/compliance boundary; exact rights must be v
 
 Even then, `source_data_structurally_admissible=true` means only `eligible_for_experiment_registry_review=true`. It must **not** directly set `feature_performance_testing_authorized=true`. A separate research-ledger/preregistration decision is required before any performance experiment, and all later statistical/execution/holdout/promotion gates remain independent.
 
+The authorization-evidence fingerprint carried through acquisition receipts/batches is an
+identity/integrity binding only. A syntactically valid SHA-256 must not be reported as proof
+that the underlying KRX authorization artifact was independently authenticated. The source-data
+compositor therefore distinguishes `authorization_evidence_fingerprint_present=true` from
+`authorization_evidence_provenance_bound=false` and
+`independent_authorization_evidence_binding_verified=false` until a trusted external
+authorization-artifact verifier is explicitly composed.
+
 ## 9. Fail-closed source policy
 
 If any Gate A-F requirement for the declared source family/use scope is not `PASS`, or if authorization, structured authorization evidence, runtime consent, provenance, coverage, mapping, PIT publication/availability or licensing scope is unknown:

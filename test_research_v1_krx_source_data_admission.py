@@ -79,7 +79,12 @@ def test_all_source_structure_can_only_reach_registry_review_not_performance():
     )
     assert out["source_contract_closed"] is True
     assert out["acquisition_batch_integrity_valid"] is True
-    assert out["authorization_evidence_provenance_bound"] is True
+    assert out["authorization_evidence_fingerprint_present"] is True
+    assert out["authorization_evidence_provenance_bound"] is False
+    assert out["independent_authorization_evidence_binding_verified"] is False
+    assert out["independent_admission_blocking_conditions"] == [
+        "INDEPENDENT_AUTHORIZATION_EVIDENCE_BINDING_NOT_IMPLEMENTED"
+    ]
     assert out["authorization_evidence_fingerprint_sha256"] == AUTH_EVIDENCE_FP
     assert out["pit_lineage_structurally_valid"] is True
     assert out["historical_coverage_structurally_complete"] is True
