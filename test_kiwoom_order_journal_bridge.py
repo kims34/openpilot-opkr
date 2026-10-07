@@ -40,6 +40,24 @@ def rest(api='kt00007',filled=4,remaining=6):
 
 
 class BridgeTests(unittest.TestCase):
+    def test_runtime_orphan_native_fill_blocks_rest_and_next_fill(self):
+        self.apply()
+        payload = self.j.db.execute('SELECT payload FROM native_fill_bindings').fetchone()[0]
+        material = json.loads(payload); material['execution_id'] = 'synthetic-orphan'
+        payload = json.dumps(material, sort_keys=True, separators=(',', ':'))
+        self.j.db.execute('INSERT INTO native_fill_bindings VALUES(?,?,?,?)',
+            ('d1', 'synthetic-orphan', hashlib.sha256(payload.encode()).hexdigest(), payload))
+        history = self.j.db.execute('SELECT * FROM native_fill_bindings').fetchall()
+        for operation in (lambda: self.b.bind_order('d1', broker_order_id='native-order', native_side='2'),
+                          lambda: self.b.verify_rest_snapshot('d1', rest(), trading_date=DAY),
+                          lambda: self.apply(fill('native-fill-2', 6, 0, '091502'))):
+            with self.assertRaisesRegex(NativeBridgeError, '^NATIVE_BRIDGE_RECONCILIATION_REQUIRED$'):
+                operation()
+            self.assertEqual(self.j.get('d1')['filled_quantity'], 4)
+            self.assertEqual(self.j.db.execute('SELECT COUNT(*) FROM executions').fetchone(), (1,))
+            self.assertEqual(self.j.db.execute('SELECT * FROM native_fill_bindings').fetchall(), history)
+            self.assert_blocked()
+
     def test_complete_native_schema_loss_cannot_bind_a_new_scope(self):
         for table in ('native_journal_scope','native_order_bindings','native_fill_bindings'):
             self.j.db.execute(f'DROP TABLE {table}')
