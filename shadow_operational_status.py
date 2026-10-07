@@ -80,6 +80,7 @@ def inspect_shadow_operational_status(path):
         intent_fills = {}
         for key,payload,broker_id,filled,state,terminal in connection.execute(
                 "SELECT key,payload,broker_order_id,filled,state,terminal_status FROM intents"):
+            _require(type(key) is str and bool(key.strip()))
             try:
                 identity = validate_stored_intent_row(payload,state,broker_id,filled,terminal)
             except OrderJournalError:
