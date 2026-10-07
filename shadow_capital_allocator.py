@@ -177,7 +177,8 @@ class ShadowCapitalAllocator:
             # Reservation and claim commit together or both roll back.
             self.journal.db.execute('INSERT INTO shadow_capital_reservations VALUES(?,?,?,?)',
                 (key, limit_price_krw, fee_buffer_krw, reserve))
-            self.journal._claim_submission_locked(key, expected_epoch=expected_epoch)
+            self.journal._claim_submission_locked(
+                key, expected_epoch=expected_epoch, capital_reservation_managed=True)
             claimed = self.journal.get(key)
         return dict(intent=claimed, reservation_krw=reserve,
             capital_revision=state['revision'], mode='OFFLINE_SHADOW_CAPITAL_CLAIM',

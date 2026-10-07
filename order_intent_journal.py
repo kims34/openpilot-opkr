@@ -383,8 +383,15 @@ class OrderIntentJournal:
             self._claim_submission_locked(key, expected_epoch=expected_epoch)
         return self.get(key)
 
-    def _claim_submission_locked(self, key, *, expected_epoch):
-        """Use only inside the journal transaction, including capital reservation."""
+    def _claim_submission_locked(self, key, *, expected_epoch,
+                                 capital_reservation_managed=False):
+        """Use only inside the journal transaction.
+
+        Once the capital allocator exists, BUY claims are valid only when the
+        allocator invokes this method from the same transaction that created
+        the durable reservation. A pre-existing reservation row is not a
+        capability token for the public legacy claim path.
+        """
         control = self._check_epoch(expected_epoch)
         if control["mode"] != "SHADOW" or control["killed"]:
             raise OrderJournalError("shadow claims disabled")
@@ -396,7 +403,9 @@ class OrderIntentJournal:
             if order['side'] == 'BUY':
                 enabled = self.db.execute('SELECT enabled FROM shadow_capital_config WHERE id=1').fetchone()
                 reserved = self.db.execute('SELECT 1 FROM shadow_capital_reservations WHERE key=?', (key,)).fetchone()
-                if enabled is None or not enabled[0] or not reserved:
+                if capital_reservation_managed is not True:
+                    raise OrderJournalError('BUY claim requires atomic capital allocator path')
+                if enabled is None or type(enabled[0]) is not int or enabled[0] != 1 or not reserved:
                     raise OrderJournalError('BUY requires enabled durable capital reservation')
         if self.db.execute("SELECT 1 FROM intents WHERE state='RECONCILIATION_REQUIRED' OR (state='SUBMITTING' AND key!=?) LIMIT 1", (key,)).fetchone():
             raise OrderJournalError("unresolved journal state blocks new submissions")

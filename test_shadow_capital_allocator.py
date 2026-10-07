@@ -162,8 +162,18 @@ class ShadowCapitalTests(unittest.TestCase):
             self.claim('d2', price=1)
 
     def test_legacy_claim_entry_cannot_skip_reservation_after_allocator_initialization(self):
-        with self.assertRaisesRegex(OrderJournalError, 'reservation'):
+        with self.assertRaisesRegex(OrderJournalError, 'atomic capital allocator path'):
             self.j.claim_submission('d1', expected_epoch=self.epoch)
+        self.assertEqual(self.j.get('d1')['state'], 'INTENT_CREATED')
+
+    def test_public_claim_cannot_treat_precreated_reservation_as_authority(self):
+        self.j.db.execute(
+            'INSERT INTO shadow_capital_reservations VALUES(?,?,?,?)',
+            ('d1', 8, 0, 80))
+        before = tuple(self.j.db.iterdump())
+        with self.assertRaisesRegex(OrderJournalError, 'atomic capital allocator path'):
+            self.j.claim_submission('d1', expected_epoch=self.epoch)
+        self.assertEqual(tuple(self.j.db.iterdump()), before)
         self.assertEqual(self.j.get('d1')['state'], 'INTENT_CREATED')
 
     def test_duplicate_claim_cannot_retry_or_reprice_existing_reservation(self):
