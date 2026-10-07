@@ -529,10 +529,15 @@ class OrderIntentJournal:
     def _require_batch_reconciled(self):
         validate_stored_component_history(self.db)
         intent_fills = {}
+        broker_ids = set()
         for key, payload, state, broker_id, filled, terminal in self.db.execute(
                 'SELECT key,payload,state,broker_order_id,filled,terminal_status FROM intents'):
             self._text(key)
             validate_stored_intent_row(payload, state, broker_id, filled, terminal)
+            if broker_id is not None:
+                if broker_id in broker_ids:
+                    raise OrderJournalError('duplicate stored broker order binding')
+                broker_ids.add(broker_id)
             intent_fills[key] = filled
         validate_stored_execution_totals(self.db, intent_fills)
         # A caller-supplied matched batch cannot bypass durable unprocessed or

@@ -162,6 +162,30 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.j.get('decision-2')['state'], 'INTENT_CREATED')
         self.assertEqual(self.j.db.execute("SELECT payload FROM intents WHERE key='decision-1'").fetchone(), ('{}',))
 
+    def test_duplicate_surviving_broker_bindings_block_controls_and_claim(self):
+        self.acknowledged()
+        self.j.register('decision-2',symbol='OTHER',side='SELL',quantity=1)
+        self.j.claim_submission('decision-2',expected_epoch=self.j.shadow_control()['epoch'])
+        self.j.bind_acknowledgement('decision-2','broker-2')
+        self.j.db.execute('DROP INDEX single_broker_order_binding')
+        self.j.db.execute("UPDATE intents SET broker_order_id='broker-1' WHERE key='decision-2'")
+        self.j.register('decision-3',symbol='NEXT',side='SELL',quantity=1)
+        before = tuple(self.j.db.iterdump())
+        with self.assertRaisesRegex(OrderJournalError, 'duplicate stored broker order binding'):
+            self.j.claim_submission('decision-3',expected_epoch=self.j.shadow_control()['epoch'])
+        self.assertEqual(tuple(self.j.db.iterdump()), before)
+        self.j.disable_shadow()
+        control = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'duplicate stored broker order binding'):
+            self.j.enable_shadow(expected_epoch=control['epoch'])
+        self.assertEqual(self.j.shadow_control(), control)
+        self.j.trip_kill_switch()
+        killed = self.j.shadow_control()
+        with self.assertRaisesRegex(OrderJournalError, 'duplicate stored broker order binding'):
+            self.j.reset_kill_switch(expected_epoch=killed['epoch'])
+        self.assertEqual(self.j.shadow_control(), killed)
+        self.assertEqual(self.j.get('decision-3')['state'], 'INTENT_CREATED')
+
     def test_exhausted_epoch_stops_without_float_nonce_reuse_or_kill_reset(self):
         self.j.db.execute('UPDATE shadow_control SET epoch=?', (2**63-1,))
         out = self.j.disable_shadow()
