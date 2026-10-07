@@ -1,3 +1,43 @@
+# Canonical execution checkpoint — 2026-10-07 09:04 KST
+
+Actual development CODE HEAD: `750008e732cfb4462b969103fa3285bb82ef902e` (PR244 merge). This section supersedes every older in-flight/resume pointer. Resolve the live dev ref for this documentation commit's own HEAD. No open PRs at checkpoint. Project INCOMPLETE; this is a bounded execution/usage checkpoint, not project completion or a claim all independent engineering is exhausted.
+
+## Latest completed work
+
+|PR|Final feature|Actual merge|Exact feature Actions / counts|
+|---|---|---|---|
+|240|a1c6cd96cc2d322c6e179a790a5314ee2c9dd8ae|1914885a543c839ec83a8a68bdf3ad9f3580ecee|Journal37548814391/job112559159851 SUCCESS277; durable37548814425/job112559159856 SUCCESS108; settlement37548814404/job112559159659 SUCCESS86; status37548814393/job112559160066 SUCCESS28; toolkit37548814400 Windows112559160172/Ubuntu112559160383 SUCCESS45 each, Chromium112559159882 SUCCESS2|
+|241|012b7e53d53cc9d8bccaa9ebbba58873d9f77a64|e7264fd3927a6f989cfd3214bc0fdfcbea9a2e15|Journal37549037189/job112559863028 SUCCESS279; settlement37549037107/job112559862664 SUCCESS86|
+|242|45d57db44bebec1ef820ee45ffc0238a6cc50043|9ec1bf70046a92fe30e09c8e16c0c35b322622ba|Journal37549443475/job112561175360 SUCCESS284; settlement37549443498/job112561175506 SUCCESS86|
+|243|3fa6850f6cc30a976af059b8c6a052bb460a40a8|3b141024a3cd77ff9ec7e1bad1d984fd19d50e89|Journal37549657187/job112561847709 SUCCESS287; durable37549657264/job112561847997 SUCCESS110; settlement37549657179/job112561847539 SUCCESS86; status37549657286/job112561847845 SUCCESS28; toolkit37549657161 Windows112561847957/Ubuntu112561847841 SUCCESS45 each, Chromium112561847640 SUCCESS2|
+|244|a49f8b5f5d6ab5f289238672058603ebc38897ac|750008e732cfb4462b969103fa3285bb82ef902e|Journal37549817627/job112562366444 SUCCESS289; durable37549817584/job112562366516 SUCCESS111; settlement37549817587/job112562366515 SUCCESS86; status37549817589/job112562366235 SUCCESS28; toolkit37549817602 Windows112562366490/Ubuntu112562366686 SUCCESS45 each, Chromium112562366700 SUCCESS2|
+
+240 audits immutable execution totals before journal fills/duplicates, enable/new claim/Kill reset; validates target intent before committing SUBMITTING.241 audits immutable native order-binding scope at startup, preserving invalid/orphan records under quarantine.242 audits ALL executions and native fill bindings even without receipt references; uses canonical storage verification and quantity conservation, not source authentication. Malformed orphan/digest/rehashed/duplicate/deep JSON failures quarantine at bridge startup. Legitimate standalone unbound executions acquire no invented native proof.243 prevents SQLite safety epoch overflow/REAL nonce reuse, keeps exhausted epoch exact, prevents re-enable/Kill reset, and preserves stop/Kill/late fills.244 keeps capital revision exact at exhaustion, retains actual late-fill restoration, blocks new capacity/release/config changes without resetting generations.
+
+PR222–244 completed, verified and merged during this continuation; do not reimplement them. Earlier table headings preserve exact historic evidence; latest section controls current status. Final local canonical journal/type00/status/script/settlement selection342passed in6.78s; git diff --check clean. All then-modified18 top-level source/test blobs plus the journal workflow matched the exact final feature and code merge trees. Master Spec blob798e658d2b3414f95ce648c58945425d9a579182 unchanged. Test counts overlap and are not market observations.
+
+Final code merge push37549928937 durable /37549928936 journal completed SUCCESS. PR241 merge push37549194133 journal SUCCESS; PR243 merge pushes37549795038 durable/37549795118 journal SUCCESS. Prior checkpoint867bc8a1869c57ac60a09118c74d8ec4766c5c58 exact docs integrity37548915020/job112559476030 SUCCESS98,2warnings. Resolve THIS documentation SHA's own push before further record mutation, without duplicate rerun. No failing/pending feature CI remains.
+
+## Exact next resume
+
+1. Re-fetch dev/ref/open PRs/recent commits and this documentation push; preserve newer concurrent changes. Resolve actual branch HEAD, not the historical code SHA above.
+2. Skip completed PR205–244 and all passing unchanged checks. Local aggregate patches have exact upstream parity and are preserved before checkout of actual upstream; do not reset historical stashes or untracked scratch blindly.
+3. Next independent untested integrity review: persisted reconciliation-barrier revision/blocked and snapshot-binding integer/storage bounds, including restart/claim/release and preservation of last accepted facts. Reproduce actual gaps before changing code; no arbitrary nonce reset or fabricated broker evidence.
+4. Continue scoped read-only REST/type00 transport/reconnect/operator boundaries and independent canonical Early-Live admission composition when genuine root artifacts are available. Current hard-false readiness must remain until independent admission can be established; caller booleans, locally generated reconstructed rows, fixture hashes, self-authored contracts and green CI are never those roots.
+5. Preserve exact completed point/CI/next task in all three canonical documents before the next bounded execution ends. No between-execution/unlimited-runtime claim.
+
+Latest checked other refs remain research194da5016ad3aecc2ceb25944666daa74f038083, Android144fad9c2ed178e04e4b92100210e53e07f77461, prereg1d81eb526f59b87c528d63be9e3883e0f76fedf6; re-fetch before working there. No research adoption, Android build/signing, prereg change or new automation.
+
+## Persistent blockers and prohibitions
+
+REAL whole-account read-only baseline COMPLETED; never repeat it. REAL type00 remains owner-deferred BLOCKED_EXTERNAL_DEVICE_AUTH (LOGIN805004/DETAIL8050 DEVICE_AUTH; token/account/WS connectivity OK). Do not repeatedly request PowerShell/device action while deferred. LOGIN/REG requires no order/fill; zero observed events is not failed execution provenance. Connectivity success alone never grants settlement or execution admission.
+
+Actual KRX/source/PIT/status-economics/genuine LIVE/broker-native execution/exact-policy Shadow/independent canonical Early-Live/original signer and relevant device evidence remain OPEN/BLOCKED. PR218 final-user-ready false. Research freeze/future-only diagnostics and nonadopted REJECT/INCONCLUSIVE/IDEA boundaries unchanged. No synthetic fixture, including reconstructed storage-audit material, was passed off as actual evidence.
+
+Frozen H5/WF504-126-126/PIT/time/labels/Purged-CPCV/purge/embargo/cost/slippage/fill/NetEV/PF/MDD/ES95·99/HoldoutBurn/capacity/promotion/rejection and the consumed invalid-v1 hashes recorded below remain immutable. No reset/rerun/reseal/relabel/retune/sealed access. ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED/FUNDS_MOVEMENT_AUTHORIZED/PERMISSION_CHANGE_AUTHORIZED/GENUINE_LIVE_PROVENANCE_VERIFIED=false. No broker request/order/funds/permission action or sensitive account artifact logged.
+
+---
+
 # Canonical development continuation — 2026-10-07 08:52 KST
 
 This section supersedes every earlier next-work pointer. Actual development code HEAD `57658b5819d3e382eece57ab47f96ae8c97a276f` (PR239 merged). Resolve the dev ref for this record's documentation HEAD. The preceding record27f52e28723e332ea63c4f8dfb7a46c8584ce10c was created around08:38KST; its08:41 heading was a timestamp error, not a later execution. Project INCOMPLETE; all real-account authorities remain false.
