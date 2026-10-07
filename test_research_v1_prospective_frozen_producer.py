@@ -1,5 +1,8 @@
 """Synthetic tests for the exact freeze-anchor anchored-WF producer schedule."""
 import copy
+import hashlib
+import inspect
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +23,7 @@ from research_v1_prospective_frozen_producer import (
     REFIT_POLICY_ID,
     TEST_SESSIONS,
     FrozenProspectiveProducerError,
+    _hash_rows,
     fit_frozen_model_for_target,
     resolve_anchored_schedule,
     store_producer_binding,
@@ -73,6 +77,58 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
     def setUpClass(cls):
         cls.sessions = calendar()
         cls.z = supervised(cls.sessions)
+
+    def test_streaming_row_hash_is_byte_identical_to_legacy_canonical_list(self):
+        frame = self.z.iloc[:64].copy()
+        frame["pred_mean"] = np.linspace(-0.1, 0.1, len(frame))
+
+        def legacy(candidate, include_prediction=False):
+            columns = [
+                "decision_date", "symbol", *CONTEXT_FEATURES, "fh_net_return"
+            ]
+            if include_prediction:
+                columns.append("pred_mean")
+            work = candidate.loc[:, columns].copy()
+            work["decision_date"] = pd.to_datetime(
+                work["decision_date"], errors="raise"
+            ).dt.strftime("%Y-%m-%d")
+            work["symbol"] = work["symbol"].astype(str)
+            records = []
+            for row in work.sort_values(
+                ["decision_date", "symbol"], kind="mergesort"
+            ).to_dict("records"):
+                clean = {}
+                for key, value in row.items():
+                    clean[key] = (
+                        str(value)
+                        if key in {"decision_date", "symbol"}
+                        else float(value)
+                    )
+                records.append(clean)
+            payload = json.dumps(
+                records,
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+            return hashlib.sha256(payload).hexdigest()
+
+        self.assertEqual(_hash_rows(frame), legacy(frame))
+        self.assertEqual(
+            _hash_rows(frame, include_prediction=True),
+            legacy(frame, include_prediction=True),
+        )
+        self.assertEqual(
+            _hash_rows(frame.sample(frac=1.0, random_state=7)),
+            legacy(frame),
+        )
+
+    def test_streaming_hash_does_not_materialise_record_list(self):
+        source = inspect.getsource(_hash_rows)
+        self.assertNotIn('.to_dict("records")', source)
+        self.assertNotIn("records = []", source)
+        self.assertIn("itertuples", source)
 
     def test_schedule_exactly_matches_freeze_anchor_block_arithmetic(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 7]
