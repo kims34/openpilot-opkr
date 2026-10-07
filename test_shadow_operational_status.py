@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from order_intent_journal import OrderIntentJournal
+from order_intent_journal import OrderIntentJournal, OrderJournalError
 from order_snapshot_reconciliation import reconcile_order_snapshot_batch
 from indexalert_automation_control import AutomationCapitalState, AutomationUserControls
 from shadow_capital_allocator import ShadowCapitalAllocator
@@ -33,6 +33,18 @@ class OperationalStatusTests(unittest.TestCase):
         epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
         self.capital.reserve_and_claim_buy('PRIVATE-INTENT',limit_price_krw=8,fee_buffer_krw=3,
             expected_epoch=epoch,expected_capital_revision=1)
+
+    def test_retained_safety_fault_is_unavailable_without_mutating_latch(self):
+        self.journal.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.journal.db.execute('UPDATE shadow_control SET killed=-1')
+        with self.assertRaises(OrderJournalError):
+            self.journal.disable_shadow()
+        before = self.journal.db.total_changes
+        out = self.inspect()
+        self.assertFalse(out['diagnostics_complete'])
+        self.assertEqual(out['local_blockers'], ['OPERATIONAL_SNAPSHOT_UNAVAILABLE'])
+        self.assertEqual(self.journal.db.total_changes, before)
+        self.assertEqual(self.journal.db.execute('SELECT mode,killed FROM shadow_control').fetchone(), ('MASTER_OFF',1))
 
     def test_complete_capital_history_loss_is_unavailable_without_mutation(self):
         for table in ('shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'):

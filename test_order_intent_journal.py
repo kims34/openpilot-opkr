@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
@@ -163,6 +164,37 @@ class JournalTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.claim_submission('decision-1',expected_epoch=2**63)
         self.assertEqual(self.j.get('decision-1')['state'], 'INTENT_CREATED')
+
+    def test_corrupt_kill_value_is_not_cleared_by_off_or_restart(self):
+        self.j.db.execute('PRAGMA ignore_check_constraints=ON')
+        for value in (-1,2,0.5,'ambiguous'):
+            with self.subTest(value=value):
+                self.j.db.execute('UPDATE shadow_control SET killed=?', (value,))
+                with self.assertRaisesRegex(OrderJournalError, '^invalid safety state$'):
+                    self.j.disable_shadow()
+                self.assertEqual(self.j.db.execute('SELECT mode,killed FROM shadow_control').fetchone(), ('MASTER_OFF',1))
+                self.assertEqual(self.j.db.execute('SELECT killed FROM shadow_control_faults ORDER BY sequence DESC LIMIT 1').fetchone(), (value,))
+                epoch = self.j.db.execute('SELECT epoch FROM shadow_control').fetchone()[0]
+                with self.assertRaises(OrderJournalError):
+                    self.j.enable_shadow(expected_epoch=epoch)
+                with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata invalid$'):
+                    OrderIntentJournal(self.path)
+                self.assertEqual(self.j.db.execute('SELECT mode,killed FROM shadow_control').fetchone(), ('MASTER_OFF',1))
+                with self.assertRaises(sqlite3.IntegrityError):
+                    self.j.db.execute('DELETE FROM shadow_control_faults')
+                self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
+    def test_late_fill_retained_under_ambiguous_kill_without_clearing_flag(self):
+        self.acknowledged()
+        self.fill()
+        self.j.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.j.db.execute('UPDATE shadow_control SET killed=-1')
+        self.assertEqual(self.fill('fill-2',2)['filled_quantity'], 6)
+        self.assertEqual(self.j.db.execute('SELECT mode,killed FROM shadow_control').fetchone(), ('MASTER_OFF',1))
+        self.assertEqual(self.j.db.execute('SELECT killed FROM shadow_control_faults').fetchone(), (-1,))
+        epoch = self.j.db.execute('SELECT epoch FROM shadow_control').fetchone()[0]
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('decision-1',expected_epoch=epoch)
 
     def test_upgraded_journal_missing_component_registry_is_not_legacy(self):
         self.j.trip_kill_switch()
