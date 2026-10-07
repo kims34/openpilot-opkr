@@ -232,6 +232,13 @@ def _finite_float(value: Any, field: str) -> float:
 
 
 def _hash_rows(frame: pd.DataFrame, *, include_prediction: bool = False) -> str:
+    """Hash canonical sorted rows without materialising a Python record list.
+
+    The emitted JSON byte stream is deliberately identical to the previous
+    canonical list encoder. Streaming keeps the frozen identity stable while
+    avoiding a second multi-million-row Python object graph during a real
+    prospective refit.
+    """
     columns = ["decision_date", "symbol", *CONTEXT_FEATURES, "fh_net_return"]
     if include_prediction:
         columns.append("pred_mean")
@@ -240,18 +247,25 @@ def _hash_rows(frame: pd.DataFrame, *, include_prediction: bool = False) -> str:
         work["decision_date"], errors="raise"
     ).dt.strftime("%Y-%m-%d")
     work["symbol"] = work["symbol"].astype(str)
-    records = []
-    for row in work.sort_values(
+    ordered = work.sort_values(
         ["decision_date", "symbol"], kind="mergesort"
-    ).to_dict("records"):
+    )
+    digest = hashlib.sha256()
+    digest.update(b"[")
+    first = True
+    for values in ordered.itertuples(index=False, name=None):
         clean = {}
-        for key, value in row.items():
+        for key, value in zip(columns, values):
             if key in {"decision_date", "symbol"}:
                 clean[key] = str(value)
             else:
                 clean[key] = _finite_float(value, key)
-        records.append(clean)
-    return hashlib.sha256(_canonical(records)).hexdigest()
+        if not first:
+            digest.update(b",")
+        digest.update(_canonical(clean))
+        first = False
+    digest.update(b"]")
+    return digest.hexdigest()
 
 
 def _validate_supervised_frame(z: pd.DataFrame) -> pd.DataFrame:
