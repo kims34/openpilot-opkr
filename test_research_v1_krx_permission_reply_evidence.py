@@ -17,17 +17,18 @@ def _data():
     return json.loads(PATH.read_text(encoding="utf-8"))
 
 
-def test_committed_permission_reply_evidence_v3_grants_scope_limited_full_history_rights():
+def test_v3_integrity_is_preserved_but_superseded_reply_cannot_grant_current_rights():
     out = validate_file()
     assert out["valid"] is True
-    assert out["automated_collection_authorized"] is True
-    assert out["high_frequency_collection_authorized"] is True
-    assert out["full_historical_download_rights_authorized"] is True
-    assert out["bulk_historical_acquisition_rights_authorized"] is True
+    assert out["evidence_disposition"] == "SUPERSEDED_UNSUPPORTED_AUTOMATION_CLAIM"
+    assert out["automated_collection_authorized"] is False
+    assert out["high_frequency_collection_authorized"] is False
+    assert out["full_historical_download_rights_authorized"] is False
+    assert out["bulk_historical_acquisition_rights_authorized"] is False
     assert out["bulk_historical_network_execution_authorized_by_user"] is False
-    assert out["permission_state"] == "PERMITTED_NO_SEPARATE_APPROVAL"
-    assert out["gate_f_status_for_personal_research"] == "PASS"
-    assert out["gate_a_status_ceiling_from_permission_alone"] == "PARTIAL"
+    assert out["permission_state"] == "UNRESTRICTED_WEB_AUTOMATION_NOT_VERIFIED"
+    assert out["gate_f_status_for_personal_research"] == "BLOCKED"
+    assert out["gate_a_status_ceiling_from_permission_alone"] == "BLOCKED"
     assert out["feature_performance_testing_authorized"] is False
     assert out["sealed_holdout_authorized"] is False
     assert out["live_trading_authorized"] is False

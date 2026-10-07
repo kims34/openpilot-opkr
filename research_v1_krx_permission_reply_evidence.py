@@ -97,14 +97,21 @@ def validate_permission_reply_evidence(data: Mapping[str, Any]) -> dict[str, Any
 
     return {
         "valid": True,
-        "automated_collection_authorized": True,
-        "high_frequency_collection_authorized": True,
-        "full_historical_download_rights_authorized": True,
-        "bulk_historical_acquisition_rights_authorized": True,
+        # Preserve v3 integrity checks and original hashes as historical evidence.
+        # The owner-supplied original reply on 2026-10-07 contradicts its
+        # unrestricted automation claim; the owner confirmed no matching reply.
+        # This disposition concerns this web-session evidence only, not separately
+        # approved KRX OpenAPI services or all internal-research use.
+        "evidence_disposition": "SUPERSEDED_UNSUPPORTED_AUTOMATION_CLAIM",
+        "original_reply_sha256": "bb548d64e81457b21d2203edcc8bab63ecca4b0e2cc4d922f675eeeca5477efa",
+        "automated_collection_authorized": False,
+        "high_frequency_collection_authorized": False,
+        "full_historical_download_rights_authorized": False,
+        "bulk_historical_acquisition_rights_authorized": False,
         "bulk_historical_network_execution_authorized_by_user": False,
-        "permission_state": "PERMITTED_NO_SEPARATE_APPROVAL",
-        "gate_f_status_for_personal_research": "PASS",
-        "gate_a_status_ceiling_from_permission_alone": "PARTIAL",
+        "permission_state": "UNRESTRICTED_WEB_AUTOMATION_NOT_VERIFIED",
+        "gate_f_status_for_personal_research": "BLOCKED",
+        "gate_a_status_ceiling_from_permission_alone": "BLOCKED",
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
