@@ -1,5 +1,7 @@
 """Synthetic prospective decision capture tests; no market/network/order use."""
 import copy
+import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +20,10 @@ from research_v1_prospective_decision_capture import (
 from research_v1_prospective_inputs import (
     build_current_session_inputs,
     input_snapshot_sha256,
+)
+from research_v1_prospective_frozen_producer import (
+    FREEZE_ANCHOR_COMMIT,
+    REFIT_POLICY_ID,
 )
 from research_v1_prospective_model_bundle import build_model_bundle
 from test_research_v1_causal_evidence_integrity import synthetic_panel
@@ -51,23 +57,70 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         y = pd.Series(rng.normal(scale=0.01, size=len(train)))
         model = _pipe(CONTEXT_FEATURES)
         model.fit(train, y)
+        target_day = pd.Timestamp(self.dates[-1])
+        train_end = (target_day - pd.Timedelta(days=120)).strftime("%Y-%m-%d")
+        cal_start = (target_day - pd.Timedelta(days=100)).strftime("%Y-%m-%d")
+        cal_end = (target_day - pd.Timedelta(days=20)).strftime("%Y-%m-%d")
         self.bundle = build_model_bundle(
             model, _quantiles(),
             training_input_sha256="a" * 64,
             calibration_input_sha256="b" * 64,
-            fit_code_commit="c" * 40,
+            fit_code_commit=FREEZE_ANCHOR_COMMIT,
             fit_code_path="research_v1_selected_calibration.py",
-            train_end_session="2026-01-30",
-            calibration_start_session="2026-02-09",
-            calibration_end_session="2026-08-07",
-            refit_policy_id="TEST_ONLY_EXPLICIT_CALLER_POLICY",
+            train_end_session=train_end,
+            calibration_start_session=cal_start,
+            calibration_end_session=cal_end,
+            refit_policy_id=REFIT_POLICY_ID,
         )
+        test_start = (target_day - pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+        producer_body = {
+            "classification": "FROZEN_PRODUCER_BINDING_NOT_ADMITTED",
+            "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
+            "fit_code_path": "research_v1_selected_calibration.py",
+            "refit_policy_id": REFIT_POLICY_ID,
+            "target_session": target_day.strftime("%Y-%m-%d"),
+            "target_session_ordinal": 650,
+            "test_block_index": 0,
+            "test_block_start_ordinal": 640,
+            "test_block_end_ordinal_exclusive": 766,
+            "test_block_start_session": test_start,
+            "target_ordinal_in_test_block": 10,
+            "initial_train_sessions": 504,
+            "actual_train_sessions": 504,
+            "calibration_sessions": 126,
+            "test_sessions": 126,
+            "purge_sessions": 5,
+            "train_end_session": train_end,
+            "calibration_start_session": cal_start,
+            "calibration_end_session": cal_end,
+            "training_input_sha256": self.bundle["training_input_sha256"],
+            "calibration_input_sha256": self.bundle["calibration_input_sha256"],
+            "model_bundle_sha256": self.bundle["model_bundle_sha256"],
+            "historical_backfill_forbidden": True,
+            "consumed_v1_holdout_used": False,
+            "current_session_features_consumed_for_fit": False,
+            "current_or_test_outcomes_consumed_for_fit": False,
+            "independent_model_admission_verified": False,
+            "fresh_alpha_observation_admitted": False,
+            "promotion_authority": False,
+            "live_order_authorized": False,
+        }
+        producer_sha = hashlib.sha256(
+            json.dumps(
+                producer_body, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":"), allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        self.producer_binding = {
+            **producer_body, "producer_binding_sha256": producer_sha
+        }
         self.captured_at = self.dates[-1].strftime("%Y-%m-%d") + "T18:00:05+09:00"
 
     def capture(self, **kwargs):
         return build_decision_capture(
             self.snapshot,
             self.bundle,
+            producer_binding=kwargs.get("producer_binding", self.producer_binding),
             input_snapshot_sha256=kwargs.get("input_snapshot_sha256", self.input_digest),
             captured_at=kwargs.get("captured_at", self.captured_at),
         )
@@ -77,6 +130,11 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         self.assertTrue(validate_decision_capture(out)["valid"])
         self.assertEqual(out["input_snapshot_sha256"], self.input_digest)
         self.assertEqual(out["model_bundle_sha256"], self.bundle["model_bundle_sha256"])
+        self.assertEqual(
+            out["producer_binding_sha256"],
+            self.producer_binding["producer_binding_sha256"],
+        )
+        self.assertEqual(out["producer_refit_policy_id"], REFIT_POLICY_ID)
         self.assertLessEqual(len(out["original_top3"]), 3)
         self.assertLessEqual(len(out["selected_candidates"]), 3)
         self.assertEqual(out["decision_count"], len(out["selected_candidates"]))
@@ -107,6 +165,31 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         early = self.dates[-1].strftime("%Y-%m-%d") + "T17:59:59+09:00"
         with self.assertRaisesRegex(ProspectiveDecisionCaptureError, "precede"):
             self.capture(captured_at=early)
+
+    def test_wrong_or_escalated_producer_binding_fails_before_scoring(self):
+        changed = copy.deepcopy(self.producer_binding)
+        changed["live_order_authorized"] = True
+        with self.assertRaisesRegex(
+            ProspectiveDecisionCaptureError, "producer binding"
+        ):
+            self.capture(producer_binding=changed)
+
+        changed = copy.deepcopy(self.producer_binding)
+        changed["target_session"] = (
+            pd.Timestamp(self.dates[-1]) - pd.Timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+        body = dict(changed)
+        body.pop("producer_binding_sha256")
+        changed["producer_binding_sha256"] = hashlib.sha256(
+            json.dumps(
+                body, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":"), allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        with self.assertRaisesRegex(
+            ProspectiveDecisionCaptureError, "producer binding"
+        ):
+            self.capture(producer_binding=changed)
 
     def test_tamper_or_authority_escalation_breaks_capture_validation(self):
         original = self.capture()
@@ -155,6 +238,7 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         with self.assertRaisesRegex(ProspectiveDecisionCaptureError, "canonical symbol sort"):
             build_decision_capture(
                 snapshot, self.bundle,
+                producer_binding=self.producer_binding,
                 input_snapshot_sha256=digest,
                 captured_at=self.captured_at,
             )
