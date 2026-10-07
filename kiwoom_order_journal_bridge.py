@@ -13,7 +13,7 @@ import json
 import re
 import sqlite3
 
-from order_intent_journal import OrderJournalError, validate_stored_execution_totals, record_component_initialization, validate_stored_component_history
+from order_intent_journal import load_stored_intent, OrderJournalError, validate_stored_execution_totals, record_component_initialization, validate_stored_component_history
 from research_v1_kiwoom_native_execution import (
     OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT, KT00007_SOURCE_CONTRACT,
     KA10076_SOURCE_CONTRACT,
@@ -58,6 +58,75 @@ def exact_decimal_identity(value):
     return str(Decimal((sign, tuple(digits), exponent)))
 
 
+def validate_native_scope(account, day):
+    require(isinstance(account,str) and re.fullmatch(r'sha256:[0-9a-f]{64}',account))
+    require(isinstance(day,str) and date.fromisoformat(day).isoformat()==day)
+
+
+def stored_native_row(connection,account,scope_day,key,row,day,source,granularity):
+    validate_native_scope(account, scope_day)
+    require(day == scope_day)
+    require(connection.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone() == (account,scope_day))
+    require(isinstance(row,dict))
+    require(row.get('source_contract')==source and row.get('official_schema_commit')==OFFICIAL_SCHEMA_COMMIT)
+    require(row.get('broker')=='KIWOOM' and row.get('record_granularity')==granularity)
+    require(row.get('broker_native_structure_normalized') is True)
+    require(row.get('genuine_live_provenance_verified') is False and row.get('project_live_evidence_admitted') is False)
+    require(row.get('account_fingerprint')==account)
+    order=load_stored_intent(connection,key)
+    binding=connection.execute('SELECT broker_order_id,native_side FROM native_order_bindings WHERE key=?',(key,)).fetchone()
+    require(binding is not None and row.get('broker_order_id')==binding[0]==order['broker_order_id'])
+    require(row.get('symbol')==order['symbol'] and number(row.get('order_qty'),integer=True,positive=True)==order['quantity'])
+    # Amendment/cancellation chains need independent original-order semantics.
+    require(row.get('original_order_id')=='')
+    return order,binding
+
+
+def stored_native_execution_material(connection,account,day,key,row,*,trading_date):
+    """Derive execution identity without applying a fill or trusting markers."""
+    require(connection.in_transaction)
+    order,binding=stored_native_row(connection,account,day,key,row,trading_date,SOURCE_CONTRACT,'broker_execution_event')
+    quantities = [record[0] for record in connection.execute(
+        'SELECT quantity FROM executions WHERE key=?', (key,))]
+    require(all(type(quantity) is int and quantity > 0 for quantity in quantities))
+    require(sum(quantities) == order['filled_quantity'])
+    require(row.get('source_api')=='domestic_realtime_order_fill_00')
+    require(row.get('broker_execution_id_available_in_source') is True)
+    require(row.get('side')==binding[1] and row.get('order_status')=='체결' and row.get('rejection_reason')=='')
+    execution=row.get('broker_execution_id')
+    require(isinstance(execution,str) and bool(execution.strip()))
+    qty=number(row.get('fill_qty'),integer=True,positive=True)
+    # Both reported and unit quantities/prices must agree. Ambiguous
+    # cumulative-vs-unit data cannot be interpreted as another fill.
+    require(qty==number(row.get('unit_fill_qty'),integer=True,positive=True))
+    price=number(row.get('fill_price'),positive=True)
+    require(price==number(row.get('unit_fill_price'),positive=True))
+    remaining=number(row.get('remaining_qty'),integer=True)
+    require(qty + remaining <= order['quantity'])
+    time=row.get('broker_lifecycle_time')
+    require(isinstance(time,str) and re.fullmatch(r'[0-9]{6}',time))
+    datetime.strptime(time,'%H%M%S')
+    payload=dict(account=account,day=day,order=binding[0],symbol=order['symbol'],
+        native_side=binding[1],execution_id=execution,quantity=qty,
+        price=exact_decimal_identity(price),time=time,remaining=remaining)
+    serialized=json.dumps(payload,sort_keys=True,separators=(',',':'))
+    digest=hashlib.sha256(serialized.encode()).hexdigest()
+    return order,binding,execution,qty,remaining,serialized,digest
+
+
+def verify_stored_native_execution(connection,account,day,key,row,*,trading_date):
+    """Compare receipt, native binding and execution in the same snapshot."""
+    _,_,execution,qty,_,serialized,digest=stored_native_execution_material(
+        connection,account,day,key,row,trading_date=trading_date)
+    stored=connection.execute(
+        'SELECT digest,payload FROM native_fill_bindings WHERE key=? AND execution_id=?',
+        (key,execution)).fetchone()
+    require(stored==(digest,serialized))
+    require(connection.execute(
+        'SELECT quantity FROM executions WHERE key=? AND execution_id=?',
+        (key,execution)).fetchone()==(qty,))
+
+
 class KiwoomOrderJournalBridge:
     def __init__(self,journal,*,account_fingerprint,trading_date):
         self.journal=journal
@@ -65,8 +134,7 @@ class KiwoomOrderJournalBridge:
         self.day=trading_date
         with self._guard():
             validate_stored_component_history(journal.db)
-            require(isinstance(self.account,str) and re.fullmatch(r'sha256:[0-9a-f]{64}',self.account))
-            require(isinstance(self.day,str) and date.fromisoformat(self.day).isoformat()==self.day)
+            validate_native_scope(self.account,self.day)
             tables = {row[0] for row in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required = {'native_journal_scope','native_order_bindings','native_fill_bindings'}
             require(not tables & required or (required <= tables and
@@ -159,20 +227,7 @@ class KiwoomOrderJournalBridge:
         return self._report('ORDER_BOUND',executions_created=False)
 
     def _row(self,key,row,day,source,granularity):
-        self._context(day)
-        require(isinstance(row,dict))
-        require(row.get('source_contract')==source and row.get('official_schema_commit')==OFFICIAL_SCHEMA_COMMIT)
-        require(row.get('broker')=='KIWOOM' and row.get('record_granularity')==granularity)
-        require(row.get('broker_native_structure_normalized') is True)
-        require(row.get('genuine_live_provenance_verified') is False and row.get('project_live_evidence_admitted') is False)
-        require(row.get('account_fingerprint')==self.account)
-        order=self.journal.get(key)
-        binding=self.journal.db.execute('SELECT broker_order_id,native_side FROM native_order_bindings WHERE key=?',(key,)).fetchone()
-        require(binding is not None and row.get('broker_order_id')==binding[0]==order['broker_order_id'])
-        require(row.get('symbol')==order['symbol'] and number(row.get('order_qty'),integer=True,positive=True)==order['quantity'])
-        # Amendment/cancellation chains need independent original-order semantics.
-        require(row.get('original_order_id')=='')
-        return order,binding
+        return stored_native_row(self.journal.db,self.account,self.day,key,row,day,source,granularity)
 
     @staticmethod
     def _report(result,**extra):
@@ -187,47 +242,10 @@ class KiwoomOrderJournalBridge:
             return self._apply_execution_locked(key,row,trading_date=trading_date)
 
     def _execution_material_locked(self,key,row,*,trading_date):
-        """Derive execution identity without applying a fill or trusting markers."""
-        require(self.journal.db.in_transaction)
-        order,binding=self._row(key,row,trading_date,SOURCE_CONTRACT,'broker_execution_event')
-        quantities = [record[0] for record in self.journal.db.execute(
-            'SELECT quantity FROM executions WHERE key=?', (key,))]
-        require(all(type(quantity) is int and quantity > 0 for quantity in quantities))
-        require(sum(quantities) == order['filled_quantity'])
-        require(row.get('source_api')=='domestic_realtime_order_fill_00')
-        require(row.get('broker_execution_id_available_in_source') is True)
-        require(row.get('side')==binding[1] and row.get('order_status')=='체결' and row.get('rejection_reason')=='')
-        execution=row.get('broker_execution_id')
-        require(isinstance(execution,str) and bool(execution.strip()))
-        qty=number(row.get('fill_qty'),integer=True,positive=True)
-        # Both reported and unit quantities/prices must agree. Ambiguous
-        # cumulative-vs-unit data cannot be interpreted as another fill.
-        require(qty==number(row.get('unit_fill_qty'),integer=True,positive=True))
-        price=number(row.get('fill_price'),positive=True)
-        require(price==number(row.get('unit_fill_price'),positive=True))
-        remaining=number(row.get('remaining_qty'),integer=True)
-        require(qty + remaining <= order['quantity'])
-        time=row.get('broker_lifecycle_time')
-        require(isinstance(time,str) and re.fullmatch(r'[0-9]{6}',time))
-        datetime.strptime(time,'%H%M%S')
-        payload=dict(account=self.account,day=self.day,order=binding[0],symbol=order['symbol'],
-            native_side=binding[1],execution_id=execution,quantity=qty,
-            price=exact_decimal_identity(price),time=time,remaining=remaining)
-        serialized=json.dumps(payload,sort_keys=True,separators=(',',':'))
-        digest=hashlib.sha256(serialized.encode()).hexdigest()
-        return order,binding,execution,qty,remaining,serialized,digest
+        return stored_native_execution_material(self.journal.db,self.account,self.day,key,row,trading_date=trading_date)
 
     def _verify_existing_execution_locked(self,key,row,*,trading_date):
-        """Compare receipt, native binding and execution in the same snapshot."""
-        _,_,execution,qty,_,serialized,digest=self._execution_material_locked(
-            key,row,trading_date=trading_date)
-        stored=self.journal.db.execute(
-            'SELECT digest,payload FROM native_fill_bindings WHERE key=? AND execution_id=?',
-            (key,execution)).fetchone()
-        require(stored==(digest,serialized))
-        require(self.journal.db.execute(
-            'SELECT quantity FROM executions WHERE key=? AND execution_id=?',
-            (key,execution)).fetchone()==(qty,))
+        verify_stored_native_execution(self.journal.db,self.account,self.day,key,row,trading_date=trading_date)
 
     def _apply_execution_locked(self,key,row,*,trading_date):
         """Caller holds the journal write transaction, including receipt checks."""

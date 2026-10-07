@@ -13,6 +13,7 @@ from indexalert_automation_control import AutomationCapitalState, AutomationUser
 from order_snapshot_reconciliation import FIELDS, STATUS, load_stored_order_snapshot
 from order_intent_journal import OrderJournalError, validate_stored_intent_row, validate_stored_execution_totals, validate_stored_component_history, valid_stored_safety_row
 from shadow_capital_allocator import validate_stored_capital_reservations
+from kiwoom_execution_inbox import verify_stored_terminal_inbox_attempts
 
 
 def _require(condition):
@@ -128,6 +129,7 @@ def inspect_shadow_operational_status(path):
                 WHERE r.sequence IS NULL OR a.outcome IS NULL
                     OR a.outcome NOT IN ('APPLIED','DUPLICATE','BLOCKED')
                 LIMIT 1''').fetchone() is None)
+            verify_stored_terminal_inbox_attempts(connection)
             pending = connection.execute('''SELECT COUNT(*) FROM native_inbox_receipts r
                 WHERE NOT EXISTS(SELECT 1 FROM native_inbox_attempts a WHERE
                 a.receipt_sequence=r.sequence AND a.outcome IN ('APPLIED','DUPLICATE'))''').fetchone()[0]

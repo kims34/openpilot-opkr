@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 
-from kiwoom_order_journal_bridge import NativeBridgeError, require
+from kiwoom_order_journal_bridge import NativeBridgeError, require, verify_stored_native_execution
 from order_intent_journal import record_component_initialization, validate_stored_component_history
 from research_v1_kiwoom_native_execution import OFFICIAL_SCHEMA_COMMIT, SOURCE_CONTRACT
 
@@ -27,6 +27,50 @@ rejection_reason exchange_code exchange_name sor_flag'''.split())
 BOOL_FIELDS = frozenset('''broker_execution_id_available_in_source
 broker_native_structure_normalized genuine_live_provenance_verified
 project_live_evidence_admitted'''.split())
+
+
+def validate_normalized_inbox_row(row, account):
+    require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
+    require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
+    require(all(type(row[f]) is bool for f in BOOL_FIELDS))
+    require(row['source_contract'] == SOURCE_CONTRACT and row['official_schema_commit'] == OFFICIAL_SCHEMA_COMMIT)
+    require(row['broker'] == 'KIWOOM' and row['source_api'] == 'domestic_realtime_order_fill_00')
+    require(row['record_granularity'] == 'broker_execution_event' and row['account_fingerprint'] == account)
+    require(row['broker_native_structure_normalized'] and row['broker_execution_id_available_in_source'])
+    require(not row['genuine_live_provenance_verified'] and not row['project_live_evidence_admitted'])
+
+def decode_normalized_inbox_payload(payload):
+    def unique_fields(pairs):
+        fields = {}
+        for key, value in pairs:
+            require(key not in fields)
+            fields[key] = value
+        return fields
+
+    try:
+        return json.loads(payload, object_pairs_hook=unique_fields)
+    except RecursionError:
+        # Decoder exhaustion is corrupt durable input, not permission to
+        # bypass the existing private rollback/quarantine boundary.
+        require(False)
+
+
+def verify_stored_terminal_inbox_attempts(connection):
+    """Pure reads in caller's snapshot; no constructors, repair or admission."""
+    require(connection.in_transaction)
+    if connection.execute("SELECT 1 FROM native_inbox_attempts WHERE outcome IN ('APPLIED','DUPLICATE') LIMIT 1").fetchone() is None:
+        return
+    for key, day, payload, digest in connection.execute("""SELECT r.key,r.day,r.payload,r.digest
+            FROM native_inbox_attempts a LEFT JOIN native_inbox_receipts r ON r.sequence=a.receipt_sequence
+            WHERE a.outcome IN ('APPLIED','DUPLICATE')"""):
+        scope = connection.execute('SELECT account,day FROM native_journal_scope WHERE id=1').fetchone()
+        require(scope is not None)
+        account, scope_day = scope
+        require(isinstance(payload, str) and isinstance(digest, str))
+        require(hashlib.sha256(payload.encode()).hexdigest() == digest)
+        row = decode_normalized_inbox_payload(payload)
+        validate_normalized_inbox_row(row, account)
+        verify_stored_native_execution(connection,account,scope_day,key,row,trading_date=day)
 
 
 class KiwoomExecutionInbox:
@@ -70,30 +114,9 @@ class KiwoomExecutionInbox:
             source_provenance_admitted=False, live_ordering_authorized=False, **extra)
 
     def _validate_row(self, row):
-        require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
-        require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
-        require(all(type(row[f]) is bool for f in BOOL_FIELDS))
-        require(row['source_contract'] == SOURCE_CONTRACT and row['official_schema_commit'] == OFFICIAL_SCHEMA_COMMIT)
-        require(row['broker'] == 'KIWOOM' and row['source_api'] == 'domestic_realtime_order_fill_00')
-        require(row['record_granularity'] == 'broker_execution_event' and row['account_fingerprint'] == self.bridge.account)
-        require(row['broker_native_structure_normalized'] and row['broker_execution_id_available_in_source'])
-        require(not row['genuine_live_provenance_verified'] and not row['project_live_evidence_admitted'])
+        validate_normalized_inbox_row(row, self.bridge.account)
 
-    @staticmethod
-    def _decode_payload(payload):
-        def unique_fields(pairs):
-            fields = {}
-            for key, value in pairs:
-                require(key not in fields)
-                fields[key] = value
-            return fields
-
-        try:
-            return json.loads(payload, object_pairs_hook=unique_fields)
-        except RecursionError:
-            # Decoder exhaustion is corrupt durable input, not permission to
-            # bypass the existing private rollback/quarantine boundary.
-            require(False)
+    _decode_payload = staticmethod(decode_normalized_inbox_payload)
 
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
