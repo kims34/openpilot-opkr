@@ -12,6 +12,9 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
     def test_acknowledgements_require_explicit_unambiguous_integer_codes(self):
         self.assertEqual(self.text.count('Get-ReadOnlyReturnCode -Message $obj -Raw $raw'), 2)
         self.assertNotIn('$code = 0', self.text)
+        self.assertEqual(self.text.count('-ControlFrame $false'), 2)
+        self.assertIn('$tokenResp.token -isnot [string]', self.text)
+        self.assertIn('$accountObj.acctNo -isnot [string]', self.text)
         self.assertIn('return Convert-StrictWebSocketText -Bytes $stream.ToArray()', self.text)
         runtimes = [shutil.which(name) for name in ('pwsh', 'powershell')]
         runtimes = list(dict.fromkeys(runtime for runtime in runtimes if runtime))
@@ -33,6 +36,16 @@ foreach ($name in @('LOGIN','REG')) {
     $obj=$raw | ConvertFrom-Json
     if ((Get-ReadOnlyReturnCode -Message $obj -Raw $raw) -ne $expected) { throw 'VALID_CODE_REJECTED' }
   }
+}
+foreach ($raw in @('{"return_code":0}', '{"return_code":805004}')) {
+  $obj=$raw | ConvertFrom-Json
+  if ((Get-ReadOnlyReturnCode -Message $obj -Raw $raw -ControlFrame $false) -ne $obj.return_code) { throw 'REST_VALID_REJECTED' }
+}
+foreach ($raw in @('{}','{"return_code":false}','{"return_code":"0"}','{"return_code":0.5}','{"return_code":null}','{"return_code":805004,"return_code":0}')) {
+  $rejected=$false
+  try { $obj=$raw | ConvertFrom-Json; $null=Get-ReadOnlyReturnCode -Message $obj -Raw $raw -ControlFrame $false }
+  catch { $rejected=$true }
+  if (-not $rejected) { throw 'REST_INVALID_ACCEPTED' }
 }
 $decode=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-StrictWebSocketText'},$true)
 if ($null -eq $decode) { throw 'UTF8_HELPER_MISSING' }
