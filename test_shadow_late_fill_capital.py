@@ -151,6 +151,23 @@ class LateFillCapitalTests(unittest.TestCase):
         self.assertEqual(self.j.shadow_control()['epoch'], 2**63-1)
         self.assert_stopped()
 
+    def test_exhausted_capital_revision_preserves_late_fill_and_blocks_new_capacity(self):
+        self.released()
+        self.j.db.execute('UPDATE shadow_capital_config SET revision=?', (2**63-1,))
+        self.late()
+        state = self.a.state()
+        self.assertEqual(state['revision'], 2**63-1)
+        self.assertIs(type(state['revision']), int)
+        self.assertEqual(state['managed_reserve_krw'], 83)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 1)
+        self.assert_stopped()
+        self.j.register('d2',symbol='OTHER',side='BUY',quantity=1)
+        with self.assertRaises(OrderJournalError):
+            self.a.reserve_and_claim_buy('d2',limit_price_krw=1,fee_buffer_krw=0,
+                expected_epoch=self.j.shadow_control()['epoch'],expected_capital_revision=2**63-1)
+        self.assertEqual(self.j.get('d2')['state'], 'INTENT_CREATED')
+        self.assertEqual(self.a.state()['managed_reserve_krw'], 83)
+
     def test_restored_total_above_sqlite_sum_range_remains_exact_and_unusable(self):
         self.released()
         # Fixture individual reservations are representable; total exceeds int64.
