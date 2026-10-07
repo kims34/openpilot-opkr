@@ -136,7 +136,7 @@ function Get-Type00ReadOnlyObservation([object]$Message, [string]$Account) {
             $events++
             if ($values.'9201' -ceq $Account) {
                 $matched++
-                if ($values.'913' -ceq '체결' -and
+                if ($values.'913' -ceq ([string][char]0xCCB4 + [char]0xACB0) -and
                     -not [string]::IsNullOrWhiteSpace($values.'909') -and
                     -not [string]::IsNullOrWhiteSpace($values.'908') -and
                     -not [string]::IsNullOrWhiteSpace($values.'914') -and

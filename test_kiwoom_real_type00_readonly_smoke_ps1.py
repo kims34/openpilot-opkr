@@ -84,7 +84,9 @@ if ($null -ne $observer) {
   . ([ScriptBlock]::Create($observer.Extent.Text))
   $fixture='{"trnm":"REAL","data":[{"type":"00","values":{"9201":"fixture-account","913":"체결","909":"0007","908":"120000","914":"100","915":"1"}},{"type":"00","values":{"9201":"other-account"}},{"type":"01"}]}'
   $summary=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw $fixture) -Account 'fixture-account'
-  if ($summary.Events -ne 2 -or $summary.Matched -ne 1 -or -not $summary.ExecutionFieldsObserved) { throw 'OBSERVATION_INVALID' }
+  if ($summary.Events -ne 2) { throw 'OBSERVATION_COUNT_INVALID' }
+  if ($summary.Matched -ne 1) { throw 'OBSERVATION_ACCOUNT_INVALID' }
+  if (-not $summary.ExecutionFieldsObserved) { throw 'OBSERVATION_FILL_INVALID' }
   $summary=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw $fixture) -Account 'unmatched'
   if ($summary.Matched -ne 0 -or $summary.ExecutionFieldsObserved) { throw 'ACCOUNT_BINDING_INVALID' }
   $summary=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw '{"trnm":"REAL","data":[{"type":"00","values":{"9201":"fixture-account","913":"접수"}}]}') -Account 'fixture-account'
