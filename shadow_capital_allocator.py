@@ -63,19 +63,29 @@ def validate_stored_capital_reservations(connection):
 class ShadowCapitalAllocator:
     def __init__(self, journal):
         self.journal = journal
+        missing = False
         with journal._atomic():
-            journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_config (
-                id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL,
-                enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), maximum INTEGER NOT NULL,
-                baseline TEXT NOT NULL)''')
-            journal.db.execute('''INSERT OR IGNORE INTO shadow_capital_config
-                VALUES(1,0,0,0,'[0,0,0,0]')''')
-            journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_reservations (
-                key TEXT PRIMARY KEY, limit_price INTEGER NOT NULL,
-                fee_buffer INTEGER NOT NULL, reserve INTEGER NOT NULL)''')
-            journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_releases (
-                key TEXT PRIMARY KEY, released_principal INTEGER NOT NULL,
-                snapshot_revision INTEGER NOT NULL)''')
+            tables = {row[0] for row in journal.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            required = {'shadow_capital_config','shadow_capital_reservations','shadow_capital_releases'}
+            missing = bool(tables & required) and (not required <= tables or
+                journal.db.execute('SELECT 1 FROM shadow_capital_config WHERE id=1').fetchone() is None)
+            if missing:
+                journal._stop_shadow('CAPITAL_STARTUP_HISTORY_MISSING')
+            else:
+                journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_config (
+                    id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL,
+                    enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), maximum INTEGER NOT NULL,
+                    baseline TEXT NOT NULL)''')
+                journal.db.execute('''INSERT OR IGNORE INTO shadow_capital_config
+                    VALUES(1,0,0,0,'[0,0,0,0]')''')
+                journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_reservations (
+                    key TEXT PRIMARY KEY, limit_price INTEGER NOT NULL,
+                    fee_buffer INTEGER NOT NULL, reserve INTEGER NOT NULL)''')
+                journal.db.execute('''CREATE TABLE IF NOT EXISTS shadow_capital_releases (
+                    key TEXT PRIMARY KEY, released_principal INTEGER NOT NULL,
+                    snapshot_revision INTEGER NOT NULL)''')
+        if missing:
+            raise OrderJournalError('startup capital history missing')
 
     def state(self):
         # Standalone readers need the same pinned view as claim/release callers.
