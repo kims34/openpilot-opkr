@@ -224,6 +224,7 @@ class KiwoomOrderJournalBridge:
     def bind_order(self,key,*,broker_order_id,native_side):
         with self._guard():
             validate_stored_component_history(self.journal.db)
+            validate_stored_native_bindings(self.journal.db)
             self._context(self.day)
             require(isinstance(native_side,str) and bool(native_side.strip()))
             order=self.journal.get(key)
@@ -257,6 +258,7 @@ class KiwoomOrderJournalBridge:
     def _apply_execution_locked(self,key,row,*,trading_date):
         """Caller holds the journal write transaction, including receipt checks."""
         validate_stored_component_history(self.journal.db)
+        validate_stored_native_bindings(self.journal.db)
         order,binding,execution,qty,remaining,serialized,digest=self._execution_material_locked(
             key,row,trading_date=trading_date)
         old=self.journal.db.execute('SELECT digest FROM native_fill_bindings WHERE key=? AND execution_id=?',(key,execution)).fetchone()
@@ -276,6 +278,7 @@ class KiwoomOrderJournalBridge:
         """Compare only; never insert executions or clear a whole-batch barrier."""
         with self._guard():
             validate_stored_component_history(self.journal.db)
+            validate_stored_native_bindings(self.journal.db)
             require(isinstance(row,dict))
             api=row.get('source_api')
             sources={'kt00007':KT00007_SOURCE_CONTRACT,'ka10076':KA10076_SOURCE_CONTRACT}
