@@ -19,6 +19,7 @@ from research_v1_prospective_session_commit import (
 )
 from test_research_v1_prospective_session_commit import (
     EVIDENCE,
+    PRODUCER_IMPLEMENTATION_COMMIT,
     daily_rows,
     history,
     master_rows,
@@ -56,6 +57,7 @@ class ProspectiveChronologyAdmissionTest(unittest.TestCase):
             supervised_frame=self.supervised,
             session_calendar=self.calendar,
             target_session=self.target,
+            producer_implementation_commit=PRODUCER_IMPLEMENTATION_COMMIT,
             decision_at=self.decision_at,
             captured_at=self.target + "T18:00:05+09:00",
             root=str(root),
