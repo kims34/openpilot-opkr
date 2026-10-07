@@ -1,3 +1,28 @@
+# Canonical recovery checkpoint — 2026-10-07 12:13 KST
+
+Actual development code HEAD b1bc3d799647e2315c06b756494fe83dc036da16 (PR269). This section supersedes older next-work pointers. GitHub rechecked: PR258–269 all merged, all exact feature workflows completed SUCCESS; no older work repeated. Research/Android/prereg refs unchanged at their previously recorded hashes.
+
+- PR258: Explain retained safety quarantine in the read-only operator dashboard; feature 419e332fde6b2ce8cf329874a258a670f8e4f71f; merge 0bb01f0d217ba0f002334347cf24ef88995365fb; exact feature Actions 37557073010 success, 37557073024 success, 37557073042 success.
+- PR259: Require atomic capital allocator path for managed BUY claims; feature c759fb3dd8c94a3126c204fefd672f9126ad59c7; merge 2062f7163cdaa76ad75559ef5978e554e22803ed; exact feature Actions 37558672583 success, 37558672449 success, 37558672488 success, 37558672546 success, 37558672483 success.
+- PR260: Reject contradictory read-only response pagination; feature 0ac3ca350b4c94e23def3cbe9af1c3bf0a61f20d; merge fa53db98405b5d8b05dc826676294b0e22229f46; exact feature Actions 37558899473 success, 37558899266 success, 37558899734 success, 37558899308 success, 37558899342 success.
+- PR261: Keep settlement admission false without independent verification; feature 0d75b9f8196b3343e7e9da279fbad1e3957ce27b; merge 7f71bb7a96954c62acd9a25973254160264bdf91; exact feature Actions 37559163633 success, 37559163486 success, 37559163544 success.
+- PR262: Separate status scope claim from independent admission; feature 8c321f253545736510e978d92d873ea290977b1a; merge 635f03d85442af2c9ebddd7be8c48f7fe6d6243a; exact feature Actions 37559430468 success, 37559430426 success.
+- PR263: Keep status economics calculations as structural candidates; feature c5cd68998e85c1af6ef86704d006172b51302935; merge f8f0f5cfaa8bc6b89d3c4622ac185c6ceff502d1; exact feature Actions 37559715009 success, 37559715027 success.
+- PR264: Separate authorization fingerprint from provenance binding; feature 4a04989afa0c999cb2d739ed9b558128c16a94ac; merge 09ff344d1ba416cc05db6371e7d3ae47813b086c; exact feature Actions 37559887836 success, 37559887833 success.
+- PR265: Keep KRX source-gate PASS labels structural until independent admission; feature 2c2d2a0caa3605065047c51dd495d5d318ff259d; merge bd983964f2eaaf9b3a43a86511d1abe3eb23ceca; exact feature Actions 37561849086 success, 37561849080 success.
+- PR266: Keep KRX completion metadata structural until independent admission; feature 7b39ca25dd9c597fd2c4b3cbf46d100abd96b500; merge ad41ad48d1c3d6192687f9fe825e44b26724a792; exact feature Actions 37562072643 success, 37562072627 success.
+- PR267: Require exact frozen execution protocol serialization; feature b6b8c1ef06b8affdbc5d0f8968bae737ffbc7687; merge 823b551b36778bce074ad6ae6d95305f0f49a73b; exact feature Actions 37562391061 success, 37562391075 success.
+- PR268: Separate LIVE source labels from genuine broker provenance; feature 0d85327727f870ca0726904a9b0d51b4613808ad; merge f58706205b460cade1dfeed0e42b4fc4b8b6e41c; exact feature Actions 37562732468 success, 37562732455 success.
+- PR269: Fail safe when prospective probability gate evidence is invalid; feature 0f6210d730b371f6f55779a9a0d8d576aabf9124; merge b1bc3d799647e2315c06b756494fe83dc036da16; exact feature Actions 37563269110 success, 37563269163 success.
+
+In flight: PR270, feature a38e45fd20c6df061bca30c5a38e898ba1b87e64, index-alert-type00-control-ack-strict-v1. Missing/null/boolean/fraction/duplicate return_code must not record LOGIN/REG success. Pure AST-extracted helper tests run in Ubuntu/Windows CI without broker flow. Local 23 tests OK, one behavioral test skipped (no local PowerShell). Exact next resume: inspect existing PR270 Actions; fix any failure and re-test, merge only after exact feature jobs succeed. Do not restart in-flight CI. Then audit read-only smoke REST acknowledgement strictness; control-ack hardening does not claim full wire decoder safety.
+
+Canonical records had remained at PR257 despite later merges; this recovery corrects that discrepancy against actual code. Prior local aggregate edits preserved in a stash; current work based on actual PR269 tree. No independent evidence admission claimed. Project incomplete.
+
+All Frozen H5/504-126-126/PIT/labels/WF/Purged-CPCV/purge/embargo/cost/holdout and consumed invalid v1 remain unchanged. No sealed holdout access. Ordering DISABLED; real orders/funds/permission changes false; genuine LIVE unverified; final-user-ready false. Whole-account read-only baseline COMPLETE; type00 device authentication 805004/8050 owner-deferred. Do not repeat owner PowerShell requests. REJECT/INCONCLUSIVE/IDEA never operational.
+
+---
+
 # Continuity checkpoint — 2026-10-07 10:24 KST
 
 Authoritative code HEAD `3b04fd6d19b3d988714970a7251f4de3e615aeee` (PR257 merge). Requery current development HEAD; this record commit is docs only. PR245–254 completions and safety boundaries below remain authoritative; prior type00 next pointer is now completed.
