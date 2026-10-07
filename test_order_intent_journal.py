@@ -165,6 +165,19 @@ class JournalTests(unittest.TestCase):
             self.j.claim_submission('decision-1',expected_epoch=2**63)
         self.assertEqual(self.j.get('decision-1')['state'], 'INTENT_CREATED')
 
+    def test_combined_corrupt_kill_and_lost_fault_history_stays_private_without_repair(self):
+        self.j.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.j.db.execute('UPDATE shadow_control SET killed=-1')
+        original = self.j.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control').fetchone()
+        self.j.db.execute('DROP TABLE shadow_control_faults')
+        with self.assertRaisesRegex(OrderJournalError, '^startup safety metadata missing$'):
+            OrderIntentJournal(self.path)
+        self.assertEqual(self.j.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control').fetchone(), original)
+        self.assertIsNone(self.j.db.execute("SELECT 1 FROM sqlite_master WHERE name='shadow_control_faults'").fetchone())
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+        with self.assertRaises(OrderJournalError):
+            self.j.claim_submission('decision-1',expected_epoch=original[0])
+
     def test_corrupt_kill_value_is_not_cleared_by_off_or_restart(self):
         self.j.db.execute('PRAGMA ignore_check_constraints=ON')
         for value in (-1,2,0.5,'ambiguous'):

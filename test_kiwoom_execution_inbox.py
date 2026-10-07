@@ -33,6 +33,20 @@ class InboxTests(unittest.TestCase):
         with self.assertRaises(OrderJournalError):
             self.j.enable_shadow(expected_epoch=self.j.shadow_control()['epoch'])
 
+    def test_combined_control_corruption_and_fault_loss_keeps_receipt_pending_privately(self):
+        self.append()
+        self.j.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.j.db.execute('UPDATE shadow_control SET killed=-1')
+        original = self.j.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control').fetchone()
+        self.j.db.execute('DROP TABLE shadow_control_faults')
+        with self.assertRaisesRegex(ExecutionInboxError, '^EXECUTION_INBOX_RECONCILIATION_REQUIRED$'):
+            self.i.replay_next()
+        self.assertEqual(self.i.counts()['pending'], 1)
+        self.assertEqual(self.j.get('d1')['filled_quantity'], 0)
+        self.assertEqual(self.j.get('d1')['state'], 'RECONCILIATION_REQUIRED')
+        self.assertEqual(self.j.db.execute('SELECT epoch,mode,killed,reason FROM shadow_control').fetchone(), original)
+        self.assertEqual(self.j.db.execute('SELECT blocked FROM reconciliation_barrier').fetchone(), (1,))
+
     def test_complete_inbox_schema_loss_cannot_become_fresh(self):
         for table in ('native_inbox_receipts','native_inbox_conflicts','native_inbox_attempts'):
             self.j.db.execute(f'DROP TABLE {table}')
