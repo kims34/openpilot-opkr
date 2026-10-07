@@ -43,13 +43,36 @@ class OperatorToolkitTests(unittest.TestCase):
         missing = target/'missing.sqlite'
         run = subprocess.run([sys.executable,str(target/'shadow_operational_status.py'),
             '--journal',str(missing)],cwd=target,capture_output=True,text=True)
-        self.assertEqual(run.returncode,2)
+        self.assertEqual(run.returncode,2,run.stderr)
         self.assertFalse(json.loads(run.stdout)['diagnostics_complete'])
         self.assertFalse(missing.exists())
         # Import every component from the extracted directory, not the repo.
         run = subprocess.run([sys.executable,'-c',
             'import native_settlement_review_cli, shadow_operational_dashboard'],cwd=target,capture_output=True,text=True)
         self.assertEqual(run.returncode,0,run.stderr)
+
+    def test_extracted_operator_reads_terminal_history_without_repo_or_mutation(self):
+        from test_shadow_operational_status import OperationalStatusTests
+        fixture = OperationalStatusTests()
+        fixture.setUp()
+        try:
+            fixture._terminal_inbox_fixture()
+            before = tuple(fixture.journal.db.iterdump())
+            build_operator_toolkit(self.root,self.output,source_commit=self.commit)
+            target = Path(self.tmp.name)/'terminal-package'
+            with zipfile.ZipFile(self.output) as archive: archive.extractall(target)
+            env = dict(os.environ); env.pop('PYTHONPATH',None)
+            run = subprocess.run([sys.executable,str(target/'shadow_operational_status.py'),
+                '--journal',str(fixture.path)],cwd=self.tmp.name,env=env,capture_output=True,text=True,timeout=20)
+            self.assertEqual(run.returncode,0,run.stderr)
+            out = json.loads(run.stdout)
+            self.assertTrue(out['diagnostics_complete'])
+            self.assertEqual(out['native_inbox_pending_count'],0)
+            self.assertFalse(out['genuine_live_provenance_verified'])
+            self.assertNotIn('PRIVATE-INTENT',run.stdout)
+            self.assertEqual(tuple(fixture.journal.db.iterdump()),before)
+        finally:
+            fixture.tearDown()
 
     def test_same_source_produces_identical_archive(self):
         first = build_operator_toolkit(self.root,self.output,source_commit=self.commit)
