@@ -1,0 +1,52 @@
+name: IndexAlert Frozen Supervised Rehydration
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'pit_rebuild/rehydrate_frozen_supervised_cache.py'
+      - 'pit_rebuild/test_rehydrate_frozen_supervised_cache.py'
+      - 'pit_rebuild/frozen_supervised_v1/**'
+      - 'pit_rebuild/frozen_supervised_reference_36643183157.json'
+      - 'pit_rebuild/Dockerfile'
+      - 'INDEXALERT_FROZEN_SUPERVISED_REHYDRATION_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-supervised-rehydration.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'pit_rebuild/rehydrate_frozen_supervised_cache.py'
+      - 'pit_rebuild/test_rehydrate_frozen_supervised_cache.py'
+      - 'pit_rebuild/frozen_supervised_v1/**'
+      - 'pit_rebuild/frozen_supervised_reference_36643183157.json'
+      - 'pit_rebuild/Dockerfile'
+      - 'INDEXALERT_FROZEN_SUPERVISED_REHYDRATION_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-supervised-rehydration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pit_rebuild
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.14'
+      - name: Install exact frozen reconstruction runtime
+        run: python -m pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0
+      - name: Compile and test supervised rehydration contract
+        run: |
+          python -m py_compile rehydrate_frozen_supervised_cache.py
+          python -m unittest test_rehydrate_frozen_supervised_cache.py
+      - name: Verify vendored frozen module blobs directly with git
+        run: |
+          test "$(git hash-object frozen_supervised_v1/research_v1_supervised_cache.py)" = "799d5b424c4055289f3d7b54fa03ecbb467dbb1f"
+          test "$(git hash-object frozen_supervised_v1/research_v1_core.py)" = "7aaa01338b11c119497050282b53fcf7d13a2b8d"
+          test "$(git hash-object frozen_supervised_v1/research_v1_pit_labels.py)" = "91ef828617ea77713f1ddca0c427fadaf1114f0a"
+          test "$(git hash-object frozen_supervised_v1/research_v1_pit_features.py)" = "421e243ae8cea7c1bc02bc4564d13f76974c660e"
+          test "$(git hash-object frozen_supervised_v1/research_v1_data_policy.py)" = "51105bca61ef9f7479a0b61ec08a43d01f147940"
