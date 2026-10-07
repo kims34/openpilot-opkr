@@ -21,15 +21,21 @@ class KRXEconomicsAdmissionError(ValueError):
 def _require_complete(
     summary: Mapping[str, Any], *, phase: str, count: int, fingerprint: str
 ) -> None:
+    if not isinstance(summary, Mapping):
+        raise KRXEconomicsAdmissionError(f"{phase} summary must be a mapping")
     if summary.get("phase") != phase or summary.get("status") != "COMPLETE":
         raise KRXEconomicsAdmissionError(f"{phase} is not COMPLETE")
-    if int(summary.get("expected_task_count", -1)) != count:
+    expected = summary.get("expected_task_count")
+    completed = summary.get("completed_task_count")
+    failed = summary.get("failed_task_count")
+    if type(expected) is not int or expected != count:
         raise KRXEconomicsAdmissionError(f"{phase} expected task count drift")
-    if int(summary.get("completed_task_count", -1)) != count:
+    if type(completed) is not int or completed != count:
         raise KRXEconomicsAdmissionError(f"{phase} completed task count drift")
-    if int(summary.get("failed_task_count", -1)) != 0:
+    if type(failed) is not int or failed != 0:
         raise KRXEconomicsAdmissionError(f"{phase} contains failed tasks")
-    if str(summary.get("task_set_fingerprint_sha256") or "") != fingerprint:
+    digest = summary.get("task_set_fingerprint_sha256")
+    if type(digest) is not str or digest != fingerprint:
         raise KRXEconomicsAdmissionError(f"{phase} task-set fingerprint drift")
 
 
@@ -66,19 +72,26 @@ def audit_krx_economics_admission(
         "genuine_live_authorized",
         "live_trading_authorized",
     )
-    illegally_true = [k for k in forbidden_true if status_economics.get(k) is True]
-    if illegally_true:
+    non_false = [k for k in forbidden_true if status_economics.get(k) is not False]
+    if non_false:
         raise KRXEconomicsAdmissionError(
-            "downstream authority illegally true: " + ",".join(illegally_true)
+            "downstream authority must be exact false: " + ",".join(non_false)
         )
 
     if status_economics.get("cleanup_price_context_complete") is not True:
         raise KRXEconomicsAdmissionError("cleanup price context is not complete")
 
+    # Exact task counts/fingerprints validate only the supplied completion
+    # metadata shape. This network-free compositor cannot authenticate the
+    # underlying private acquisition artifacts or independently admit scope.
     return {
-        "krx_historical_scope_verified": True,
-        "per_security_history_complete": True,
-        "cleanup_price_context_complete": True,
+        "krx_historical_scope_completion_metadata_valid": True,
+        "per_security_history_completion_metadata_valid": True,
+        "cleanup_price_context_completion_metadata_valid": True,
+        "independent_krx_historical_scope_admission_verified": False,
+        "krx_historical_scope_verified": False,
+        "per_security_history_complete": False,
+        "cleanup_price_context_complete": False,
         "exact_status_economics_ready": False,
         "realized_fill_economics_proven": False,
         "realized_recovery_cashflows_proven": False,
@@ -91,7 +104,11 @@ def audit_krx_economics_admission(
         "fresh_confirmation_s2_authorized": False,
         "genuine_live_authorized": False,
         "live_trading_authorized": False,
-        "next_blocker": "INDEPENDENT_REALIZED_FILL_AND_RECOVERY_ECONOMICS_EVIDENCE",
+        "blocking_conditions": (
+            "INDEPENDENT_KRX_HISTORICAL_SCOPE_ADMISSION_NOT_IMPLEMENTED",
+            "INDEPENDENT_REALIZED_FILL_AND_RECOVERY_ECONOMICS_EVIDENCE",
+        ),
+        "next_blocker": "INDEPENDENT_KRX_HISTORICAL_SCOPE_ADMISSION_NOT_IMPLEMENTED",
     }
 
 
@@ -101,27 +118,36 @@ def audit_terminal_treatment_coverage(
     cleanup_price_episode_count: int,
     independently_resolved_no_cleanup_episode_count: int = 0,
 ) -> dict[str, Any]:
-    """Network-free aggregate coverage audit; never emits security identifiers."""
-    total = int(delisted_episode_count)
-    cleanup = int(cleanup_price_episode_count)
-    resolved = int(independently_resolved_no_cleanup_episode_count)
-    if min(total, cleanup, resolved) < 0:
+    """Network-free aggregate claim audit; never authenticates resolution evidence."""
+    values = (
+        delisted_episode_count,
+        cleanup_price_episode_count,
+        independently_resolved_no_cleanup_episode_count,
+    )
+    if any(type(value) is not int for value in values):
+        raise KRXEconomicsAdmissionError("coverage counts must be exact integers")
+    total, cleanup, claimed_resolved = values
+    if min(total, cleanup, claimed_resolved) < 0:
         raise KRXEconomicsAdmissionError("coverage counts cannot be negative")
     if cleanup > total:
         raise KRXEconomicsAdmissionError("cleanup episode count exceeds delisted total")
     no_cleanup = total - cleanup
-    if resolved > no_cleanup:
+    if claimed_resolved > no_cleanup:
         raise KRXEconomicsAdmissionError(
             "resolved no-cleanup count exceeds no-cleanup episode count"
         )
-    unresolved = no_cleanup - resolved
+    structural_unresolved = no_cleanup - claimed_resolved
     return {
         "delisted_episode_count": total,
         "cleanup_price_context_episode_count": cleanup,
         "no_cleanup_interval_episode_count": no_cleanup,
-        "independently_resolved_no_cleanup_episode_count": resolved,
-        "unresolved_terminal_treatment_episode_count": unresolved,
-        "terminal_treatment_coverage_complete": unresolved == 0,
+        "claimed_independently_resolved_no_cleanup_episode_count": claimed_resolved,
+        "independent_terminal_treatment_resolution_verified": False,
+        "independently_resolved_no_cleanup_episode_count": 0,
+        "structural_unresolved_terminal_treatment_episode_count": structural_unresolved,
+        "unresolved_terminal_treatment_episode_count": no_cleanup,
+        "terminal_treatment_coverage_structural_claim_complete": structural_unresolved == 0,
+        "terminal_treatment_coverage_complete": False,
         "exact_status_economics_ready": False,
         "feature_performance_testing_authorized": False,
         "sealed_holdout_authorized": False,
