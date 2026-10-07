@@ -1,0 +1,41 @@
+name: IndexAlert Prospective Decision Capture
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_inputs.py'
+      - 'research_v1_prospective_model_bundle.py'
+      - 'research_v1_prospective_decision_capture.py'
+      - 'test_research_v1_prospective_inputs.py'
+      - 'test_research_v1_prospective_model_bundle.py'
+      - 'test_research_v1_prospective_decision_capture.py'
+      - 'INDEXALERT_PROSPECTIVE_DECISION_CAPTURE_2026-10-07.md'
+      - '.github/workflows/indexalert-prospective-decision-capture.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_inputs.py'
+      - 'research_v1_prospective_model_bundle.py'
+      - 'research_v1_prospective_decision_capture.py'
+      - 'test_research_v1_prospective_inputs.py'
+      - 'test_research_v1_prospective_model_bundle.py'
+      - 'test_research_v1_prospective_decision_capture.py'
+      - '.github/workflows/indexalert-prospective-decision-capture.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-decision-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0 requests==2.32.3
+      - name: Verify input, model identity and append-only decision capture
+        run: python -m unittest test_research_v1_prospective_inputs.py test_research_v1_prospective_model_bundle.py test_research_v1_prospective_decision_capture.py
