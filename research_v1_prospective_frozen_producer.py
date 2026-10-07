@@ -494,12 +494,34 @@ def validate_producer_binding(
         raise FrozenProspectiveProducerError("actual_train_sessions below frozen minimum")
     if not 0 <= binding["target_ordinal_in_test_block"] < TEST_SESSIONS:
         raise FrozenProspectiveProducerError("target outside frozen test block")
+    expected_start_ordinal = (
+        FIRST_TEST_START_ORDINAL + binding["test_block_index"] * TEST_SESSIONS
+    )
+    if binding["test_block_start_ordinal"] != expected_start_ordinal:
+        raise FrozenProspectiveProducerError("test block ordinal/refit index mismatch")
     if (
         binding["test_block_end_ordinal_exclusive"]
-        - binding["test_block_start_ordinal"]
-        != TEST_SESSIONS
+        != expected_start_ordinal + TEST_SESSIONS
     ):
         raise FrozenProspectiveProducerError("test block span mismatch")
+    if (
+        binding["target_session_ordinal"]
+        != expected_start_ordinal + binding["target_ordinal_in_test_block"]
+    ):
+        raise FrozenProspectiveProducerError("target ordinal/test-block offset mismatch")
+    if (
+        binding["actual_train_sessions"]
+        != INITIAL_TRAIN_SESSIONS + binding["test_block_index"] * TEST_SESSIONS
+    ):
+        raise FrozenProspectiveProducerError("expanding training span/refit index mismatch")
+    frozen_start = FROZEN_TEST_BLOCK_STARTS.get(expected_start_ordinal)
+    if (
+        frozen_start is not None
+        and binding.get("test_block_start_session") != frozen_start
+    ):
+        raise FrozenProspectiveProducerError(
+            "test block start session disagrees with frozen reference action"
+        )
     for field in (
         "test_block_start_session", "train_end_session",
         "calibration_start_session", "calibration_end_session",
