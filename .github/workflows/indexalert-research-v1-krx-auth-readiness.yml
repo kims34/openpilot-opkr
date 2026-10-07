@@ -35,6 +35,7 @@ jobs:
         env:
           KRX_ID: ${{ secrets.KRX_ID }}
           KRX_PW: ${{ secrets.KRX_PW }}
+          KRX_AUTH_KEY: ${{ secrets.KRX_AUTH_KEY }}
           KRX_OPENAPI_AUTH_KEY: ${{ secrets.KRX_OPENAPI_AUTH_KEY }}
           KRX_AUTH_EVIDENCE_REF: ${{ inputs.authorization_evidence_reference || vars.KRX_AUTH_EVIDENCE_REF }}
           KRX_AUTH_EVIDENCE_JSON: ${{ inputs.authorization_evidence_json || vars.KRX_AUTH_EVIDENCE_JSON }}
