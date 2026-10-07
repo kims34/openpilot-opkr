@@ -227,6 +227,19 @@ class OperationalStatusTests(unittest.TestCase):
                 self.journal.db.executemany('INSERT INTO native_inbox_receipts VALUES(?,?)',identities)
                 self._assert_private_terminal_unavailable()
 
+    def test_orphan_conflict_reference_is_private_unavailable_read_only(self):
+        self.journal.db.executescript('''
+            CREATE TABLE native_inbox_receipts(sequence INTEGER,receipt_id TEXT);
+            CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
+            CREATE TABLE native_inbox_conflicts(receipt_id TEXT);
+            INSERT INTO native_inbox_receipts VALUES(1,'private-receipt');
+        ''')
+        for receipt_id in ('PRIVATE-ORPHAN', '', '   ', None):
+            with self.subTest(receipt_id=receipt_id):
+                self.journal.db.execute('DELETE FROM native_inbox_conflicts')
+                self.journal.db.execute('INSERT INTO native_inbox_conflicts VALUES(?)',(receipt_id,))
+                self._assert_private_terminal_unavailable()
+
     def test_duplicate_surviving_broker_bindings_are_private_unavailable(self):
         epoch = self.journal.enable_shadow(expected_epoch=self.journal.shadow_control()['epoch'])['epoch']
         for key, broker in (('PRIVATE-ONE','PRIVATE-BROKER-ONE'), ('PRIVATE-TWO','PRIVATE-BROKER-TWO')):
@@ -292,9 +305,9 @@ class OperationalStatusTests(unittest.TestCase):
     def test_pending_conflicts_and_latch_are_visible(self):
         self.journal.db.executescript('''CREATE TABLE native_inbox_receipts(sequence INTEGER PRIMARY KEY,receipt_id TEXT);
             CREATE TABLE native_inbox_attempts(receipt_sequence INTEGER,outcome TEXT);
-            CREATE TABLE native_inbox_conflicts(reason TEXT);
+            CREATE TABLE native_inbox_conflicts(receipt_id TEXT);
             INSERT INTO native_inbox_receipts VALUES(1,'private-receipt');
-            INSERT INTO native_inbox_conflicts VALUES('PRIVATE');''')
+            INSERT INTO native_inbox_conflicts VALUES('private-receipt');''')
         self.journal.trip_kill_switch()
         result = self.inspect()
         self.assertEqual(result['native_inbox_pending_count'],1)

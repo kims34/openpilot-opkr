@@ -39,6 +39,17 @@ def validate_stored_inbox_receipt_identities(connection):
         sequences.add(sequence); receipt_ids.add(receipt_id)
 
 
+def validate_stored_inbox_conflict_references(connection):
+    """Referential integrity only; original/alternate payloads are retained."""
+    if connection.execute('SELECT 1 FROM native_inbox_conflicts LIMIT 1').fetchone() is None:
+        return
+    for receipt_id, original in connection.execute('''SELECT c.receipt_id,r.receipt_id
+            FROM native_inbox_conflicts c LEFT JOIN native_inbox_receipts r
+            ON r.receipt_id=c.receipt_id'''):
+        require(isinstance(receipt_id,str) and bool(receipt_id.strip()) and len(receipt_id) <= 256)
+        require(original is not None)
+
+
 def validate_normalized_inbox_row(row, account):
     require(isinstance(row, dict) and set(row) == TEXT_FIELDS | BOOL_FIELDS)
     require(all(isinstance(row[f], str) and len(row[f]) <= 4096 for f in TEXT_FIELDS))
@@ -131,6 +142,7 @@ class KiwoomExecutionInbox:
     def _audit_existing_locked(self):
         """Fail closed on durable inbox corruption before any replay is trusted."""
         validate_stored_inbox_receipt_identities(self.journal.db)
+        validate_stored_inbox_conflict_references(self.journal.db)
         receipts = {}
         for sequence, receipt_id, key, day, payload, digest in self.journal.db.execute(
                 'SELECT sequence,receipt_id,key,day,payload,digest FROM native_inbox_receipts'):
@@ -163,6 +175,7 @@ class KiwoomExecutionInbox:
         require({'native_inbox_receipts', 'native_inbox_attempts', 'native_inbox_conflicts',
             'native_journal_scope', 'native_order_bindings', 'native_fill_bindings'} <= tables)
         validate_stored_inbox_receipt_identities(self.journal.db)
+        validate_stored_inbox_conflict_references(self.journal.db)
 
     def _audit_attempts_locked(self):
         self._require_runtime_tables_locked()
