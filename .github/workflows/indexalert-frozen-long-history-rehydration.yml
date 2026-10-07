@@ -5,6 +5,7 @@ on:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'pit_rebuild/rehydrate_frozen_long_history.py'
+      - 'pit_rebuild/Dockerfile'
       - 'pit_rebuild/test_rehydrate_frozen_long_history.py'
       - 'pit_rebuild/research_v1_marcap.py'
       - 'pit_rebuild/requirements.txt'
@@ -15,6 +16,7 @@ on:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'pit_rebuild/rehydrate_frozen_long_history.py'
+      - 'pit_rebuild/Dockerfile'
       - 'pit_rebuild/test_rehydrate_frozen_long_history.py'
       - 'pit_rebuild/research_v1_marcap.py'
       - 'pit_rebuild/requirements.txt'
@@ -43,6 +45,11 @@ jobs:
         run: |
           python -m py_compile rehydrate_frozen_long_history.py research_v1_marcap.py
           python -m unittest test_rehydrate_frozen_long_history.py
+      - name: Verify Railway PIT image packages exact frozen runtime
+        run: |
+          grep -Fx 'FROM python:3.12.14-slim' Dockerfile
+          grep -F 'numpy==2.5.3' Dockerfile
+          grep -Fx 'COPY rehydrate_frozen_long_history.py ./' Dockerfile
       - name: Verify frozen builder blob identity directly from git
         run: |
           test "$(git hash-object research_v1_marcap.py)" = "5b39887733473a6b4aff5a0fc097c0acc5f5d711"
