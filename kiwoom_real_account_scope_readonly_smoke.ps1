@@ -181,6 +181,7 @@ function Invoke-ReadOnlyPage(
     if ($respCont -notin @("N","Y")) { throw "CONTINUATION_BLOCKED" }
     $respNext = [string]$resp.Headers["next-key"]
     if (($respCont -eq "Y") -and [string]::IsNullOrWhiteSpace($respNext)) { throw "CONTINUATION_BLOCKED" }
+    if (($respCont -eq "N") -and -not [string]::IsNullOrEmpty($respNext)) { throw "CONTINUATION_BLOCKED" }
     if ($respNext.Length -gt 4096 -or $respNext.Contains([char]13) -or $respNext.Contains([char]10)) {
         throw "CONTINUATION_BLOCKED"
     }
@@ -203,14 +204,14 @@ function Get-PagedCount(
     $next = ""
     for ($pageNo = 1; $pageNo -le 10; $pageNo++) {
         $page = Invoke-ReadOnlyPage -ApiId $ApiId -Body $Body -ContYn $cont -NextKey $next
+        if ($page.Body -isnot [Management.Automation.PSCustomObject] -or
+            $null -eq $page.Body.PSObject.Properties[$ArrayProperty]) { throw "PAGE_SCHEMA_BLOCKED" }
         $rows = $page.Body.$ArrayProperty
-        if ($null -ne $rows) {
-            if ($rows -is [System.Array]) {
-                $count += $rows.Count
-            } else {
-                $count += 1
-            }
+        if ($rows -isnot [System.Array]) { throw "PAGE_SCHEMA_BLOCKED" }
+        foreach ($row in $rows) {
+            if ($row -isnot [Management.Automation.PSCustomObject]) { throw "PAGE_SCHEMA_BLOCKED" }
         }
+        $count += $rows.Count
         if ($page.ContYn -ne "Y") {
             return @{ Count=$count; Complete=$true }
         }
