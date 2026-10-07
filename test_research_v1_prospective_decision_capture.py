@@ -33,6 +33,9 @@ from research_v1_prospective_model_bundle import build_model_bundle
 from test_research_v1_causal_evidence_integrity import synthetic_panel
 
 
+IMPLEMENTATION_COMMIT = "e" * 40
+
+
 def _quantiles(offset=-0.001):
     base = {
         "low": offset, "med": offset + 0.005, "high": offset + 0.01,
@@ -73,7 +76,7 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
             model, _quantiles(),
             training_input_sha256="a" * 64,
             calibration_input_sha256="b" * 64,
-            fit_code_commit=FREEZE_ANCHOR_COMMIT,
+            fit_code_commit=IMPLEMENTATION_COMMIT,
             fit_code_path=FIT_CODE_PATH,
             train_end_session=train_end,
             calibration_start_session=cal_start,
@@ -84,6 +87,7 @@ class ProspectiveDecisionCaptureTest(unittest.TestCase):
         producer_body = {
             "classification": "FROZEN_PRODUCER_BINDING_NOT_ADMITTED",
             "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
+            "producer_implementation_commit": IMPLEMENTATION_COMMIT,
             "fit_code_path": FIT_CODE_PATH,
             "refit_policy_id": REFIT_POLICY_ID,
             "target_session": target_day.strftime("%Y-%m-%d"),
