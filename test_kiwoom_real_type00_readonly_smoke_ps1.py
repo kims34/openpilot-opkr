@@ -19,6 +19,7 @@ class KiwoomRealType00ReadOnlyPowerShellTests(unittest.TestCase):
         self.assertIn('$tokenResp.token -isnot [string]', self.text)
         self.assertIn('$accountObj.acctNo -isnot [string]', self.text)
         self.assertIn('return Convert-StrictWebSocketText -Bytes $stream.ToArray()', self.text)
+        self.assertIn('Get-Type00ReadOnlyObservation -Message $obj -Account $script:Account', self.text)
         runtimes = [shutil.which(name) for name in ('pwsh', 'powershell')]
         runtimes = list(dict.fromkeys(runtime for runtime in runtimes if runtime))
         if not runtimes:
@@ -77,6 +78,35 @@ foreach ($raw in $invalidJson) {
   if (-not $rejected) { throw 'JSON_INVALID_ACCEPTED' }
 }
 $null=Convert-ReadOnlyJson -Raw ('{"a":' + ('[' * 63) + '0' + (']' * 63) + '}')
+$observer=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-Type00ReadOnlyObservation'},$true)
+if ($null -eq $observer) { throw 'OBSERVER_MISSING' }
+if ($null -ne $observer) {
+  . ([ScriptBlock]::Create($observer.Extent.Text))
+  $fixture='{"trnm":"REAL","data":[{"type":"00","values":{"9201":"fixture-account","913":"체결","909":"0007","908":"120000","914":"100","915":"1"}},{"type":"00","values":{"9201":"other-account"}},{"type":"01"}]}'
+  $summary=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw $fixture) -Account 'fixture-account'
+  if ($summary.Events -ne 2) { throw 'OBSERVATION_COUNT_INVALID' }
+  if ($summary.Matched -ne 1) { throw 'OBSERVATION_ACCOUNT_INVALID' }
+  if (-not $summary.ExecutionFieldsObserved) { throw 'OBSERVATION_FILL_INVALID' }
+  $summary=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw $fixture) -Account 'unmatched'
+  if ($summary.Matched -ne 0 -or $summary.ExecutionFieldsObserved) { throw 'ACCOUNT_BINDING_INVALID' }
+  $summary=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw '{"trnm":"REAL","data":[{"type":"00","values":{"9201":"fixture-account","913":"접수"}}]}') -Account 'fixture-account'
+  if ($summary.ExecutionFieldsObserved) { throw 'LIFECYCLE_CANNOT_PROVE_FILL' }
+  foreach ($raw in @(
+    '{"trnm":"REAL","data":null}',
+    '{"trnm":"REAL","data":{"type":"00","values":{}}}',
+    '{"trnm":"REAL","data":[null]}',
+    '{"trnm":"REAL","data":[{"type":"00","values":{"909":7}}]}',
+    '{"trnm":"REAL","data":[{"type":"00","values":{"9201":null}}]}',
+    '{"trnm":"REAL","data":[{"type":"00","values":{"909":[]}}]}',
+    '{"trnm":"REAL","data":[{"type":"00","values":{"unknown":"x"}}]}',
+    ('{"trnm":"REAL","data":[{"type":"00","values":{"909":"' + ('x' * 4097) + '"}}]}')
+  )) {
+    $rejected=$false
+    try { $null=Get-Type00ReadOnlyObservation -Message (Convert-ReadOnlyJson -Raw $raw) -Account 'fixture-account' }
+    catch { if ($_.Exception.Message -ne 'TYPE00_FRAME_SCHEMA_INVALID') { throw 'SCHEMA_PRIVATE_ERROR_REQUIRED' }; $rejected=$true }
+    if (-not $rejected) { throw 'SCHEMA_INVALID_ACCEPTED' }
+  }
+}
 $decode=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Convert-StrictWebSocketText'},$true)
 if ($null -eq $decode) { throw 'UTF8_HELPER_MISSING' }
 . ([ScriptBlock]::Create($decode.Extent.Text))
@@ -167,7 +197,7 @@ foreach ($raw in $invalid) {
         self.assertNotIn("catch [System.Threading.Tasks.TaskCanceledException]", self.text)
 
     def test_execution_capture_requires_account_match_and_native_fields(self):
-        self.assertIn("values.'9201' -eq $script:Account",self.text)
+        self.assertIn("values.'9201' -ceq $Account",self.text)
         for fid in ("'909'","'908'","'914'","'915'"):
             self.assertIn(fid,self.text)
         self.assertIn('BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED=[bool]$executionObserved',self.text)
