@@ -1,3 +1,9 @@
+# 2026-10-07 22:03 KST material source update
+
+Uploaded original KRX reply contradicts the earlier pasted unrestricted web-automation permission text. See INDEXALERT_KRX_ORIGINAL_MESSAGE_CONFLICT_2026-10-07.md. Preserve prior evidence, but do not initiate/resume broader authenticated Data Marketplace collection relying on that text pending a matching original/reconciliation. Exact approved OpenAPI services remain a separate route; no new source/PIT/economics/live admission. Owner matching-message input is now required.
+
+---
+
 # IndexAlert 전달 기준과 작업 우선순위
 
 기준: 2026-10-07 사용자 지시 “효율적이게 일해 중요한것부터”.
