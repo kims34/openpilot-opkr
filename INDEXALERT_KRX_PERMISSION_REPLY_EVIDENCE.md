@@ -1,3 +1,24 @@
+# Current application — official OpenAPI automation remains available
+
+The owner's original October2 reply was re-read on2026-10-08 from the actual .eml, with quoted-printable MIME decoding and no tracking-image request. Its decisive wording is: “자동화된 데이터 이용이 필요한 경우 KRX OPEN API에서 제공하는 항목은 OPEN API를 이용해 주시기 바랍니다.” It also permits internal-research storage/analysis and restricts original-data third-party provision/redistribution. This positively directs automated use to the official OpenAPI for its offered items; it is not an all-API automation prohibition.
+
+Current official terms and use instructions were independently checked:
+- https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp — key/terms/service scope, non-commercial use, restricted third-party provision, up to10,000 requests per key per day, and possible narrower provider limits.
+- https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp — key issuance and API service utilization approval are separate steps. Existing project service approval/connectivity remains evidence; no duplicate owner approval/application is requested.
+- https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd — daily trades/security basics offered from2010; no separately named halt-history API appears in the inspected public list. Catalog absence is scoped, not proof no other official product exists.
+
+| Exact route | Operational application |
+|---|---|
+| Approved AUTH_KEY OpenAPI /stk_bydd_trd and /stk_isu_base_info | Continue already-authorized automated private research capture under existing read-only runtime authority, service scope and provider limits. The withdrawn web-permission record must not veto these requests. |
+| data.krx.co.kr screen backend /comm/bldAttendant/getJsonData.cmd + MDCSTAT21301 | A JSON/HTTP request is technically an API call but remains the website's screen-data route, not the separately published/approved OPEN API. Technical reachability does not resolve its current permission conflict. Do not globally label all APIs blocked. |
+| Historical halt/cleanup/delisting/investor-flow coverage | Resolve the exact official product, service fields, history and availability. Do not substitute daily prices/master for event history or classify zero volume as an official halt. |
+
+Code application: the historical permission validator now reports access_route=DATA_MARKETPLACE_WEB_SESSION and separately_approved_openapi_restricted_by_this_evidence=false, retaining legacy generic false fields for the withdrawn web claim and old hashes. These fields neither self-authorize API requests nor grant any source/model/Alpha/trading admission. The prospective runtime already uses the two official OpenAPI endpoints with AUTH_KEY and explicit read-only authority independently of the historical mixed web-acquisition preflight. No misplaced OpenAPI veto was found in that inspected path; its observed FAIL_CLOSED is invalid OHLC data, not an API permission rejection.
+
+A network-free regression verifies superseded web rights remain blocked while exact OpenAPI evidence validates and an explicitly authorized injected API request succeeds; absent per-request authority still blocks before transport. No real KRX request, credentials, purchase, source/holdout/model admission or broker action is made by this correction. All Frozen/100,000-KRW live gates and disabled trading remain unchanged.
+
+---
+
 # IndexAlert KRX Permission Reply Evidence
 
 Updated: 2026-10-02 KST  
