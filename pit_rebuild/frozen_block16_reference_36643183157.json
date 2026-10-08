@@ -31,6 +31,85 @@
     "resid_ret5",
     "resid_ret20"
   ],
+  "selection_conditioned_residual_quantiles": {
+    "__global__": {
+      "low": -0.10885343148915487,
+      "med": -0.04343103783497826,
+      "high": 0.030012027261280085,
+      "n": 378,
+      "source": "calibration_daily_top3_by_pred_mean",
+      "q25_uncertainty": {
+        "rows": 378,
+        "days": 126,
+        "q25": -0.10885343148915487,
+        "bootstrap_p05": -0.12382763169327779,
+        "bootstrap_p95": -0.09709758661277032,
+        "bootstrap_width_90": 0.02673004508050747,
+        "reps": 400,
+        "cluster": "decision_date",
+        "diagnostic_only": true
+      }
+    },
+    "high": {
+      "low": -0.10885343148915487,
+      "med": -0.04256060077233965,
+      "high": 0.030012027261280085,
+      "n": 370,
+      "fallback_global": false,
+      "source": "calibration_daily_top3_by_pred_mean",
+      "q25_uncertainty": {
+        "rows": 370,
+        "days": 126,
+        "q25": -0.10885343148915487,
+        "bootstrap_p05": -0.12382438744402849,
+        "bootstrap_p95": -0.09709380125626256,
+        "bootstrap_width_90": 0.02673058618776593,
+        "reps": 400,
+        "cluster": "decision_date",
+        "diagnostic_only": true
+      }
+    },
+    "low": {
+      "low": -0.10885343148915487,
+      "med": -0.04343103783497826,
+      "high": 0.030012027261280085,
+      "n": 378,
+      "source": "calibration_daily_top3_by_pred_mean",
+      "q25_uncertainty": {
+        "rows": 378,
+        "days": 126,
+        "q25": -0.10885343148915487,
+        "bootstrap_p05": -0.12382763169327779,
+        "bootstrap_p95": -0.09709758661277032,
+        "bootstrap_width_90": 0.02673004508050747,
+        "reps": 400,
+        "cluster": "decision_date",
+        "diagnostic_only": true
+      },
+      "fallback_global": true,
+      "bucket_n": 1
+    },
+    "mid": {
+      "low": -0.10885343148915487,
+      "med": -0.04343103783497826,
+      "high": 0.030012027261280085,
+      "n": 378,
+      "source": "calibration_daily_top3_by_pred_mean",
+      "q25_uncertainty": {
+        "rows": 378,
+        "days": 126,
+        "q25": -0.10885343148915487,
+        "bootstrap_p05": -0.12382763169327779,
+        "bootstrap_p95": -0.09709758661277032,
+        "bootstrap_width_90": 0.02673004508050747,
+        "reps": 400,
+        "cluster": "decision_date",
+        "diagnostic_only": true
+      },
+      "fallback_global": true,
+      "bucket_n": 7
+    }
+  },
   "policy_aligned_residual_quantiles": {
     "__global__": {
       "low": -0.10747415305238285,
