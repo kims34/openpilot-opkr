@@ -5,7 +5,9 @@ on:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'research_v1_prospective_runtime.py'
+      - 'research_v1_prospective_http_runtime.py'
       - 'test_research_v1_prospective_runtime.py'
+      - 'test_research_v1_prospective_http_runtime.py'
       - 'frozen_supervised_session_calendar_36643183157.json'
       - 'frozen_block16_model_bundle_36643183157.json'
       - 'Dockerfile.prospective-runtime'
@@ -17,7 +19,9 @@ on:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'research_v1_prospective_runtime.py'
+      - 'research_v1_prospective_http_runtime.py'
       - 'test_research_v1_prospective_runtime.py'
+      - 'test_research_v1_prospective_http_runtime.py'
       - 'frozen_supervised_session_calendar_36643183157.json'
       - 'frozen_block16_model_bundle_36643183157.json'
       - 'Dockerfile.prospective-runtime'
@@ -43,13 +47,13 @@ jobs:
       - name: Test read-only prospective runtime
         run: |
           python -m py_compile research_v1_prospective_runtime.py
-          python -m unittest test_research_v1_prospective_runtime.py
+          python -m unittest test_research_v1_prospective_runtime.py test_research_v1_prospective_http_runtime.py
       - name: Verify runtime image contains no broker entrypoint
         run: |
           grep -Fx 'COPY research_v1_*.py ./' Dockerfile.prospective-runtime
           grep -Fx 'COPY run_research_v1.py ./' Dockerfile.prospective-runtime
-          grep -Fx 'CMD ["python","research_v1_prospective_runtime.py"]' Dockerfile.prospective-runtime
+          grep -Fx 'CMD ["python","research_v1_prospective_http_runtime.py"]' Dockerfile.prospective-runtime
           grep -F 'Dockerfile.prospective-runtime' railway-prospective-runtime.json
           ! grep -Ei 'kiwoom|order|broker' Dockerfile.prospective-runtime
           docker build -f Dockerfile.prospective-runtime -t indexalert-prospective-runtime:test .
-          docker run --rm --entrypoint python indexalert-prospective-runtime:test -m unittest test_research_v1_prospective_runtime.py
+          docker run --rm --entrypoint python indexalert-prospective-runtime:test -m unittest test_research_v1_prospective_runtime.py test_research_v1_prospective_http_runtime.py
