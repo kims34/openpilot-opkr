@@ -1,3 +1,34 @@
+# Profitability-first execution checkpoint — 2026-10-08 KST
+
+User directive: prioritize a concrete strategy profitability decision over further optional application, broker-connectivity or generic hardening work. Existing frozen criteria and separate real-order authority remain unchanged.
+
+## Single active empirical candidate
+
+Continue the already-preregistered `EXP-2026-10-08-M20-FUNDAMENTAL-DRIFT-01` without a new idea/horizon/model tournament. Seasonal quarterly operating-profit shock / decision-time market capitalization; Ridge alpha=1; fixed next-open to D+20 close; WF504/126/126 and purge/embargo20. No H5/H10 rescue, outcome-driven retuning or consumed-v1 holdout access.
+
+H5 historical developmental positives do not constitute an investment-ready strategy: 278 simulated entries, mean post-cost +1.150%, PF1.546, negative date-cluster LCB, MDD -24.39%, no recent 504-session admissions and failure after removing the best five days. Existing diagnostics already identify persistence/selection/concentration fragility; do not repeat those completed experiments without new evidence.
+
+## Actual acquisition check and stopping reason
+
+Executed the existing metadata-only OpenDART probe on isolated branch `indexalert-m20-source-verification-v1`, exact head `2cab8e1388105f525153e086e74580c9e0d484df`.
+Action [37795812527](https://github.com/kims34/openpilot-opkr/actions/runs/37795812527), job113374849253: SUCCESS.
+Actual output: `credentials_present=false`, `status=AUTH_NOT_CONFIGURED`. This is an environment readiness check, not successful API authentication, data acquisition or profitability evidence. Neither OPENDART_API_KEY nor DART_API_KEY was supplied to that job. This finding is scoped to the GitHub research environment, not a claim that the user has never obtained a key.
+
+Official OpenDART homepage, checked 2026-10-08, additionally announces maintenance from **2026-10-08 20:00 to 2026-10-11 18:00 KST**, affecting key application/management, original disclosure documents, corporation-code files and XBRL originals. [Official notice](https://opendart.fss.or.kr/). Other APIs are not declared universally unavailable; do not claim all OpenDART APIs are down.
+
+Current disposition: **NEW EVIDENCE REQUIRED**, specifically research-environment credential provisioning and restoration of required original-document routes. No numerical M20 result exists yet; unavailable evidence cannot be treated as REJECT or ADOPT CANDIDATE.
+
+## Concrete next action and decision sequence
+
+1. User provisions an approved OpenDART key as repository Actions secret `OPENDART_API_KEY` using [repository secret settings](https://github.com/kims34/openpilot-opkr/settings/secrets/actions). The raw key is never requested in chat or committed. [Official application](https://opendart.fss.or.kr/uss/umt/EgovMberInsertView.do); during the announced maintenance a new application may need to wait.
+2. Re-run the same bounded existing probe; do not reinterpret workflow SUCCESS as SOURCE_REACHABLE. Source authentication must actually succeed.
+3. Acquire official original disclosures and corporation/security identity, establish receipt/publication/availability lineage and quarter/q-minus-4/restatement comparability, and admit required KRX market-cap/status/return-path evidence. Presently unadmitted sources must stay unadmitted.
+4. Only after those prerequisites pass, run the frozen single M20 developmental comparison. Report net economics, LCB, PF, recent coverage, MDD/ES/loss duration, capital occupation, cost stress and best-five-date sensitivity together. Reject a failing candidate without rescue-tuning; an admissible positive result is only a candidate for independent next-stage validation, never real-order permission.
+
+No automatic Sunday restart, future unattended execution, performance completion, source admission or live activation is claimed. Existing real orders remain disabled; unrelated existing prospective infrastructure is preserved.
+
+---
+
 # Annual risk-adjusted objective + M20 medium-swing preregistration — 2026-10-08 KST
 
 Disposition: **NEW EVIDENCE REQUIRED** for the new medium-swing empirical trial.
