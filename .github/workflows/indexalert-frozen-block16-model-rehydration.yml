@@ -1,0 +1,47 @@
+name: IndexAlert Frozen Block16 Model Rehydration
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'pit_rebuild/rehydrate_frozen_block16_model.py'
+      - 'pit_rebuild/test_rehydrate_frozen_block16_model.py'
+      - 'pit_rebuild/frozen_block16_reference_36643183157.json'
+      - 'pit_rebuild/Dockerfile'
+      - 'INDEXALERT_FROZEN_BLOCK16_MODEL_REHYDRATION_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-block16-model-rehydration.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'pit_rebuild/rehydrate_frozen_block16_model.py'
+      - 'pit_rebuild/test_rehydrate_frozen_block16_model.py'
+      - 'pit_rebuild/frozen_block16_reference_36643183157.json'
+      - 'pit_rebuild/Dockerfile'
+      - 'INDEXALERT_FROZEN_BLOCK16_MODEL_REHYDRATION_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-block16-model-rehydration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pit_rebuild
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.14'
+      - name: Install exact adopted Action runtime
+        run: python -m pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Compile and test block16 reconstruction contract
+        run: |
+          python -m py_compile rehydrate_frozen_block16_model.py
+          PYTHONPATH=.. python -m unittest test_rehydrate_frozen_block16_model.py
+      - name: Verify PIT Docker image packages block16 rehydration
+        run: |
+          grep -Fx 'COPY rehydrate_frozen_block16_model.py ./' Dockerfile
+          grep -Fx 'COPY frozen_block16_reference_36643183157.json ./' Dockerfile

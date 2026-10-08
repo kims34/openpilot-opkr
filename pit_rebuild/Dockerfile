@@ -5,6 +5,8 @@ RUN python -m pip install --upgrade pip && pip install pandas==2.3.3 numpy==2.5.
 COPY research_v1_marcap.py ./
 COPY rehydrate_frozen_long_history.py ./
 COPY rehydrate_frozen_supervised_cache.py ./
+COPY rehydrate_frozen_block16_model.py ./
+COPY frozen_block16_reference_36643183157.json ./
 COPY frozen_supervised_reference_36643183157.json ./
 COPY frozen_supervised_v1 ./frozen_supervised_v1
 COPY verify_pit_volume.py ./
