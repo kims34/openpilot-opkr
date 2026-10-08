@@ -1,0 +1,52 @@
+name: IndexAlert Prospective Runtime
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_runtime.py'
+      - 'test_research_v1_prospective_runtime.py'
+      - 'frozen_supervised_session_calendar_36643183157.json'
+      - 'frozen_block16_model_bundle_36643183157.json'
+      - 'Dockerfile.prospective-runtime'
+      - 'requirements-prospective-runtime.txt'
+      - 'INDEXALERT_PROSPECTIVE_RUNTIME_2026-10-08.md'
+      - '.github/workflows/indexalert-prospective-runtime.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_runtime.py'
+      - 'test_research_v1_prospective_runtime.py'
+      - 'frozen_supervised_session_calendar_36643183157.json'
+      - 'frozen_block16_model_bundle_36643183157.json'
+      - 'Dockerfile.prospective-runtime'
+      - 'requirements-prospective-runtime.txt'
+      - 'INDEXALERT_PROSPECTIVE_RUNTIME_2026-10-08.md'
+      - '.github/workflows/indexalert-prospective-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements-prospective-runtime.txt
+      - name: Test read-only prospective runtime
+        run: |
+          python -m py_compile research_v1_prospective_runtime.py
+          python -m unittest test_research_v1_prospective_runtime.py
+      - name: Verify runtime image contains no broker entrypoint
+        run: |
+          grep -Fx 'COPY research_v1_*.py ./' Dockerfile.prospective-runtime
+          grep -Fx 'COPY run_research_v1.py ./' Dockerfile.prospective-runtime
+          grep -Fx 'CMD ["python","research_v1_prospective_runtime.py"]' Dockerfile.prospective-runtime
+          ! grep -Ei 'kiwoom|order|broker' Dockerfile.prospective-runtime
+          docker build -f Dockerfile.prospective-runtime -t indexalert-prospective-runtime:test .
+          docker run --rm --entrypoint python indexalert-prospective-runtime:test -m unittest test_research_v1_prospective_runtime.py
