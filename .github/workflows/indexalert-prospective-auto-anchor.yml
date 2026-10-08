@@ -1,0 +1,203 @@
+name: IndexAlert Prospective Chronology Anchor
+
+on:
+  pull_request:
+    branches: [HKG_community]
+    paths:
+      - '.github/workflows/indexalert-prospective-auto-anchor.yml'
+  schedule:
+    - cron: '5 10 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: indexalert-prospective-auto-anchor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout current IndexAlert development code
+        uses: actions/checkout@v5
+        with:
+          ref: index-alert-position-regen-fix-v1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install validation dependencies
+        run: python -m pip install pandas==2.3.3 numpy==2.5.3 scikit-learn==1.8.0 requests==2.32.3 pyarrow==21.0.0
+      - name: Validate producer and chronology boundaries
+        run: python -m unittest test_research_v1_prospective_http_runtime.py test_research_v1_prospective_chronology_anchor.py
+
+  auto-anchor:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout current IndexAlert development code
+        uses: actions/checkout@v5
+        with:
+          ref: index-alert-position-regen-fix-v1
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install anchor validation dependencies
+        run: python -m pip install pandas==2.3.3 numpy==2.5.3 scikit-learn==1.8.0 requests==2.32.3
+
+      - name: Fetch today's public hash-only prospective payload
+        env:
+          ANCHOR_URL: https://indexalert-pit-rebuild-production.up.railway.app/anchor/latest
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          import json
+          import os
+          from pathlib import Path
+          import time
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+          from zoneinfo import ZoneInfo
+
+          from research_v1_prospective_http_runtime import validate_anchor_payload
+
+          url = os.environ["ANCHOR_URL"]
+          today = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+          last_error = None
+          for attempt in range(20):
+              try:
+                  req = Request(url, headers={"User-Agent": "IndexAlert-Chronology-Anchor/1"})
+                  with urlopen(req, timeout=20) as response:
+                      raw = response.read()
+                  value = json.loads(raw.decode("utf-8"))
+                  checked = validate_anchor_payload(value)
+                  if checked["session"] != today:
+                      raise RuntimeError(
+                          f"latest anchor is {checked['session']}, expected {today}"
+                      )
+                  Path("/tmp/indexalert-prospective-payload.json").write_bytes(raw)
+                  print(
+                      "INDEXALERT_AUTO_ANCHOR_FETCH="
+                      + json.dumps(
+                          {
+                              "session": checked["session"],
+                              "anchor_payload_sha256": checked["anchor_payload_sha256"],
+                              "attempt": attempt + 1,
+                              "live_order_authorized": False,
+                          },
+                          sort_keys=True,
+                      )
+                  )
+                  break
+              except (HTTPError, URLError, TimeoutError, ValueError, RuntimeError) as exc:
+                  last_error = exc
+                  if attempt == 19:
+                      raise
+                  time.sleep(120)
+          else:
+              raise RuntimeError(f"anchor fetch exhausted: {last_error}")
+          PY
+
+      - name: Check immutable chronology branch for an existing equivalent session
+        env:
+          TARGET_BRANCH: index-alert-prospective-anchors-v1
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          payload = json.loads(Path("/tmp/indexalert-prospective-payload.json").read_text())
+          session = payload["session"]
+          branch = os.environ["TARGET_BRANCH"]
+          target = f"prospective_anchors/{session}.json"
+          probe = subprocess.run(
+              ["git", "show", f"origin/{branch}:{target}"],
+              capture_output=True,
+              text=True,
+          )
+          if probe.returncode != 0:
+              with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as stream:
+                  stream.write("INDEXALERT_ANCHOR_ALREADY_PRESENT=false\n")
+                  stream.write(f"INDEXALERT_TARGET_SESSION={session}\n")
+              raise SystemExit(0)
+
+          existing = json.loads(probe.stdout)
+          pairs = (
+              ("session", "session"),
+              ("decision_at", "decision_at"),
+              ("source_receipt_sha256", "source_receipt_sha256"),
+              ("input_snapshot_sha256", "input_snapshot_sha256"),
+              ("producer_binding_sha256", "producer_binding_sha256"),
+              ("model_bundle_sha256", "model_bundle_sha256"),
+              ("decision_capture_sha256", "decision_capture_sha256"),
+              ("session_manifest_sha256", "session_manifest_sha256"),
+          )
+          for existing_field, payload_field in pairs:
+              if existing.get(existing_field) != payload.get(payload_field):
+                  raise RuntimeError(
+                      f"conflicting existing chronology anchor field: {existing_field}"
+                  )
+          if existing.get("fresh_alpha_observation_admitted") is not False:
+              raise RuntimeError("existing chronology anchor unexpectedly admits Fresh Alpha")
+          if existing.get("live_order_authorized") is not False:
+              raise RuntimeError("existing chronology anchor unexpectedly authorizes live orders")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as stream:
+              stream.write("INDEXALERT_ANCHOR_ALREADY_PRESENT=true\n")
+              stream.write(f"INDEXALERT_TARGET_SESSION={session}\n")
+          print("Equivalent chronology anchor already exists; nothing to append.")
+          PY
+
+      - name: Build hash-only GitHub chronology record
+        if: env.INDEXALERT_ANCHOR_ALREADY_PRESENT != 'true'
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          payload = json.loads(Path("/tmp/indexalert-prospective-payload.json").read_text())
+          args = [
+              "python", "research_v1_prospective_chronology_anchor.py",
+              "--session", payload["session"],
+              "--decision-at", payload["decision_at"],
+              "--source-receipt-sha256", payload["source_receipt_sha256"],
+              "--input-snapshot-sha256", payload["input_snapshot_sha256"],
+              "--producer-binding-sha256", payload["producer_binding_sha256"],
+              "--model-bundle-sha256", payload["model_bundle_sha256"],
+              "--decision-capture-sha256", payload["decision_capture_sha256"],
+              "--session-manifest-sha256", payload["session_manifest_sha256"],
+              "--workflow-ref-commit", os.environ["GITHUB_SHA"],
+              "--workflow-run-id", os.environ["GITHUB_RUN_ID"],
+              "--workflow-run-attempt", os.environ["GITHUB_RUN_ATTEMPT"],
+              "--out", "/tmp/indexalert-anchor.json",
+          ]
+          subprocess.run(args, check=True)
+          PY
+
+      - name: Append immutable chronology record
+        if: env.INDEXALERT_ANCHOR_ALREADY_PRESENT != 'true'
+        env:
+          TARGET_BRANCH: index-alert-prospective-anchors-v1
+          TARGET_SESSION: ${{ env.INDEXALERT_TARGET_SESSION }}
+        run: |
+          git checkout "$TARGET_BRANCH"
+          mkdir -p prospective_anchors
+          target="prospective_anchors/${TARGET_SESSION}.json"
+          test ! -e "$target"
+          cp /tmp/indexalert-anchor.json "$target"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "Anchor prospective session ${TARGET_SESSION} (run ${GITHUB_RUN_ID})"
+          git push origin "$TARGET_BRANCH"
