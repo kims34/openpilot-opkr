@@ -17,14 +17,19 @@ from rehydrate_frozen_block16_model import (
     CAL_START,
     CALIBRATION_SOURCE_ID,
     CONTEXT_FEATURES,
+    PLATFORM_NUMERIC_MAX_ABS_DIFF,
+    PLATFORM_NUMERIC_MAX_ULP,
+    SELECTION_CALIBRATION_SOURCE_ID,
     FROZEN_SOURCE_FINGERPRINT,
     FROZEN_SOURCE_ORIGIN,
     FROZEN_SUPERVISED_ORIGIN,
     REFERENCE_FILE,
     TRAIN_END,
     _build_model_bundle,
+    _float_ulp_distance,
     _hash_rows,
     _pipe,
+    _quantile_platform_equivalence,
 )
 
 
@@ -39,6 +44,17 @@ class FrozenBlock16ModelRehydrationTest(unittest.TestCase):
         self.assertEqual(ref["train_end"], TRAIN_END)
         self.assertEqual(ref["cal_start"], CAL_START)
         self.assertEqual(ref["cal_end"], CAL_END)
+        self.assertEqual(
+            ref["selection_conditioned_residual_quantiles"]["__global__"]["low"],
+            -0.10885343148915487,
+        )
+        self.assertEqual(
+            ref["selection_conditioned_residual_quantiles"]["__global__"]["n"], 378
+        )
+        self.assertEqual(
+            ref["selection_conditioned_residual_quantiles"]["__global__"]["source"],
+            SELECTION_CALIBRATION_SOURCE_ID,
+        )
         self.assertEqual(
             ref["policy_aligned_residual_quantiles"]["__global__"]["low"],
             -0.10747415305238285,
@@ -56,6 +72,69 @@ class FrozenBlock16ModelRehydrationTest(unittest.TestCase):
         self.assertFalse(
             ref["calibration_policy_diagnostics"]["backfill_allowed"]
         )
+
+    def test_machine_scale_platform_equivalence_is_bounded_by_ulp_and_abs(self):
+        expected = {
+            "low": -0.10747415305238285,
+            "n": 371,
+            "source": CALIBRATION_SOURCE_ID,
+            "fallback_global": False,
+            "diagnostic_only": True,
+        }
+        actual = dict(expected)
+        value = np.float64(expected["low"])
+        for _ in range(43):
+            value = np.nextafter(value, np.float64(0.0))
+        actual["low"] = float(value)
+        result = _quantile_platform_equivalence(
+            actual, expected, field="quantile"
+        )
+        self.assertTrue(result["equivalent"])
+        self.assertEqual(result["max_ulp_distance"], 43)
+        self.assertLessEqual(
+            result["max_abs_diff"], PLATFORM_NUMERIC_MAX_ABS_DIFF
+        )
+        self.assertEqual(result["ulp_limit"], PLATFORM_NUMERIC_MAX_ULP)
+
+    def test_platform_equivalence_rejects_float_drift_beyond_ulp_cap(self):
+        expected = {"low": -0.10747415305238285}
+        value = np.float64(expected["low"])
+        for _ in range(PLATFORM_NUMERIC_MAX_ULP + 1):
+            value = np.nextafter(value, np.float64(0.0))
+        with self.assertRaisesRegex(
+            Exception, "float drift"
+        ):
+            _quantile_platform_equivalence(
+                {"low": float(value)}, expected, field="quantile"
+            )
+
+    def test_platform_equivalence_rejects_large_absolute_or_structural_drift(self):
+        with self.assertRaisesRegex(Exception, "float drift"):
+            _quantile_platform_equivalence(
+                {"low": 0.1 + 1e-10}, {"low": 0.1}, field="quantile"
+            )
+        with self.assertRaisesRegex(Exception, "structural mismatch"):
+            _quantile_platform_equivalence(
+                {"n": 372}, {"n": 371}, field="quantile"
+            )
+        with self.assertRaisesRegex(Exception, "structural mismatch"):
+            _quantile_platform_equivalence(
+                {"source": "changed"},
+                {"source": CALIBRATION_SOURCE_ID},
+                field="quantile",
+            )
+        with self.assertRaisesRegex(Exception, "structural mismatch"):
+            _quantile_platform_equivalence(
+                {"diagnostic_only": False},
+                {"diagnostic_only": True},
+                field="quantile",
+            )
+
+    def test_float_ulp_distance_is_exact_for_adjacent_values(self):
+        x = np.float64(-0.10747415305238285)
+        adjacent = np.nextafter(x, np.float64(0.0))
+        self.assertEqual(_float_ulp_distance(float(x), float(adjacent)), 1)
+        self.assertEqual(_float_ulp_distance(float(x), float(x)), 0)
 
     def test_source_and_supervised_calendar_origins_are_distinct_and_frozen(self):
         self.assertEqual(FROZEN_SOURCE_ORIGIN, "2015-06-15")
@@ -143,6 +222,10 @@ class FrozenBlock16ModelRehydrationTest(unittest.TestCase):
         self.assertIn('"test_outcomes_consumed_for_fit": False', source)
         self.assertIn('"consumed_v1_holdout_artifact_read": False', source)
         self.assertIn('"performance_evaluation_executed": False', source)
+        self.assertIn('"model_state_exact_action_coefficients_verified": False', source)
+        self.assertIn('"independent_model_admission_verified": False', source)
+        self.assertIn('"live_order_authorized": False', source)
+        self.assertIn("canonical_quantiles = expected_quantiles", source)
         self.assertIn("os.rename(attempt, out_dir)", source)
 
 
