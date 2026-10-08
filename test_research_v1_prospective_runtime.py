@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -15,6 +17,8 @@ from research_v1_prospective_runtime import (
     EXPECTED_MODEL_SHA256,
     NETWORK_AUTH_VALUE,
     ProspectiveRuntimeError,
+    _fetch_official_session_source,
+    _load_verified_history,
     _weekday_dates,
     load_calendar_prefix,
     load_pinned_model_bundle,
@@ -83,6 +87,75 @@ class ProspectiveRuntimeTest(unittest.TestCase):
             resolve_target_session(pd.Timestamp("2026-10-08T18:30:00+09:00")),
             "2026-10-08",
         )
+
+    def test_gap_session_uses_same_session_security_master(self):
+        day = pd.Timestamp("2026-10-08")
+        daily = SimpleNamespace(
+            response_frame=pd.DataFrame([{"x": 1}]),
+            raw_bytes=b"daily",
+            retrieved_at="2026-10-08T09:00:00+00:00",
+        )
+        master = SimpleNamespace(
+            response_frame=pd.DataFrame([{"y": 1}]),
+            raw_bytes=b"master",
+            retrieved_at="2026-10-08T09:01:00+00:00",
+        )
+        built = {
+            "session": "2026-10-08",
+            "observed_available_by": "2026-10-08T09:01:00+00:00",
+            "panel": pd.DataFrame(),
+        }
+        with patch(
+            "research_v1_prospective_runtime._fetch_daily",
+            return_value=daily,
+        ) as daily_fetch, patch(
+            "research_v1_prospective_runtime._fetch_master",
+            return_value=master,
+        ) as master_fetch, patch(
+            "research_v1_prospective_runtime.build_current_session_openapi_source",
+            return_value=built,
+        ) as builder:
+            out = _fetch_official_session_source(
+                day,
+                auth_key="redacted",
+                evidence={"test": True},
+            )
+        self.assertIsNotNone(out)
+        daily_fetch.assert_called_once_with(day, auth_key="redacted")
+        master_fetch.assert_called_once_with(day, auth_key="redacted")
+        self.assertEqual(
+            builder.call_args.kwargs["expected_session"], "2026-10-08"
+        )
+        self.assertEqual(builder.call_args.kwargs["daily_raw"], b"daily")
+        self.assertEqual(builder.call_args.kwargs["master_raw"], b"master")
+
+    def test_verified_warmup_preserves_frozen_contemporaneous_universe(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            rows = []
+            for session in ("2026-09-22", "2026-09-23"):
+                for symbol in ("000001", "000002"):
+                    rows.append({
+                        "decision_date": pd.Timestamp(session),
+                        "symbol": symbol,
+                        "open": 10.0,
+                        "high": 11.0,
+                        "low": 9.0,
+                        "close": 10.5,
+                        "volume": 100.0,
+                        "value": 1050.0,
+                        "krx_change_return": 0.01,
+                    })
+            pd.DataFrame(rows).to_parquet(
+                root / "kospi-pit-2026.parquet", index=False
+            )
+            frame, sessions = _load_verified_history(
+                root,
+                target=pd.Timestamp("2026-10-08"),
+                availability_at="2026-10-08T09:30:00+00:00",
+            )
+        self.assertEqual(set(frame["symbol"]), {"000001", "000002"})
+        self.assertEqual(sessions, ["2026-09-22", "2026-09-23"])
 
     def test_weekday_probe_never_attempts_weekends(self):
         days = _weekday_dates(
