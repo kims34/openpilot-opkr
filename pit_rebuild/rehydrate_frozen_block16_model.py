@@ -645,13 +645,40 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
     cal["pred_mean"] = model.predict(cal[CONTEXT_FEATURES])
     quantiles, diagnostics = _policy_aligned_quantiles(cal)
 
-    if quantiles != reference["policy_aligned_residual_quantiles"]:
+    expected_quantiles = reference["policy_aligned_residual_quantiles"]
+    expected_diagnostics = reference["calibration_policy_diagnostics"]
+    if quantiles != expected_quantiles:
+        diagnostic = {
+            "actual_global": quantiles.get("__global__"),
+            "expected_global": expected_quantiles.get("__global__"),
+            "actual_buckets": {
+                key: quantiles.get(key) for key in ("low", "mid", "high")
+            },
+            "expected_buckets": {
+                key: expected_quantiles.get(key) for key in ("low", "mid", "high")
+            },
+            "actual_diagnostics": diagnostics,
+            "expected_diagnostics": expected_diagnostics,
+            "training_rows": int(len(train)),
+            "calibration_rows": int(len(cal)),
+        }
         raise FrozenBlock16ModelError(
-            "block16 policy-aligned residual quantiles do not match Action artifact"
+            "block16 policy-aligned residual quantiles do not match Action artifact: "
+            + json.dumps(diagnostic, sort_keys=True, default=str)
         )
-    if diagnostics != reference["calibration_policy_diagnostics"]:
+    if diagnostics != expected_diagnostics:
         raise FrozenBlock16ModelError(
-            "block16 calibration-policy diagnostics do not match Action artifact"
+            "block16 calibration-policy diagnostics do not match Action artifact: "
+            + json.dumps(
+                {
+                    "actual": diagnostics,
+                    "expected": expected_diagnostics,
+                    "training_rows": int(len(train)),
+                    "calibration_rows": int(len(cal)),
+                },
+                sort_keys=True,
+                default=str,
+            )
         )
 
     train_sha = _hash_rows(train)
