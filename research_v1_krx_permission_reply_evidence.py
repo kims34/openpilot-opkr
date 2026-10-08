@@ -103,6 +103,8 @@ def validate_permission_reply_evidence(data: Mapping[str, Any]) -> dict[str, Any
         # This disposition concerns this web-session evidence only, not separately
         # approved KRX OpenAPI services or all internal-research use.
         "evidence_disposition": "SUPERSEDED_UNSUPPORTED_AUTOMATION_CLAIM",
+        "access_route": "DATA_MARKETPLACE_WEB_SESSION",
+        "separately_approved_openapi_restricted_by_this_evidence": False,
         "original_reply_sha256": "bb548d64e81457b21d2203edcc8bab63ecca4b0e2cc4d922f675eeeca5477efa",
         "automated_collection_authorized": False,
         "high_frequency_collection_authorized": False,
