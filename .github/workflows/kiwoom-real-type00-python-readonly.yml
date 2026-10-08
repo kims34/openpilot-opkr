@@ -6,6 +6,8 @@ on:
     paths:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_token_mode_probe.py'
+      - 'test_kiwoom_token_mode_probe.py'
       - 'Dockerfile.kiwoom-real-readonly'
       - 'kiwoom_real_readonly/smoke.py'
       - 'kiwoom_real_readonly/Dockerfile'
@@ -17,6 +19,8 @@ on:
     paths:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_token_mode_probe.py'
+      - 'test_kiwoom_token_mode_probe.py'
       - 'Dockerfile.kiwoom-real-readonly'
       - 'kiwoom_real_readonly/smoke.py'
       - 'kiwoom_real_readonly/Dockerfile'
@@ -38,7 +42,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install requests==2.32.3 websockets==15.0.1
       - run: python -m py_compile kiwoom_real_type00_readonly_smoke.py
-      - run: python -m unittest test_kiwoom_real_type00_readonly_smoke.py
+      - run: python -m unittest test_kiwoom_real_type00_readonly_smoke.py test_kiwoom_token_mode_probe.py
       - name: Assert no order endpoint or authority is present
         run: |
           ! grep -E '/api/dostk/ordr|kt10000|kt10001|kt10002|kt10003' kiwoom_real_type00_readonly_smoke.py
@@ -55,3 +59,8 @@ jobs:
           cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
           grep -Fx 'COPY smoke.py ./' kiwoom_real_readonly/Dockerfile
           grep -F 'CMD ["python","-B","smoke.py"]' kiwoom_real_readonly/Dockerfile
+
+      - name: Assert token-mode probe has no order path
+        run: |
+          ! grep -E '/api/dostk/ordr|kt10000|kt10001|kt10002|kt10003' kiwoom_token_mode_probe.py
+          ! grep -E 'print\(.+(APP_KEY|APP_SECRET|token|return_msg)' kiwoom_token_mode_probe.py
