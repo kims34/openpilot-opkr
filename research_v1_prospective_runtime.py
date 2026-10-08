@@ -226,6 +226,31 @@ def _fetch_master(day: pd.Timestamp, *, auth_key: str):
     )
 
 
+def _fetch_official_session_source(
+    day: pd.Timestamp,
+    *,
+    auth_key: str,
+    evidence: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Fetch and normalize one non-empty session against its own KRX master."""
+    daily = _fetch_daily(day, auth_key=auth_key)
+    if daily.response_frame.empty:
+        return None
+    master = _fetch_master(day, auth_key=auth_key)
+    session_text = day.strftime("%Y-%m-%d")
+    source = build_current_session_openapi_source(
+        daily_raw=daily.raw_bytes,
+        master_raw=master.raw_bytes,
+        expected_session=session_text,
+        daily_retrieved_at=daily.retrieved_at,
+        master_retrieved_at=master.retrieved_at,
+        connectivity_evidence=evidence,
+    )
+    if source.get("session") != session_text:
+        raise ProspectiveRuntimeError("same-session KRX source normalization drift")
+    return {"daily": daily, "master": master, "source": source}
+
+
 def _current_common_master(master_frame: pd.DataFrame, *, target: pd.Timestamp, available_at: str) -> pd.DataFrame:
     identity = normalise_basic_info(
         master_frame,
@@ -427,24 +452,14 @@ def run_once(
     )
     session_sources: dict[str, dict[str, Any]] = {}
     for day in _weekday_dates(fetch_start, target):
-        daily = _fetch_daily(day, auth_key=auth_key)
-        if daily.response_frame.empty:
-            continue
-        master = _fetch_master(day, auth_key=auth_key)
-        session_text = day.strftime("%Y-%m-%d")
-        source = build_current_session_openapi_source(
-            daily_raw=daily.raw_bytes,
-            master_raw=master.raw_bytes,
-            expected_session=session_text,
-            daily_retrieved_at=daily.retrieved_at,
-            master_retrieved_at=master.retrieved_at,
-            connectivity_evidence=evidence,
+        item = _fetch_official_session_source(
+            day,
+            auth_key=auth_key,
+            evidence=evidence,
         )
-        session_sources[session_text] = {
-            "daily": daily,
-            "master": master,
-            "source": source,
-        }
+        if item is None:
+            continue
+        session_sources[day.strftime("%Y-%m-%d")] = item
 
     current = session_sources.get(target_text)
     if current is None:
