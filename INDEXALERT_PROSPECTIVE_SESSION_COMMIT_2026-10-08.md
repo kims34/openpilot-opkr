@@ -20,3 +20,9 @@ The final manifest records only structural completion. It keeps source admission
 The tests deliberately fail after source persistence by withholding scheduled supervised history and confirm that no decision or final session manifest is created. They also verify same-session idempotence and reject target/future rows smuggled into prior history.
 
 This remains network-free engineering in CI. It does not perform a KRX request, private production fit, consumed holdout read, historical performance rerun, broker order, funds movement or permission change.
+
+## Prebuilt model session path
+
+The structural session transaction may now consume either (a) the scheduled supervised frame and perform the existing frozen refit, or (b) one already-built structural frozen model bundle. The two inputs are mutually exclusive. In the prebuilt path the producer validates that the bundle belongs to the exact target refit block before any decision capture is built.
+
+This lets a verified immutable block model be reused for future sessions without re-fitting the same historical rows on every capture. It does not independently admit the model or source and does not change any Fresh Alpha, Shadow, promotion or live-order authority flag.
