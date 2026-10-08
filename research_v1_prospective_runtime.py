@@ -32,6 +32,7 @@ from research_v1_krx_official_status import (
 )
 from research_v1_krx_openapi_connectivity_evidence import validate_evidence
 from research_v1_krx_openapi_prospective_source import (
+    KRXProspectiveOpenAPISourceError,
     _number,
     _short_code,
     build_current_session_openapi_source,
@@ -251,6 +252,27 @@ def _fetch_official_session_source(
     return {"daily": daily, "master": master, "source": source}
 
 
+
+def _fetch_official_source_with_failure_date(
+    day: pd.Timestamp,
+    *,
+    auth_key: str,
+    evidence: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Preserve source failure while annotating only the trusted requested date.
+
+    Never includes symbol/price/raw-provider material, changes selection or skips
+    a rejected session. The caller's fail-closed behavior stays identical.
+    """
+    try:
+        return _fetch_official_session_source(
+            day, auth_key=auth_key, evidence=evidence,
+        )
+    except KRXProspectiveOpenAPISourceError as exc:
+        exc.source_failure_session = day.strftime("%Y-%m-%d")
+        raise
+
+
 def _current_common_master(master_frame: pd.DataFrame, *, target: pd.Timestamp, available_at: str) -> pd.DataFrame:
     identity = normalise_basic_info(
         master_frame,
@@ -452,7 +474,7 @@ def run_once(
     )
     session_sources: dict[str, dict[str, Any]] = {}
     for day in _weekday_dates(fetch_start, target):
-        item = _fetch_official_session_source(
+        item = _fetch_official_source_with_failure_date(
             day,
             auth_key=auth_key,
             evidence=evidence,
