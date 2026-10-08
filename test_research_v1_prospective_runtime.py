@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from research_v1_prospective_frozen_producer import bind_prebuilt_model_for_target
+from research_v1_krx_openapi_prospective_source import KRXProspectiveOpenAPISourceError
 from research_v1_prospective_runtime import (
     EXPECTED_CALENDAR_COUNT,
     EXPECTED_CALENDAR_END,
@@ -18,6 +19,7 @@ from research_v1_prospective_runtime import (
     NETWORK_AUTH_VALUE,
     ProspectiveRuntimeError,
     _fetch_official_session_source,
+    _fetch_official_source_with_failure_date,
     _load_verified_history,
     _weekday_dates,
     load_calendar_prefix,
@@ -87,6 +89,23 @@ class ProspectiveRuntimeTest(unittest.TestCase):
             resolve_target_session(pd.Timestamp("2026-10-08T18:30:00+09:00")),
             "2026-10-08",
         )
+
+
+    def test_source_failure_date_is_attached_without_suppressing_failure(self):
+        failure = KRXProspectiveOpenAPISourceError(
+            "common-stock current-session OHLC contains nonpositive value; redacted"
+        )
+        with patch(
+            "research_v1_prospective_runtime._fetch_official_session_source",
+            side_effect=failure,
+        ) as fetch:
+            with self.assertRaises(KRXProspectiveOpenAPISourceError) as caught:
+                _fetch_official_source_with_failure_date(
+                    pd.Timestamp("2026-09-25"), auth_key="not-revealed", evidence={}
+                )
+        self.assertIs(caught.exception, failure)
+        self.assertEqual(getattr(failure, "source_failure_session"), "2026-09-25")
+        fetch.assert_called_once()
 
     def test_gap_session_uses_same_session_security_master(self):
         day = pd.Timestamp("2026-10-08")
