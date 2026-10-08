@@ -1,3 +1,44 @@
+# Annual risk-adjusted objective + M20 medium-swing preregistration — 2026-10-08 KST
+
+Disposition: **NEW EVIDENCE REQUIRED** for the new medium-swing empirical trial.
+
+## Objective transition
+
+The long-run IndexAlert research objective is now sustainable **annual post-cost/post-tax risk-adjusted net return**, not daily profit or trading frequency. NO_TRADE remains a valid preferred state when conservative executable edge is insufficient. CAGR/annualized net return must be judged jointly with MDD, ES95/99, volatility, maximum underwater/loss duration, turnover/cost drag, capacity, concentration and execution feasibility.
+
+This changes objective framing only. Existing frozen H5 Champion/reference, labels, PIT/availability rules, WF504/126/126, Purged/CPCV, q25/Top3/no-backfill, costs, holdout lineage, NetEV and promotion criteria remain unchanged. Existing Tiny Live engineering must not be delayed.
+
+## Value-gate decision
+
+A generic 5–20-session horizon extension is **RESEARCH SKIP** because H10 is already `REJECTED_CURRENT_CANDIDATE_DO_NOT_RETUNE` and horizon sweeping would be post-hoc mining.
+
+A conceptually distinct medium-swing family has research value: **fundamental information drift after newly available quarterly operating-performance disclosure**. It is not a price-only H10 rescue and requires genuinely new PIT data.
+
+## Preregistered trial
+
+- Trial: `EXP-2026-10-08-M20-FUNDAMENTAL-DRIFT-01`
+- Files: `INDEXALERT_MEDIUM_SWING_M20_PREREG.md/.json`
+- Primary horizon: fixed **20 KRX sessions**; no 5/7/10/15/20 tournament.
+- Entry: next eligible regular-session open after the first admissible decision close.
+- Exit: fixed D+20 close for the first alpha-existence trial.
+- Signal: `(operating_profit_q - operating_profit_q_minus_4) / decision_time_market_cap`.
+- Model family fixed to Ridge alpha=1.0 with existing selection-conditional q25/q50/q75 conservative NetEV framework, 0–3 strict Top3/no-backfill/NO_TRADE.
+- WF: 504/126/126; purge=embargo=20.
+- CPCV: existing 6-group / 60-case structure as secondary stability diagnostic only.
+- Current consumed failed-invalid v1 holdout is forbidden.
+- A later H5+M20 blend is deferred until M20 first establishes an independent positive edge.
+
+Required new evidence before any performance run: independently admitted OpenDART disclosure identity/corp-to-KRX mapping, PIT disclosure availability, quarterly operating-profit/q-4 lineage, decision-time market cap, and applicable KRX status/tradability/affected-position economics. Existing metadata-only OpenDART probe is not enough.
+
+## Integrity
+
+Fail-closed validator: `research_v1_medium_swing_prereg.py`.
+Regression tests: `test_research_v1_medium_swing_prereg.py`.
+Action `37775984263` completed **SUCCESS** at `eecc0f1afceb5006c0f722075be07181106aab58`.
+
+No historical M20 performance run, no H10 retune, no holdout access, no Champion/Core change, no development/Android/server modification and no live-order authority occurred.
+
+---
 # Fresh Alpha prospective protocol frozen — 2026-10-07 KST
 
 Disposition: **CONTINUE VALIDATION**.
