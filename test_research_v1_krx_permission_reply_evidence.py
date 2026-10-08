@@ -87,3 +87,49 @@ def test_human_permission_doc_tracks_v3_hash_and_unknown_latest_timestamp():
     assert "high-frequency collection" in text
     assert "Gate F intended-use rights may now be treated as **PASS**" in text
     assert "c50a76bb22d8e16b48b9b2eb56c78ab97f620068ed4fae4a65cd4bf6f4ae5f38" not in text
+
+
+def test_web_permission_disposition_does_not_revoke_exact_openapi_evidence():
+    from research_v1_krx_openapi_connectivity_evidence import validate_file as validate_openapi
+    from research_v1_krx_historical_fetchers import fetch_openapi_raw
+
+    blocked = validate_file()
+    assert blocked["access_route"] == "DATA_MARKETPLACE_WEB_SESSION"
+    assert blocked["separately_approved_openapi_restricted_by_this_evidence"] is False
+    assert blocked["automated_collection_authorized"] is False
+    openapi = validate_openapi()
+    assert openapi["valid"] is True
+    assert openapi["source_contract_closed"] is False
+    assert openapi["live_trading_authorized"] is False
+
+    raw = b'{"OutBlock_1":[{"ISU_CD":"KR7005930003","ISU_SRT_CD":"005930"}]}'
+    class Reply:
+        content = raw
+        status_code = 200
+        ok = True
+    class ApprovedAPI:
+        calls = 0
+        def get(self, url, **kwargs):
+            self.calls += 1
+            assert url == "https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info"
+            assert kwargs["headers"]["AUTH_KEY"] == "synthetic-test-key"
+            return Reply()
+    transport = ApprovedAPI()
+    result = fetch_openapi_raw(
+        endpoint="https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+        params={"basDd": "20260928"}, auth_key="synthetic-test-key",
+        network_authorized=True, session=transport,
+        retrieved_at_override="2026-10-08T14:00:00+00:00",
+    )
+    assert transport.calls == 1
+    assert result.raw_bytes == raw
+    assert result.response_frame.iloc[0]["ISU_SRT_CD"] == "005930"
+    # Exact API request authority remains required independently of route rights.
+    from research_v1_krx_historical_fetchers import KRXHistoricalFetchError
+    with pytest.raises(KRXHistoricalFetchError):
+        fetch_openapi_raw(
+            endpoint="https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+            params={}, auth_key="synthetic-test-key", network_authorized=False,
+            session=transport,
+        )
+    assert transport.calls == 1
