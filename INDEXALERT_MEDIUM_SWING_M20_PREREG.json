@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "trial_id": "EXP-2026-10-08-M20-FUNDAMENTAL-DRIFT-01",
+  "state": "PREREGISTERED_DATA_GATED",
+  "terminal_disposition": "NEW EVIDENCE REQUIRED",
+  "strategy_family": "INDEPENDENT_MEDIUM_SWING_FUNDAMENTAL_DRIFT",
+  "economic_hypothesis": "PIT-safe positive seasonal quarterly operating-profit shocks scaled by decision-time market capitalization may be incorporated gradually enough to produce positive executable next-open-to-D+20 post-cost NetEV.",
+  "distinct_from_rejected_h10": true,
+  "rejected_h10_retune_forbidden": true,
+  "primary_horizon_sessions": 20,
+  "horizon_sweep_forbidden": true,
+  "primary_entry": "next_eligible_regular_session_open_after_admissible_decision_close",
+  "primary_exit": "DPLUS20_CLOSE",
+  "dynamic_stop_takeprofit_in_v1": false,
+  "signal_formula": "(operating_profit_q - operating_profit_q_minus_4) / decision_time_market_cap",
+  "additional_signal_families_forbidden": [
+    "analyst_consensus",
+    "news_sentiment",
+    "investor_flow",
+    "alternate_earnings_metric"
+  ],
+  "model": {
+    "family": "Ridge",
+    "alpha": 1,
+    "selection_conditional_quantiles": [
+      0.25,
+      0.5,
+      0.75
+    ],
+    "admission": "NetEV_low_gt_0",
+    "top_k": 3,
+    "rank4plus_backfill": false,
+    "no_trade_valid": true
+  },
+  "walk_forward": {
+    "train_sessions": 504,
+    "calibration_sessions": 126,
+    "test_sessions": 126,
+    "purge_sessions": 20,
+    "embargo_sessions": 20
+  },
+  "cpcv": {
+    "groups": 6,
+    "test_groups_per_case": 2,
+    "calibration_groups_per_case": 1,
+    "train_groups_per_case": 3,
+    "secondary_diagnostic_only": true
+  },
+  "required_new_pit_evidence": [
+    "official_opendart_disclosure_identity_and_corp_to_krx_mapping",
+    "pit_safe_disclosure_availability",
+    "quarterly_operating_profit_and_q_minus_4_lineage",
+    "decision_time_market_cap",
+    "krx_security_status_tradability_and_affected_position_economics"
+  ],
+  "cost_policy": {
+    "date_aware_statutory_tax": true,
+    "commission_allowance": true,
+    "spread_impact_allowance": true,
+    "participation_of_adv_reference": 0.0005,
+    "two_x_cost_stress_required": true
+  },
+  "required_metrics": [
+    "mean_cost_adjusted_net_return",
+    "date_cluster_lcb95",
+    "profit_factor",
+    "annualized_geometric_net_return",
+    "annualized_daily_volatility",
+    "max_drawdown",
+    "trade_es95",
+    "trade_es99",
+    "daily_es95",
+    "daily_es99",
+    "max_underwater_duration",
+    "turnover",
+    "cost_drag",
+    "coverage",
+    "no_trade_rate",
+    "capital_occupation",
+    "concentration",
+    "best_1_3_5_day_sensitivity",
+    "capacity_execution_feasibility"
+  ],
+  "strategy_comparators": [
+    "FROZEN_H5_SHORT_REFERENCE",
+    "M20_FUNDAMENTAL_DRIFT_V1"
+  ],
+  "blend_deferred_until_medium_edge_established": true,
+  "consumed_project_v1_holdout_forbidden": true,
+  "tiny_live_path_must_not_be_delayed": true,
+  "champion_core_change_allowed": false,
+  "operating_code_change_allowed": false,
+  "live_order_authorized": false
+}
