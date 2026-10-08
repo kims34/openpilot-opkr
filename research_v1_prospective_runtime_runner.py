@@ -253,17 +253,17 @@ def _load_frozen_history_tail(
     ).reset_index(drop=True)
 
 
-def _panel_path(root: Path, session: str) -> Path:
-    return root / "warmup" / f"panel-{session}.parquet"
+def _panel_path(cache_root: Path, session: str) -> Path:
+    return cache_root / f"panel-{session}.parquet"
 
 
-def _non_session_path(root: Path, session: str) -> Path:
-    return root / "warmup" / f"non-session-{session}.json"
+def _non_session_path(cache_root: Path, session: str) -> Path:
+    return cache_root / f"non-session-{session}.json"
 
 
-def _load_cached_panel(root: Path, session: str) -> pd.DataFrame | None:
-    panel_path = _panel_path(root, session)
-    receipt_path = root / "warmup" / f"source-{session}.json"
+def _load_cached_panel(cache_root: Path, session: str) -> pd.DataFrame | None:
+    panel_path = _panel_path(cache_root, session)
+    receipt_path = cache_root / f"source-{session}.json"
     if not panel_path.exists():
         return None
     if panel_path.is_symlink() or not receipt_path.is_file() or receipt_path.is_symlink():
@@ -277,8 +277,8 @@ def _load_cached_panel(root: Path, session: str) -> pd.DataFrame | None:
     return panel
 
 
-def _store_panel(root: Path, session: str, panel: pd.DataFrame) -> None:
-    path = _panel_path(root, session)
+def _store_panel(cache_root: Path, session: str, panel: pd.DataFrame) -> None:
+    path = _panel_path(cache_root, session)
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
     if path.exists():
@@ -366,21 +366,22 @@ def _warmup_after_frozen(
         return [], []
     panels: list[pd.DataFrame] = []
     sessions: list[str] = []
+    warmup_root = root / "warmup"
     for day in pd.date_range(start, end, freq="D"):
         session = day.strftime("%Y-%m-%d")
-        cached = _load_cached_panel(root, session)
+        cached = _load_cached_panel(warmup_root, session)
         if cached is not None:
             panels.append(cached)
             sessions.append(session)
             continue
-        marker = _non_session_path(root, session)
+        marker = _non_session_path(warmup_root, session)
         if marker.is_file() and not marker.is_symlink():
             continue
         source, daily_raw, master_raw, retrieved_at = _fetch_normalized_session(
             session,
             auth_key=auth_key,
             evidence=evidence,
-            storage_root=root / "warmup",
+            storage_root=warmup_root,
             git_worktree=git_worktree,
             fetcher=fetcher,
         )
