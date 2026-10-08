@@ -1,0 +1,16 @@
+FROM python:3.12.14-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN python -m pip install --upgrade pip \
+    && pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+
+COPY *.py ./
+COPY INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json ./
+COPY frozen_block16_model_bundle_36643183157.json ./
+
+CMD ["python","research_v1_prospective_runtime_runner.py"]
