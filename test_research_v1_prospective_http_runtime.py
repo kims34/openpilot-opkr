@@ -8,6 +8,7 @@ import unittest
 
 from research_v1_prospective_http_runtime import (
     _failure_reason_code,
+    _failure_source_session,
     _latest_anchor,
     _read_status,
     _safe_status,
@@ -118,6 +119,32 @@ class ProspectiveHTTPRuntimeTest(unittest.TestCase):
             (root / "runtime-status.json").write_bytes(_canonical(status) + b"\n")
             with self.assertRaisesRegex(Exception, "error reason is invalid"):
                 _read_status(root)
+
+
+    def test_failure_date_is_only_canonical_past_or_same_day(self):
+        exc = KRXProspectiveOpenAPISourceError("private secret=DO_NOT_LEAK")
+        exc.source_failure_session = "2026-09-25"
+        self.assertEqual(_failure_source_session(exc), "2026-09-25")
+        for bad in ("2026-09-25 token=DO_NOT_LEAK", "2026-02-30", "20260925", "", None):
+            exc.source_failure_session = bad
+            self.assertIsNone(_failure_source_session(exc))
+        self.assertIsNone(_failure_source_session(RuntimeError("private")))
+
+    def test_public_status_rejects_forged_failure_date(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            status = _safe_status({"status": "FAIL_CLOSED", "session": "2026-10-08"})
+            status["error_class"] = "KRXProspectiveOpenAPISourceError"
+            status["error_reason_code"] = "COMMON_OHLC_NONPOSITIVE"
+            status["source_failure_session"] = "2026-09-25"
+            path = root / "runtime-status.json"
+            path.write_bytes(_canonical(status) + b"\n")
+            self.assertEqual(_read_status(root)["source_failure_session"], "2026-09-25")
+            for bad in ("2026-10-09", "2026-02-30", "2026-09-25 account=DO_NOT_LEAK", None, 0):
+                status["source_failure_session"] = bad
+                path.write_bytes(_canonical(status) + b"\n")
+                with self.assertRaisesRegex(Exception, "source failure session is invalid"):
+                    _read_status(root)
 
     def test_missing_status_defaults_to_waiting_and_disabled(self):
         with tempfile.TemporaryDirectory() as folder:
