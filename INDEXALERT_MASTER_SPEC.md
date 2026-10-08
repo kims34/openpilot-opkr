@@ -433,3 +433,39 @@ A preregistered research success does not directly overwrite Core. `research_v1_
 ### Internal completeness audit — 2026-10-02
 
 Canonical audit: `INDEXALERT_INTERNAL_COMPLETENESS_AUDIT.md`. Internal review found and fixed a successor-promotion authority ambiguity: passing represented confirmation gates now yields only `automatic_code_update_eligible=true`; it can never self-grant `automatic_code_update_allowed` or `promotion_authority_verified`. No reviewed research, broker-normalization, automation-control or successor path authorizes real-account ordering or sealed-holdout access. External/evidence blockers remain unchanged.
+
+
+## 17. Annual risk-adjusted net-return objective addendum — 2026-10-08
+
+This addendum changes the long-run research objective framing without modifying any already-frozen H5 Champion rule, label, horizon, PIT/availability contract, WF/Purged-CPCV design, cost/slippage treatment, holdout lineage, NetEV gate, promotion criterion or execution-sufficiency threshold.
+
+### Long-run objective
+
+IndexAlert is not required to trade every day. The long-run objective is to improve **sustainable annual post-cost/post-tax risk-adjusted net return** in future real markets while preserving strict downside, execution and evidence controls.
+
+Accordingly:
+- `NO_TRADE` is a first-class correct outcome when conservative executable edge is insufficient;
+- hit rate and trade frequency are subordinate to cumulative net return and risk;
+- annualized net return/CAGR must be reported together with MDD, daily/trade ES95/ES99, volatility, maximum underwater/loss duration, turnover, explicit cost drag, capacity and concentration;
+- a strategy with higher return but materially worse tail/drawdown/capacity evidence is not preferred merely for its point return;
+- no annual return, daily profit or win rate is assumed or guaranteed.
+
+### Strategy families
+
+A. **Short reference** — existing frozen 1–5-session / H5 research and current Champion/reference remain unchanged.
+
+B. **Independent medium-swing Challenger** — a separate 5–20-session strategy family may be researched only from a preregistered economic hypothesis with its own label/exit/risk/cost design and independent evidence. The rejected H10 candidate remains `REJECTED_CURRENT_CANDIDATE_DO_NOT_RETUNE`; it cannot be rescued by sweeping H6–H9, H15 or H20.
+
+C. **Short + medium portfolio** — evaluated only after B independently establishes a credible positive edge. Mixing is not presumed beneficial. It must account for cross-strategy correlation, capital occupation, overlapping names, turnover, costs, capacity and joint-tail risk under a common capital budget.
+
+### Comparison discipline
+
+The preferred strategy is not the one with the highest historical backtest return. On a common eligible period, comparison must include cash/NO_TRADE days and use cost-adjusted daily portfolio paths. Primary evidence for a challenger or blend requires a positive lower confidence bound on incremental portfolio net return under an appropriately preregistered block/bootstrap comparison, while also satisfying its own positive NetEV/PF/LCB and not degrading the applicable MDD, ES95/99, loss-duration, capacity and execution-feasibility gates.
+
+If all strategy families lack sufficient future executable edge, the correct portfolio is `NO_TRADE`.
+
+### Anti-overfit and evidence boundary
+
+Do not sweep 5/7/10/15/20 sessions and choose the historical winner. A new medium strategy must preregister one economic mechanism and one primary horizon/exit policy before outcomes are inspected. Failed and inconclusive variants remain recorded. The consumed failed-invalid project-v1 holdout is never reused or reset.
+
+New strategy research must not delay the existing Tiny Live engineering path. No medium-swing or mixed strategy enters development/operation until it independently passes the then-applicable Research → OOS/CPCV → Frozen Challenger → Shadow → Fresh Confirmation → Tiny Live promotion path.
