@@ -11,6 +11,7 @@ RUN python -m pip install --upgrade pip \
     && pip install -r requirements-prospective-runtime.txt
 
 COPY research_v1_*.py ./
+COPY test_research_v1_prospective_runtime.py ./
 COPY frozen_block16_model_bundle_36643183157.json ./
 COPY frozen_supervised_session_calendar_36643183157.json ./
 COPY INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json ./
