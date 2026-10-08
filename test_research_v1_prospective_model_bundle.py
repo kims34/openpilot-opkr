@@ -1,5 +1,6 @@
 """Synthetic model-bundle tests; never project Alpha or trading evidence."""
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,6 +56,28 @@ def bundle():
 
 
 class ProspectiveModelBundleTest(unittest.TestCase):
+    def test_pinned_block16_runtime_bundle_is_valid_and_non_authorizing(self):
+        path = Path(__file__).resolve().parent / (
+            "frozen_block16_model_bundle_36643183157.json"
+        )
+        pinned = json.loads(path.read_text(encoding="utf-8"))
+        checked = validate_model_bundle(pinned)
+        self.assertTrue(checked["valid"])
+        self.assertEqual(
+            checked["model_bundle_sha256"],
+            "2557663c1055f096be10b5a04890c89a8dfa48a49a7d24faf92ba5276f476531",
+        )
+        self.assertEqual(pinned["train_end_session"], "2025-10-17")
+        self.assertEqual(pinned["calibration_start_session"], "2025-10-27")
+        self.assertEqual(pinned["calibration_end_session"], "2026-04-29")
+        self.assertEqual(
+            pinned["calibration_quantiles"]["__global__"]["source"],
+            "calibration_daily_top3_by_pred_mean_then_same_normal_market_veto_no_backfill",
+        )
+        self.assertFalse(pinned["independent_model_admission_verified"])
+        self.assertFalse(pinned["signal_generation_complete"])
+        self.assertFalse(pinned["live_order_authorized"])
+
     def test_fitted_state_is_pickle_free_hash_bound_and_non_authorizing(self):
         out = bundle()
         self.assertTrue(validate_model_bundle(out)["valid"])
