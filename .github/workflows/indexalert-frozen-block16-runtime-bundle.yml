@@ -1,0 +1,45 @@
+name: IndexAlert Frozen Block16 Runtime Bundle
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'frozen_block16_model_bundle_36643183157.json'
+      - 'test_research_v1_prospective_model_bundle.py'
+      - 'research_v1_prospective_model_bundle.py'
+      - 'Dockerfile.krx-historical-worker'
+      - 'requirements-krx-historical-worker.txt'
+      - 'INDEXALERT_FROZEN_BLOCK16_RUNTIME_BUNDLE_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-block16-runtime-bundle.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'frozen_block16_model_bundle_36643183157.json'
+      - 'test_research_v1_prospective_model_bundle.py'
+      - 'research_v1_prospective_model_bundle.py'
+      - 'Dockerfile.krx-historical-worker'
+      - 'requirements-krx-historical-worker.txt'
+      - 'INDEXALERT_FROZEN_BLOCK16_RUNTIME_BUNDLE_2026-10-08.md'
+      - '.github/workflows/indexalert-frozen-block16-runtime-bundle.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validate pinned non-authorizing model bundle
+        run: |
+          python -m pip install numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0
+          python -m unittest test_research_v1_prospective_model_bundle.py
+      - name: Verify KRX worker image packages pinned bundle
+        run: |
+          grep -Fx 'COPY frozen_block16_model_bundle_36643183157.json ./' Dockerfile.krx-historical-worker
+          docker build --file Dockerfile.krx-historical-worker --tag indexalert-krx-runtime-bundle:smoke .
+          docker run --rm --entrypoint python indexalert-krx-runtime-bundle:smoke -S -B -c "import json; p=json.load(open('/app/frozen_block16_model_bundle_36643183157.json',encoding='utf-8')); assert p['model_bundle_sha256']=='2557663c1055f096be10b5a04890c89a8dfa48a49a7d24faf92ba5276f476531'; assert p['independent_model_admission_verified'] is False; assert p['live_order_authorized'] is False"
