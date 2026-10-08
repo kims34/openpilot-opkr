@@ -13,8 +13,9 @@ RUN python -m pip install --upgrade pip \
 COPY research_v1_*.py ./
 COPY run_research_v1.py ./
 COPY test_research_v1_prospective_runtime.py ./
+COPY test_research_v1_prospective_http_runtime.py ./
 COPY frozen_block16_model_bundle_36643183157.json ./
 COPY frozen_supervised_session_calendar_36643183157.json ./
 COPY INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json ./
 
-CMD ["python","research_v1_prospective_runtime.py"]
+CMD ["python","research_v1_prospective_http_runtime.py"]
