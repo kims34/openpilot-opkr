@@ -78,12 +78,8 @@ def _failure_reason_code(exc: Exception) -> str:
 
 
 
-def _failure_source_session(exc: Exception) -> str | None:
-    """Expose only a canonical session date attached by the runtime itself."""
-    if not isinstance(exc, KRXProspectiveOpenAPISourceError):
-        return None
-    value = getattr(exc, "source_failure_session", None)
-    if type(value) is not str or re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", value) is None:
+def _validated_source_session(value: Any) -> str | None:
+    if type(value) is not str or re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
         return None
     try:
         day = pd.Timestamp(value)
@@ -92,10 +88,12 @@ def _failure_source_session(exc: Exception) -> str | None:
     return value if day.strftime("%Y-%m-%d") == value else None
 
 
-def _dated_source_error(value: Any) -> KRXProspectiveOpenAPISourceError:
-    exc = KRXProspectiveOpenAPISourceError("redacted")
-    exc.source_failure_session = value
-    return exc
+def _failure_source_session(exc: Exception) -> str | None:
+    """Only expose the canonical date attached by the trusted source fetcher."""
+    if not isinstance(exc, KRXProspectiveOpenAPISourceError):
+        return None
+    return _validated_source_session(getattr(exc, "source_failure_session", None))
+
 
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,7 +167,7 @@ def _read_status(root: Path) -> dict[str, Any]:
     if "source_failure_session" in value:
         day = value["source_failure_session"]
         if (value.get("error_class") != "KRXProspectiveOpenAPISourceError"
-                or _failure_source_session(_dated_source_error(day)) != day
+                or _validated_source_session(day) != day
                 or type(value.get("session")) is not str
                 or day > value["session"]):
             raise ProspectiveRuntimeError("public source failure session is invalid")
