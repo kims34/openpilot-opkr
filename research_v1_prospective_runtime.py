@@ -417,7 +417,10 @@ def run_once(
         available_at=master_fetch.retrieved_at,
     )
 
-    fetch_start = min(
+    # The verified PIT source already supplies all warmup sessions through
+    # 2026-09-23. Network reads are therefore restricted to the true gap after
+    # that source end, never re-downloading already verified history.
+    fetch_start = max(
         source_end + pd.Timedelta(days=1),
         target - pd.Timedelta(days=HISTORY_LOOKBACK_DAYS),
     )
