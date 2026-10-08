@@ -1,5 +1,24 @@
 # Tiny Live A/B/C override — 2026-10-08
 
+## Observed KRX nontrading OHLC blocker — 2026-10-08 21:34 KST
+
+Authoritative read-only Railway prospective runtime: service `indexalert-pit-rebuild`, deployment `40df3f6f-5136-485a-adc2-a509438de845`, exact deployment source commit `48548738323bfa7aa938eda7a96b5035813099be`, settled `SUCCESS` (image/health only). A real runtime attempt for target `2026-10-08` reached `FAIL_CLOSED` on earlier source session `2026-09-28` with `COMMON_OHLC_NONPOSITIVE`; no session manifest was committed.
+
+The first real aggregate diagnostic, computed after the approved KRX daily-trade response is joined to same-date security-master common-stock identity, was:
+- `common_stock_rows=803`
+- `nonpositive_ohlc_rows=27`
+- `zero_volume_value_rows=27` (both volume and traded value exactly 0)
+- `other_activity_rows=0`
+- `all_zero_ohlc_rows=0`
+
+These are **real API-derived counts**, not a synthetic test, but `27/27` zero activity is **not** independent proof that all 27 are officially halted. Some prices were nonpositive while not every OHLC value was zero; the exact missing field combination and matching official security status remain unverified. The complete row identities are not in the public logs or GitHub. Do not infer fills, returns, recovery, untradeability classifications, or status source coverage from the counts.
+
+Required next source evidence before allowing this gap to feed an Alpha input: privately identify the exact 27 rejected securities from the original official daily/master source and compare with legally accessible official same-session halt/tradability/status coverage with PIT availability. If not available, retain `FAIL_CLOSED` and continue only unrelated verified work. Do **not** drop rows, forward-fill price, treat zero volume as a halt attestation, replay future-hindsight data as PIT, use unapproved authenticated Data Marketplace scraping or relax Frozen/OOS/holdout/NetEV gates. No broker order/funds/account permission change.
+
+Separate Kiwoom status still requires official support on REAL WS LOGIN `8050`; passing REST token/account read is not WS type00 PASS. 10만원 Tiny Live remains **not ready**, all order/funds/permission authority false.
+
+
+
 ## Later 2026-10-08 KST REAL authentication evidence (supersedes DEMO-key as CURRENT blocker)
 
 Verified on the owner's registered-IP Windows machine, with the already available REAL credentials, a fresh user-operated **read-only** smoke:
