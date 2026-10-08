@@ -60,7 +60,6 @@ def main() -> None:
         report.update({
             "status": "SOURCE_UNREACHABLE_OR_AUTH_FAILED",
             "error_type": type(exc).__name__,
-            "error_message": str(exc)[:500],
         })
 
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
