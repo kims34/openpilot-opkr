@@ -31,6 +31,7 @@ from research_v1_krx_official_status import (
     normalise_basic_info,
 )
 from research_v1_krx_openapi_connectivity_evidence import validate_evidence
+from research_v1_krx_private_store import validate_private_root, write_raw_object
 from research_v1_krx_openapi_prospective_source import (
     KRXProspectiveOpenAPISourceError,
     _number,
@@ -232,6 +233,8 @@ def _fetch_official_session_source(
     *,
     auth_key: str,
     evidence: Mapping[str, Any],
+    private_root: Path | None = None,
+    git_worktree: Path | None = None,
 ) -> dict[str, Any] | None:
     """Fetch and normalize one non-empty session against its own KRX master."""
     daily = _fetch_daily(day, auth_key=auth_key)
@@ -239,17 +242,92 @@ def _fetch_official_session_source(
         return None
     master = _fetch_master(day, auth_key=auth_key)
     session_text = day.strftime("%Y-%m-%d")
-    source = build_current_session_openapi_source(
-        daily_raw=daily.raw_bytes,
-        master_raw=master.raw_bytes,
-        expected_session=session_text,
-        daily_retrieved_at=daily.retrieved_at,
-        master_retrieved_at=master.retrieved_at,
-        connectivity_evidence=evidence,
-    )
+    try:
+        source = build_current_session_openapi_source(
+            daily_raw=daily.raw_bytes,
+            master_raw=master.raw_bytes,
+            expected_session=session_text,
+            daily_retrieved_at=daily.retrieved_at,
+            master_retrieved_at=master.retrieved_at,
+            connectivity_evidence=evidence,
+        )
+    except KRXProspectiveOpenAPISourceError:
+        if private_root is not None:
+            _store_rejected_openapi_source(
+                day, daily=daily, master=master,
+                private_root=private_root, git_worktree=git_worktree,
+            )
+        raise
     if source.get("session") != session_text:
         raise ProspectiveRuntimeError("same-session KRX source normalization drift")
     return {"daily": daily, "master": master, "source": source}
+
+
+def _store_rejected_openapi_source(
+    day: pd.Timestamp, *, daily: Any, master: Any,
+    private_root: Path, git_worktree: Path | None,
+) -> None:
+    """Retain actual rejected response bytes privately, never a usable session.
+
+    A later retry is a new observation, not the original failed response. Its
+    real retrieval timestamps are part of the immutable receipt identity.
+    Partial persistence has no receipt and grants no source/Alpha authority.
+    """
+    if git_worktree is None:
+        raise ProspectiveRuntimeError("rejected-source storage requires git boundary")
+    base = validate_private_root(
+        private_root / "rejected-openapi", git_worktree=git_worktree,
+    )
+    seen = []
+    for value in (daily.retrieved_at, master.retrieved_at):
+        stamp = pd.Timestamp(value)
+        if pd.isna(stamp) or stamp.tzinfo is None:
+            raise ProspectiveRuntimeError("rejected-source retrieval clock invalid")
+        if stamp.tz_convert("Asia/Seoul").date() < day.date():
+            raise ProspectiveRuntimeError("rejected-source retrieval predates requested day")
+        seen.append(stamp.tz_convert("UTC").isoformat())
+    objects = [
+        write_raw_object(base, item.raw_bytes, git_worktree=git_worktree)
+        for item in (daily, master)
+    ]
+    body = {
+        "classification": "REJECTED_OPENAPI_SOURCE_DIAGNOSTIC_NOT_ADMISSION",
+        "requested_source_session": day.strftime("%Y-%m-%d"),
+        "daily_endpoint_suffix": "/stk_bydd_trd",
+        "master_endpoint_suffix": "/stk_isu_base_info",
+        "daily_raw_sha256": objects[0]["raw_object_sha256"],
+        "master_raw_sha256": objects[1]["raw_object_sha256"],
+        "daily_retrieved_at": seen[0], "master_retrieved_at": seen[1],
+        "observed_available_by": max(seen),
+        "availability_semantics": "OBSERVED_RETRIEVAL_ONLY_NOT_HISTORICAL_PUBLICATION",
+        "independent_source_admission_verified": False,
+        "decision_recorded": False,
+        "fresh_alpha_observation_admitted": False,
+        "live_order_authorized": False,
+    }
+    payload = _canonical(body) + b"\n"
+    digest = hashlib.sha256(payload).hexdigest()
+    target = base / f"rejected-{day.strftime('%Y-%m-%d')}-{digest}.json"
+    fd, name = tempfile.mkstemp(prefix=".rejected-", dir=base)
+    temp = Path(name)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temp, 0o600)
+        try:
+            os.link(temp, target)
+        except FileExistsError:
+            if target.is_symlink() or target.read_bytes() != payload:
+                raise ProspectiveRuntimeError("rejected-source receipt conflict")
+        directory = os.open(base, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temp.unlink(missing_ok=True)
 
 
 
@@ -258,6 +336,8 @@ def _fetch_official_source_with_failure_date(
     *,
     auth_key: str,
     evidence: Mapping[str, Any],
+    private_root: Path | None = None,
+    git_worktree: Path | None = None,
 ) -> dict[str, Any] | None:
     """Preserve source failure while annotating only the trusted requested date.
 
@@ -267,6 +347,7 @@ def _fetch_official_source_with_failure_date(
     try:
         return _fetch_official_session_source(
             day, auth_key=auth_key, evidence=evidence,
+            private_root=private_root, git_worktree=git_worktree,
         )
     except KRXProspectiveOpenAPISourceError as exc:
         exc.source_failure_session = day.strftime("%Y-%m-%d")
@@ -478,6 +559,7 @@ def run_once(
             day,
             auth_key=auth_key,
             evidence=evidence,
+            private_root=private_root, git_worktree=git_worktree,
         )
         if item is None:
             continue
