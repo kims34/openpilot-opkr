@@ -1,7 +1,6 @@
 {
   "classification": "FROZEN_SUPERVISED_SESSION_CALENDAR_REFERENCE",
   "source_action_id": 36643183157,
-  "source_verified_supervised_verification_sha256": "4262346736162da31f20bfe2ee4e2112c3fc74dcaadbe93c01985524f8bc02f3a59",
   "session_count": 2745,
   "first_session": "2015-07-10",
   "last_session": "2026-09-16",
