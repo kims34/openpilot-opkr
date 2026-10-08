@@ -188,6 +188,48 @@ class KRXOpenAPIProspectiveSourceTest(unittest.TestCase):
             self.assertEqual(counts["all_zero_ohlc_rows"], int(all_zero))
             self.assertNotIn("DO_NOT_LEAK", str(counts))
 
+
+    def test_reproduced_zero_activity_27_of_28_does_not_become_safe_universe(self):
+        # Synthetic reproduction of the shape of the real 2026-09-28
+        # anomaly, not of any KRX security row or private market payload.
+        # 27 zero-volume/value common stocks have zero intraday OHLC and a
+        # positive close; none has all four prices zero. Their identifiers
+        # and prices below are fabricated; frozen ranks must not backfill.
+        daily = [_daily_rows()[0]]
+        master = [_master_rows()[0]]
+        for i in range(27):
+            code = f"{800000 + i:06d}"
+            daily.append({
+                **_daily_rows()[0],
+                "ISU_CD": code,
+                "ISU_NM": "synthetic",
+                "TDD_OPNPRC": "0",
+                "TDD_HGPRC": "0",
+                "TDD_LWPRC": "0",
+                "TDD_CLSPRC": "1000",
+                "ACC_TRDVOL": "0",
+                "ACC_TRDVAL": "0",
+            })
+            master.append({
+                **_master_rows()[0],
+                "ISU_CD": f"KR7{code}000",
+                "ISU_SRT_CD": code,
+                "ISU_NM": "synthetic",
+            })
+        with self.assertRaisesRegex(
+            KRXProspectiveOpenAPISourceError, "nonpositive"
+        ) as caught:
+            build(daily=daily, master=master)
+        observed = caught.exception.safe_ohlc_counts
+        self.assertEqual(observed["common_stock_rows"], 28)
+        self.assertEqual(observed["nonpositive_ohlc_rows"], 27)
+        self.assertEqual(observed["zero_volume_value_rows"], 27)
+        self.assertEqual(observed["other_activity_rows"], 0)
+        self.assertEqual(observed["all_zero_ohlc_rows"], 0)
+        self.assertNotIn("synthetic", str(caught.exception))
+        # Source validation cannot silently treat no-trade rows as officially
+        # halted, drop 27 names, or record an admitted decision panel.
+
     def test_retrieval_time_is_observed_availability_not_backdated_publication(self):
         out = build()
         self.assertEqual(
