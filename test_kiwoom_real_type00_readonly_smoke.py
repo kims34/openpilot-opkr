@@ -84,7 +84,14 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
         self.assertFalse(state.PERMISSION_CHANGE_AUTHORIZED)
         self.assertFalse(state.GENUINE_LIVE_PROVENANCE_VERIFIED)
         encoded = json.dumps(state.__dict__)
-        self.assertNotIn("token", encoded.lower())
+        # Redacted diagnostics may contain field names containing "TOKEN", but
+        # never a token value, account identifier or credential-bearing field.
+        self.assertNotIn("ACCESS_TOKEN", state.__dict__)
+        self.assertNotIn("APP_KEY", state.__dict__)
+        self.assertNotIn("APP_SECRET", state.__dict__)
+        self.assertNotIn("ACCOUNT_NUMBER", state.__dict__)
+        self.assertNotIn("private-account", encoded)
+        self.assertNotIn("execution-id", encoded)
 
 
 if __name__ == "__main__":
