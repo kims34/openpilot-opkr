@@ -167,6 +167,7 @@ def _read_status(root: Path) -> dict[str, Any]:
     if "source_failure_session" in value:
         day = value["source_failure_session"]
         if (value.get("error_class") != "KRXProspectiveOpenAPISourceError"
+                or type(day) is not str
                 or _validated_source_session(day) != day
                 or type(value.get("session")) is not str
                 or day > value["session"]):
