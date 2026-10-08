@@ -22,3 +22,22 @@ A market holiday produces `NO_MARKET_SESSION` and no decision. A same-session co
 The runtime does not import or call Kiwoom/broker order code. It cannot authorize or place an order. Every committed session keeps independent source/model/chronology admission, Fresh Alpha admission, Shadow S1, Fresh Confirmation S2, promotion and live-order authority false.
 
 The next boundary after this PR is autonomous external chronology anchoring of the hash-only payload; only after that can a fresh observation be considered for independent evidence admission.
+
+
+## Continuous read-only wrapper
+
+The production image now starts `research_v1_prospective_http_runtime.py`.
+It performs startup-only validation of the read-only authority flags, pinned
+model, pinned session calendar and immutable PIT source, then remains online
+without contacting KRX until the 18:30 KST finality guard has passed.
+
+The wrapper exposes only `GET /health`, `GET /status`, and
+`GET /anchor/latest`. Every POST is rejected with 405. The anchor endpoint
+contains only the immutable per-session hash payload already written by
+`run_once()`; it contains no securities, scores, account data or credentials.
+
+After finality the wrapper retries the existing `run_once()` producer at most
+once per 15 minutes. The decision/model/source implementation remains the
+same-session-universe-safe implementation from PR #343. No endpoint can grant
+source/model/chronology admission, Fresh Alpha, Shadow, promotion, funds,
+permissions or live-order authority.
