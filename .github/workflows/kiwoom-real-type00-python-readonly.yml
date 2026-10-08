@@ -7,6 +7,9 @@ on:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
       - 'Dockerfile.kiwoom-real-readonly'
+      - 'kiwoom_real_readonly/smoke.py'
+      - 'kiwoom_real_readonly/Dockerfile'
+      - 'kiwoom_real_readonly/README.md'
       - 'railway-kiwoom-real-readonly.json'
       - '.github/workflows/kiwoom-real-type00-python-readonly.yml'
   push:
@@ -15,6 +18,9 @@ on:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
       - 'Dockerfile.kiwoom-real-readonly'
+      - 'kiwoom_real_readonly/smoke.py'
+      - 'kiwoom_real_readonly/Dockerfile'
+      - 'kiwoom_real_readonly/README.md'
       - 'railway-kiwoom-real-readonly.json'
       - '.github/workflows/kiwoom-real-type00-python-readonly.yml'
 
@@ -43,3 +49,9 @@ jobs:
           grep -F '"dockerfilePath": "Dockerfile.kiwoom-real-readonly"' railway-kiwoom-real-readonly.json
           grep -F '"startCommand": "python -B kiwoom_real_type00_readonly_smoke.py"' railway-kiwoom-real-readonly.json
           grep -F '"restartPolicyType": "NEVER"' railway-kiwoom-real-readonly.json
+
+      - name: Assert isolated subdirectory mirror
+        run: |
+          cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
+          grep -Fx 'COPY smoke.py ./' kiwoom_real_readonly/Dockerfile
+          grep -F 'CMD ["python","-B","smoke.py"]' kiwoom_real_readonly/Dockerfile
