@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import json
 from types import SimpleNamespace
 import tempfile
 import unittest
@@ -21,6 +23,7 @@ from research_v1_prospective_runtime import (
     _fetch_official_session_source,
     _fetch_official_source_with_failure_date,
     _load_verified_history,
+    _store_rejected_openapi_source,
     _weekday_dates,
     load_calendar_prefix,
     load_pinned_model_bundle,
@@ -147,6 +150,92 @@ class ProspectiveRuntimeTest(unittest.TestCase):
         )
         self.assertEqual(builder.call_args.kwargs["daily_raw"], b"daily")
         self.assertEqual(builder.call_args.kwargs["master_raw"], b"master")
+
+    def test_rejected_source_retains_actual_bytes_and_failure_without_extra_fetch(self):
+        daily = SimpleNamespace(
+            response_frame=pd.DataFrame([{"x": 1}]), raw_bytes=b"private-daily-issue",
+            retrieved_at="2026-10-08T09:00:00+00:00",
+        )
+        master = SimpleNamespace(
+            raw_bytes=b"private-master-issue", retrieved_at="2026-10-08T09:01:00+00:00",
+        )
+        failure = KRXProspectiveOpenAPISourceError("rejected source; private text")
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "private"
+            git = Path(folder) / "git"
+            with patch("research_v1_prospective_runtime._fetch_daily", return_value=daily) as df, patch(
+                "research_v1_prospective_runtime._fetch_master", return_value=master
+            ) as mf, patch(
+                "research_v1_prospective_runtime.build_current_session_openapi_source",
+                side_effect=failure,
+            ):
+                with self.assertRaises(KRXProspectiveOpenAPISourceError) as caught:
+                    _fetch_official_source_with_failure_date(
+                        pd.Timestamp("2026-09-28"), auth_key="secret-never-recorded",
+                        evidence={}, private_root=root, git_worktree=git,
+                    )
+            self.assertIs(caught.exception, failure)
+            self.assertEqual(failure.source_failure_session, "2026-09-28")
+            df.assert_called_once()
+            mf.assert_called_once()
+            receipts = list(root.rglob("rejected-*.json"))
+            self.assertEqual(len(receipts), 1)
+            receipt = json.loads(receipts[0].read_text())
+            self.assertEqual(receipt["requested_source_session"], "2026-09-28")
+            self.assertEqual(receipt["daily_retrieved_at"], daily.retrieved_at)
+            self.assertFalse(receipt["decision_recorded"])
+            self.assertFalse(receipt["independent_source_admission_verified"])
+            self.assertFalse(receipt["fresh_alpha_observation_admitted"])
+            self.assertFalse(receipt["live_order_authorized"])
+            for item, field in ((daily, "daily_raw_sha256"), (master, "master_raw_sha256")):
+                digest = hashlib.sha256(item.raw_bytes).hexdigest()
+                self.assertEqual(receipt[field], digest)
+                obj = root / "rejected-openapi" / "objects" / "sha256" / digest[:2] / (digest + ".bin")
+                self.assertEqual(obj.read_bytes(), item.raw_bytes)
+                self.assertEqual(obj.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(receipts[0].stat().st_mode & 0o777, 0o600)
+            self.assertNotIn("secret-never-recorded", receipts[0].read_text())
+            self.assertNotIn("private text", receipts[0].read_text())
+            self.assertFalse(list(root.glob("session-*.json")))
+            self.assertFalse(list(root.glob("anchor-payload-*.json")))
+            _store_rejected_openapi_source(
+                pd.Timestamp("2026-09-28"), daily=daily, master=master,
+                private_root=root, git_worktree=git,
+            )
+            self.assertEqual(len(list(root.rglob("rejected-*.json"))), 1)
+            daily.retrieved_at = "2026-10-08T09:15:00+00:00"
+            _store_rejected_openapi_source(
+                pd.Timestamp("2026-09-28"), daily=daily, master=master,
+                private_root=root, git_worktree=git,
+            )
+            self.assertEqual(len(list(root.rglob("rejected-*.json"))), 2)
+            self.assertEqual(json.loads(receipts[0].read_text())["daily_retrieved_at"], "2026-10-08T09:00:00+00:00")
+
+    def test_rejected_source_storage_cannot_write_inside_git_or_publish_partial_receipt(self):
+        from research_v1_krx_private_store import KRXPrivateStoreError
+        daily = SimpleNamespace(raw_bytes=b"daily", retrieved_at="2026-10-08T09:00:00+00:00")
+        master = SimpleNamespace(raw_bytes=b"master", retrieved_at="2026-10-08T09:01:00+00:00")
+        with tempfile.TemporaryDirectory() as folder:
+            git = Path(folder) / "git"
+            with self.assertRaises(KRXPrivateStoreError):
+                _store_rejected_openapi_source(
+                    pd.Timestamp("2026-09-28"), daily=daily, master=master,
+                    private_root=git / "private", git_worktree=git,
+                )
+            root = Path(folder) / "private"
+            with patch("research_v1_prospective_runtime.write_raw_object", side_effect=OSError("disk full")):
+                with self.assertRaises(OSError):
+                    _store_rejected_openapi_source(
+                        pd.Timestamp("2026-09-28"), daily=daily, master=master,
+                        private_root=root, git_worktree=git,
+                    )
+            self.assertFalse(list(root.rglob("rejected-*.json")))
+            daily.retrieved_at = "2026-10-08T09:00:00"
+            with self.assertRaises(ProspectiveRuntimeError):
+                _store_rejected_openapi_source(
+                    pd.Timestamp("2026-09-28"), daily=daily, master=master,
+                    private_root=root, git_worktree=git,
+                )
 
     def test_verified_warmup_preserves_frozen_contemporaneous_universe(self):
         with tempfile.TemporaryDirectory() as folder:
