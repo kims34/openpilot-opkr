@@ -57,6 +57,8 @@ class ProspectiveRuntimeRunnerTest(unittest.TestCase):
             receipt = {
                 "session": session,
                 "normalized_panel_sha256": _frame_sha256(panel),
+                "daily_raw_sha256": "1" * 64,
+                "master_raw_sha256": "2" * 64,
             }
             _write_status(cache.parent, status="TEST_ONLY")
             receipt_path = cache / f"source-{session}.json"
