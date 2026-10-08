@@ -38,5 +38,13 @@ jobs:
           python -m unittest test_research_v1_prospective_runtime_runner.py
       - name: Build isolated PIT prospective image
         run: |
-          docker build -f Dockerfile.prospective-pit -t indexalert-prospective-runtime:test .
+          for attempt in 1 2 3; do
+            if docker build -f Dockerfile.prospective-pit -t indexalert-prospective-runtime:test .; then
+              break
+            fi
+            if [ "$attempt" = "3" ]; then
+              exit 1
+            fi
+            sleep 10
+          done
           docker run --rm --entrypoint python indexalert-prospective-runtime:test -B -m unittest test_research_v1_prospective_runtime_runner.py
