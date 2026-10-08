@@ -1,3 +1,9 @@
+# Private rejected-source capture implementation
+
+The read-only runtime now retains the already-retrieved daily/master bytes when same-session source normalization rejects them. It writes content-addressed raw objects plus an immutable diagnostic receipt outside Git/public directories. The receipt binds the requested source day, exact raw hashes and actual timezone-aware retrieval timestamps; it explicitly does not attest original historical publication, source admission, decisions, Fresh Alpha or orders. A later retry produces a separately dated observation and never reconstructs an earlier failed response. Exact retries are idempotent. Failed persistence creates no usable session/anchor; the source exception still blocks the session. No added KRX request, Data Marketplace collector, strategy/universe/OHLC modification or public raw identifiers.
+
+Offline verification: new raw-byte/receipt/failure/no-extra-fetch/idempotency/retry-timestamp/private-boundary/partial-write tests and existing HTTP privacy tests pass locally. The container lacks pyarrow locally, so the existing parquet warmup test requires repository CI; no local full-suite claim. Actual production use remains separately unverified until the updated read-only image is deployed and a real rejected response is captured. This does not make the 27 issues officially halted or unblock prospective/Alpha/Tiny Live admission.
+
 
 ## Continuation correction — current KRX route authority
 
