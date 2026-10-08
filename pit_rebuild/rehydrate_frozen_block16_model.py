@@ -33,6 +33,7 @@ from sklearn.preprocessing import StandardScaler
 LONG_HISTORY_DIR = "marcap_kospi_pit_long_verified_36643183157"
 SUPERVISED_DIR = "supervised_frozen_verified_36643183157"
 OUTPUT_DIR = "frozen_block16_model_verified_36643183157"
+ATTEMPT_PARENT = "frozen_block16_model_rehydration_attempts"
 LONG_HISTORY_VERIFICATION_SHA256 = "6271e44d298621bbf4ba467c29aacc8b0402f041b5e478dac516a3c31cb545fb"
 SUPERVISED_VERIFICATION_SHA256 = "ba60a9e489c7a4d9c3d8b4975b21925d1cc72b53f61bf25aa5524f8bc02f3a59"
 REFERENCE_FILE = "frozen_block16_reference_36643183157.json"
@@ -645,8 +646,10 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
         raise FrozenBlock16ModelError(
             "block16 model output already exists; no overwrite is permitted"
         )
-    out_dir.mkdir(parents=True, exist_ok=False)
-    bundle_path = out_dir / "model_bundle.json"
+    attempts = root / ATTEMPT_PARENT
+    attempts.mkdir(parents=True, exist_ok=True)
+    attempt = Path(tempfile.mkdtemp(prefix="attempt-", dir=attempts))
+    bundle_path = attempt / "model_bundle.json"
     _write_private_json(bundle_path, bundle)
 
     body = {
@@ -685,7 +688,13 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
         **body,
         "verification_sha256": hashlib.sha256(_canonical(body)).hexdigest(),
     }
-    _write_private_json(out_dir / "verification.json", verification)
+    _write_private_json(attempt / "verification.json", verification)
+    os.rename(attempt, out_dir)
+    parent_fd = os.open(root, os.O_RDONLY)
+    try:
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
     directory_fd = os.open(out_dir, os.O_RDONLY)
     try:
         os.fsync(directory_fd)
