@@ -31,7 +31,11 @@ from research_v1_krx_official_status import (
     normalise_basic_info,
 )
 from research_v1_krx_openapi_connectivity_evidence import validate_evidence
-from research_v1_krx_openapi_prospective_source import _number, _short_code
+from research_v1_krx_openapi_prospective_source import (
+    _number,
+    _short_code,
+    build_current_session_openapi_source,
+)
 from research_v1_prospective_frozen_producer import _session_calendar
 from research_v1_prospective_model_bundle import validate_model_bundle
 from research_v1_prospective_session_commit import (
@@ -222,6 +226,31 @@ def _fetch_master(day: pd.Timestamp, *, auth_key: str):
     )
 
 
+def _fetch_official_session_source(
+    day: pd.Timestamp,
+    *,
+    auth_key: str,
+    evidence: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Fetch and normalize one non-empty session against its own KRX master."""
+    daily = _fetch_daily(day, auth_key=auth_key)
+    if daily.response_frame.empty:
+        return None
+    master = _fetch_master(day, auth_key=auth_key)
+    session_text = day.strftime("%Y-%m-%d")
+    source = build_current_session_openapi_source(
+        daily_raw=daily.raw_bytes,
+        master_raw=master.raw_bytes,
+        expected_session=session_text,
+        daily_retrieved_at=daily.retrieved_at,
+        master_retrieved_at=master.retrieved_at,
+        connectivity_evidence=evidence,
+    )
+    if source.get("session") != session_text:
+        raise ProspectiveRuntimeError("same-session KRX source normalization drift")
+    return {"daily": daily, "master": master, "source": source}
+
+
 def _current_common_master(master_frame: pd.DataFrame, *, target: pd.Timestamp, available_at: str) -> pd.DataFrame:
     identity = normalise_basic_info(
         master_frame,
@@ -303,7 +332,6 @@ def _load_verified_history(
     long_dir: Path,
     *,
     target: pd.Timestamp,
-    current_common: pd.DataFrame,
     availability_at: str,
 ) -> tuple[pd.DataFrame, list[str]]:
     parquet = long_dir / f"kospi-pit-{target.year}.parquet"
@@ -324,8 +352,9 @@ def _load_verified_history(
     frame = frame[
         frame["decision_date"].between(cutoff, min(target - pd.Timedelta(days=1), source_end))
     ].copy()
-    common_symbols = set(current_common["symbol"].astype(str))
-    frame = frame[frame["symbol"].astype(str).isin(common_symbols)].copy()
+    # Preserve the exact contemporaneous frozen universe. Filtering prior
+    # sessions through today's security master would create survivorship bias
+    # in rolling features and cross-sectional ranks.
     if frame.empty:
         raise ProspectiveRuntimeError("verified warmup history is empty")
     frame["symbol"] = frame["symbol"].astype(str)
@@ -410,28 +439,29 @@ def run_once(
     evidence = dict(_read_json(code_root / CONNECTIVITY_EVIDENCE_FILE, "KRX connectivity evidence"))
     validate_evidence(evidence)
 
-    master_fetch = _fetch_master(target, auth_key=auth_key)
-    current_common = _current_common_master(
-        master_fetch.response_frame,
-        target=target,
-        available_at=master_fetch.retrieved_at,
-    )
-
     # The verified PIT source already supplies all warmup sessions through
     # 2026-09-23. Network reads are therefore restricted to the true gap after
     # that source end, never re-downloading already verified history.
+    #
+    # Every non-empty gap session is normalized against that SAME session's
+    # official KRX security master. Reusing today's master for older sessions
+    # would leak today's listing universe backward and bias ranks/features.
     fetch_start = max(
         source_end + pd.Timedelta(days=1),
         target - pd.Timedelta(days=HISTORY_LOOKBACK_DAYS),
     )
-    daily_results: dict[str, Any] = {}
+    session_sources: dict[str, dict[str, Any]] = {}
     for day in _weekday_dates(fetch_start, target):
-        fetched = _fetch_daily(day, auth_key=auth_key)
-        if fetched.response_frame.empty:
+        item = _fetch_official_session_source(
+            day,
+            auth_key=auth_key,
+            evidence=evidence,
+        )
+        if item is None:
             continue
-        daily_results[day.strftime("%Y-%m-%d")] = fetched
+        session_sources[day.strftime("%Y-%m-%d")] = item
 
-    current = daily_results.get(target_text)
+    current = session_sources.get(target_text)
     if current is None:
         return {
             "status": "NO_MARKET_SESSION",
@@ -441,29 +471,22 @@ def run_once(
         }
 
     observed_at = max(
-        pd.Timestamp(master_fetch.retrieved_at),
-        *(pd.Timestamp(v.retrieved_at) for v in daily_results.values()),
+        pd.Timestamp(item["source"]["observed_available_by"])
+        for item in session_sources.values()
     ).tz_convert("UTC")
     verified_history, verified_dates = _load_verified_history(
         long_dir,
         target=target,
-        current_common=current_common,
         availability_at=observed_at.isoformat(),
     )
 
     extension_frames = []
     extension_dates = []
-    for session_text, fetched in sorted(daily_results.items()):
+    for session_text, item in sorted(session_sources.items()):
         day = pd.Timestamp(session_text)
         if day > source_end and day < target:
-            extension_frames.append(
-                _normalise_extension_day(
-                    fetched.response_frame,
-                    session=day,
-                    retrieved_at=fetched.retrieved_at,
-                    current_common=current_common,
-                )
-            )
+            panel = item["source"]["panel"]
+            extension_frames.append(panel.loc[:, RAW_COLUMNS].copy())
             extension_dates.append(session_text)
     history = verified_history
     if extension_frames:
@@ -483,7 +506,7 @@ def run_once(
         if d > EXPECTED_CALENDAR_END and d <= EXPECTED_LONG_SOURCE_END
     ]
     online_extension = sorted(
-        d for d in daily_results
+        d for d in session_sources
         if d > EXPECTED_LONG_SOURCE_END and d <= target_text
     )
     session_calendar = list(dict.fromkeys(prefix + verified_extension + online_extension))
@@ -493,10 +516,10 @@ def run_once(
 
     decision_at = pd.Timestamp.now(tz="UTC").isoformat()
     result = commit_structural_prospective_session(
-        daily_raw=current.raw_bytes,
-        master_raw=master_fetch.raw_bytes,
-        daily_retrieved_at=current.retrieved_at,
-        master_retrieved_at=master_fetch.retrieved_at,
+        daily_raw=current["daily"].raw_bytes,
+        master_raw=current["master"].raw_bytes,
+        daily_retrieved_at=current["daily"].retrieved_at,
+        master_retrieved_at=current["master"].retrieved_at,
         connectivity_evidence=evidence,
         history_raw=history,
         supervised_frame=None,
