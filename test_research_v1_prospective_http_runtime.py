@@ -140,7 +140,7 @@ class ProspectiveHTTPRuntimeTest(unittest.TestCase):
             path = root / "runtime-status.json"
             path.write_bytes(_canonical(status) + b"\n")
             self.assertEqual(_read_status(root)["source_failure_session"], "2026-09-25")
-            for bad in ("2026-10-09", "2026-02-30", "2026-09-25 account=DO_NOT_LEAK"):
+            for bad in ("2026-10-09", "2026-02-30", "2026-09-25 account=DO_NOT_LEAK", None, 0):
                 status["source_failure_session"] = bad
                 path.write_bytes(_canonical(status) + b"\n")
                 with self.assertRaisesRegex(Exception, "source failure session is invalid"):
