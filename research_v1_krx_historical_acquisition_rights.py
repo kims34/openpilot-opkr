@@ -28,15 +28,16 @@ def validate_historical_rights(data: Mapping[str, Any]) -> dict[str, Any]:
         permission["full_historical_download_rights_authorized"],
         permission["bulk_historical_acquisition_rights_authorized"],
     )
-    if not all(required):
-        raise KRXHistoricalRightsError("KRX historical acquisition rights are incomplete")
+    rights_authorized = all(required)
     if permission["bulk_historical_network_execution_authorized_by_user"] is not False:
         raise KRXHistoricalRightsError("permission evidence must not self-authorize project execution")
     return {
         "valid": True,
-        "rights_authorized": True,
-        "high_frequency_collection_authorized": True,
-        "full_historical_download_rights_authorized": True,
+        "rights_authorized": rights_authorized,
+        "high_frequency_collection_authorized": permission["high_frequency_collection_authorized"],
+        "full_historical_download_rights_authorized": permission["full_historical_download_rights_authorized"],
+        "permission_state": permission["permission_state"],
+        "evidence_disposition": permission["evidence_disposition"],
         "redistribution_authorized": False,
         "external_sale_authorized": False,
         "project_network_execution_authorized": False,
