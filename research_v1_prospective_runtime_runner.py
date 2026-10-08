@@ -35,8 +35,13 @@ from research_v1_krx_openapi_prospective_source import (
     _frame_sha256,
     build_current_session_openapi_source,
     store_current_session_openapi_source,
+    validate_source_receipt,
 )
-from research_v1_krx_private_store import validate_private_root
+from research_v1_krx_private_store import (
+    validate_private_root,
+    verify_raw_object,
+    write_raw_object,
+)
 from research_v1_prospective_inputs import RAW_COLUMNS
 from research_v1_prospective_model_bundle import validate_model_bundle
 from research_v1_prospective_session_commit import commit_structural_prospective_session
@@ -272,6 +277,14 @@ def _load_cached_panel(cache_root: Path, session: str) -> pd.DataFrame | None:
     receipt = _load_json(receipt_path)
     if receipt.get("session") != session:
         raise ProspectiveRuntimeError("warm-up receipt session mismatch")
+    try:
+        validate_source_receipt(receipt)
+        verify_raw_object(cache_root, receipt["daily_raw_sha256"])
+        verify_raw_object(cache_root, receipt["master_raw_sha256"])
+    except Exception as exc:
+        raise ProspectiveRuntimeError(
+            "warm-up source receipt/raw-object integrity failed"
+        ) from exc
     if _frame_sha256(panel) != receipt.get("normalized_panel_sha256"):
         raise ProspectiveRuntimeError("warm-up normalized panel fingerprint mismatch")
     return panel
@@ -376,6 +389,24 @@ def _warmup_after_frozen(
             continue
         marker = _non_session_path(warmup_root, session)
         if marker.is_file() and not marker.is_symlink():
+            value = _load_json(marker)
+            if (
+                value.get("classification")
+                != "OBSERVED_EMPTY_KRX_OPENAPI_DAILY_BLOCK_NOT_DECISION"
+                or value.get("session") != session
+                or value.get("decision_recorded") is not False
+                or value.get("fresh_alpha_observation_admitted") is not False
+                or value.get("live_order_authorized") is not False
+            ):
+                raise ProspectiveRuntimeError("invalid non-session warm-up marker")
+            try:
+                verify_raw_object(
+                    warmup_root, value.get("daily_raw_sha256", "")
+                )
+            except Exception as exc:
+                raise ProspectiveRuntimeError(
+                    "non-session warm-up raw-object integrity failed"
+                ) from exc
             continue
         source, daily_raw, master_raw, retrieved_at = _fetch_normalized_session(
             session,
@@ -386,13 +417,16 @@ def _warmup_after_frozen(
             fetcher=fetcher,
         )
         if source is None:
+            raw_object = write_raw_object(
+                warmup_root, daily_raw, git_worktree=git_worktree
+            )
             _atomic_json(
                 marker,
                 {
                     "classification": "OBSERVED_EMPTY_KRX_OPENAPI_DAILY_BLOCK_NOT_DECISION",
                     "session": session,
                     "observed_at": retrieved_at,
-                    "daily_raw_sha256": __import__("hashlib").sha256(daily_raw).hexdigest(),
+                    "daily_raw_sha256": raw_object["raw_object_sha256"],
                     "decision_recorded": False,
                     "fresh_alpha_observation_admitted": False,
                     "live_order_authorized": False,
