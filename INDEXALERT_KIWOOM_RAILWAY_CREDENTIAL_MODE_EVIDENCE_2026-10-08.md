@@ -17,7 +17,7 @@ The earlier Railway pair of `return_code=2 / detail_code=8030` DEMO-mode results
 Remaining AUTH blocker: independently establish REAL WebSocket LOGIN/type00 registration before progressing. Structural GitHub CI/deployment checks do not make accepted LIVE broker/strategy evidence. `ORDERING=DISABLED`; `REAL_ORDERS_AUTHORIZED=false`; `FUNDS_MOVEMENT_AUTHORIZED=false`; `PERMISSION_CHANGE_AUTHORIZED=false`. The user's registered-IP smoke and all broker credentials are private; no keys/tokens/accounts/public IP values go to GitHub.
 
 
-Status: **BLOCKED_USER_CREDENTIAL_REPLACEMENT — REAL credentials are not present in the Railway REAL read-only services.**
+Historical status: **SUPERSEDED_DEMO_CREDENTIAL_PROBE_ONLY — not an active key-replacement request.** Current REAL credential and `8050` evidence is recorded above.
 
 Tiny Live priority: A — broker REAL account/authentication/order-transport prerequisite.
 
@@ -45,14 +45,9 @@ Observed in both services:
   - expiry_present = false
   - token_type_present = false
 
-Interpretation: the credentials currently stored in both Railway services are DEMO-mode credentials, not REAL-mode credentials. The previously observed REAL WebSocket 8050 path cannot be retested from Railway until actual REAL App Key/Secret values are placed into the REAL read-only service.
+Historical interpretation at that earlier probe time: those then-stored credentials behaved as DEMO-mode credentials. This finding does **not** describe the subsequently updated REAL read-only smoke or registered-IP Windows probe. Current owner-operated REAL OAuth/account succeeded but WebSocket LOGIN returned `805004/8050`; the subsequent Railway REAL token attempt independently returned `8050` at TOKEN stage.
 
-Required user action:
-- In Railway, replace only `KIWOOM_APP_KEY` and `KIWOOM_APP_SECRET` for the REAL read-only service with the broker-issued REAL OpenAPI credentials.
-- Keep `KIWOOM_ENV=REAL`, `KIWOOM_BASE_URL=https://api.kiwoom.com`, and `KIWOOM_ORDERING_ENABLED=false`.
-- Do not paste credentials into GitHub or chat.
-
-After that change, rerun the existing one-shot REAL read-only smoke. The smoke is limited to token issuance, read-only account lookup, WebSocket LOGIN and type00 REG.
+**Superseded historical action only (do not repeat):** earlier instructions requested replacing DEMO keys in the isolated REAL read-only service. REAL credentials were subsequently updated; the registered-IP Windows REAL token/account smoke succeeded. The pending owner action is to provide Kiwoom's official response to `8050`, not to reissue keys or modify IPs. Keep `KIWOOM_ENV=REAL`, `KIWOOM_BASE_URL=https://api.kiwoom.com`, and `KIWOOM_ORDERING_ENABLED=false`. Never paste credentials into GitHub or chat; further REAL smoke is read-only and should follow the supported fix.
 
 Authority remains unchanged:
 - ORDERING=DISABLED
