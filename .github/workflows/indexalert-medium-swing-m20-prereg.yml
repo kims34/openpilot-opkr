@@ -1,0 +1,33 @@
+name: IndexAlert M20 Medium-Swing Prereg Integrity
+on:
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'INDEXALERT_MEDIUM_SWING_M20_PREREG.md'
+      - 'INDEXALERT_MEDIUM_SWING_M20_PREREG.json'
+      - 'research_v1_medium_swing_prereg.py'
+      - 'test_research_v1_medium_swing_prereg.py'
+      - '.github/workflows/indexalert-medium-swing-m20-prereg.yml'
+  pull_request:
+    paths:
+      - 'INDEXALERT_MEDIUM_SWING_M20_PREREG.md'
+      - 'INDEXALERT_MEDIUM_SWING_M20_PREREG.json'
+      - 'research_v1_medium_swing_prereg.py'
+      - 'test_research_v1_medium_swing_prereg.py'
+      - '.github/workflows/indexalert-medium-swing-m20-prereg.yml'
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate data-gated M20 preregistration
+        run: |
+          python -m py_compile research_v1_medium_swing_prereg.py
+          python -m unittest -v test_research_v1_medium_swing_prereg.py
+          python research_v1_medium_swing_prereg.py
