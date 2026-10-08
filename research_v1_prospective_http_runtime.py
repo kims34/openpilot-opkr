@@ -19,6 +19,7 @@ from typing import Any, Mapping
 
 import pandas as pd
 
+from research_v1_krx_openapi_prospective_source import KRXProspectiveOpenAPISourceError
 from research_v1_prospective_runtime import (
     FINALITY_TIME_KST,
     ProspectiveRuntimeError,
@@ -39,6 +40,41 @@ POLL_SECONDS = 30
 STATUS_FILE = "runtime-status.json"
 ANCHOR_RE = re.compile(r"^anchor-payload-(\d{4}-\d{2}-\d{2})\.json$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+
+# Public diagnostics contain only fixed, non-sensitive enum values. Never emit
+# KRX raw responses, issue identifiers, exception text, request URLs or secrets.
+_SOURCE_REASON_PREFIXES = (
+    ("daily-trade response missing fields:", "DAILY_FIELDS_MISSING"),
+    ("security-master response missing fields:", "MASTER_FIELDS_MISSING"),
+    ("daily-trade symbols missing from same-session security master", "MASTER_COVERAGE_GAP"),
+    ("security-master join is incomplete", "MASTER_JOIN_INCOMPLETE"),
+    ("common-stock current-session OHLC contains nonpositive value;", "COMMON_OHLC_NONPOSITIVE"),
+    ("daily-trade rows do not all match the exact requested session", "SESSION_MISMATCH"),
+    ("no KOSPI common-stock rows", "NO_COMMON_STOCK"),
+    ("invalid official security-master identity", "MASTER_IDENTITY_INVALID"),
+    ("invalid KRX OpenAPI raw response", "SOURCE_RAW_INVALID"),
+    ("current-session OpenAPI response is empty", "SOURCE_EMPTY"),
+    ("duplicate daily-trade short issue code", "DAILY_DUPLICATE_SYMBOL"),
+    ("inconsistent current-session OHLC", "COMMON_OHLC_INCONSISTENT"),
+    ("negative volume/value", "NEGATIVE_VOLUME_OR_VALUE"),
+    ("invalid KRX fluctuation return", "INVALID_CHANGE_RETURN"),
+)
+_ALLOWED_REASON_CODES = frozenset(
+    code for _prefix, code in _SOURCE_REASON_PREFIXES
+) | frozenset({"KRX_SOURCE_OTHER", "OTHER_FAILURE"})
+
+
+def _failure_reason_code(exc: Exception) -> str:
+    if not isinstance(exc, KRXProspectiveOpenAPISourceError):
+        return "OTHER_FAILURE"
+    # Matching uses code-authored prefixes only. Even if an exception appends
+    # security-sensitive text, the raw string cannot enter public status.
+    message = str(exc)
+    for prefix, code in _SOURCE_REASON_PREFIXES:
+        if message.startswith(prefix):
+            return code
+    return "KRX_SOURCE_OTHER"
+
 
 
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -106,6 +142,10 @@ def _read_status(root: Path) -> dict[str, Any]:
     ):
         if value.get(field) is not False:
             raise ProspectiveRuntimeError(f"public status {field} must remain false")
+    if "error_reason_code" in value:
+        reason = value["error_reason_code"]
+        if type(reason) is not str or reason not in _ALLOWED_REASON_CODES:
+            raise ProspectiveRuntimeError("public status error reason is invalid")
     return value
 
 
@@ -230,6 +270,7 @@ class RuntimeState:
                     }
                 )
                 safe["error_class"] = type(exc).__name__
+                safe["error_reason_code"] = _failure_reason_code(exc)
                 try:
                     _atomic_json(self.private_root / STATUS_FILE, safe)
                 except Exception:

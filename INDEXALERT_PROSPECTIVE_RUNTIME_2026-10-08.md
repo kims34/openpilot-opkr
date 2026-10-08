@@ -41,3 +41,9 @@ once per 15 minutes. The decision/model/source implementation remains the
 same-session-universe-safe implementation from PR #343. No endpoint can grant
 source/model/chronology admission, Fresh Alpha, Shadow, promotion, funds,
 permissions or live-order authority.
+
+## 2026-10-08 production source-fail telemetry (diagnostic-only)
+
+A live check of the isolated Railway `indexalert-pit-rebuild` read-only prospective HTTP service found repeated `FAIL_CLOSED` attempts on 2026-10-08 after the 18:30 KST finality guard. The exception class was `KRXProspectiveOpenAPISourceError`. No session manifest or chronology anchor was committed; source/model/chronology admission and all trading permissions stayed false. The old public status exposed only the exception class, which was insufficient to distinguish missing KRX fields from incomplete same-session security-master joins or invalid halted-stock OHLC.
+
+The diagnostic change adds `error_reason_code` as a static, allowlisted enum for failure reporting. It never exposes raw KRX bodies, issue names/codes, provider text, secrets, exception strings, or credential-bearing URLs. Unknown source failures map to `KRX_SOURCE_OTHER`; unrelated failures to `OTHER_FAILURE`. The status reader rejects any unrecognized reason code. This does not alter the frozen source/selection policy, skip rejected rows, re-fetch historical data, promote sessions, perform brokerage operations, or relax fail-closed behavior. An actual deployment on the dedicated prospective runtime branch and a new observed failure are required to identify the live cause; synthetic tests alone do not identify it.
