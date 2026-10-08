@@ -12,6 +12,7 @@ from research_v1_prospective_frozen_producer import (
     FIRST_TEST_START_ORDINAL,
     FROZEN_CALENDAR_ORIGIN_SESSION,
     FROZEN_TEST_BLOCK_STARTS,
+    fit_frozen_model_for_target,
 )
 from research_v1_prospective_session_commit import (
     ProspectiveSessionCommitError,
@@ -155,7 +156,18 @@ class ProspectiveSessionCommitTest(unittest.TestCase):
         cls.decision_at = cls.target + "T18:00:00+09:00"
         cls.captured_at = cls.target + "T18:00:05+09:00"
 
-    def run_commit(self, root, history_raw=None, supervised_frame=None):
+    def run_commit(
+        self,
+        root,
+        history_raw=None,
+        supervised_frame=None,
+        prebuilt_model_bundle=None,
+    ):
+        selected_supervised = (
+            None
+            if prebuilt_model_bundle is not None
+            else (self.supervised if supervised_frame is None else supervised_frame)
+        )
         return commit_structural_prospective_session(
             daily_raw=self.daily,
             master_raw=self.master,
@@ -163,9 +175,8 @@ class ProspectiveSessionCommitTest(unittest.TestCase):
             master_retrieved_at=self.master_seen,
             connectivity_evidence=EVIDENCE,
             history_raw=self.history if history_raw is None else history_raw,
-            supervised_frame=(
-                self.supervised if supervised_frame is None else supervised_frame
-            ),
+            supervised_frame=selected_supervised,
+            prebuilt_model_bundle=prebuilt_model_bundle,
             session_calendar=self.calendar,
             target_session=self.target,
             decision_at=self.decision_at,
@@ -192,6 +203,32 @@ class ProspectiveSessionCommitTest(unittest.TestCase):
             self.assertTrue((root / f"producer-{self.target}.json").exists())
             self.assertTrue((root / f"decision-{self.target}.json").exists())
             self.assertTrue(any(root.glob("model-bundle-*.json")))
+
+    def test_prebuilt_frozen_bundle_commits_without_refit_input(self):
+        fitted = fit_frozen_model_for_target(
+            self.supervised,
+            session_calendar=self.calendar,
+            target_session=self.target,
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            (base / "git").mkdir()
+            root = base / "private"
+            out = self.run_commit(
+                root,
+                prebuilt_model_bundle=fitted["model_bundle"],
+            )
+            self.assertEqual(
+                out["model_bundle_sha256"],
+                fitted["model_bundle"]["model_bundle_sha256"],
+            )
+            self.assertTrue(out["structural_session_committed"])
+            self.assertFalse(out["fresh_alpha_observation_admitted"])
+            manifest = json.loads(
+                (root / f"session-{self.target}.json").read_text(encoding="utf-8")
+            )
+            self.assertFalse(manifest["independent_model_admission_verified"])
+            self.assertFalse(manifest["live_order_authorized"])
 
     def test_identical_retry_is_idempotent_at_every_same_session_boundary(self):
         with tempfile.TemporaryDirectory() as folder:

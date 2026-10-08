@@ -24,6 +24,7 @@ from research_v1_prospective_frozen_producer import (
     TEST_SESSIONS,
     FrozenProspectiveProducerError,
     _hash_rows,
+    bind_prebuilt_model_for_target,
     fit_frozen_model_for_target,
     resolve_anchored_schedule,
     store_producer_binding,
@@ -247,6 +248,46 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         self.assertFalse(binding["independent_model_admission_verified"])
         self.assertFalse(binding["fresh_alpha_observation_admitted"])
         self.assertFalse(binding["live_order_authorized"])
+
+    def test_prebuilt_bundle_binds_identically_without_refitting(self):
+        target = self.sessions[FIRST_TEST_START_ORDINAL + 13]
+        fitted = fit_frozen_model_for_target(
+            self.z, session_calendar=self.sessions, target_session=target
+        )
+        rebound = bind_prebuilt_model_for_target(
+            fitted["model_bundle"],
+            session_calendar=self.sessions,
+            target_session=target,
+        )
+        self.assertEqual(
+            fitted["model_bundle"]["model_bundle_sha256"],
+            rebound["model_bundle"]["model_bundle_sha256"],
+        )
+        self.assertEqual(
+            fitted["producer_binding"]["producer_binding_sha256"],
+            rebound["producer_binding"]["producer_binding_sha256"],
+        )
+        self.assertFalse(
+            rebound["producer_binding"]["independent_model_admission_verified"]
+        )
+        self.assertFalse(rebound["producer_binding"]["live_order_authorized"])
+
+    def test_prebuilt_bundle_from_different_refit_block_fails_closed(self):
+        first_target = self.sessions[FIRST_TEST_START_ORDINAL + 10]
+        fitted = fit_frozen_model_for_target(
+            self.z, session_calendar=self.sessions, target_session=first_target
+        )
+        second_target = self.sessions[
+            FIRST_TEST_START_ORDINAL + TEST_SESSIONS + 10
+        ]
+        with self.assertRaisesRegex(
+            FrozenProspectiveProducerError, "schedule does not match target block"
+        ):
+            bind_prebuilt_model_for_target(
+                fitted["model_bundle"],
+                session_calendar=self.sessions,
+                target_session=second_target,
+            )
 
     def test_old_pre_policy_aligned_calibration_bundle_is_rejected(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 9]

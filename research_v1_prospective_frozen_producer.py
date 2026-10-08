@@ -453,6 +453,115 @@ def fit_frozen_model_for_target(
     return {"producer_binding": binding, "model_bundle": bundle}
 
 
+
+def bind_prebuilt_model_for_target(
+    model_bundle: Mapping[str, Any],
+    *,
+    session_calendar: Sequence[Any],
+    target_session: str,
+) -> dict[str, Any]:
+    """Bind one already-built frozen model bundle to an exact target block.
+
+    This path performs no fit and consumes no supervised outcomes.  It is for a
+    model state that has already been reconstructed/verified elsewhere.  The
+    bundle remains structural-only: independent model admission and every
+    Alpha/promotion/live authority stay false.
+    """
+    schedule = resolve_anchored_schedule(
+        session_calendar, target_session=target_session
+    )
+    try:
+        validation = validate_model_bundle(model_bundle)
+    except ProspectiveModelBundleError as exc:
+        raise FrozenProspectiveProducerError(
+            "invalid prebuilt model bundle"
+        ) from exc
+
+    if model_bundle.get("fit_code_commit") != FREEZE_ANCHOR_COMMIT:
+        raise FrozenProspectiveProducerError(
+            "prebuilt model bundle fit-code commit mismatch"
+        )
+    if model_bundle.get("fit_code_path") != FIT_CODE_PATH:
+        raise FrozenProspectiveProducerError(
+            "prebuilt model bundle fit-code path mismatch"
+        )
+    if model_bundle.get("refit_policy_id") != REFIT_POLICY_ID:
+        raise FrozenProspectiveProducerError(
+            "prebuilt model bundle refit-policy mismatch"
+        )
+    if (
+        model_bundle.get("train_end_session") != schedule["train_end_session"]
+        or model_bundle.get("calibration_start_session")
+        != schedule["calibration_start_session"]
+        or model_bundle.get("calibration_end_session")
+        != schedule["calibration_end_session"]
+    ):
+        raise FrozenProspectiveProducerError(
+            "prebuilt model bundle schedule does not match target block"
+        )
+    if (
+        model_bundle.get("calibration_quantiles", {})
+        .get("__global__", {})
+        .get("source")
+        != CALIBRATION_SOURCE_ID
+    ):
+        raise FrozenProspectiveProducerError(
+            "prebuilt model bundle calibration population is not policy-aligned"
+        )
+    if validation.get("independent_model_admission_verified") is not False:
+        raise FrozenProspectiveProducerError(
+            "prebuilt model admission authority must remain false"
+        )
+
+    body = {
+        "classification": CLASSIFICATION,
+        "freeze_anchor_commit": FREEZE_ANCHOR_COMMIT,
+        "fit_code_path": FIT_CODE_PATH,
+        "refit_policy_id": REFIT_POLICY_ID,
+        "target_session": schedule["target_session"],
+        "target_session_ordinal": schedule["target_session_ordinal"],
+        "test_block_index": schedule["test_block_index"],
+        "test_block_start_ordinal": schedule["test_block_start_ordinal"],
+        "test_block_end_ordinal_exclusive": schedule[
+            "test_block_end_ordinal_exclusive"
+        ],
+        "test_block_start_session": schedule["test_block_start_session"],
+        "target_ordinal_in_test_block": schedule["target_ordinal_in_test_block"],
+        "calendar_origin_session": schedule["calendar_origin_session"],
+        "calendar_reference_action_id": schedule["calendar_reference_action_id"],
+        "calendar_milestones_verified_through_target": schedule[
+            "calendar_milestones_verified_through_target"
+        ],
+        "session_calendar_prefix_sha256": schedule[
+            "session_calendar_prefix_sha256"
+        ],
+        "initial_train_sessions": INITIAL_TRAIN_SESSIONS,
+        "actual_train_sessions": schedule["actual_train_sessions"],
+        "calibration_sessions": CALIBRATION_SESSIONS,
+        "test_sessions": TEST_SESSIONS,
+        "purge_sessions": PURGE_SESSIONS,
+        "train_end_session": schedule["train_end_session"],
+        "calibration_start_session": schedule["calibration_start_session"],
+        "calibration_end_session": schedule["calibration_end_session"],
+        "training_input_sha256": model_bundle["training_input_sha256"],
+        "calibration_input_sha256": model_bundle["calibration_input_sha256"],
+        "model_bundle_sha256": validation["model_bundle_sha256"],
+        "historical_backfill_forbidden": True,
+        "consumed_v1_holdout_used": False,
+        "current_session_features_consumed_for_fit": False,
+        "current_or_test_outcomes_consumed_for_fit": False,
+        "independent_model_admission_verified": False,
+        "fresh_alpha_observation_admitted": False,
+        "promotion_authority": False,
+        "live_order_authorized": False,
+    }
+    binding_sha = hashlib.sha256(_canonical(body)).hexdigest()
+    binding = {**body, "producer_binding_sha256": binding_sha}
+    validate_producer_binding(
+        binding, model_bundle, target_session=schedule["target_session"]
+    )
+    return {"producer_binding": binding, "model_bundle": dict(model_bundle)}
+
 def validate_producer_binding(
     binding: Mapping[str, Any],
     model_bundle: Mapping[str, Any],
