@@ -30,6 +30,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m pip install pytest==8.4.2
-      - name: Verify withdrawn rights cannot authorize a bulk request
+      - run: python -m pip install pytest==8.4.2 pandas==2.3.3
+      - name: Verify scoped web restriction preserves approved OpenAPI and blocks bulk web requests
         run: python -m pytest -q test_research_v1_krx_permission_reply_evidence.py test_research_v1_krx_historical_acquisition_rights.py test_research_v1_krx_historical_acquisition_preflight.py
