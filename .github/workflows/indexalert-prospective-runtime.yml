@@ -45,6 +45,7 @@ jobs:
       - name: Verify runtime image contains no broker entrypoint
         run: |
           grep -Fx 'COPY research_v1_*.py ./' Dockerfile.prospective-runtime
+          grep -Fx 'COPY run_research_v1.py ./' Dockerfile.prospective-runtime
           grep -Fx 'CMD ["python","research_v1_prospective_runtime.py"]' Dockerfile.prospective-runtime
           ! grep -Ei 'kiwoom|order|broker' Dockerfile.prospective-runtime
           docker build -f Dockerfile.prospective-runtime -t indexalert-prospective-runtime:test .
