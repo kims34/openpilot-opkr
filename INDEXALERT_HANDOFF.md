@@ -1,3 +1,13 @@
+# Tiny Live priority override — 2026-10-08
+
+Follow `INDEXALERT_TINY_LIVE_PRIORITY_2026-10-08.md` before older next-task pointers. The target is the earliest safe, explicitly authorized KRW 100,000-max Tiny Live release without relaxing any Frozen/PIT/Holdout/Net-EV/execution/risk/promotion gate.
+
+Actual current broker blocker supersedes older DEVICE_AUTH wording: PR #351 evidence shows the isolated Railway credential pair is DEMO-mode. REAL OAuth fails at TOKEN with return_code=2 / detail_code=8030 / MODE_MISMATCH. Owner action is to replace only the isolated REAL read-only service's App Key/Secret with broker-issued REAL credentials; never place them in GitHub/chat. Until then no meaningful REAL LOGIN/type00 retest is possible from Railway.
+
+Actual Early-Live branch is `index-alert-early-live-v2-prereg`; `index-alert-early-live` does not exist. Real order/funds/permission authority remains false. Prospective runtime/chronology infrastructure is structural evidence only and cannot bypass independent admission/Shadow/Fresh Confirmation/execution gates.
+
+---
+
 # P0 handoff — real observation/source inputs required
 
 Follow INDEXALERT_P0_EVIDENCE_HANDOFF_2026-10-07.md and INDEXALERT_DELIVERY_PRIORITIES.md before earlier next-task pointers.
