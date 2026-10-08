@@ -35,9 +35,9 @@ GitHub actual state overrides chat/history. Re-fetch HEAD/open PR/Actions before
 Work these first whenever actionable.
 
 1. **REAL Kiwoom authentication/read-only broker transport**
-   - Current Railway REAL read-only services contain credentials that succeed against DEMO but fail REAL OAuth with return_code=2 / detail_code=8030 MODE_MISMATCH.
-   - Required external action: owner replaces only `KIWOOM_APP_KEY` and `KIWOOM_APP_SECRET` in the isolated REAL read-only Railway service with broker-issued REAL OpenAPI credentials. Never place credentials in GitHub/chat.
-   - After replacement, rerun only the existing one-shot REAL read-only token/account/WebSocket LOGIN/type00 REG smoke. No order is required.
+   - Updated evidence: registered-IP Windows REAL token and REST account passed, WebSocket connected but LOGIN returned `805004 / 8050`. Separately, the updated isolated Railway REAL-only probe returned TOKEN-stage `8050`; Railway outbound IP is unverified. Neither result permits type00 registration or orders.
+   - Required external evidence: owner is waiting for Kiwoom support to explain the `8050` authentication restriction. Do not request key replacement/renewal or paid networking solely on superseded `8030` evidence.
+   - After an officially supported fix, rerun only read-only REAL token/account/WebSocket LOGIN/type00 REG smoke, with `ORDERING=DISABLED`. No order is required.
 
 2. **Official source/PIT/prospective evidence admission**
    - Frozen H5 prospective runtime and chronology anchoring infrastructure are implemented.
@@ -86,7 +86,7 @@ Before starting any task ask:
 
 Do not create PRs merely to keep work active.
 
-## Current highest-priority external blocker
-As of development HEAD `03abee3e4bf1a4237d7a8a73d05dbb36d1e4c831`, PR #351 is merged and its Kiwoom REAL read-only CI passed. The isolated Railway smoke still stops at OAuth TOKEN with return_code=2 / detail_code=8030 / MODE_MISMATCH because the stored credential pair is DEMO-mode. This is the first owner action on the Tiny Live path.
+## Historical Kiwoom `8030` blocker (superseded, not the present owner action)
+At older development HEAD `03abee3e4bf1a4237d7a8a73d05dbb36d1e4c831`, PR #351 was merged and the then-stored Railway credentials returned `8030 MODE_MISMATCH`. Subsequent REAL credential updates and owner-operated registered-IP REAL read-only validation supersede the diagnosis. Current broker auth blocker is Kiwoom REAL WebSocket LOGIN `805004/8050` (and separate unverified Railway TOKEN-stage `8050`), with a technical-support reply pending. KRX 2026-09-28 OHLC data/status source admission remains separately blocked. Neither blocker may be bypassed for Tiny Live.
 
 No real trading may start from this document.
