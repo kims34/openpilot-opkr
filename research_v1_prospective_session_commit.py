@@ -33,6 +33,7 @@ from research_v1_prospective_decision_capture import (
     store_decision_capture,
 )
 from research_v1_prospective_frozen_producer import (
+    bind_prebuilt_model_for_target,
     fit_frozen_model_for_target,
     store_producer_binding,
 )
@@ -206,7 +207,8 @@ def commit_structural_prospective_session(
     master_retrieved_at: str,
     connectivity_evidence: Mapping[str, Any],
     history_raw: pd.DataFrame,
-    supervised_frame: pd.DataFrame,
+    supervised_frame: pd.DataFrame | None,
+    prebuilt_model_bundle: Mapping[str, Any] | None = None,
     session_calendar: Sequence[Any],
     target_session: str,
     decision_at: str,
@@ -255,11 +257,26 @@ def commit_structural_prospective_session(
         raise ProspectiveSessionCommitError("input/source receipt binding mismatch")
     snapshot_sha = input_snapshot_sha256(snapshot)
 
-    producer = fit_frozen_model_for_target(
-        supervised_frame,
-        session_calendar=session_calendar,
-        target_session=target,
-    )
+    if prebuilt_model_bundle is None:
+        if supervised_frame is None:
+            raise ProspectiveSessionCommitError(
+                "supervised_frame is required when no prebuilt model bundle is supplied"
+            )
+        producer = fit_frozen_model_for_target(
+            supervised_frame,
+            session_calendar=session_calendar,
+            target_session=target,
+        )
+    else:
+        if supervised_frame is not None:
+            raise ProspectiveSessionCommitError(
+                "prebuilt model path must not also receive supervised_frame"
+            )
+        producer = bind_prebuilt_model_for_target(
+            prebuilt_model_bundle,
+            session_calendar=session_calendar,
+            target_session=target,
+        )
     binding = producer["producer_binding"]
     bundle = producer["model_bundle"]
     if binding["target_session"] != target:
