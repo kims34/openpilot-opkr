@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -61,11 +62,56 @@ class ProspectiveRuntimeRunnerTest(unittest.TestCase):
             receipt_path = cache / f"source-{session}.json"
             receipt_path.parent.mkdir(parents=True, exist_ok=True)
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
-            loaded = _load_cached_panel(cache, session)
+            with patch(
+                "research_v1_prospective_runtime_runner.validate_source_receipt",
+                return_value={"valid": True},
+            ), patch(
+                "research_v1_prospective_runtime_runner.verify_raw_object",
+                return_value={"verified": True},
+            ):
+                loaded = _load_cached_panel(cache, session)
             self.assertIsNotNone(loaded)
             self.assertEqual(_frame_sha256(loaded), _frame_sha256(panel))
             self.assertEqual(_panel_path(cache, session), cache / f"panel-{session}.parquet")
             self.assertFalse((cache / "warmup").exists())
+
+    def test_cached_panel_fails_closed_when_raw_evidence_is_not_verified(self):
+        with tempfile.TemporaryDirectory() as folder:
+            cache = Path(folder)
+            session = "2026-10-07"
+            panel = pd.DataFrame([{
+                "decision_date": pd.Timestamp(session),
+                "symbol": "005930",
+                "standard_code": "KR7005930003",
+                "open": 70000.0, "high": 71000.0, "low": 69000.0,
+                "close": 70500.0, "volume": 1000.0, "value": 70500000.0,
+                "krx_change_return": 0.01,
+                "available_at": "2026-10-07T09:10:00+00:00",
+                "source_route": "KRX_OPENAPI_APPROVED_SERVICE",
+                "source_dataset": "stk_bydd_trd",
+                "availability_semantics": "OBSERVED_AVAILABLE_BY_RETRIEVAL_TIME_NOT_OFFICIAL_PUBLICATION_TIME",
+            }])
+            _store_panel(cache, session, panel)
+            (cache / f"source-{session}.json").write_text(
+                json.dumps({
+                    "session": session,
+                    "normalized_panel_sha256": _frame_sha256(panel),
+                    "daily_raw_sha256": "1" * 64,
+                    "master_raw_sha256": "2" * 64,
+                }),
+                encoding="utf-8",
+            )
+            with patch(
+                "research_v1_prospective_runtime_runner.validate_source_receipt",
+                return_value={"valid": True},
+            ), patch(
+                "research_v1_prospective_runtime_runner.verify_raw_object",
+                side_effect=ValueError("tampered"),
+            ):
+                with self.assertRaisesRegex(
+                    ProspectiveRuntimeError, "raw-object integrity"
+                ):
+                    _load_cached_panel(cache, session)
 
     def test_public_anchor_manifest_is_hash_only_and_non_authorizing(self):
         hashes = {
