@@ -20,3 +20,9 @@ The producer binding explicitly records that current/test features and outcomes 
 This is not permission to execute a private-data fit yet. It is the deterministic contract needed so a future authorized run cannot choose a refit cadence after seeing outcomes. Synthetic tests alter test-block outcomes by extreme values and verify that the resulting model/binding fingerprints remain unchanged, while calibration-outcome changes alter the calibration fingerprint as expected.
 
 No historical performance metrics are recomputed, no KRX network request is made, no consumed holdout is read, and no broker/account/funds action occurs.
+
+## Prebuilt bundle binding
+
+After the block16 source/supervised/model reconstruction, the prospective producer can now bind an already-built structural model bundle to a target session without fitting it again. The binding recomputes the exact frozen target-block schedule from the supervised-session calendar and requires the bundle's train/calibration cutoffs, fit-code identity, refit-policy identity, training/calibration hashes, model-bundle hash and policy-aligned calibration source to match that block.
+
+This path consumes no supervised outcomes and cannot be used across a different refit block. It does not upgrade trust: the model bundle and producer binding still require `independent_model_admission_verified=false`, and Fresh Alpha/promotion/live authority remain false.
