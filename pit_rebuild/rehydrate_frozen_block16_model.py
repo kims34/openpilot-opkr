@@ -63,6 +63,9 @@ MODEL_STATE_ID = "RIDGE_MEDIAN_STANDARDIZED_LINEAR_STATE_V1"
 CALIBRATION_SOURCE_ID = (
     "calibration_daily_top3_by_pred_mean_then_same_normal_market_veto_no_backfill"
 )
+SELECTION_CALIBRATION_SOURCE_ID = "calibration_daily_top3_by_pred_mean"
+PLATFORM_NUMERIC_MAX_ULP = 64
+PLATFORM_NUMERIC_MAX_ABS_DIFF = 2e-15
 
 FROZEN_SOURCE_ORIGIN = "2015-06-15"
 FROZEN_SUPERVISED_ORIGIN = "2015-07-10"
@@ -113,6 +116,107 @@ def _canonical(value: Any) -> bytes:
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
         allow_nan=False,
     ).encode("utf-8")
+
+
+def _float_ulp_distance(actual: float, expected: float) -> int:
+    """Return same-sign IEEE-754 float64 ULP distance.
+
+    Cross-sign values are never considered platform-equivalent here.
+    """
+    a = np.float64(actual)
+    e = np.float64(expected)
+    if not np.isfinite(a) or not np.isfinite(e):
+        raise FrozenBlock16ModelError("nonfinite platform numeric comparison")
+    if a == e:
+        return 0
+    ua = int(a.view(np.uint64))
+    ue = int(e.view(np.uint64))
+    if (ua >> 63) != (ue >> 63):
+        return 2**63
+    mask = 0x7FFFFFFFFFFFFFFF
+    return abs((ua & mask) - (ue & mask))
+
+
+def _quantile_platform_equivalence(
+    actual: Any,
+    expected: Any,
+    *,
+    field: str,
+) -> dict[str, Any]:
+    """Require exact structure and machine-scale float64 equivalence only.
+
+    This is not a research tolerance.  Integer/string/bool structure must match
+    exactly.  Only floating leaves produced by the same frozen computation may
+    differ, and then by at most the fixed ULP and absolute machine-scale caps.
+    """
+    max_ulp = 0
+    max_abs = 0.0
+    float_leaves = 0
+
+    def walk(a: Any, e: Any, path: str) -> None:
+        nonlocal max_ulp, max_abs, float_leaves
+        if isinstance(e, bool) or isinstance(a, bool):
+            if type(a) is not bool or type(e) is not bool or a is not e:
+                raise FrozenBlock16ModelError(
+                    f"{field} structural mismatch at {path}: {a!r} != {e!r}"
+                )
+            return
+        if isinstance(e, dict) or isinstance(a, dict):
+            if not isinstance(a, dict) or not isinstance(e, dict) or set(a) != set(e):
+                raise FrozenBlock16ModelError(
+                    f"{field} mapping mismatch at {path}"
+                )
+            for key in sorted(e):
+                walk(a[key], e[key], f"{path}.{key}")
+            return
+        if isinstance(e, list) or isinstance(a, list):
+            if not isinstance(a, list) or not isinstance(e, list) or len(a) != len(e):
+                raise FrozenBlock16ModelError(
+                    f"{field} list mismatch at {path}"
+                )
+            for index, (av, ev) in enumerate(zip(a, e)):
+                walk(av, ev, f"{path}[{index}]")
+            return
+        if isinstance(e, float) or isinstance(a, float):
+            if isinstance(a, bool) or isinstance(e, bool):
+                raise FrozenBlock16ModelError(
+                    f"{field} boolean/float mismatch at {path}"
+                )
+            try:
+                af = float(a)
+                ef = float(e)
+            except (TypeError, ValueError) as exc:
+                raise FrozenBlock16ModelError(
+                    f"{field} numeric type mismatch at {path}"
+                ) from exc
+            ulp = _float_ulp_distance(af, ef)
+            abs_diff = abs(af - ef)
+            if (
+                ulp > PLATFORM_NUMERIC_MAX_ULP
+                or abs_diff > PLATFORM_NUMERIC_MAX_ABS_DIFF
+            ):
+                raise FrozenBlock16ModelError(
+                    f"{field} float drift at {path}: "
+                    f"actual={af!r} expected={ef!r} ulp={ulp} abs={abs_diff!r}"
+                )
+            max_ulp = max(max_ulp, ulp)
+            max_abs = max(max_abs, abs_diff)
+            float_leaves += 1
+            return
+        if type(a) is not type(e) or a != e:
+            raise FrozenBlock16ModelError(
+                f"{field} structural mismatch at {path}: {a!r} != {e!r}"
+            )
+
+    walk(actual, expected, field)
+    return {
+        "equivalent": True,
+        "max_ulp_distance": int(max_ulp),
+        "max_abs_diff": float(max_abs),
+        "float_leaf_count": int(float_leaves),
+        "ulp_limit": int(PLATFORM_NUMERIC_MAX_ULP),
+        "abs_diff_limit": float(PLATFORM_NUMERIC_MAX_ABS_DIFF),
+    }
 
 
 def _sha256_file(path: Path) -> str:
@@ -419,6 +523,50 @@ def _bootstrap_q25(frame: pd.DataFrame, *, reps: int = 400) -> dict[str, Any]:
     }
 
 
+def _selection_conditioned_quantiles(cal: pd.DataFrame) -> dict[str, Any]:
+    """Exact pre-veto calibration Top3 residual quantiles from the frozen Action."""
+    c = cal[cal["pred_mean"].notna() & cal["fh_net_return"].notna()].copy()
+    ranked = (
+        c.sort_values(["decision_date", "pred_mean"], ascending=[True, False])
+        .groupby("decision_date", group_keys=False)
+        .head(TOP_K)
+        .copy()
+    )
+    if ranked.empty:
+        raise FrozenBlock16ModelError("empty selection-conditioned calibration")
+    ranked["residual"] = (
+        ranked["fh_net_return"].astype(float) - ranked["pred_mean"].astype(float)
+    )
+    ranked["vol_bucket"] = _bucket(ranked["vol20_rank"])
+    global_q = {
+        "low": float(ranked["residual"].quantile(0.25)),
+        "med": float(ranked["residual"].quantile(0.50)),
+        "high": float(ranked["residual"].quantile(0.75)),
+        "n": int(len(ranked)),
+        "source": SELECTION_CALIBRATION_SOURCE_ID,
+        "q25_uncertainty": _bootstrap_q25(ranked),
+    }
+    out: dict[str, Any] = {"__global__": global_q}
+    for name, group in ranked.groupby("vol_bucket"):
+        if len(group) < 30:
+            out[str(name)] = {
+                **global_q,
+                "fallback_global": True,
+                "bucket_n": int(len(group)),
+            }
+        else:
+            out[str(name)] = {
+                "low": float(group["residual"].quantile(0.25)),
+                "med": float(group["residual"].quantile(0.50)),
+                "high": float(group["residual"].quantile(0.75)),
+                "n": int(len(group)),
+                "fallback_global": False,
+                "source": SELECTION_CALIBRATION_SOURCE_ID,
+                "q25_uncertainty": _bootstrap_q25(group),
+            }
+    return out
+
+
 def _policy_aligned_quantiles(cal: pd.DataFrame) -> tuple[dict[str, Any], dict[str, Any]]:
     c = cal[cal["pred_mean"].notna() & cal["fh_net_return"].notna()].copy()
     frozen = (
@@ -643,29 +791,26 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
     model = _pipe()
     model.fit(train[CONTEXT_FEATURES], train["fh_net_return"])
     cal["pred_mean"] = model.predict(cal[CONTEXT_FEATURES])
+
+    selection_quantiles = _selection_conditioned_quantiles(cal)
     quantiles, diagnostics = _policy_aligned_quantiles(cal)
 
+    expected_selection_quantiles = reference[
+        "selection_conditioned_residual_quantiles"
+    ]
     expected_quantiles = reference["policy_aligned_residual_quantiles"]
     expected_diagnostics = reference["calibration_policy_diagnostics"]
-    if quantiles != expected_quantiles:
-        diagnostic = {
-            "actual_global": quantiles.get("__global__"),
-            "expected_global": expected_quantiles.get("__global__"),
-            "actual_buckets": {
-                key: quantiles.get(key) for key in ("low", "mid", "high")
-            },
-            "expected_buckets": {
-                key: expected_quantiles.get(key) for key in ("low", "mid", "high")
-            },
-            "actual_diagnostics": diagnostics,
-            "expected_diagnostics": expected_diagnostics,
-            "training_rows": int(len(train)),
-            "calibration_rows": int(len(cal)),
-        }
-        raise FrozenBlock16ModelError(
-            "block16 policy-aligned residual quantiles do not match Action artifact: "
-            + json.dumps(diagnostic, sort_keys=True, default=str)
-        )
+
+    selection_equivalence = _quantile_platform_equivalence(
+        selection_quantiles,
+        expected_selection_quantiles,
+        field="selection_conditioned_residual_quantiles",
+    )
+    policy_equivalence = _quantile_platform_equivalence(
+        quantiles,
+        expected_quantiles,
+        field="policy_aligned_residual_quantiles",
+    )
     if diagnostics != expected_diagnostics:
         raise FrozenBlock16ModelError(
             "block16 calibration-policy diagnostics do not match Action artifact: "
@@ -681,10 +826,25 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
             )
         )
 
+    selection_exact = selection_quantiles == expected_selection_quantiles
+    policy_exact = quantiles == expected_quantiles
+    max_platform_ulp = max(
+        selection_equivalence["max_ulp_distance"],
+        policy_equivalence["max_ulp_distance"],
+    )
+    max_platform_abs = max(
+        selection_equivalence["max_abs_diff"],
+        policy_equivalence["max_abs_diff"],
+    )
+
     train_sha = _hash_rows(train)
     cal_sha = _hash_rows(cal, include_prediction=True)
+    # Calibration thresholds are canonical Action artifact values.  The fitted
+    # mean model remains current-platform float64 state and is not independently
+    # admitted; the verification record below makes that distinction explicit.
+    canonical_quantiles = expected_quantiles
     bundle = _build_model_bundle(
-        model, quantiles,
+        model, canonical_quantiles,
         training_input_sha256=train_sha,
         calibration_input_sha256=cal_sha,
     )
@@ -701,7 +861,7 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
     _write_private_json(bundle_path, bundle)
 
     body = {
-        "classification": "FROZEN_BLOCK16_MODEL_REHYDRATION_VERIFIED",
+        "classification": "FROZEN_BLOCK16_MODEL_PLATFORM_EQUIVALENCE_VERIFIED_NOT_ADMITTED",
         "frozen_action_id": FROZEN_ACTION_ID,
         "frozen_artifact_id": FROZEN_ARTIFACT_ID,
         "frozen_artifact_digest": FROZEN_ARTIFACT_DIGEST,
@@ -720,8 +880,18 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
         "training_input_sha256": train_sha,
         "calibration_input_sha256": cal_sha,
         "model_bundle_sha256": bundle["model_bundle_sha256"],
-        "policy_aligned_quantiles_exact_artifact_match": True,
+        "selection_conditioned_quantiles_exact_artifact_match": selection_exact,
+        "selection_conditioned_quantiles_platform_equivalent": True,
+        "policy_aligned_quantiles_exact_artifact_match": policy_exact,
+        "policy_aligned_quantiles_platform_equivalent": True,
         "calibration_policy_diagnostics_exact_artifact_match": True,
+        "platform_numeric_max_ulp_distance": int(max_platform_ulp),
+        "platform_numeric_max_abs_diff": float(max_platform_abs),
+        "platform_numeric_ulp_limit": int(PLATFORM_NUMERIC_MAX_ULP),
+        "platform_numeric_abs_diff_limit": float(PLATFORM_NUMERIC_MAX_ABS_DIFF),
+        "canonical_action_quantiles_used_for_bundle": True,
+        "model_state_exact_action_coefficients_verified": False,
+        "mean_model_state_recomputed_on_current_platform": True,
         "test_rows_consumed_for_fit": False,
         "test_outcomes_consumed_for_fit": False,
         "current_session_features_consumed_for_fit": False,
@@ -757,7 +927,14 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
         "model_bundle_sha256": bundle["model_bundle_sha256"],
         "training_rows": int(len(train)),
         "calibration_rows": int(len(cal)),
-        "policy_aligned_quantiles_exact_artifact_match": True,
+        "selection_conditioned_quantiles_exact_artifact_match": selection_exact,
+        "selection_conditioned_quantiles_platform_equivalent": True,
+        "policy_aligned_quantiles_exact_artifact_match": policy_exact,
+        "policy_aligned_quantiles_platform_equivalent": True,
+        "platform_numeric_max_ulp_distance": int(max_platform_ulp),
+        "platform_numeric_max_abs_diff": float(max_platform_abs),
+        "canonical_action_quantiles_used_for_bundle": True,
+        "model_state_exact_action_coefficients_verified": False,
         "performance_evaluation_executed": False,
         "independent_model_admission_verified": False,
         "live_order_authorized": False,
