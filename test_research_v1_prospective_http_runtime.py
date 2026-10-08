@@ -112,10 +112,10 @@ class ProspectiveHTTPRuntimeTest(unittest.TestCase):
             status = _safe_status({"status": "FAIL_CLOSED", "session": "2026-10-08"})
             status["error_class"] = "KRXProspectiveOpenAPISourceError"
             status["error_reason_code"] = "MASTER_COVERAGE_GAP"
-            (root / "runtime-status.json").write_bytes(_canonical(status) + b"\\n")
+            (root / "runtime-status.json").write_bytes(_canonical(status) + b"\n")
             self.assertEqual(_read_status(root)["error_reason_code"], "MASTER_COVERAGE_GAP")
             status["error_reason_code"] = "MASTER_COVERAGE_GAP secret=DO_NOT_LEAK"
-            (root / "runtime-status.json").write_bytes(_canonical(status) + b"\\n")
+            (root / "runtime-status.json").write_bytes(_canonical(status) + b"\n")
             with self.assertRaisesRegex(Exception, "error reason is invalid"):
                 _read_status(root)
 
