@@ -7,12 +7,14 @@ import tempfile
 import unittest
 
 from research_v1_prospective_http_runtime import (
+    _failure_reason_code,
     _latest_anchor,
     _read_status,
     _safe_status,
     validate_anchor_payload,
 )
 from research_v1_prospective_runtime import _canonical
+from research_v1_krx_openapi_prospective_source import KRXProspectiveOpenAPISourceError
 
 
 class ProspectiveHTTPRuntimeTest(unittest.TestCase):
@@ -82,6 +84,40 @@ class ProspectiveHTTPRuntimeTest(unittest.TestCase):
         self.assertFalse(status["permission_change_authorized"])
         self.assertFalse(status["fresh_alpha_observation_admitted"])
         self.assertFalse(status["live_order_authorized"])
+
+
+    def test_public_source_diagnostic_uses_static_enum_not_provider_text(self):
+        reason = _failure_reason_code(
+            KRXProspectiveOpenAPISourceError(
+                "daily-trade symbols missing from same-session security master"
+                " secret=DO_NOT_LEAK account=DO_NOT_LEAK"
+            )
+        )
+        self.assertEqual(reason, "MASTER_COVERAGE_GAP")
+        self.assertNotIn("DO_NOT_LEAK", reason)
+        self.assertEqual(
+            _failure_reason_code(
+                KRXProspectiveOpenAPISourceError("provider response secret=DO_NOT_LEAK")
+            ),
+            "KRX_SOURCE_OTHER",
+        )
+        self.assertEqual(
+            _failure_reason_code(RuntimeError("private token=DO_NOT_LEAK")),
+            "OTHER_FAILURE",
+        )
+
+    def test_public_status_accepts_only_known_safe_failure_codes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            status = _safe_status({"status": "FAIL_CLOSED", "session": "2026-10-08"})
+            status["error_class"] = "KRXProspectiveOpenAPISourceError"
+            status["error_reason_code"] = "MASTER_COVERAGE_GAP"
+            (root / "runtime-status.json").write_bytes(_canonical(status) + b"\\n")
+            self.assertEqual(_read_status(root)["error_reason_code"], "MASTER_COVERAGE_GAP")
+            status["error_reason_code"] = "MASTER_COVERAGE_GAP secret=DO_NOT_LEAK"
+            (root / "runtime-status.json").write_bytes(_canonical(status) + b"\\n")
+            with self.assertRaisesRegex(Exception, "error reason is invalid"):
+                _read_status(root)
 
     def test_missing_status_defaults_to_waiting_and_disabled(self):
         with tempfile.TemporaryDirectory() as folder:
