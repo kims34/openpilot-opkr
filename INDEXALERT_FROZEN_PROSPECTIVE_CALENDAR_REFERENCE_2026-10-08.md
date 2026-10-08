@@ -2,7 +2,7 @@
 
 Status: P0 FAIL-CLOSED CORRECTION BEFORE ANY REAL PROSPECTIVE FIT.
 
-The adopted policy-aligned calibration run (GitHub Actions run 36643183157) used a long-history panel beginning 2015-06-15. Its emitted anchored-WF test-block starts are part of the structural producer identity: ordinal 640 = 2018-02-19, then every 126 sessions through ordinal 2656 = 2026-05-11.
+The adopted policy-aligned calibration run (GitHub Actions run 36643183157) used a raw long-history panel beginning 2015-06-15, but the walk-forward function schedules folds from the supervised frame `z["decision_date"]`. Feature warm-up makes that supervised calendar begin on 2015-07-10. Its emitted anchored-WF test-block starts are part of the structural producer identity: supervised ordinal 640 = 2018-02-19, then every 126 supervised sessions through ordinal 2656 = 2026-05-11.
 
 The existing Railway PIT volume is a different historical artifact. Its verified build summary begins 2018-01-02 and ends 2026-09-28. If that shorter calendar were passed directly to the prospective producer, ordinal 640 would be rebased around 2020 and every later train/calibration/test boundary would drift even though the numerical 504/126/126 parameters appeared unchanged.
 

@@ -64,7 +64,8 @@ CALIBRATION_SOURCE_ID = (
     "calibration_daily_top3_by_pred_mean_then_same_normal_market_veto_no_backfill"
 )
 
-FROZEN_ORIGIN = "2015-06-15"
+FROZEN_SOURCE_ORIGIN = "2015-06-15"
+FROZEN_SUPERVISED_ORIGIN = "2015-07-10"
 BLOCK_INDEX = 16
 BLOCK_START_ORDINAL = 2656
 BLOCK_TEST_START = "2026-05-11"
@@ -155,14 +156,14 @@ def _require_parent_verifications(root: Path) -> tuple[Path, Path, dict[str, Any
     return long_dir, sup_dir, sup_record
 
 
-def _stream_source_identity(long_dir: Path) -> tuple[list[pd.Timestamp], dict[str, Any]]:
+def _stream_source_identity(long_dir: Path) -> dict[str, Any]:
+    """Recheck raw-source identity only; the WF calendar comes from supervised z."""
     total = 0
     symbols: set[str] = set()
     date_min = None
     date_max = None
     xor_value = np.uint64(0)
     sum_value = np.uint64(0)
-    calendar: set[pd.Timestamp] = set()
     files = sorted(long_dir.glob("kospi-pit-*.parquet"))
     if not files:
         raise FrozenBlock16ModelError("verified long-history parquet files missing")
@@ -178,8 +179,6 @@ def _stream_source_identity(long_dir: Path) -> tuple[list[pd.Timestamp], dict[st
             sum_value = np.uint64(sum_value + hashes.sum(dtype=np.uint64))
         total += len(frame)
         symbols.update(frame["symbol"].unique().tolist())
-        days = frame["decision_date"].drop_duplicates()
-        calendar.update(pd.Timestamp(x).normalize() for x in days)
         lo = frame["decision_date"].min()
         hi = frame["decision_date"].max()
         date_min = lo if date_min is None else min(date_min, lo)
@@ -199,22 +198,43 @@ def _stream_source_identity(long_dir: Path) -> tuple[list[pd.Timestamp], dict[st
         raise FrozenBlock16ModelError(
             "long-history source identity mismatch before model fit"
         )
-    sessions = sorted(calendar)
-    if not sessions or sessions[0].strftime("%Y-%m-%d") != FROZEN_ORIGIN:
-        raise FrozenBlock16ModelError("frozen calendar origin mismatch")
+    if actual["date_min"] != FROZEN_SOURCE_ORIGIN:
+        raise FrozenBlock16ModelError("frozen source origin mismatch")
+    return actual
+
+
+def _supervised_session_calendar(sup_dir: Path) -> list[pd.Timestamp]:
+    """Recover the exact calendar used by selected_calibration_walk_forward(z).
+
+    The adopted Action schedules folds from z["decision_date"], not from the
+    raw OHLC source.  Feature warm-up therefore makes the supervised calendar
+    begin later than the raw source.
+    """
+    parquet = sup_dir / "supervised.parquet"
+    if not parquet.is_file() or parquet.is_symlink():
+        raise FrozenBlock16ModelError("verified supervised parquet missing")
+    dates = pd.read_parquet(parquet, columns=["decision_date"])
+    values = pd.to_datetime(dates["decision_date"], errors="raise")
+    sessions = sorted(pd.Timestamp(x).normalize() for x in values.drop_duplicates())
+    del dates, values
+    gc.collect()
+    if not sessions or sessions[0].strftime("%Y-%m-%d") != FROZEN_SUPERVISED_ORIGIN:
+        raise FrozenBlock16ModelError("frozen supervised calendar origin mismatch")
     if len(sessions) <= BLOCK_START_ORDINAL:
-        raise FrozenBlock16ModelError("frozen calendar is too short for block16")
+        raise FrozenBlock16ModelError(
+            "frozen supervised calendar is too short for block16"
+        )
     if sessions[BLOCK_START_ORDINAL].strftime("%Y-%m-%d") != BLOCK_TEST_START:
-        raise FrozenBlock16ModelError("block16 test-start calendar drift")
+        raise FrozenBlock16ModelError("block16 test-start supervised calendar drift")
     if sessions[TRAIN_SESSIONS - 1].strftime("%Y-%m-%d") != TRAIN_END:
-        raise FrozenBlock16ModelError("block16 train-end calendar drift")
+        raise FrozenBlock16ModelError("block16 train-end supervised calendar drift")
     cal_start_ordinal = BLOCK_START_ORDINAL - PURGE_SESSIONS - CAL_SESSIONS
     cal_end_exclusive = BLOCK_START_ORDINAL - PURGE_SESSIONS
     if sessions[cal_start_ordinal].strftime("%Y-%m-%d") != CAL_START:
-        raise FrozenBlock16ModelError("block16 calibration-start drift")
+        raise FrozenBlock16ModelError("block16 calibration-start supervised drift")
     if sessions[cal_end_exclusive - 1].strftime("%Y-%m-%d") != CAL_END:
-        raise FrozenBlock16ModelError("block16 calibration-end drift")
-    return sessions, actual
+        raise FrozenBlock16ModelError("block16 calibration-end supervised drift")
+    return sessions
 
 
 def _load_economic_raw(
@@ -592,7 +612,8 @@ def rehydrate(*, root: Path, code_root: Path) -> dict[str, Any]:
     if reference.get("frozen_action_id") != FROZEN_ACTION_ID:
         raise FrozenBlock16ModelError("block16 reference action mismatch")
     long_dir, sup_dir, sup_record = _require_parent_verifications(root)
-    sessions, source_identity = _stream_source_identity(long_dir)
+    source_identity = _stream_source_identity(long_dir)
+    sessions = _supervised_session_calendar(sup_dir)
 
     if reference.get("block_index") != BLOCK_INDEX:
         raise FrozenBlock16ModelError("block16 reference index mismatch")

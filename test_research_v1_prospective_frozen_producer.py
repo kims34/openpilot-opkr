@@ -130,6 +130,12 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
         self.assertNotIn("records = []", source)
         self.assertIn("itertuples", source)
 
+    def test_calendar_origin_is_exact_frozen_supervised_first_date(self):
+        # The source panel begins 2015-06-15, but the Action walk-forward
+        # schedules on z["decision_date"] after feature warm-up.  The verified
+        # supervised cache begins 2015-07-10.
+        self.assertEqual(FROZEN_CALENDAR_ORIGIN_SESSION, "2015-07-10")
+
     def test_schedule_exactly_matches_freeze_anchor_block_arithmetic(self):
         target = self.sessions[FIRST_TEST_START_ORDINAL + 7]
         out = resolve_anchored_schedule(self.sessions, target_session=target)
@@ -166,7 +172,7 @@ class FrozenProspectiveProducerTest(unittest.TestCase):
             for d in pd.bdate_range("2018-01-02", periods=900)
         ]
         with self.assertRaisesRegex(
-            FrozenProspectiveProducerError, "frozen long-history origin"
+            FrozenProspectiveProducerError, "frozen supervised calendar origin"
         ):
             resolve_anchored_schedule(
                 shifted,

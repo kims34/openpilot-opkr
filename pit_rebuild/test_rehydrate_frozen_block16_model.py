@@ -18,6 +18,8 @@ from rehydrate_frozen_block16_model import (
     CALIBRATION_SOURCE_ID,
     CONTEXT_FEATURES,
     FROZEN_SOURCE_FINGERPRINT,
+    FROZEN_SOURCE_ORIGIN,
+    FROZEN_SUPERVISED_ORIGIN,
     REFERENCE_FILE,
     TRAIN_END,
     _build_model_bundle,
@@ -54,6 +56,10 @@ class FrozenBlock16ModelRehydrationTest(unittest.TestCase):
         self.assertFalse(
             ref["calibration_policy_diagnostics"]["backfill_allowed"]
         )
+
+    def test_source_and_supervised_calendar_origins_are_distinct_and_frozen(self):
+        self.assertEqual(FROZEN_SOURCE_ORIGIN, "2015-06-15")
+        self.assertEqual(FROZEN_SUPERVISED_ORIGIN, "2015-07-10")
 
     def test_source_identity_is_exact_frozen_action_source(self):
         self.assertEqual(FROZEN_SOURCE_FINGERPRINT["rows"], 2512128)

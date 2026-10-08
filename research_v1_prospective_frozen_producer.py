@@ -49,7 +49,7 @@ INITIAL_TRAIN_SESSIONS = 504
 CALIBRATION_SESSIONS = 126
 TEST_SESSIONS = 126
 PURGE_SESSIONS = 5
-FROZEN_CALENDAR_ORIGIN_SESSION = "2015-06-15"
+FROZEN_CALENDAR_ORIGIN_SESSION = "2015-07-10"
 FROZEN_CALENDAR_REFERENCE_ACTION_ID = 36643183157
 # Exact test-block starts emitted by the adopted policy-alignment Action.
 # These are schedule identity, not performance metrics.
@@ -138,7 +138,7 @@ def _session_calendar(values: Sequence[Any]) -> list[pd.Timestamp]:
         raise FrozenProspectiveProducerError("session_calendar must be strictly increasing")
     if not parsed or parsed[0].strftime("%Y-%m-%d") != FROZEN_CALENDAR_ORIGIN_SESSION:
         raise FrozenProspectiveProducerError(
-            "session_calendar must begin at frozen long-history origin 2015-06-15"
+            "session_calendar must begin at frozen supervised calendar origin 2015-07-10"
         )
     for ordinal, expected in FROZEN_TEST_BLOCK_STARTS.items():
         if ordinal < len(parsed) and parsed[ordinal].strftime("%Y-%m-%d") != expected:
@@ -151,7 +151,7 @@ def _session_calendar(values: Sequence[Any]) -> list[pd.Timestamp]:
 def resolve_anchored_schedule(
     session_calendar: Sequence[Any], *, target_session: str
 ) -> dict[str, Any]:
-    """Reproduce exact block arithmetic from the freeze-anchor WF implementation."""
+    """Reproduce exact block arithmetic on the freeze-anchor supervised-session calendar."""
     sessions = _session_calendar(session_calendar)
     target = pd.Timestamp(_canonical_session(target_session, "target_session"))
     try:
