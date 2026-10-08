@@ -14,8 +14,12 @@ from research_v1_prospective_runtime_runner import (
     PINNED_MODEL_SHA256,
     ProspectiveRuntimeError,
     _capture_time_allowed,
+    _frame_sha256,
+    _load_cached_panel,
+    _panel_path,
     _public_anchor_manifest,
     _safe_status,
+    _store_panel,
     _write_status,
 )
 
@@ -27,6 +31,41 @@ class ProspectiveRuntimeRunnerTest(unittest.TestCase):
         self.assertFalse(_capture_time_allowed(before))
         self.assertTrue(_capture_time_allowed(after))
         self.assertEqual(after.astimezone(KST).hour, 19)
+
+    def test_warmup_cache_uses_one_explicit_root_without_double_nesting(self):
+        with tempfile.TemporaryDirectory() as folder:
+            cache = Path(folder) / "warmup"
+            session = "2026-10-07"
+            panel = pd.DataFrame([{
+                "decision_date": pd.Timestamp(session),
+                "symbol": "005930",
+                "standard_code": "KR7005930003",
+                "open": 70000.0,
+                "high": 71000.0,
+                "low": 69000.0,
+                "close": 70500.0,
+                "volume": 1000.0,
+                "value": 70500000.0,
+                "krx_change_return": 0.01,
+                "available_at": "2026-10-07T09:10:00+00:00",
+                "source_route": "KRX_OPENAPI_APPROVED_SERVICE",
+                "source_dataset": "stk_bydd_trd",
+                "availability_semantics": "OBSERVED_AVAILABLE_BY_RETRIEVAL_TIME_NOT_OFFICIAL_PUBLICATION_TIME",
+            }])
+            _store_panel(cache, session, panel)
+            receipt = {
+                "session": session,
+                "normalized_panel_sha256": _frame_sha256(panel),
+            }
+            _write_status(cache.parent, status="TEST_ONLY")
+            receipt_path = cache / f"source-{session}.json"
+            receipt_path.parent.mkdir(parents=True, exist_ok=True)
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            loaded = _load_cached_panel(cache, session)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(_frame_sha256(loaded), _frame_sha256(panel))
+            self.assertEqual(_panel_path(cache, session), cache / f"panel-{session}.parquet")
+            self.assertFalse((cache / "warmup").exists())
 
     def test_public_anchor_manifest_is_hash_only_and_non_authorizing(self):
         hashes = {
