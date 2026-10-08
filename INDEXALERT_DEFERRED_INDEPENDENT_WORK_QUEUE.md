@@ -44,7 +44,7 @@ B work: exact release pin/rollback, operator diagnostics, failure alerts and rec
 
 C work: non-blocking UI/cosmetics, open-ended hardening without a reproduced launch blocker and exploratory research not required for the current launch path.
 
-Current first external blocker is no longer DEVICE_AUTH. Railway probes show DEMO-mode credentials in the isolated REAL read-only services; REAL OAuth returns 8030 MODE_MISMATCH. Do not request another 8050/device-auth rerun until broker-issued REAL credentials are installed in the isolated REAL read-only service.
+**Superseded historical note (pre-REAL credential update only):** Older Railway probes returned `8030 MODE_MISMATCH` with then-DEMO-mode credentials. Do not treat this as a current owner action. The later registered-IP Windows read-only REAL token/account probe passed while WebSocket LOGIN returned `805004/8050`; the updated isolated Railway smoke returned TOKEN-stage `8050` rather than `8030`. Kiwoom technical-support reply is pending; REAL key reissuance/upgrade or repeating superseded DEMO probes is not currently requested. Separately, KRX 2026-09-28 27 no-trade OHLC anomaly remains fail-closed pending independent official status evidence.
 
 ---
 
