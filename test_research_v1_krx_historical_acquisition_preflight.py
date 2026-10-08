@@ -15,12 +15,13 @@ def test_bulk_preflight_blocks_without_storage_and_exact_execution_consent(tmp_p
         environment={"KRX_ID":"present","KRX_PW":"present","KRX_AUTH_KEY":"present","INDEXALERT_KRX_HIST_WORKER_ROLE":"DEDICATED_ONE_SHOT","RAILWAY_SERVICE_NAME":"indexalert-krx-historical-worker"},
         git_worktree=(tmp_path / "repo").resolve(),
     )
-    assert out["rights_authorized"] is True
+    assert out["rights_authorized"] is False
     assert out["private_persistent_storage_required"] is True
     assert out["private_raw_dir_configured"] is False
     assert out["historical_acquisition_network_execution_authorized"] is False
     assert out["network_request_attempted"] is False
     assert out["missing_requirements"] == [
+        "KRX_FULL_HISTORY_RIGHTS",
         "KRX_PRIVATE_RAW_DIR",
         "EXPLICIT_HISTORICAL_ACQUISITION_EXECUTION_CONSENT",
     ]
@@ -29,7 +30,7 @@ def test_bulk_preflight_blocks_without_storage_and_exact_execution_consent(tmp_p
     assert out["live_trading_authorized"] is False
 
 
-def test_bulk_preflight_becomes_ready_only_for_safe_storage_and_exact_sentinel(tmp_path):
+def test_exact_consent_and_safe_storage_cannot_override_withdrawn_web_rights(tmp_path):
     worktree=(tmp_path / "repo").resolve()
     worktree.mkdir()
     out=evaluate_historical_acquisition_preflight(
@@ -47,9 +48,9 @@ def test_bulk_preflight_becomes_ready_only_for_safe_storage_and_exact_sentinel(t
     assert out["execution_contract_id"] == "INDEXALERT-KRX-HIST-EXEC-v3"
     assert out["private_raw_dir_configured"] is True
     assert out["private_raw_dir_valid"] is True
-    assert out["historical_acquisition_network_execution_authorized"] is True
+    assert out["historical_acquisition_network_execution_authorized"] is False
     assert out["network_request_attempted"] is False
-    assert out["missing_requirements"] == []
+    assert out["missing_requirements"] == ["KRX_FULL_HISTORY_RIGHTS"]
 
 
 def test_bulk_preflight_rejects_near_miss_consent(tmp_path):
@@ -192,7 +193,7 @@ def test_bulk_preflight_rejects_arbitrary_nonpublic_service_name(tmp_path):
     assert out["historical_acquisition_network_execution_authorized"] is False
 
 
-def test_bulk_preflight_requires_exact_dedicated_service_name_to_be_ready(tmp_path):
+def test_exact_dedicated_service_still_requires_current_web_rights(tmp_path):
     worktree=(tmp_path / "repo").resolve()
     worktree.mkdir()
     out=evaluate_historical_acquisition_preflight(
@@ -210,4 +211,5 @@ def test_bulk_preflight_requires_exact_dedicated_service_name_to_be_ready(tmp_pa
     assert out["expected_railway_service_name"] == "indexalert-krx-historical-worker"
     assert out["exact_dedicated_service_name_present"] is True
     assert out["dedicated_worker_isolation_ok"] is True
-    assert out["historical_acquisition_network_execution_authorized"] is True
+    assert out["historical_acquisition_network_execution_authorized"] is False
+    assert "KRX_FULL_HISTORY_RIGHTS" in out["missing_requirements"]
