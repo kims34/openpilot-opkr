@@ -1,0 +1,42 @@
+name: IndexAlert Tiny Live Prospective Runtime
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_runtime_runner.py'
+      - 'test_research_v1_prospective_runtime_runner.py'
+      - 'Dockerfile.prospective-pit'
+      - 'INDEXALERT_TINY_LIVE_CRITICAL_PATH_2026-10-08.md'
+      - '.github/workflows/indexalert-tiny-live-prospective-runtime.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_prospective_runtime_runner.py'
+      - 'test_research_v1_prospective_runtime_runner.py'
+      - 'Dockerfile.prospective-pit'
+      - 'INDEXALERT_TINY_LIVE_CRITICAL_PATH_2026-10-08.md'
+      - '.github/workflows/indexalert-tiny-live-prospective-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.14'
+      - name: Install pinned runtime dependencies
+        run: python -m pip install pandas==2.3.3 numpy==2.5.3 requests==2.32.3 pyarrow==21.0.0 scikit-learn==1.7.2
+      - name: Verify prospective runtime stays non-authorizing
+        run: |
+          python -m py_compile research_v1_prospective_runtime_runner.py
+          python -m unittest test_research_v1_prospective_runtime_runner.py
+      - name: Build isolated PIT prospective image
+        run: |
+          docker build -f Dockerfile.prospective-pit -t indexalert-prospective-runtime:test .
+          docker run --rm --entrypoint python indexalert-prospective-runtime:test -B -m unittest test_research_v1_prospective_runtime_runner.py
