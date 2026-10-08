@@ -263,11 +263,27 @@ def build_current_session_openapi_source(
         | common["market_type_official"].astype(str).str.contains("유가증권", na=False)
     ).all():
         raise KRXProspectiveOpenAPISourceError("non-KOSPI row in common-stock scope")
-    if (common[["open", "high", "low", "close"]] <= 0).any().any():
-        raise KRXProspectiveOpenAPISourceError(
+    # The rejected source is not eligible for the signal universe. Attach
+    # counts only so operators can distinguish no-activity rows from invalid
+    # prices despite reported trading. Never expose issue IDs or raw prices.
+    ohlc = common[["open", "high", "low", "close"]]
+    nonpositive = (ohlc <= 0).any(axis=1)
+    if bool(nonpositive.any()):
+        rejected = common.loc[nonpositive]
+        no_activity = rejected["volume"].eq(0) & rejected["value"].eq(0)
+        all_zero_prices = (ohlc.loc[nonpositive] == 0).all(axis=1)
+        error = KRXProspectiveOpenAPISourceError(
             "common-stock current-session OHLC contains nonpositive value; "
             "do not silently drop an unknown/halted row"
         )
+        error.safe_ohlc_counts = {
+            "common_stock_rows": int(len(common)),
+            "nonpositive_ohlc_rows": int(nonpositive.sum()),
+            "zero_volume_value_rows": int(no_activity.sum()),
+            "other_activity_rows": int((~no_activity).sum()),
+            "all_zero_ohlc_rows": int(all_zero_prices.sum()),
+        }
+        raise error
     if (common[["volume", "value"]] < 0).any().any():
         raise KRXProspectiveOpenAPISourceError("negative volume/value")
     if (
