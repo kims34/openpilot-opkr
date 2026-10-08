@@ -1,3 +1,17 @@
+# Tiny Live A/B/C override — 2026-10-08
+
+This section supersedes the older generic independent-work order below. Use `INDEXALERT_TINY_LIVE_PRIORITY_2026-10-08.md`.
+
+A blockers first: REAL Kiwoom auth/read-only transport; source/PIT/prospective admission; required promotion/Shadow/Fresh Confirmation evidence; genuine execution/settlement evidence; durable order/reconciliation/Kill/capital safety; exact KRW 100,000 maximum Tiny Live ceiling and any eligible frozen risk limits; explicit final activation approval.
+
+B work: exact release pin/rollback, operator diagnostics, failure alerts and recovery drills that reduce Tiny Live launch risk.
+
+C work: non-blocking UI/cosmetics, open-ended hardening without a reproduced launch blocker and exploratory research not required for the current launch path.
+
+Current first external blocker is no longer DEVICE_AUTH. Railway probes show DEMO-mode credentials in the isolated REAL read-only services; REAL OAuth returns 8030 MODE_MISMATCH. Do not request another 8050/device-auth rerun until broker-issued REAL credentials are installed in the isolated REAL read-only service.
+
+---
+
 # Delivery priority override — 2026-10-07 user-directed efficiency
 
 User instruction: “효율적이게 일해 중요한것부터”. This supersedes older next-task pointers that start another open-ended integrity/schema review.
