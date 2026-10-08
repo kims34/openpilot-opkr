@@ -165,6 +165,29 @@ class KRXOpenAPIProspectiveSourceTest(unittest.TestCase):
         with self.assertRaisesRegex(KRXProspectiveOpenAPISourceError, "nonpositive"):
             build(daily=bad)
 
+
+    def test_nonpositive_ohlc_rejection_attaches_safe_activity_counts(self):
+        for all_zero, expected_no_activity in ((False, 0), (True, 1)):
+            rows = _daily_rows()
+            bad_prices = {
+                "TDD_OPNPRC": "0", "TDD_HGPRC": "0",
+                "TDD_LWPRC": "0", "TDD_CLSPRC": "0",
+                "ACC_TRDVOL": "0", "ACC_TRDVAL": "0",
+            } if all_zero else {"TDD_OPNPRC": "0"}
+            rows[0] = dict(rows[0], **bad_prices)
+            rows[0]["ISU_NM"] = "DO_NOT_LEAK"
+            with self.assertRaisesRegex(
+                KRXProspectiveOpenAPISourceError, "nonpositive"
+            ) as caught:
+                build(daily=rows)
+            counts = caught.exception.safe_ohlc_counts
+            self.assertEqual(counts["common_stock_rows"], 1)
+            self.assertEqual(counts["nonpositive_ohlc_rows"], 1)
+            self.assertEqual(counts["zero_volume_value_rows"], expected_no_activity)
+            self.assertEqual(counts["other_activity_rows"], 1 - expected_no_activity)
+            self.assertEqual(counts["all_zero_ohlc_rows"], int(all_zero))
+            self.assertNotIn("DO_NOT_LEAK", str(counts))
+
     def test_retrieval_time_is_observed_availability_not_backdated_publication(self):
         out = build()
         self.assertEqual(

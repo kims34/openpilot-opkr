@@ -9,6 +9,7 @@ import unittest
 from research_v1_prospective_http_runtime import (
     _failure_reason_code,
     _failure_source_session,
+    _failure_ohlc_counts,
     _latest_anchor,
     _read_status,
     _safe_status,
@@ -144,6 +145,62 @@ class ProspectiveHTTPRuntimeTest(unittest.TestCase):
                 status["source_failure_session"] = bad
                 path.write_bytes(_canonical(status) + b"\n")
                 with self.assertRaisesRegex(Exception, "source failure session is invalid"):
+                    _read_status(root)
+
+
+    def test_ohlc_counts_are_bounded_and_only_emitted_for_source_error(self):
+        from research_v1_prospective_http_runtime import _validated_ohlc_counts
+        sample = {
+            "common_stock_rows": 970, "nonpositive_ohlc_rows": 2,
+            "zero_volume_value_rows": 2, "other_activity_rows": 0,
+            "all_zero_ohlc_rows": 1,
+        }
+        exc = KRXProspectiveOpenAPISourceError(
+            "common-stock current-session OHLC contains nonpositive value; private"
+        )
+        exc.source_failure_session = "2026-09-28"
+        exc.safe_ohlc_counts = sample
+        self.assertEqual(_failure_ohlc_counts(exc), sample)
+        self.assertIsNone(_failure_ohlc_counts(RuntimeError("secret")))
+        for key, bad in (
+            ("nonpositive_ohlc_rows", -1),
+            ("nonpositive_ohlc_rows", True),
+            ("zero_volume_value_rows", 3),
+            ("common_stock_rows", 1000001),
+            ("all_zero_ohlc_rows", "2 DO_NOT_LEAK"),
+        ):
+            tampered = dict(sample, **{key: bad})
+            self.assertIsNone(_validated_ohlc_counts(tampered))
+        exc.source_failure_session = "unsafe date token=DO_NOT_LEAK"
+        self.assertIsNone(_failure_ohlc_counts(exc))
+
+    def test_public_status_rejects_forged_ohlc_aggregate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            status = _safe_status({"status": "FAIL_CLOSED", "session": "2026-10-08"})
+            status.update({
+                "error_class": "KRXProspectiveOpenAPISourceError",
+                "error_reason_code": "COMMON_OHLC_NONPOSITIVE",
+                "source_failure_session": "2026-09-28",
+                "ohlc_failure_counts": {
+                    "common_stock_rows": 970, "nonpositive_ohlc_rows": 2,
+                    "zero_volume_value_rows": 2, "other_activity_rows": 0,
+                    "all_zero_ohlc_rows": 1,
+                },
+            })
+            path = root / "runtime-status.json"
+            path.write_bytes(_canonical(status) + b"\n")
+            self.assertEqual(
+                _read_status(root)["ohlc_failure_counts"]["nonpositive_ohlc_rows"], 2
+            )
+            cases = [
+                dict(status, ohlc_failure_counts={"issue_code": "DO_NOT_LEAK"}),
+                dict(status, error_reason_code="OTHER_FAILURE"),
+                dict(status, source_failure_session=None),
+            ]
+            for altered in cases:
+                path.write_bytes(_canonical(altered) + b"\n")
+                with self.assertRaises(Exception):
                     _read_status(root)
 
     def test_missing_status_defaults_to_waiting_and_disabled(self):

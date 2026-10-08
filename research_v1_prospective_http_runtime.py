@@ -95,6 +95,36 @@ def _failure_source_session(exc: Exception) -> str | None:
     return _validated_source_session(getattr(exc, "source_failure_session", None))
 
 
+
+# This is diagnostic shape only, not proof of halt, price, or official
+# publication status. Bound counts exclude row data and source identifiers.
+_OHLC_COUNT_KEYS = frozenset({
+    "common_stock_rows", "nonpositive_ohlc_rows",
+    "zero_volume_value_rows", "other_activity_rows",
+    "all_zero_ohlc_rows",
+})
+
+
+def _validated_ohlc_counts(value: Any) -> dict[str, int] | None:
+    if type(value) is not dict or set(value) != _OHLC_COUNT_KEYS:
+        return None
+    if any(type(v) is not int or v < 0 or v > 1000000 for v in value.values()):
+        return None
+    n = value["nonpositive_ohlc_rows"]
+    return dict(value) if (
+        0 < n <= value["common_stock_rows"]
+        and value["zero_volume_value_rows"] + value["other_activity_rows"] == n
+        and value["all_zero_ohlc_rows"] <= n
+    ) else None
+
+
+def _failure_ohlc_counts(exc: Exception) -> dict[str, int] | None:
+    if (_failure_reason_code(exc) != "COMMON_OHLC_NONPOSITIVE"
+            or _failure_source_session(exc) is None):
+        return None
+    return _validated_ohlc_counts(getattr(exc, "safe_ohlc_counts", None))
+
+
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = _canonical(dict(value)) + b"\n"
@@ -172,6 +202,11 @@ def _read_status(root: Path) -> dict[str, Any]:
                 or type(value.get("session")) is not str
                 or day > value["session"]):
             raise ProspectiveRuntimeError("public source failure session is invalid")
+    if "ohlc_failure_counts" in value:
+        if (value.get("error_reason_code") != "COMMON_OHLC_NONPOSITIVE"
+                or "source_failure_session" not in value
+                or _validated_ohlc_counts(value["ohlc_failure_counts"]) is None):
+            raise ProspectiveRuntimeError("public OHLC diagnostic counts are invalid")
     return value
 
 
@@ -300,6 +335,9 @@ class RuntimeState:
                 source_day = _failure_source_session(exc)
                 if source_day is not None:
                     safe["source_failure_session"] = source_day
+                    counts = _failure_ohlc_counts(exc)
+                    if counts is not None:
+                        safe["ohlc_failure_counts"] = counts
                 try:
                     _atomic_json(self.private_root / STATUS_FILE, safe)
                 except Exception:
