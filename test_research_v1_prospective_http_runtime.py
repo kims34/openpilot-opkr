@@ -9,6 +9,7 @@ import unittest
 from research_v1_prospective_http_runtime import (
     _failure_reason_code,
     _failure_source_session,
+    _failure_private_receipt_saved,
     _failure_ohlc_counts,
     _latest_anchor,
     _read_status,
@@ -200,6 +201,48 @@ class ProspectiveHTTPRuntimeTest(unittest.TestCase):
             ]
             for altered in cases:
                 path.write_bytes(_canonical(altered) + b"\n")
+                with self.assertRaises(Exception):
+                    _read_status(root)
+
+    def test_private_receipt_success_proof_is_safe_and_fail_closed(self):
+        exc = KRXProspectiveOpenAPISourceError(
+            "common-stock current-session OHLC contains nonpositive value; secret=DO_NOT_LEAK"
+        )
+        exc.source_failure_session = "2026-09-28"
+        self.assertFalse(_failure_private_receipt_saved(exc))
+        exc.private_rejected_source_receipt_saved = True
+        self.assertTrue(_failure_private_receipt_saved(exc))
+        exc.private_rejected_source_receipt_saved = 1
+        self.assertFalse(_failure_private_receipt_saved(exc))
+        exc.private_rejected_source_receipt_saved = "secret=DO_NOT_LEAK"
+        self.assertFalse(_failure_private_receipt_saved(exc))
+        exc.private_rejected_source_receipt_saved = True
+        exc.source_failure_session = "invalid private token=DO_NOT_LEAK"
+        self.assertFalse(_failure_private_receipt_saved(exc))
+        self.assertFalse(_failure_private_receipt_saved(RuntimeError("secret=DO_NOT_LEAK")))
+
+    def test_public_private_receipt_flag_only_true_on_valid_source_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            path = root / "runtime-status.json"
+            status = _safe_status({"status": "FAIL_CLOSED", "session": "2026-10-08"})
+            status.update({
+                "error_class": "KRXProspectiveOpenAPISourceError",
+                "error_reason_code": "COMMON_OHLC_NONPOSITIVE",
+                "source_failure_session": "2026-09-28",
+                "private_rejected_source_receipt_saved": True,
+            })
+            path.write_bytes(_canonical(status) + b"\n")
+            self.assertIs(_read_status(root)["private_rejected_source_receipt_saved"], True)
+            for bad in (
+                dict(status, private_rejected_source_receipt_saved=False),
+                dict(status, private_rejected_source_receipt_saved=1),
+                dict(status, private_rejected_source_receipt_saved="DO_NOT_LEAK"),
+                dict(status, source_failure_session=None),
+                dict(status, status="CAPTURED"),
+                dict(status, error_class="RuntimeError"),
+            ):
+                path.write_bytes(_canonical(bad) + b"\n")
                 with self.assertRaises(Exception):
                     _read_status(root)
 
