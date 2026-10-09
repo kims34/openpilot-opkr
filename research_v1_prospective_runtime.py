@@ -251,12 +251,16 @@ def _fetch_official_session_source(
             master_retrieved_at=master.retrieved_at,
             connectivity_evidence=evidence,
         )
-    except KRXProspectiveOpenAPISourceError:
+    except KRXProspectiveOpenAPISourceError as exc:
         if private_root is not None:
             _store_rejected_openapi_source(
                 day, daily=daily, master=master,
                 private_root=private_root, git_worktree=git_worktree,
             )
+            # A private receipt and both raw blobs have been durably written.
+            # Keep the ORIGINAL source error and rejection status unchanged.
+            # Only the in-memory boolean is eligible for public diagnostics.
+            exc.private_rejected_source_receipt_saved = True
         raise
     if source.get("session") != session_text:
         raise ProspectiveRuntimeError("same-session KRX source normalization drift")
