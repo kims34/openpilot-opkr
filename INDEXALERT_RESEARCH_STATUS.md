@@ -1,3 +1,22 @@
+# Multi-factor validation scope and source audit — 2026-10-09 KST
+
+User directive: evaluate trading activity, foreign/institutional flows and fundamentals instead of concentrating only on historical price patterns. This supersedes the earlier *single active M20 candidate only* scheduling restriction, not any frozen strategy, PIT, costs, holdout or promotion requirement.
+
+Disposition: **CONTINUE VALIDATION for source/coverage work; NEW EVIDENCE REQUIRED for new performance results**.
+Detailed evidence and bounded comparison design: [INDEXALERT_MULTI_FACTOR_VALIDATION_2026_10_09.md](INDEXALERT_MULTI_FACTOR_VALIDATION_2026_10_09.md).
+
+Actual source/code audit at research head 20e6f131fa0a87e2fb4cad8fef03040f0e381635:
+- Existing features already include trading-value liquidity (log_adv20/adv20_rank), return volatility, market breadth and residual returns. vol20 is return volatility, NOT trading volume.
+- Existing family-ablation code separates market/residual/base families; it does not isolate a foreign/institutional flow family or a trading-activity-only family.
+- Investor-flow probe uses authenticated Data Marketplace web sessions, explicitly not KRX official OpenAPI. Do not run that route merely because OpenAPI use is approved.
+- KRX public OpenAPI catalogue checked today does not list a per-security investor-flow service. This is not a claim no licensed service exists.
+- Official Kiwoom REST guide lists investor-flow routes including ka10059, ka10008, ka10131, ka10066. This establishes a documented alternative to investigate; no authenticated call, history coverage, publication-time equivalence or data admission was established.
+- Existing M20 disclosure trial is preserved; latest actual OpenDART probe remains AUTH_NOT_CONFIGURED. No new credential check was run this cycle.
+
+Next bounded work: verify Kiwoom investor-flow exact schema, scope, units, pagination, history depth and publication/revision lineage; then obtain an admitted full-universe panel, not only previously selected trades. Keep incomplete/missing observations missing. No new numerical profitability result, real orders or background collection is claimed.
+
+---
+
 # Profitability-first execution checkpoint — 2026-10-08 KST
 
 User directive: prioritize a concrete strategy profitability decision over further optional application, broker-connectivity or generic hardening work. Existing frozen criteria and separate real-order authority remain unchanged.
