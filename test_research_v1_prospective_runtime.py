@@ -176,6 +176,7 @@ class ProspectiveRuntimeTest(unittest.TestCase):
                     )
             self.assertIs(caught.exception, failure)
             self.assertEqual(failure.source_failure_session, "2026-09-28")
+            self.assertIs(failure.private_rejected_source_receipt_saved, True)
             df.assert_called_once()
             mf.assert_called_once()
             receipts = list(root.rglob("rejected-*.json"))
@@ -230,6 +231,7 @@ class ProspectiveRuntimeTest(unittest.TestCase):
                         private_root=root, git_worktree=git,
                     )
             self.assertFalse(list(root.rglob("rejected-*.json")))
+            self.assertFalse(hasattr(daily, "private_rejected_source_receipt_saved"))
             daily.retrieved_at = "2026-10-08T09:00:00"
             with self.assertRaises(ProspectiveRuntimeError):
                 _store_rejected_openapi_source(
