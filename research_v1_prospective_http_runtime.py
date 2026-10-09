@@ -125,6 +125,19 @@ def _failure_ohlc_counts(exc: Exception) -> dict[str, int] | None:
     return _validated_ohlc_counts(getattr(exc, "safe_ohlc_counts", None))
 
 
+def _failure_private_receipt_saved(exc: Exception) -> bool:
+    """True only after the rejected-source private writer returned successfully.
+
+    Do not expose private hashes, object names, retrieval times, or KRX rows.
+    False is not proof of absent data from an earlier retrieval.
+    """
+    return bool(
+        isinstance(exc, KRXProspectiveOpenAPISourceError)
+        and _failure_source_session(exc) is not None
+        and getattr(exc, "private_rejected_source_receipt_saved", None) is True
+    )
+
+
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = _canonical(dict(value)) + b"\n"
@@ -207,6 +220,12 @@ def _read_status(root: Path) -> dict[str, Any]:
                 or "source_failure_session" not in value
                 or _validated_ohlc_counts(value["ohlc_failure_counts"]) is None):
             raise ProspectiveRuntimeError("public OHLC diagnostic counts are invalid")
+    if "private_rejected_source_receipt_saved" in value:
+        if (value["private_rejected_source_receipt_saved"] is not True
+                or value.get("status") != "FAIL_CLOSED"
+                or value.get("error_class") != "KRXProspectiveOpenAPISourceError"
+                or "source_failure_session" not in value):
+            raise ProspectiveRuntimeError("public private-receipt proof is invalid")
     return value
 
 
@@ -338,6 +357,8 @@ class RuntimeState:
                     counts = _failure_ohlc_counts(exc)
                     if counts is not None:
                         safe["ohlc_failure_counts"] = counts
+                    if _failure_private_receipt_saved(exc):
+                        safe["private_rejected_source_receipt_saved"] = True
                 try:
                     _atomic_json(self.private_root / STATUS_FILE, safe)
                 except Exception:
