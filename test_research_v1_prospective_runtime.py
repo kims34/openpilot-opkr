@@ -93,7 +93,14 @@ class ProspectiveRuntimeTest(unittest.TestCase):
             with patch(
                 "research_v1_krx_rejected_source_audit.build_current_session_openapi_source",
                 side_effect=fake,
-            ) as build:
+            ) as build, patch(
+                "research_v1_krx_rejected_source_audit._rejected_identity_shape",
+                return_value={
+                    "rejected_master_identities_joined": 1,
+                    "rejected_unique_standard_codes": 1,
+                    "identity_from_observed_master_not_halt_proof": True,
+                },
+            ) as identity_shape:
                 result = audit_latest_rejected_source(
                     private_root=root, git_worktree=git,
                     connectivity_evidence={},
@@ -108,6 +115,8 @@ class ProspectiveRuntimeTest(unittest.TestCase):
             self.assertIs(result["official_halt_status_verified"], False)
             self.assertEqual(build.call_args.kwargs["daily_raw"], daily_raw)
             self.assertEqual(build.call_args.kwargs["master_raw"], master_raw)
+            self.assertEqual(identity_shape.call_args.kwargs["daily_raw"], daily_raw)
+            self.assertEqual(result["rejected_unique_standard_codes"], 1)
             self.assertNotIn("000001", str(result))
             self.assertNotIn("sha256", str(result))
             # A later altered RAW object is not allowed to inherit old proof.
@@ -145,6 +154,58 @@ class ProspectiveRuntimeTest(unittest.TestCase):
                 audit_latest_rejected_source(
                     private_root=root, git_worktree=git, connectivity_evidence={},
                 )
+
+
+    def test_offline_rejected_identity_shape_is_joined_with_no_issue_disclosure(self):
+        from research_v1_krx_rejected_source_audit import (
+            KRXRejectedAuditError, _rejected_identity_shape,
+        )
+        def _raw(rows):
+            return json.dumps({"OutBlock_1": rows}, ensure_ascii=False).encode("utf-8")
+
+        daily_rows = [{
+            "ISU_CD": "005930", "TDD_OPNPRC": "0",
+            "TDD_HGPRC": "70500", "TDD_LWPRC": "69000",
+            "TDD_CLSPRC": "70000", "ACC_TRDVOL": "0",
+            "ACC_TRDVAL": "0",
+        }]
+        master_rows = [{
+            "ISU_CD": "KR7005930003", "ISU_SRT_CD": "005930",
+            "ISU_NM": "synthetic test issue", "MKT_TP_NM": "KOSPI",
+            "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주",
+            "LIST_DD": "19750611",
+        }]
+        count = {
+            "common_stock_rows": 1, "nonpositive_ohlc_rows": 1,
+            "zero_volume_value_rows": 1, "other_activity_rows": 0,
+            "all_zero_ohlc_rows": 0,
+        }
+        kwargs = {
+            "daily_raw": _raw(daily_rows),
+            "master_raw": _raw(master_rows),
+            "source_session": "2026-10-07",
+            "master_retrieved_at": "2026-10-07T18:10:06+09:00",
+            "expected_counts": count,
+        }
+        result = _rejected_identity_shape(**kwargs)
+        self.assertEqual(result["rejected_master_identities_joined"], 1)
+        self.assertEqual(result["rejected_unique_standard_codes"], 1)
+        self.assertEqual(result["zero_open_rows"], 1)
+        self.assertEqual(result["zero_close_rows"], 0)
+        self.assertEqual(result["positive_close_rows"], 1)
+        self.assertEqual(result["negative_price_rows"], 0)
+        self.assertIs(result["identity_from_observed_master_not_halt_proof"], True)
+        self.assertNotIn("005930", str(result))
+        self.assertNotIn("KR7005930003", str(result))
+        self.assertNotIn("70000", str(result))
+        # A deceptive changed master or invalid expected count never passes.
+        tampered = dict(kwargs, master_raw=_raw([{**master_rows[0], "ISU_SRT_CD": "999999"}]))
+        with self.assertRaisesRegex(KRXRejectedAuditError, "REJECTED_IDENTITY_SHAPE_NOT_VERIFIED"):
+            _rejected_identity_shape(**tampered)
+        wrong_count = dict(kwargs, expected_counts=dict(count, nonpositive_ohlc_rows=2))
+        with self.assertRaisesRegex(KRXRejectedAuditError, "REJECTED_IDENTITY_SHAPE_NOT_VERIFIED"):
+            _rejected_identity_shape(**wrong_count)
+
 
     def test_runtime_authority_requires_read_only_krx_and_rejects_trading_flags(self):
         base = {
