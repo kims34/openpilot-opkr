@@ -160,13 +160,21 @@ class ProspectiveRuntimeTest(unittest.TestCase):
         from research_v1_krx_rejected_source_audit import (
             KRXRejectedAuditError, _rejected_identity_shape,
         )
-        from test_research_v1_krx_openapi_prospective_source import (
-            _daily_rows, _master_rows, _raw,
-        )
-        daily_rows = _daily_rows()
-        daily_rows[0]["TDD_OPNPRC"] = "0"
-        daily_rows[0]["ACC_TRDVOL"] = "0"
-        daily_rows[0]["ACC_TRDVAL"] = "0"
+        def _raw(rows):
+            return json.dumps({"OutBlock_1": rows}, ensure_ascii=False).encode("utf-8")
+
+        daily_rows = [{
+            "ISU_CD": "005930", "TDD_OPNPRC": "0",
+            "TDD_HGPRC": "70500", "TDD_LWPRC": "69000",
+            "TDD_CLSPRC": "70000", "ACC_TRDVOL": "0",
+            "ACC_TRDVAL": "0",
+        }]
+        master_rows = [{
+            "ISU_CD": "KR7005930003", "ISU_SRT_CD": "005930",
+            "ISU_NM": "synthetic test issue", "MKT_TP_NM": "KOSPI",
+            "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주",
+            "LIST_DD": "19750611",
+        }]
         count = {
             "common_stock_rows": 1, "nonpositive_ohlc_rows": 1,
             "zero_volume_value_rows": 1, "other_activity_rows": 0,
@@ -174,7 +182,7 @@ class ProspectiveRuntimeTest(unittest.TestCase):
         }
         kwargs = {
             "daily_raw": _raw(daily_rows),
-            "master_raw": _raw(_master_rows()),
+            "master_raw": _raw(master_rows),
             "source_session": "2026-10-07",
             "master_retrieved_at": "2026-10-07T18:10:06+09:00",
             "expected_counts": count,
@@ -191,7 +199,7 @@ class ProspectiveRuntimeTest(unittest.TestCase):
         self.assertNotIn("KR7005930003", str(result))
         self.assertNotIn("70000", str(result))
         # A deceptive changed master or invalid expected count never passes.
-        tampered = dict(kwargs, master_raw=_raw(_master_rows()[1:]))
+        tampered = dict(kwargs, master_raw=_raw([{**master_rows[0], "ISU_SRT_CD": "999999"}]))
         with self.assertRaisesRegex(KRXRejectedAuditError, "REJECTED_IDENTITY_SHAPE_NOT_VERIFIED"):
             _rejected_identity_shape(**tampered)
         wrong_count = dict(kwargs, expected_counts=dict(count, nonpositive_ohlc_rows=2))
