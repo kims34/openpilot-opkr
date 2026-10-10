@@ -18,7 +18,11 @@ import pandas as pd
 from research_v1_krx_openapi_prospective_source import (
     KRXProspectiveOpenAPISourceError,
     build_current_session_openapi_source,
+    _number,
+    _short_code,
 )
+from research_v1_krx_historical_fetchers import parse_openapi_raw
+from research_v1_krx_official_status import normalise_basic_info
 from research_v1_krx_private_store import validate_private_root_path
 
 _RECEIPT_RE = re.compile(r"^rejected-(\d{4}-\d{2}-\d{2})-([0-9a-f]{64})\.json$")
@@ -119,6 +123,83 @@ def _raw_from_digest(root: Path, digest: str) -> bytes:
     return data
 
 
+
+
+def _rejected_identity_shape(
+    *, daily_raw: bytes, master_raw: bytes, source_session: str,
+    master_retrieved_at: str, expected_counts: Mapping[str, int],
+) -> dict[str, int | bool]:
+    """Offline identity join and OHLC shape, never output raw issue identities.
+
+    This verifies structural matches using the *observed retrieved* master
+    snapshot. It is NOT independent trading-halt, historical PIT, or source
+    admission evidence. No rows are removed or repriced for the main model.
+    """
+    try:
+        daily = parse_openapi_raw(daily_raw)
+        master = parse_openapi_raw(master_raw)
+        identity = normalise_basic_info(
+            master,
+            asof_date=pd.Timestamp(source_session),
+            available_at=master_retrieved_at,
+        )
+        codes = _short_code(daily["ISU_CD"], "daily.ISU_CD")
+        if codes.duplicated().any():
+            raise ValueError("duplicate")
+        numeric = pd.DataFrame({
+            "symbol": codes,
+            "open": _number(daily["TDD_OPNPRC"], "open"),
+            "high": _number(daily["TDD_HGPRC"], "high"),
+            "low": _number(daily["TDD_LWPRC"], "low"),
+            "close": _number(daily["TDD_CLSPRC"], "close"),
+            "volume": _number(daily["ACC_TRDVOL"], "volume"),
+            "value": _number(daily["ACC_TRDVAL"], "value"),
+        })
+        joint = numeric.merge(
+            identity[["symbol", "standard_code", "market_type_official",
+                      "common_stock_identity_official"]],
+            how="left", on="symbol", validate="one_to_one",
+        )
+        if joint["standard_code"].isna().any():
+            raise ValueError("unmapped")
+        common = joint.loc[
+            joint["common_stock_identity_official"].eq(True)
+        ].copy()
+        mk = common["market_type_official"].astype(str)
+        if not (mk.str.upper().str.contains("KOSPI", na=False)
+                | mk.str.contains("유가증권", na=False)).all():
+            raise ValueError("market")
+        ohlc = common[["open", "high", "low", "close"]]
+        mask = (ohlc <= 0).any(axis=1)
+        rejected = common.loc[mask]
+        invalid = ohlc.loc[mask]
+        no_activity = rejected["volume"].eq(0) & rejected["value"].eq(0)
+        if (
+            len(common) != expected_counts["common_stock_rows"]
+            or len(rejected) != expected_counts["nonpositive_ohlc_rows"]
+            or int(no_activity.sum()) != expected_counts["zero_volume_value_rows"]
+            or int((~no_activity).sum()) != expected_counts["other_activity_rows"]
+            or int((invalid == 0).all(axis=1).sum()) != expected_counts["all_zero_ohlc_rows"]
+            or rejected["standard_code"].isna().any()
+            or rejected["standard_code"].duplicated().any()
+        ):
+            raise ValueError("source mismatch")
+        # Never return issue codes, names, prices, hashes or retrieval clocks.
+        return {
+            "rejected_master_identities_joined": int(len(rejected)),
+            "rejected_unique_standard_codes": int(rejected["standard_code"].nunique()),
+            "zero_open_rows": int((invalid["open"] == 0).sum()),
+            "zero_high_rows": int((invalid["high"] == 0).sum()),
+            "zero_low_rows": int((invalid["low"] == 0).sum()),
+            "zero_close_rows": int((invalid["close"] == 0).sum()),
+            "negative_price_rows": int((invalid < 0).any(axis=1).sum()),
+            "positive_close_rows": int((invalid["close"] > 0).sum()),
+            "identity_from_observed_master_not_halt_proof": True,
+        }
+    except Exception:
+        raise KRXRejectedAuditError("REJECTED_IDENTITY_SHAPE_NOT_VERIFIED") from None
+
+
 def audit_latest_rejected_source(
     *, private_root: Path, git_worktree: Path,
     connectivity_evidence: Mapping[str, Any],
@@ -179,7 +260,14 @@ def audit_latest_rejected_source(
             or counts["all_zero_ohlc_rows"] > counts["nonpositive_ohlc_rows"]
         ):
             raise KRXRejectedAuditError("SOURCE_REJECTION_COUNTS_INVALID")
+        identity_shape = _rejected_identity_shape(
+            daily_raw=daily, master_raw=master,
+            source_session=chosen["requested_source_session"],
+            master_retrieved_at=chosen["master_retrieved_at"],
+            expected_counts=counts,
+        )
         return {
+            **identity_shape,
             "status": "REJECTED_SOURCE_RAW_VERIFIED",
             "requested_source_session": chosen["requested_source_session"],
             "receipts_seen": len(receipts),
