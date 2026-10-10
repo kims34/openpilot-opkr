@@ -94,6 +94,10 @@ def run(env, send=request):
             if page < 2:
                 time.sleep(0.3)
         result["duplicate_dates"] = len(all_dates)-len(set(all_dates))
+        # Duplicate dates across continuation pages invalidate a daily source.
+        # This is a metadata-only fail-closed gate, not a profitability claim.
+        if result["duplicate_dates"]:
+            return dict(result, status="DUPLICATE_DATES_REJECTED")
         result["requested_body"] = BODY
         result["history_exhausted"] = not more
         result["status"] = "SOURCE_REACHABLE_METADATA_ONLY" if all_dates else "SOURCE_REACHABLE_EMPTY"
