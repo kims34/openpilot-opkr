@@ -20,6 +20,9 @@ from typing import Any, Mapping
 import pandas as pd
 
 from research_v1_krx_openapi_prospective_source import KRXProspectiveOpenAPISourceError
+from research_v1_krx_rejected_source_audit import (
+    KRXRejectedAuditError, audit_latest_rejected_source,
+)
 from research_v1_prospective_runtime import (
     FINALITY_TIME_KST,
     ProspectiveRuntimeError,
@@ -476,6 +479,23 @@ def serve(
     load_calendar_prefix(code_root)
     verify_long_history_root(verified_root)
     private_root.mkdir(parents=True, exist_ok=True)
+    # One offline, non-authorizing audit per boot. Never print raw KRX records,
+    # receipt hashes or provider exception strings, even on malformed files.
+    try:
+        evidence = _read_json(
+            code_root / "INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json",
+            "pinned KRX connectivity evidence",
+        )
+        audit = audit_latest_rejected_source(
+            private_root=private_root, git_worktree=git_worktree,
+            connectivity_evidence=evidence,
+        )
+    except KRXRejectedAuditError:
+        audit = {"status": "OFFLINE_AUDIT_FAIL_CLOSED", "admission_verified": False}
+    except Exception:
+        audit = {"status": "OFFLINE_AUDIT_FAIL_CLOSED", "admission_verified": False}
+    print("INDEXALERT_REJECTED_SOURCE_OFFLINE_AUDIT="
+          + json.dumps(audit, sort_keys=True), flush=True)
     state = RuntimeState(
         code_root=code_root,
         verified_root=verified_root,
