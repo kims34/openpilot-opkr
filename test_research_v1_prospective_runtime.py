@@ -57,6 +57,95 @@ class ProspectiveRuntimeTest(unittest.TestCase):
         )
         self.assertFalse(rebound["producer_binding"]["live_order_authorized"])
 
+
+    def test_offline_rejected_source_audit_verifies_latest_private_bytes_not_admission(self):
+        from research_v1_krx_rejected_source_audit import (
+            KRXRejectedAuditError, audit_latest_rejected_source,
+        )
+        from research_v1_prospective_runtime import _store_rejected_openapi_source
+        from types import SimpleNamespace
+        import hashlib
+        import json
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "pit"
+            git = Path(folder) / "git"
+            daily_raw = b'{"OutBlock_1":[{"BAS_DD":"20260928","ISU_CD":"000001"}]}'
+            master_raw = b'{"OutBlock_1":[{"ISU_SRT_CD":"000001"}]}'
+            daily = SimpleNamespace(
+                raw_bytes=daily_raw, retrieved_at="2026-10-09T09:30:00+00:00",
+            )
+            master = SimpleNamespace(
+                raw_bytes=master_raw, retrieved_at="2026-10-09T09:30:01+00:00",
+            )
+            _store_rejected_openapi_source(
+                pd.Timestamp("2026-09-28"), daily=daily, master=master,
+                private_root=root, git_worktree=git,
+            )
+            fake = KRXProspectiveOpenAPISourceError(
+                "common-stock current-session OHLC contains nonpositive value;"
+            )
+            fake.safe_ohlc_counts = {
+                "common_stock_rows": 2, "nonpositive_ohlc_rows": 1,
+                "zero_volume_value_rows": 1, "other_activity_rows": 0,
+                "all_zero_ohlc_rows": 0,
+            }
+            with patch(
+                "research_v1_krx_rejected_source_audit.build_current_session_openapi_source",
+                side_effect=fake,
+            ) as build:
+                result = audit_latest_rejected_source(
+                    private_root=root, git_worktree=git,
+                    connectivity_evidence={},
+                )
+            self.assertEqual(result["status"], "REJECTED_SOURCE_RAW_VERIFIED")
+            self.assertEqual(result["requested_source_session"], "2026-09-28")
+            self.assertEqual(result["receipts_seen"], 1)
+            self.assertEqual(result["nonpositive_ohlc_rows"], 1)
+            self.assertIs(result["latest_raw_hashes_verified"], True)
+            self.assertIs(result["admission_verified"], False)
+            self.assertIs(result["live_order_authorized"], False)
+            self.assertIs(result["official_halt_status_verified"], False)
+            self.assertEqual(build.call_args.kwargs["daily_raw"], daily_raw)
+            self.assertEqual(build.call_args.kwargs["master_raw"], master_raw)
+            self.assertNotIn("000001", str(result))
+            self.assertNotIn("sha256", str(result))
+            # A later altered RAW object is not allowed to inherit old proof.
+            digest = hashlib.sha256(daily_raw).hexdigest()
+            obj = (
+                root / "rejected-openapi" / "objects" / "sha256"
+                / digest[:2] / (digest + ".bin")
+            )
+            obj.write_bytes(b"tampered")
+            with self.assertRaisesRegex(KRXRejectedAuditError, "RAW_SHA_MISMATCH"):
+                audit_latest_rejected_source(
+                    private_root=root, git_worktree=git, connectivity_evidence={},
+                )
+            self.assertFalse(list(root.glob("session-*.json")))
+
+    def test_offline_rejected_source_audit_absent_or_forged_receipt_fails_closed(self):
+        from research_v1_krx_rejected_source_audit import (
+            KRXRejectedAuditError, audit_latest_rejected_source,
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "private"
+            git = Path(folder) / "git"
+            self.assertEqual(
+                audit_latest_rejected_source(
+                    private_root=root, git_worktree=git, connectivity_evidence={},
+                )["status"], "NO_SAVED_RECEIPT",
+            )
+            receipt_dir = root / "rejected-openapi"
+            receipt_dir.mkdir(parents=True)
+            receipt_dir.chmod(0o700)
+            forged = receipt_dir / ("rejected-2026-09-28-" + "a" * 64 + ".json")
+            forged.write_text('{"classification":"FORGED"}')
+            forged.chmod(0o600)
+            with self.assertRaisesRegex(KRXRejectedAuditError, "RECEIPT_SHA_MISMATCH"):
+                audit_latest_rejected_source(
+                    private_root=root, git_worktree=git, connectivity_evidence={},
+                )
+
     def test_runtime_authority_requires_read_only_krx_and_rejects_trading_flags(self):
         base = {
             "INDEXALERT_PROSPECTIVE_NETWORK_AUTHORIZED": NETWORK_AUTH_VALUE,
