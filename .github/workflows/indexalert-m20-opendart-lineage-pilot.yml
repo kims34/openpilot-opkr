@@ -1,0 +1,62 @@
+name: IndexAlert M20 OpenDART Source Lineage Pilot
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_lineage_pilot.py'
+      - 'test_research_v1_opendart_lineage_pilot.py'
+      - '.github/workflows/indexalert-m20-opendart-lineage-pilot.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_lineage_pilot.py'
+      - 'test_research_v1_opendart_lineage_pilot.py'
+      - '.github/workflows/indexalert-m20-opendart-lineage-pilot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-safety-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - run: python -m py_compile research_v1_opendart_lineage_pilot.py test_research_v1_opendart_lineage_pilot.py
+      - run: python -m unittest -v test_research_v1_opendart_lineage_pilot.py
+      - name: Assert no broker, order or KRX network endpoints
+        run: |
+          ! grep -E 'https?://(api.kiwoom.com|data.krx.co.kr|openapi.krx.co.kr)' research_v1_opendart_lineage_pilot.py
+          grep -F '"performance_run_authorized": False' research_v1_opendart_lineage_pilot.py
+          grep -F '"live_order_authorized": False' research_v1_opendart_lineage_pilot.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_lineage_pilot.py
+  official-readonly-source-pilot:
+    if: github.event_name == 'push'
+    needs: offline-safety-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Run preselected issuer official-source-shape probe (not PIT admission)
+        run: |
+          python research_v1_opendart_lineage_pilot.py
+          python -c "import json; r=json.load(open('research_results/opendart_lineage_pilot/summary.json',encoding='utf8')); assert r['source_status']=='PILOT_SOURCE_SHAPE_PRESENT_NOT_PIT_ADMITTED'; assert r['pit_source_admitted'] is False; assert r['live_order_authorized'] is False"
+      - name: Retain only redacted aggregate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-opendart-lineage-source-shape-only
+          path: research_results/opendart_lineage_pilot/summary.json
+          retention-days: 7
+          if-no-files-found: warn
