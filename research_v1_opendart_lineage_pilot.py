@@ -153,15 +153,18 @@ def run(session: requests.Session | None = None) -> dict:
         return report
     if session is None:
         session = requests.Session()
+    stage = "CORPORATE_MAPPING"
     try:
         corp_code = corp_from_official_zip(_official_get(
             session, "corpCode.xml", {"crtfc_key": key}, zip_response=True))
+        stage = "FILING_RECEIPT"
         receipts = filing_receipts(_official_get(
             session, "list.json", {
                 "crtfc_key": key, "corp_code": corp_code,
                 "bgn_de": "20251001", "end_de": "20260131",
                 "pblntf_ty": "A", "page_count": "100",
             }))
+        stage = "FINANCIAL_LINE"
         shape = financial_shape(_official_get(
             session, "fnlttSinglAcntAll.json", {
                 "crtfc_key": key, "corp_code": corp_code,
@@ -174,6 +177,24 @@ def run(session: requests.Session | None = None) -> dict:
         # Never log exception messages: HTTP exceptions may contain credential URLs.
         report["source_status"] = "SOURCE_GAP_FAIL_CLOSED"
         report["error_type"] = type(exc).__name__
+        report["failure_stage"] = stage
+        safe_codes = {
+            "invalid ZIP payload size", "invalid official XML entry",
+            "oversize official XML", "invalid corporate identifier",
+            "missing or ambiguous current stock mapping",
+            "official filing endpoint not admitted", "missing filing list",
+            "ambiguous filing pagination", "filing pagination not exhaustively handled",
+            "invalid filing row", "invalid filing identifier",
+            "missing historical period filing",
+            "official financial endpoint not admitted",
+            "missing financial statement lines", "invalid financial line",
+            "bad statement receipt", "statement not linked to enumerated filing",
+            "standalone-quarter prior-year line absent",
+            "ambiguous standardized operating-profit line",
+            "official API HTTP or payload failure", "official JSON not an object",
+        }
+        code = str(exc) if type(exc) is ValueError else ""
+        report["failure_reason_code"] = code if code in safe_codes else "UNCLASSIFIED"
     return report
 
 

@@ -145,6 +145,8 @@ class OpenDartLineagePilotTests(unittest.TestCase):
         with patch.dict(os.environ, {"OPENDART_API_KEY": "synthetic-not-real"}, clear=True):
             out = run(session)
         self.assertEqual(out["source_status"], "SOURCE_GAP_FAIL_CLOSED")
+        self.assertEqual(out["failure_stage"], "FINANCIAL_LINE")
+        self.assertEqual(out["failure_reason_code"], "official financial endpoint not admitted")
         self.assertFalse(out["performance_run_authorized"])
         self.assertNotIn("synthetic-not-real", str(out))
 
