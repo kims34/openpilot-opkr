@@ -1,0 +1,39 @@
+name: IndexAlert Sep28 Entry Quarantine Shadow Safety
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_sep28_entry_quarantine_shadow.py'
+      - 'test_research_v1_krx_sep28_entry_quarantine_shadow.py'
+      - '.github/workflows/indexalert-krx-sep28-entry-quarantine-shadow.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_sep28_entry_quarantine_shadow.py'
+      - 'test_research_v1_krx_sep28_entry_quarantine_shadow.py'
+      - '.github/workflows/indexalert-krx-sep28-entry-quarantine-shadow.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-quarantine-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python syntax
+        run: python -m py_compile research_v1_krx_sep28_entry_quarantine_shadow.py test_research_v1_krx_sep28_entry_quarantine_shadow.py
+      - name: Synthetic no-network quarantine integrity
+        run: python -m unittest -v test_research_v1_krx_sep28_entry_quarantine_shadow.py
+      - name: Static authority and network isolation
+        run: |
+          ! grep -E 'import requests|import urllib|websockets|socket\.connect|/api/dostk/ordr|kt10000|kt10001' research_v1_krx_sep28_entry_quarantine_shadow.py
+          grep -F '"real_orders_authorized": False' research_v1_krx_sep28_entry_quarantine_shadow.py
+          grep -F '"full_source_admission_verified": False' research_v1_krx_sep28_entry_quarantine_shadow.py
+          grep -F '"historical_pit_backtest_authorized": False' research_v1_krx_sep28_entry_quarantine_shadow.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_sep28_entry_quarantine_shadow.py
