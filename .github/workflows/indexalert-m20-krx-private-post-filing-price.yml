@@ -1,0 +1,45 @@
+name: IndexAlert M20 KRX Private Post-Filing Price Path Readiness
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_m20_krx_private_post_disclosure_path.py'
+      - 'test_research_v1_m20_krx_private_post_disclosure_path.py'
+      - '.github/workflows/indexalert-m20-krx-private-post-filing-price.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_m20_krx_private_post_disclosure_path.py'
+      - 'test_research_v1_m20_krx_private_post_disclosure_path.py'
+      - '.github/workflows/indexalert-m20-krx-private-post-filing-price.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-mcap-path-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      KRX_AUTH_KEY: ''
+      OPENDART_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Compile and test read-only post-first-filing price/mcap checks
+        run: |
+          python -m py_compile research_v1_m20_krx_private_post_disclosure_path.py test_research_v1_m20_krx_private_post_disclosure_path.py
+          python -m unittest -v test_research_v1_m20_krx_private_post_disclosure_path.py
+      - name: Dry-run must not contact source or read private volume
+        run: |
+          python research_v1_m20_krx_private_post_disclosure_path.py
+      - name: No actual broker, KRX or OpenDART calls and no trading grant
+        run: |
+          ! grep -E 'api.kiwoom.com|data-dbg.krx.co.kr|data.krx.co.kr|opendart.fss.or.kr|/api/dostk/ordr' research_v1_m20_krx_private_post_disclosure_path.py
+          grep -F '"m20_performance_run_authorized":False' research_v1_m20_krx_private_post_disclosure_path.py
+          grep -F '"real_orders_authorized":False' research_v1_m20_krx_private_post_disclosure_path.py
+          grep -F '"ordering":"DISABLED"' research_v1_m20_krx_private_post_disclosure_path.py
