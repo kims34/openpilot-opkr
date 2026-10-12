@@ -20,7 +20,10 @@ BASE = "https://opendart.fss.or.kr/api/"
 STOCK_CODE = "005930"  # fixed representative issuer, not alpha selection
 BUSINESS_YEAR = "2025"
 REPORT_CODE = "11014"  # Q3
-ACCOUNT_ID = "ifrs-full_ProfitLossFromOperatingActivities"
+ACCOUNT_ID = "dart_OperatingIncomeLoss"
+LEGACY_ACCOUNT_ID = "ifrs-full_ProfitLossFromOperatingActivities"
+TAXONOMY_STATEMENT = "IS1"  # official connected income-statement taxonomy
+OPERATING_LABELS = {"영업이익", "영업이익(손실)"}
 MAX_RESPONSE_BYTES = 32_000_000
 MAX_XML_BYTES = 35_000_000
 OUTPUT = Path("research_results/opendart_lineage_pilot/summary.json")
@@ -87,7 +90,26 @@ def filing_receipts(payload: dict) -> set[str]:
     return matched
 
 
-def financial_shape(payload: dict, corp_code: str, receipts: set[str]) -> dict:
+def operating_taxonomy_shape(payload: dict) -> None:
+    """Verify current official terminology, never historical taxonomy/PIT."""
+    if not isinstance(payload, dict) or payload.get("status") != "000":
+        raise ValueError("official taxonomy endpoint not verified")
+    rows = payload.get("list")
+    if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
+        raise ValueError("invalid taxonomy lines")
+    matches = [r for r in rows if r.get("account_id") == ACCOUNT_ID]
+    if len(matches) != 1:
+        raise ValueError("missing or multiple operating-profit taxonomy lines")
+    row = matches[0]
+    if (row.get("sj_div") != TAXONOMY_STATEMENT
+            or row.get("label_kor") not in OPERATING_LABELS
+            or row.get("data_tp") not in {"X", "(X)"}):
+        raise ValueError("operating-profit taxonomy semantics mismatch")
+
+
+def financial_shape(payload: dict, corp_code: str, receipts: set[str],
+                    taxonomy: dict | None = None) -> dict:
+    operating_taxonomy_shape(taxonomy)
     if not isinstance(payload, dict) or payload.get("status") != "000":
         raise ValueError("official financial endpoint not admitted")
     rows = payload.get("list")
@@ -102,12 +124,16 @@ def financial_shape(payload: dict, corp_code: str, receipts: set[str]) -> dict:
                 and row.get("bsns_year") == BUSINESS_YEAR
                 and row.get("reprt_code") == REPORT_CODE
                 and row.get("sj_div") in {"IS", "CIS"}):
-            # Diagnostic hypothesis only. Do not accept an alternative taxonomy
-            # or select a first row without separately reviewing source evidence.
+            # The prior probe observed zero legacy matches and one DART match.
+            # A conflicting legacy row still blocks; do not silently choose one.
+            if row.get("account_id") == LEGACY_ACCOUNT_ID:
+                raise ValueError("competing operating-profit account line")
             if row.get("account_id") == "dart_OperatingIncomeLoss":
                 dart_candidate_count += 1
             if row.get("account_id") != ACCOUNT_ID:
                 continue
+            if row.get("account_nm") not in OPERATING_LABELS or row.get("currency") != "KRW":
+                raise ValueError("operating-profit statement semantics mismatch")
             receipt = row.get("rcept_no")
             current = row.get("thstrm_amount")
             prior = row.get("frmtrm_q_amount")
@@ -115,7 +141,7 @@ def financial_shape(payload: dict, corp_code: str, receipts: set[str]) -> dict:
                 raise ValueError("bad statement receipt")
             if receipt not in receipts:
                 raise ValueError("statement not linked to enumerated filing")
-            if not all(isinstance(v, str) and re.fullmatch(r"-?[0-9][0-9,]*", v)
+            if not all(isinstance(v, str) and re.fullmatch(r"-?(?:[0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)", v)
                        for v in (current, prior)):
                 raise ValueError("standalone-quarter prior-year line absent")
             standard_lines.append(row)
@@ -125,6 +151,9 @@ def financial_shape(payload: dict, corp_code: str, receipts: set[str]) -> dict:
         "official_filing_receipt_linked": True,
         "standardized_operating_profit_quarter_shape_found": True,
         "operating_profit_line_count": len(standard_lines),
+        "current_official_operating_taxonomy_verified": True,
+        "historical_taxonomy_version_verified": False,
+        "quarter_comparability_and_restatement_verified": False,
     }
 
 
@@ -180,13 +209,18 @@ def run(session: requests.Session | None = None) -> dict:
                 "bgn_de": "20251001", "end_de": "20260131",
                 "pblntf_ty": "A", "page_count": "100",
             }))
+        stage = "OPERATING_TAXONOMY"
+        taxonomy = _official_get(session, "xbrlTaxonomy.json", {
+            "crtfc_key": key, "sj_div": TAXONOMY_STATEMENT,
+        })
+        operating_taxonomy_shape(taxonomy)
         stage = "FINANCIAL_LINE"
         shape = financial_shape(_official_get(
             session, "fnlttSinglAcntAll.json", {
                 "crtfc_key": key, "corp_code": corp_code,
                 "bsns_year": BUSINESS_YEAR, "reprt_code": REPORT_CODE,
                 "fs_div": "CFS",
-            }), corp_code, receipts)
+            }), corp_code, receipts, taxonomy)
         report.update(shape)
         report["source_status"] = "PILOT_SOURCE_SHAPE_PRESENT_NOT_PIT_ADMITTED"
     except Exception as exc:
@@ -209,6 +243,11 @@ def run(session: requests.Session | None = None) -> dict:
             "ambiguous standardized operating-profit line",
             "missing standardized operating-profit line",
             "multiple standardized operating-profit lines",
+            "official taxonomy endpoint not verified", "invalid taxonomy lines",
+            "missing or multiple operating-profit taxonomy lines",
+            "operating-profit taxonomy semantics mismatch",
+            "operating-profit statement semantics mismatch",
+            "competing operating-profit account line",
             "official API HTTP or payload failure", "official JSON not an object",
         }
         if type(exc) is FinancialLineCardinalityError:
