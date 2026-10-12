@@ -81,10 +81,11 @@ def _trusted_private_root(root: Path) -> Path:
         raise OfflinePrivateAuditError("PRIVATE_STORE_ROOT_INVALID")
     if root.name != PRIVATE_SUBDIR:
         raise OfflinePrivateAuditError("PRIVATE_STORE_SCOPE_MISMATCH")
-    if root.parent != Path("/data") and not os.getenv("INDEXALERT_TEST_PRIVATE_AUDIT"):
-        # Production mount may be /data/<private-dir>/...; lower-level
-        # validator rules out public and worktree paths as well.
-        if "/data" not in (str(root) + "/"):
+    if not os.getenv("INDEXALERT_TEST_PRIVATE_AUDIT"):
+        # Check both the lexical and resolved path: parent symlinks must never
+        # permit a read outside the dedicated mounted /data volume.
+        if (not root.is_relative_to(Path("/data"))
+                or not root.resolve().is_relative_to(Path("/data"))):
             raise OfflinePrivateAuditError("PRIVATE_STORE_NOT_ON_MOUNT")
     try:
         return validate_private_root_path(root, git_worktree=Path.cwd())
