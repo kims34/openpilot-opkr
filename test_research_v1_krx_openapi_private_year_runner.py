@@ -23,6 +23,7 @@ class FakeBatch:
             "previous_verified_date_pairs_skipped":0,
             "new_stored_raw_objects":len(y._calendar(start,end,y.PER_WINDOW_MAX_REQUESTS))*2,
             "batch_sampled_ohlc_zero_activity_rows":0,
+            "provider_empty_pairs_not_calendar_attested":0,
             "m20_performance_testing_authorized":False,
             "live_orders_authorized":False,
         }
@@ -61,6 +62,7 @@ class AnnualPrivateHistoryTests(unittest.TestCase):
         self.assertEqual(len(spy.calls),out["planned_windows"])
         self.assertLessEqual(out["actual_api_requests"],650)
         self.assertEqual(out["new_completed_date_pairs"],out["actual_api_requests"]//2)
+        self.assertEqual(out["unverified_empty_daily_date_pairs"],0)
         self.assertFalse(out["historical_publication_pit_verified"])
         self.assertFalse(out["source_admitted"])
         self.assertFalse(out["independent_holdout_authorized"])
