@@ -55,7 +55,7 @@ class MissingSixYearIntegrityContractTest(unittest.TestCase):
         self.assertEqual([z["start"][:4] for z in plan],
                          ["2017","2018","2019","2020","2021","2022"])
         self.assertEqual(plan[-1]["end"],"2022-12-31")
-        self.assertGreater(sum(z["expected_weekdays"] for z in plan),700)
+        self.assertGreater(sum(z["expected_weekdays"] for z in plan),1500)
     def test_default_is_no_storage_access(self):
         spy=FakeAudit()
         out=auditmod.audit_all_missing(audit=spy)
