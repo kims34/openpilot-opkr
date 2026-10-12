@@ -1,0 +1,89 @@
+name: IndexAlert M20 Six Issuer Original 2022 and 2023 Q3 Earnings
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py'
+      - 'test_research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py'
+      - '.github/workflows/indexalert-m20-2022-23-six-issuer-originals.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py'
+      - 'test_research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py'
+      - '.github/workflows/indexalert-m20-2022-23-six-issuer-originals.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexalert-m20-six-original-q3-2022-2023
+  cancel-in-progress: false
+
+jobs:
+  offline-six-by-two-strict-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Synthetic original 2022 and 2023 XBRL compatibility safety checks
+        run: |
+          python -m py_compile research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py test_research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+          python -m unittest -v test_research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+      - name: Ensure no KRX, broker, PIT, Holdout or LIVE authority
+        run: |
+          ! grep -E 'api.kiwoom.com|data-dbg.krx.co.kr|data.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+          grep -F '"m20_performance_run_authorized":False' research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+          grep -F '"independent_holdout_authorized":False' research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+          grep -F '"real_orders_authorized":False' research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+          grep -F '"ordering":"DISABLED"' research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py
+
+  six-fixed-cohort-original-q3-pairs:
+    if: github.event_name == 'push'
+    needs: offline-six-by-two-strict-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        cohort_slot: [0, 1, 2, 3, 4, 5]
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Official 2022 and 2023 first-original XBRL numbers, ephemeral memory only
+        run: |
+          python research_v1_opendart_m20_six_issuer_2022_2023_q3_originals.py --cohort-slot ${{ matrix.cohort_slot }}
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research_results/opendart_m20_2022_23_six_issuer_original_q3/slot_${{ matrix.cohort_slot }}.json').read_text(encoding='utf-8'))
+          for name in ('historical_issuer_security_mapping_verified','historical_filing_pit_verified',
+                       'm20_signal_pit_admitted','m20_performance_run_authorized',
+                       'independent_holdout_authorized','champion_change_authorized',
+                       'real_orders_authorized','funds_movement_authorized',
+                       'permissions_change_authorized','financial_amounts_or_issuer_ids_saved'):
+              assert p[name] is False, 'FROZEN_PERMISSION_DRIFT'
+          assert p['ordering']=='DISABLED'
+          assert p['cohort_slot']==${{ matrix.cohort_slot }}
+          assert p['source_status']=='ORIGINAL_2022_2023_Q3_NUMERIC_PAIR_SHAPE_ONLY_NOT_PIT', 'SOURCE_GAP_NO_PIT_ADMISSION'
+          assert p['original_first_submission_Q3_archives_examined']==2
+          PY
+      - name: Retain only per-slot source-shape booleans and safe fixed failure codes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-original-2022-2023-q3-slot-${{ matrix.cohort_slot }}-flags-only
+          path: research_results/opendart_m20_2022_23_six_issuer_original_q3/slot_${{ matrix.cohort_slot }}.json
+          retention-days: 7
+          if-no-files-found: warn
