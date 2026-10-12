@@ -1,0 +1,93 @@
+name: IndexAlert Archived Challenger Net Profitability Gate
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_archived_developmental_profit_gate.py'
+      - 'test_research_v1_archived_developmental_profit_gate.py'
+      - '.github/workflows/indexalert-archived-challenger-profitability-gate.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_archived_developmental_profit_gate.py'
+      - 'test_research_v1_archived_developmental_profit_gate.py'
+      - '.github/workflows/indexalert-archived-challenger-profitability-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-profit-evidence-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify no positive mean can bypass risk or holdout gates
+        run: |
+          python -m py_compile research_v1_archived_developmental_profit_gate.py test_research_v1_archived_developmental_profit_gate.py
+          python -m unittest -v test_research_v1_archived_developmental_profit_gate
+      - name: Block new market, model, and order activity in this audit
+        run: |
+          ! grep -E 'import requests|import yfinance|api.kiwoom.com|data.krx.co.kr|opendart.fss.or.kr' research_v1_archived_developmental_profit_gate.py
+          grep -F '"real_orders_authorized": False' research_v1_archived_developmental_profit_gate.py
+          grep -F '"independent_holdout_authorized": False' research_v1_archived_developmental_profit_gate.py
+          grep -F '"ordering": "DISABLED"' research_v1_archived_developmental_profit_gate.py
+
+  adjudicate-original-costed-archive:
+    if: github.event_name == 'push'
+    needs: offline-profit-evidence-safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Read immutable Oct 6 original Dynamic 0-N run (no backtest replay)
+        uses: actions/download-artifact@v4
+        with:
+          repository: ${{ github.repository }}
+          run-id: 37471348547
+          github-token: ${{ github.token }}
+          name: indexalert-dynamic-0n-challenger
+          path: research_results/archived_profit_gate/dynamic
+      - name: Read immutable Oct 6 original rank-aware 0-N run
+        uses: actions/download-artifact@v4
+        with:
+          repository: ${{ github.repository }}
+          run-id: 37473983749
+          github-token: ${{ github.token }}
+          name: indexalert-dynamic-0n-rankaware
+          path: research_results/archived_profit_gate/rankaware
+      - name: Adjudicate existing after-cost/tax profits, tails, LCB and tiny-capital capacity
+        run: |
+          python research_v1_archived_developmental_profit_gate.py \
+            --dynamic-summary research_results/archived_profit_gate/dynamic/summary.json \
+            --rankaware-summary research_results/archived_profit_gate/rankaware/summary.json \
+            --output research_results/archived_profit_gate/verified_summary.json
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=json.loads(Path("research_results/archived_profit_gate/verified_summary.json").read_text())
+          assert p["candidates_checked"]==5
+          assert p["candidates_passing_all_observed_robustness"]==0
+          assert all(c["date_cluster_lcb95_pct"]<0 for c in p["candidates"])
+          assert all(c["after_best_five_days_removed_mean_net_pct"]<0 for c in p["candidates"])
+          assert all(not c["real_orders_authorized"] for c in p["candidates"])
+          assert p["real_orders_authorized"] is False
+          assert p["independent_holdout_authorized"] is False
+          assert p["ordering"]=="DISABLED"
+          PY
+      - name: Retain only fixed original strategy metrics and no individual trades
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-archived-existing-strategy-net-profitability-verdict
+          path: research_results/archived_profit_gate/verified_summary.json
+          retention-days: 30
+          if-no-files-found: warn
