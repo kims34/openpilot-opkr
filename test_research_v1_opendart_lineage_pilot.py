@@ -79,6 +79,33 @@ class FakeSession:
 
 
 class OpenDartLineagePilotTests(unittest.TestCase):
+    def test_missing_and_duplicate_lines_are_distinguished_without_admission(self):
+        for count, reason in ((0, "missing"), (2, "multiple")):
+            with self.subTest(count=count):
+                payload = financial_payload()
+                row = payload["list"][0]
+                payload["list"] = [dict(row) for _ in range(count)]
+                payload["list"].append(dict(row, account_id="dart_OperatingIncomeLoss"))
+                # Unrelated issuer/year/statement rows must not affect counts.
+                payload["list"].extend([
+                    dict(row, account_id="dart_OperatingIncomeLoss", corp_code="87654321"),
+                    dict(row, account_id="dart_OperatingIncomeLoss", bsns_year="2024"),
+                    dict(row, account_id="dart_OperatingIncomeLoss", sj_div="CF"),
+                ])
+                session = FakeSession(money=payload)
+                with patch.dict(os.environ, {"OPENDART_API_KEY": "synthetic-not-real"}, clear=True):
+                    out = run(session)
+                self.assertEqual(out["source_status"], "SOURCE_GAP_FAIL_CLOSED")
+                self.assertEqual(out["failure_reason_code"], reason + " standardized operating-profit line" + ("s" if count else ""))
+                self.assertEqual(out["expected_account_id_match_count"], count)
+                self.assertEqual(out["dart_operating_income_candidate_count"], 1)
+                self.assertFalse(out["alternative_account_semantics_verified"])
+                for flag in ("pit_source_admitted", "performance_run_authorized", "live_order_authorized"):
+                    self.assertIs(out[flag], False)
+                self.assertEqual(len(session.calls), 3)
+                for private in (CORP, RECEIPT, "1,234", "synthetic-not-real"):
+                    self.assertNotIn(private, str(out))
+
     def test_current_corp_mapping_exactly_one(self):
         self.assertEqual(corp_from_official_zip(fake_zip([(CORP, STOCK_CODE)])), CORP)
         for rows in ([], [(CORP, STOCK_CODE), ("87654321", STOCK_CODE)],
@@ -153,3 +180,4 @@ class OpenDartLineagePilotTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
