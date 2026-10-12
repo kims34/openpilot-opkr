@@ -197,7 +197,7 @@ class HistoricalCFSReconciliationTests(unittest.TestCase):
             ):
                 out=run(5,s)
         self.assertEqual(out["source_status"],"SOURCE_GAP_FAIL_CLOSED")
-        self.assertEqual(out["failure_stage"],"EXACT_ORIGINAL_VS_LATEST_COMPARATIVE")
+        self.assertEqual(out["failure_stage"],"ORIGINAL_2022_Q3_FACT_PARSE")
         self.assertEqual(out["failure_code"],"EXACT_CONSOLIDATED_Q3_KRW_OPERATING_FACT_NOT_UNIQUE")
         self.assertFalse(out["m20_performance_run_authorized"])
         self.assertFalse(out["real_orders_authorized"])
@@ -218,6 +218,33 @@ class HistoricalCFSReconciliationTests(unittest.TestCase):
         self.assertEqual(out["source_status"],"SOURCE_GAP_FAIL_CLOSED")
         self.assertFalse(out["historical_intraday_publication_pit_verified"])
         self.assertFalse(out["independent_holdout_authorized"])
+
+    def test_2023_vintage_bad_zip_is_distinguished_with_no_fallback(self):
+        from research_v1_opendart_original_xbrl_pilot import OriginalXbrlProbeError
+        from research_v1_opendart_m20_six_issuer_2022_2023_q3_originals import (
+            original_quarter_fact as real_original_quarter_fact,
+        )
+        session=ExtendedSession()
+        def only_2023_fails(raw,year):
+            if year==2023:
+                raise OriginalXbrlProbeError("OFFICIAL_XBRL_ZIP_ABSENT")
+            return real_original_quarter_fact(raw,year)
+        with patch.dict(os.environ,{"OPENDART_API_KEY":SYNTHETIC_KEY},clear=True):
+            with patch(
+                "research_v1_opendart_m20_2022_23_original_latest_cfs_parity.original_quarter_fact",
+                side_effect=only_2023_fails,
+            ):
+                out=run(5,session)
+        self.assertEqual(out["failure_stage"],"ORIGINAL_2023_Q3_FACT_PARSE")
+        self.assertEqual(out["failure_code"],"OFFICIAL_XBRL_ZIP_ABSENT")
+        self.assertEqual(session.calls,[
+            "corpCode.xml","list.json","list.json",
+            "fnlttXbrl.xml","fnlttXbrl.xml",
+        ])
+        self.assertFalse(out["two_initial_original_Q3_XBRL_financial_facts_found"])
+        self.assertFalse(out["m20_feature_pit_admitted"])
+        self.assertFalse(out["real_orders_authorized"])
+        self.assertEqual(out["ordering"],"DISABLED")
 
     def test_unknown_error_text_never_leaks_in_reason_code(self):
         s=ExtendedSession()
