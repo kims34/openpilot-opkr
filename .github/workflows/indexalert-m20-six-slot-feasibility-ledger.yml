@@ -1,0 +1,93 @@
+name: IndexAlert M20 Six-Slot Source Feasibility Ledger
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_m20_six_slot_feasibility_ledger.py'
+      - 'test_research_v1_m20_six_slot_feasibility_ledger.py'
+      - '.github/workflows/indexalert-m20-six-slot-feasibility-ledger.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_m20_six_slot_feasibility_ledger.py'
+      - 'test_research_v1_m20_six_slot_feasibility_ledger.py'
+      - '.github/workflows/indexalert-m20-six-slot-feasibility-ledger.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-source-ledger-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate offline-only source feasibility and all false admissions
+        run: |
+          python -m py_compile research_v1_m20_six_slot_feasibility_ledger.py test_research_v1_m20_six_slot_feasibility_ledger.py
+          python -m unittest -v test_research_v1_m20_six_slot_feasibility_ledger
+      - name: Prevent prohibited data requests and broker access
+        run: |
+          ! grep -E 'opendart.fss.or.kr|api.kiwoom.com|data.krx.co.kr|requests.get|urllib.request|/api/dostk/ordr' research_v1_m20_six_slot_feasibility_ledger.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_six_slot_feasibility_ledger.py
+          grep -F '"real_orders_authorized": False' research_v1_m20_six_slot_feasibility_ledger.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_six_slot_feasibility_ledger.py
+
+  aggregate-actual-approved-2022-23-flags:
+    # Never refetch original XBRL or use test/trading data. Read only the six
+    # already-issued flags-only GitHub artifacts from the exact trusted push
+    # run at sha 7853f29... before their seven-day expiry.
+    if: github.event_name == 'push'
+    needs: offline-source-ledger-safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download six fixed, existing, source-only official workflow artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 38259347729
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          pattern: 'indexalert-2022-2023-original-versus-2023-cfs-slot-*-flags-only'
+          merge-multiple: true
+          path: research_results/opendart_m20_2022_23_cfs_comparative_parity
+      - name: Produce strict real-source feasibility ledger
+        run: |
+          python research_v1_m20_six_slot_feasibility_ledger.py \
+            --input-dir research_results/opendart_m20_2022_23_cfs_comparative_parity \
+            --output-file research_results/m20_source_feasibility/summary.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("research_results/m20_source_feasibility/summary.json").read_text())
+          assert p["fixed_sample_slots"] == 6
+          assert p["complete_original_pairs"] == 5
+          assert p["missing_or_failed_original_pairs"] == 1
+          assert p["current_api_both_three_month_amounts_match_originals"] == 3
+          assert p["current_api_2022_comparative_mismatch_slots"] == 2
+          assert p["original_qname_drift_slots"] == 5
+          assert p["official_original_xbrl_file_not_found_slots"] == 1
+          assert p["m20_performance_run_authorized"] is False
+          assert p["independent_holdout_authorized"] is False
+          assert p["real_orders_authorized"] is False
+          assert p["ordering"] == "DISABLED"
+          PY
+      - name: Publish only aggregates without financial source rows
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-official-six-slot-feasibility-summary-only
+          path: research_results/m20_source_feasibility/summary.json
+          retention-days: 30
+          if-no-files-found: warn
