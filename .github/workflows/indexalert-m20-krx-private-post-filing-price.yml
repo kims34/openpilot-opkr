@@ -4,12 +4,14 @@ on:
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
     paths:
+      - 'Dockerfile.krx-historical-worker'
       - 'research_v1_m20_krx_private_post_disclosure_path.py'
       - 'test_research_v1_m20_krx_private_post_disclosure_path.py'
       - '.github/workflows/indexalert-m20-krx-private-post-filing-price.yml'
   push:
     branches: [index-alert-position-regen-fix-v1]
     paths:
+      - 'Dockerfile.krx-historical-worker'
       - 'research_v1_m20_krx_private_post_disclosure_path.py'
       - 'test_research_v1_m20_krx_private_post_disclosure_path.py'
       - '.github/workflows/indexalert-m20-krx-private-post-filing-price.yml'
@@ -34,6 +36,11 @@ jobs:
         run: |
           python -m py_compile research_v1_m20_krx_private_post_disclosure_path.py test_research_v1_m20_krx_private_post_disclosure_path.py
           python -m unittest -v test_research_v1_m20_krx_private_post_disclosure_path.py
+      - name: Verify Railway worker Docker image includes exact read-only audit module
+        run: |
+          grep -F 'COPY research_v1_m20_krx_private_post_disclosure_path.py ./' Dockerfile.krx-historical-worker
+          docker build -f Dockerfile.krx-historical-worker -t indexalert-m20-krx-private-audit-ci .
+          docker run --rm --entrypoint python indexalert-m20-krx-private-audit-ci -c "import research_v1_m20_krx_private_post_disclosure_path as m; assert m.AUTHORITY['m20_performance_run_authorized'] is False; assert m.AUTHORITY['real_orders_authorized'] is False"
       - name: Dry-run must not contact source or read private volume
         run: |
           python research_v1_m20_krx_private_post_disclosure_path.py
