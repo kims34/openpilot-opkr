@@ -1,13 +1,53 @@
 name: IndexAlert Dynamic 0-N Challenger
+# Developmental H5 history cannot be automatically re-evaluated on every
+# diagnostic edit: such runs are not independent holdout or successor alpha.
 on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_dynamic_0n_challenger.py'
+      - 'research_v1_dynamic_0n_rank_diagnostics.py'
+      - 'test_research_v1_dynamic_0n_rank_diagnostics.py'
+      - '.github/workflows/indexalert-dynamic-0n-challenger.yml'
   push:
     branches: [index-alert-research-v1]
     paths:
       - 'research_v1_dynamic_0n_challenger.py'
+      - 'research_v1_dynamic_0n_rank_diagnostics.py'
+      - 'test_research_v1_dynamic_0n_rank_diagnostics.py'
       - '.github/workflows/indexalert-dynamic-0n-challenger.yml'
   workflow_dispatch:
 jobs:
+  offline-rank-diagnostic-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal diagnostic dependencies
+        run: pip install pandas==2.3.3 numpy==2.3.3
+      - name: Guard missing-outcome rank invariance without market data
+        run: |
+          python -m py_compile research_v1_dynamic_0n_challenger.py research_v1_dynamic_0n_rank_diagnostics.py test_research_v1_dynamic_0n_rank_diagnostics.py
+          python -m unittest -v test_research_v1_dynamic_0n_rank_diagnostics
+      - name: Source-only frozen strategy guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path("research_v1_dynamic_0n_challenger.py").read_text()
+          assert "from research_v1_dynamic_0n_rank_diagnostics import rank_diagnostics" in source
+          assert "def rank_diagnostics(" not in source
+          assert "train_days=504,cal_days=126,test_days=126,purge_days=5" in source
+          assert '"sealed_holdout_touched":False' in source
+          PY
   dynamic-0n:
+    # DO NOT spend fresh historical labels / cached backtests on code pushes.
+    # This manual job is developmental only; never interpret as holdout PASS.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     permissions:
