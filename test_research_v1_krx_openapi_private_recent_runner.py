@@ -87,7 +87,7 @@ class RecentStageTests(unittest.TestCase):
         out=recent.execute_recent(execute=True,year_runner=spy)
         self.assertEqual(out["status"],"FAIL_CLOSED_CHILD_AUTHORITY_DRIFT")
         self.assertEqual(len(spy.calls),1)
-        self.assertFalse(out["real_orders_authorized"])
+        self.assertFalse(out["live_orders_authorized"])
     def test_request_budget_violation_fails_before_next_year(self):
         spy=SyntheticYear(exceed_year=2025)
         out=recent.execute_recent(execute=True,year_runner=spy)
