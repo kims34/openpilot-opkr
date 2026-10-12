@@ -1,0 +1,64 @@
+name: IndexAlert M20 Original Consolidation Axis Feasibility
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_original_cfs_axis.py'
+      - 'test_research_v1_opendart_m20_original_cfs_axis.py'
+      - '.github/workflows/indexalert-m20-cfs-axis-feasibility.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_original_cfs_axis.py'
+      - 'test_research_v1_opendart_m20_original_cfs_axis.py'
+      - '.github/workflows/indexalert-m20-cfs-axis-feasibility.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-cfs-axis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - run: python -m py_compile research_v1_opendart_m20_original_cfs_axis.py test_research_v1_opendart_m20_original_cfs_axis.py
+      - run: python -m unittest -v test_research_v1_opendart_m20_original_cfs_axis.py
+      - name: Fail-close no KRX, broker, performance, Holdout or orders
+        run: |
+          ! grep -E 'api.kiwoom.com|data-dbg.krx.co.kr|data.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_original_cfs_axis.py
+          grep -F '"historical_pit_source_admitted":False' research_v1_opendart_m20_original_cfs_axis.py
+          grep -F '"performance_run_authorized":False' research_v1_opendart_m20_original_cfs_axis.py
+          grep -F '"real_orders_authorized":False' research_v1_opendart_m20_original_cfs_axis.py
+          grep -F '"ordering":"DISABLED"' research_v1_opendart_m20_original_cfs_axis.py
+
+  official-readonly-cfs-axis:
+    if: github.event_name == 'push'
+    needs: offline-cfs-axis
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Fixed original filing consolidated/separate axis counts only
+        run: |
+          python research_v1_opendart_m20_original_cfs_axis.py
+          python -c "import json; p=json.load(open('research_results/opendart_m20_cfs_axis/summary.json',encoding='utf8')); assert p['source_status']=='CONSOLIDATED_AXIS_METADATA_ONLY_NOT_PIT_ADMITTED'; assert p['original_reports_checked']==2; assert p['historical_pit_source_admitted'] is False; assert p['performance_run_authorized'] is False; assert p['real_orders_authorized'] is False"
+      - name: Save counts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-original-consolidated-axis-counts
+          path: research_results/opendart_m20_cfs_axis/summary.json
+          retention-days: 7
+          if-no-files-found: warn
