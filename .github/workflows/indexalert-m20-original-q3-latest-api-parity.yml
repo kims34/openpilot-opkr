@@ -1,0 +1,80 @@
+name: IndexAlert M20 Original Q3 Latest CFS API Parity
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_q3_original_latest_api_parity.py'
+      - 'test_research_v1_opendart_m20_q3_original_latest_api_parity.py'
+      - '.github/workflows/indexalert-m20-original-q3-latest-api-parity.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_q3_original_latest_api_parity.py'
+      - 'test_research_v1_opendart_m20_q3_original_latest_api_parity.py'
+      - '.github/workflows/indexalert-m20-original-q3-latest-api-parity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-original-latest-parity-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Offline 3mo reporting API vs two first-filed XBRL numeric parity tests
+        run: |
+          python -m py_compile research_v1_opendart_m20_q3_original_latest_api_parity.py test_research_v1_opendart_m20_q3_original_latest_api_parity.py
+          python -m unittest -v test_research_v1_opendart_m20_q3_original_latest_api_parity.py
+      - name: No KRX, broker, PIT, Holdout or order authority
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_q3_original_latest_api_parity.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_q3_original_numeric_compat.py
+          grep -F '"real_orders_authorized": False' research_v1_opendart_m20_q3_original_numeric_compat.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_q3_original_numeric_compat.py
+
+  official-fixed-original-q3-current-api-parity:
+    if: github.event_name == 'push'
+    needs: offline-original-latest-parity-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Original Q3 2024/2025 and current 2025 CFS 3mo API, fixed issuer only
+        run: |
+          python research_v1_opendart_m20_q3_original_latest_api_parity.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research_results/opendart_m20_original_q3_api_parity/summary.json').read_text(encoding='utf8'))
+          for gate in ('historical_publication_pit_verified','m20_signal_pit_admitted',
+                       'm20_performance_run_authorized','independent_holdout_authorized',
+                       'real_orders_authorized','funds_movement_authorized',
+                       'permissions_change_authorized','source_values_or_identifiers_saved'):
+              assert p[gate] is False, f'UNEXPECTED_AUTHORITY_DRIFT:{gate}'
+          assert p['ordering']=='DISABLED'
+          assert p['source_status']=='THREE_MONTH_ORIGINAL_VS_LATEST_API_PARITY_DIAGNOSTIC_ONLY', 'OFFICIAL_API_OR_ORIGINAL_SOURCE_FAIL_CLOSED'
+          assert p['original_q3_reports_examined']==2
+          assert p['latest_api_consolidated_income_statement_checked'] is True
+          # The parity booleans may be false if revisions/restatements exist;
+          # never require or re-tune to true before source admission.
+          PY
+      - name: Save only Boolean parity and fixed error codes, not provider values
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-original-q3-vs-latest-CFS-api-parity-flags-only
+          path: research_results/opendart_m20_original_q3_api_parity/summary.json
+          retention-days: 7
+          if-no-files-found: warn
