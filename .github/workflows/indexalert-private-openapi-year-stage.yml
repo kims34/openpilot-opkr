@@ -1,0 +1,45 @@
+name: IndexAlert Annual Private KRX OPEN API History Runner Safety
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_year_runner.py'
+      - 'test_research_v1_krx_openapi_private_year_runner.py'
+      - '.github/workflows/indexalert-private-openapi-year-stage.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_year_runner.py'
+      - 'test_research_v1_krx_openapi_private_year_runner.py'
+      - '.github/workflows/indexalert-private-openapi-year-stage.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-only-yearly-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      KRX_AUTH_KEY: ''
+      KRX_OPENAPI_HISTORY_SCOPED_CONSENT: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Guarded month/year partition test; no actual API requests
+        run: |
+          python -m py_compile research_v1_krx_openapi_private_year_runner.py test_research_v1_krx_openapi_private_year_runner.py
+          python -m unittest -v test_research_v1_krx_openapi_private_year_runner.py test_research_v1_krx_openapi_private_history_batch.py
+      - name: Exercise default network-free dry run
+        run: |
+          python research_v1_krx_openapi_private_year_runner.py --start 2015-02-02 --end 2015-12-31
+      - name: Prohibit live broker and missing frozen admission gates
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr/comm|/api/dostk/ordr|/svc/apis/sto/ksq' research_v1_krx_openapi_private_year_runner.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"m20_performance_testing_authorized": False' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_private_history_batch.py
