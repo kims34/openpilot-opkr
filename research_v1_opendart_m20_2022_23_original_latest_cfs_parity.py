@@ -23,6 +23,9 @@ import json
 import os
 from pathlib import Path
 import re
+from defusedxml.ElementTree import fromstring
+from defusedxml.common import DefusedXmlException
+from xml.etree.ElementTree import ParseError
 
 from research_v1_opendart_lineage_pilot import (
     _official_get,ACCOUNT_ID,LEGACY_ACCOUNT_ID,OPERATING_LABELS,
@@ -62,6 +65,43 @@ SAFETY={
 
 class OriginalComparativeGap(ValueError):
     pass
+
+
+# OpenDART's official fnlttXbrl.xml contract is ZIP on success but may
+# return a tiny <result><status>...</status> XML failure. Inspect in memory:
+# never emit the original XML, URLs, credentials, messages or receipts.
+XBRL_PROVIDER_CODES={
+    "013":"OFFICIAL_XBRL_NO_DATA",
+    "014":"OFFICIAL_XBRL_FILE_NOT_FOUND",
+    "020":"OFFICIAL_XBRL_REQUEST_LIMIT",
+    "010":"OFFICIAL_XBRL_AUTH_INVALID",
+    "011":"OFFICIAL_XBRL_AUTH_DISABLED",
+    "012":"OFFICIAL_XBRL_IP_DENIED",
+    "100":"OFFICIAL_XBRL_BAD_REQUEST",
+    "101":"OFFICIAL_XBRL_ACCESS_DENIED",
+    "800":"OFFICIAL_XBRL_MAINTENANCE",
+    "900":"OFFICIAL_XBRL_PROVIDER_ERROR",
+    "901":"OFFICIAL_XBRL_ACCOUNT_DISABLED",
+}
+XBRL_ERROR_LIMIT=4096
+
+
+def reject_nonzip_xbrl(payload:bytes)->None:
+    if type(payload) is bytes and payload[:4]==bytes((80,75,3,4)):
+        return
+    if type(payload) is not bytes or not (8<=len(payload)<=XBRL_ERROR_LIMIT):
+        raise OriginalComparativeGap("OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE")
+    try:
+        root=fromstring(payload,forbid_dtd=True,forbid_entities=True,
+                        forbid_external=True)
+    except (DefusedXmlException,ParseError,ValueError):
+        raise OriginalComparativeGap("OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE") from None
+    if root.tag!="result" or len(root)>4:
+        raise OriginalComparativeGap("OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE")
+    found=[node.text for node in root if node.tag=="status" and len(node)==0]
+    if len(found)!=1 or found[0] not in XBRL_PROVIDER_CODES:
+        raise OriginalComparativeGap("OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE")
+    raise OriginalComparativeGap(XBRL_PROVIDER_CODES[found[0]])
 
 
 def _money(value:object)->Decimal:
@@ -180,10 +220,12 @@ def run(slot:int,session=None)->dict:
         stage="ORIGINAL_XBRL_2022"
         raw22=_official_xbrl_get(session,key,original[2022])
         stage="ORIGINAL_2022_Q3_FACT_PARSE"
+        reject_nonzip_xbrl(raw22)
         first22=original_quarter_fact(raw22,2022)
         stage="ORIGINAL_XBRL_2023"
         raw23=_official_xbrl_get(session,key,original[2023])
         stage="ORIGINAL_2023_Q3_FACT_PARSE"
+        reject_nonzip_xbrl(raw23)
         first23=original_quarter_fact(raw23,2023)
         stage="LATEST_CFS_2023_THREE_MONTHS"
         api=_official_get(session,"fnlttSinglAcntAll.json",{
@@ -200,6 +242,8 @@ def run(slot:int,session=None)->dict:
         # codes from exact exception types, never arbitrary provider messages.
         approved={
             OriginalComparativeGap:{
+                "OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE",
+                *XBRL_PROVIDER_CODES.values(),
                 "LATEST_CFS_THREE_MONTH_KRW_INVALID","LATEST_CFS_API_NOT_AVAILABLE",
                 "LATEST_CFS_API_ROWS_INVALID","LATEST_CFS_API_ROW_INVALID",
                 "LATEST_CFS_OPERATING_SEMANTIC_INVALID","LATEST_CFS_RECEIPT_INVALID",
