@@ -198,14 +198,21 @@ def _parse(raw: bytes, service: str) -> tuple[list[dict], str]:
 
 
 def _inspect(daily: list[dict], master: list[dict], day: str) -> dict:
-    # An empty pair can be a holiday, but it must not be promoted to a verified
-    # trading-calendar entry. One empty source paired with non-empty is invalid.
-    if not daily or not master:
-        if not daily and not master:
-            return {"calendar_day_class": "PROVIDER_BOTH_EMPTY_UNVERIFIED_HOLIDAY",
-                    "master_rows": 0, "daily_rows": 0, "common_rows": 0,
-                    "normal_ohlc_common_rows": 0, "nonpositive_zero_activity_rows": 0,
-                    "other_invalid_price_rows": 0, "daily_all_mapped_to_master": False}
+    # Official KRX daily trades can be empty on an exchange holiday while
+    # the basic-info service still returns a historical security snapshot.
+    # Capture the two raw responses and flag the day unresolved. Never infer
+    # an official holiday, zero return, executable entry, or complete calendar.
+    if not daily:
+        return {
+            "calendar_day_class": (
+                "DAILY_EMPTY_MASTER_PRESENT_UNVERIFIED_CALENDAR_OR_SOURCE_GAP"
+                if master else "PROVIDER_BOTH_EMPTY_UNVERIFIED_CALENDAR_OR_SOURCE_GAP"
+            ),
+            "master_rows": len(master), "daily_rows": 0, "common_rows": 0,
+            "normal_ohlc_common_rows": 0, "nonpositive_zero_activity_rows": 0,
+            "other_invalid_price_rows": 0, "daily_all_mapped_to_master": False,
+        }
+    if not master:
         raise PrivateOpenAPIHistoryError("PARTIAL_SOURCE_CALENDAR_SCOPE")
     identities: dict[str, dict] = {}
     for row in master:
@@ -395,7 +402,7 @@ def run(
             report["new_completed_date_pairs"] += 1
             report["batch_sampled_common_rows"] += meta["common_rows"]
             report["batch_sampled_ohlc_zero_activity_rows"] += meta["nonpositive_zero_activity_rows"]
-            if meta["calendar_day_class"] == "PROVIDER_BOTH_EMPTY_UNVERIFIED_HOLIDAY":
+            if meta["calendar_day_class"] != "NONEMPTY_OFFICIAL_KOSPI_PAIR_NOT_PIT_ADMITTED":
                 report["provider_empty_pairs_not_calendar_attested"] += 1
         report["status"] = "PRIVATE_SAMPLE_STORED_NOT_SOURCE_ADMITTED"
     except Exception as exc:
