@@ -71,6 +71,7 @@ def execute_annual_stage(
         "completed_windows": 0, "actual_api_requests": 0,
         "new_completed_date_pairs": 0, "already_verified_pairs_skipped": 0,
         "new_raw_content_objects": 0, "observed_ohlc_zero_activity_rows": 0,
+        "unverified_empty_daily_date_pairs": 0,
         "source_provider_raw_rows_in_public_report": False,
         "private_volume_only": True, "historical_pit_not_proven": True,
         **AUTHORITY,
@@ -106,6 +107,7 @@ def execute_annual_stage(
             result["already_verified_pairs_skipped"] += int(child["previous_verified_date_pairs_skipped"])
             result["new_raw_content_objects"] += int(child["new_stored_raw_objects"])
             result["observed_ohlc_zero_activity_rows"] += int(child["batch_sampled_ohlc_zero_activity_rows"])
+            result["unverified_empty_daily_date_pairs"] += int(child["provider_empty_pairs_not_calendar_attested"])
         result["status"] = "PRIVATE_ANNUAL_YEAR_STAGE_COMPLETE_NOT_PIT_ADMITTED"
     except (AnnualHistoryScopeError, PrivateOpenAPIHistoryError) as exc:
         result["status"] = "FAIL_CLOSED_SCOPE_INVALID"
