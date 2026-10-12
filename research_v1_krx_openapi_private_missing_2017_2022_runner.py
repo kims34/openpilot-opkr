@@ -102,7 +102,7 @@ def execute_missing_years(*,execute:bool=False,
             if (source.get("source_admitted") is not False
                     or source.get("historical_publication_pit_verified") is not False
                     or source.get("m20_performance_testing_authorized") is not False
-                    or source.get("sealed_holdout_authorized") is not False
+                    or source.get("independent_holdout_authorized") is not False
                     or source.get("live_orders_authorized") is not False
                     or source.get("funds_movement_authorized") is not False
                     or source.get("ordering")!="DISABLED"):
