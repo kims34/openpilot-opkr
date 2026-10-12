@@ -87,7 +87,7 @@ XBRL_ERROR_LIMIT=4096
 
 
 def reject_nonzip_xbrl(payload:bytes)->None:
-    if type(payload) is bytes and payload.startswith(b"PK\\x03\\x04"):
+    if type(payload) is bytes and payload[:4]==bytes((80,75,3,4)):
         return
     if type(payload) is not bytes or not (8<=len(payload)<=XBRL_ERROR_LIMIT):
         raise OriginalComparativeGap("OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE")
