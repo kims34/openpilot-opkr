@@ -27,12 +27,13 @@ import re
 from research_v1_opendart_lineage_pilot import (
     _official_get,ACCOUNT_ID,LEGACY_ACCOUNT_ID,OPERATING_LABELS,
 )
-from research_v1_opendart_original_xbrl_pilot import _official_xbrl_get
+from research_v1_opendart_original_xbrl_pilot import _official_xbrl_get,OriginalXbrlProbeError
 from research_v1_opendart_m20_six_issuer_q3_filing_coverage import (
     COHORT,_registry,_window,
 )
 from research_v1_opendart_m20_six_issuer_2022_2023_q3_originals import (
     YEARS,FROZEN_SLOTS,original_first_receipt,original_quarter_fact,
+    HistoricalOriginalGap,
 )
 
 OUTPUT=Path("research_results/opendart_m20_2022_23_cfs_comparative_parity")
@@ -183,16 +184,42 @@ def run(slot:int,session=None)->dict:
             raw22,raw23,api,corp_code=corp,receipt23=original[2023]))
         report["source_status"]="ORIGINAL_2022_2023_TO_CFS_3MONTH_PARITY_DIAGNOSTIC_ONLY"
     except Exception as ex:
+        # Source parsers publish fixed reason codes. Preserve only allowlisted
+        # codes from exact exception types, never arbitrary provider messages.
         approved={
-            "LATEST_CFS_THREE_MONTH_KRW_INVALID","LATEST_CFS_API_NOT_AVAILABLE",
-            "LATEST_CFS_API_ROWS_INVALID","LATEST_CFS_API_ROW_INVALID",
-            "LATEST_CFS_OPERATING_SEMANTIC_INVALID","LATEST_CFS_RECEIPT_INVALID",
-            "LATEST_CFS_OPERATING_ACCOUNT_NOT_UNIQUE","FIXED_CORP_NOT_FOUND",
+            OriginalComparativeGap:{
+                "LATEST_CFS_THREE_MONTH_KRW_INVALID","LATEST_CFS_API_NOT_AVAILABLE",
+                "LATEST_CFS_API_ROWS_INVALID","LATEST_CFS_API_ROW_INVALID",
+                "LATEST_CFS_OPERATING_SEMANTIC_INVALID","LATEST_CFS_RECEIPT_INVALID",
+                "LATEST_CFS_OPERATING_ACCOUNT_NOT_UNIQUE","FIXED_CORP_NOT_FOUND",
+            },
+            HistoricalOriginalGap:{
+                "UNAPPROVED_ORIGINAL_YEAR","INITIAL_FILING_AMBIGUOUS_OR_MISSING",
+                "ORIGINAL_XML_SIZE_INVALID","ORIGINAL_XML_UNSAFE",
+                "ORIGINAL_CONTEXT_AMBIGUOUS","ORIGINAL_UNIT_AMBIGUOUS",
+                "ORIGINAL_NUMERIC_PRECISION_INVALID","ORIGINAL_NUMERIC_TEXT_INVALID",
+                "ORIGINAL_ARCHIVE_UNREADABLE",
+                "EXACT_CONSOLIDATED_Q3_KRW_OPERATING_FACT_NOT_UNIQUE",
+            },
+            OriginalXbrlProbeError:{
+                "ORIGINAL_RECEIPT_INVALID","OFFICIAL_XBRL_HTTP_FAILED",
+                "OFFICIAL_XBRL_NETWORK_FAILED","XBRL_ZIP_BYTES_INVALID",
+                "OFFICIAL_XBRL_ZIP_ABSENT","XBRL_ARCHIVE_FILE_COUNT_INVALID",
+                "XBRL_ARCHIVE_EXPANDED_SIZE_INVALID","XBRL_ENTRY_UNSAFE",
+                "XBRL_ENTRY_SIZE_DRIFT","XBRL_STRUCTURED_ENTRY_ABSENT",
+                "XBRL_ZIP_INTEGRITY_INVALID",
+            },
         }
-        msg=str(ex) if type(ex) is OriginalComparativeGap else ""
+        message=str(ex) if type(ex) in approved else ""
+        failure=message if message in approved.get(type(ex),set()) else "UNCLASSIFIED"
+        # _official_get is a legacy helper using plain ValueError for only
+        # these two fixed HTTP/JSON conditions; never expose raw ValueErrors.
+        if type(ex) is ValueError and str(ex) in (
+                "official API HTTP or payload failure","official JSON not an object"):
+            failure="OFFICIAL_SOURCE_HTTP_OR_JSON_INVALID"
         report["source_status"]="SOURCE_GAP_FAIL_CLOSED"
         report["failure_stage"]=stage
-        report["failure_code"]=msg if msg in approved else "UNCLASSIFIED"
+        report["failure_code"]=failure
     return report
 
 
