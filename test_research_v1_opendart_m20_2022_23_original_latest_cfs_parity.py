@@ -185,6 +185,7 @@ class HistoricalCFSReconciliationTests(unittest.TestCase):
             out=run(0,s)
         self.assertEqual(out["source_status"],"SOURCE_GAP_FAIL_CLOSED")
         self.assertEqual(out["failure_code"],"LATEST_CFS_API_NOT_AVAILABLE")
+        self.assertEqual(out["failure_stage"],"EXACT_ORIGINAL_VS_LATEST_COMPARATIVE")
         self.assertNotIn("SENSITIVE_API_KEY_12345",json.dumps(out))
     def test_bad_slot_never_network(self):
         for slot in (-1,6,"0",None):
