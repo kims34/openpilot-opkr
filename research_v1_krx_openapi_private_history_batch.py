@@ -290,7 +290,7 @@ def _checkpoint(root: Path, day: str) -> str:
         return "MISSING"
     try:
         saved = read_private_json(root, f"acquisitions/{day}.json", git_worktree=Path.cwd())["value"]
-        if saved.get("session") != day or saved.get("source_pair_complete") is not True:
+        if saved.get("trading_day") != day or saved.get("source_pair_complete") is not True:
             raise PrivateOpenAPIHistoryError("PREVIOUS_CHECKPOINT_INVALID")
         if saved.get("performance_run_authorized") is not False:
             raise PrivateOpenAPIHistoryError("PREVIOUS_CHECKPOINT_AUTHORITY_DRIFT")
@@ -380,7 +380,7 @@ def run(
                 root, f"acquisitions/{day}.json",
                 {
                     "version": "2026-10-12.v1",
-                    "session": day,
+                    "trading_day": day,
                     "user_approved_use": "PRIVATE_NONCOMMERCIAL_2015_2026",
                     "source_pair_complete": True,
                     "sources": sources,
