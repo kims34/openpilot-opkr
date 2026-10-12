@@ -1,0 +1,48 @@
+name: IndexAlert KRX Original 2017-2022 Private Integrity Audit
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_missing_2017_2022_integrity_audit.py'
+      - 'test_research_v1_krx_openapi_missing_2017_2022_integrity_audit.py'
+      - '.github/workflows/indexalert-krx-private-2017-2022-integrity.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_missing_2017_2022_integrity_audit.py'
+      - 'test_research_v1_krx_openapi_missing_2017_2022_integrity_audit.py'
+      - '.github/workflows/indexalert-krx-private-2017-2022-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-six-year-source-hash-and-zero-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      KRX_AUTH_KEY: ''
+      OPENDART_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Verify 2017 through 2022 exactly and fail-closed private source integrity
+        run: |
+          python -m py_compile research_v1_krx_openapi_missing_2017_2022_integrity_audit.py test_research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+          python -m unittest -v test_research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+      - name: Validate offline dry-run and no real-order authority
+        run: |
+          python research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+          grep -F '"m20_performance_testing_authorized": False' research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_missing_2017_2022_integrity_audit.py
+      - name: Build actual dedicated Railway Docker image and import auditing module
+        run: |
+          grep -F 'COPY research_v1_krx_*.py ./' Dockerfile.krx-historical-worker
+          docker build -f Dockerfile.krx-historical-worker -t indexalert-krx-six-year-audit-ci .
+          docker run --rm --entrypoint python indexalert-krx-six-year-audit-ci -c "import research_v1_krx_openapi_missing_2017_2022_integrity_audit as a; assert len(a.RANGES)==6; assert a.audit_all_missing()['status']=='DRY_RUN_NO_STORAGE_ACCESS'; assert a.SAFETY['ordering']=='DISABLED'"
