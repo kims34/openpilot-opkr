@@ -1,7 +1,9 @@
 """Offline synthetic 2022/2023 six-issuer original Q3 quarterly earnings tests."""
 from __future__ import annotations
+import io
 import json
 import os
+import zipfile
 import unittest
 from unittest.mock import patch
 
@@ -15,7 +17,7 @@ from test_research_v1_opendart_m20_six_issuer_q3_filing_coverage import (
     corporation_zip,filing as filing_index,
 )
 from test_research_v1_opendart_m20_q3_original_numeric_compat import filing as original_xml
-from test_research_v1_opendart_original_xbrl_pilot import FakeResponse
+from test_research_v1_opendart_original_xbrl_pilot import FakeResponse,zipp
 
 SYNTHETIC_KEY="SYNTHETIC_ONLY_NO_REAL_SECRET"
 R22="20221114000001"
@@ -158,13 +160,16 @@ class OlderQ3OriginalSafetyTests(unittest.TestCase):
                 with self.assertRaises(HistoricalOriginalGap):
                     original_quarter_fact(original_xml(2022,**kwargs),2022)
     def test_wrong_currency_or_duplicate_context_fact_fail_closed(self):
-        for kwargs in ({"duplicate":True},{"unit":"iso4217:USD"}):
-            with self.subTest(kwargs=kwargs):
-                with self.assertRaises(HistoricalOriginalGap):
-                    original_quarter_fact(original_xml(2022,**kwargs),2022)
+        with self.assertRaises(HistoricalOriginalGap):
+            original_quarter_fact(original_xml(2022,duplicate=True),2022)
+        with zipfile.ZipFile(io.BytesIO(original_xml(2022))) as source:
+            xml=source.read("statement.xbrl")
+        bad=zipp({"statement.xbrl":xml.replace(b"iso4217:KRW",b"iso4217:USD")})
+        with self.assertRaises(HistoricalOriginalGap):
+            original_quarter_fact(bad,2022)
     def test_unverifiable_precision_and_numeric_amount_rejected(self):
         for kwargs in ({"decimals":None},{"decimals":"incorrect"},
-                       {"num":"NaN"}):
+                       {"amount":"NaN"}):
             with self.subTest(kwargs=kwargs):
                 with self.assertRaises(HistoricalOriginalGap):
                     original_quarter_fact(original_xml(2022,**kwargs),2022)
