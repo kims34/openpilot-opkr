@@ -26,6 +26,16 @@ MAX_XML_BYTES = 35_000_000
 OUTPUT = Path("research_results/opendart_lineage_pilot/summary.json")
 
 
+class FinancialLineCardinalityError(ValueError):
+    """Fixed aggregate diagnostics only; never retain provider rows or amounts."""
+
+    def __init__(self, primary_count: int, dart_candidate_count: int):
+        super().__init__("missing standardized operating-profit line" if primary_count == 0
+                         else "multiple standardized operating-profit lines")
+        self.primary_count = primary_count
+        self.dart_candidate_count = dart_candidate_count
+
+
 def corp_from_official_zip(raw: bytes) -> str:
     if not raw or len(raw) > MAX_RESPONSE_BYTES:
         raise ValueError("invalid ZIP payload size")
@@ -84,14 +94,20 @@ def financial_shape(payload: dict, corp_code: str, receipts: set[str]) -> dict:
     if not isinstance(rows, list):
         raise ValueError("missing financial statement lines")
     standard_lines = []
+    dart_candidate_count = 0
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("invalid financial line")
         if (row.get("corp_code") == corp_code
                 and row.get("bsns_year") == BUSINESS_YEAR
                 and row.get("reprt_code") == REPORT_CODE
-                and row.get("sj_div") in {"IS", "CIS"}
-                and row.get("account_id") == ACCOUNT_ID):
+                and row.get("sj_div") in {"IS", "CIS"}):
+            # Diagnostic hypothesis only. Do not accept an alternative taxonomy
+            # or select a first row without separately reviewing source evidence.
+            if row.get("account_id") == "dart_OperatingIncomeLoss":
+                dart_candidate_count += 1
+            if row.get("account_id") != ACCOUNT_ID:
+                continue
             receipt = row.get("rcept_no")
             current = row.get("thstrm_amount")
             prior = row.get("frmtrm_q_amount")
@@ -104,7 +120,7 @@ def financial_shape(payload: dict, corp_code: str, receipts: set[str]) -> dict:
                 raise ValueError("standalone-quarter prior-year line absent")
             standard_lines.append(row)
     if len(standard_lines) != 1:
-        raise ValueError("ambiguous standardized operating-profit line")
+        raise FinancialLineCardinalityError(len(standard_lines), dart_candidate_count)
     return {
         "official_filing_receipt_linked": True,
         "standardized_operating_profit_quarter_shape_found": True,
@@ -191,9 +207,15 @@ def run(session: requests.Session | None = None) -> dict:
             "bad statement receipt", "statement not linked to enumerated filing",
             "standalone-quarter prior-year line absent",
             "ambiguous standardized operating-profit line",
+            "missing standardized operating-profit line",
+            "multiple standardized operating-profit lines",
             "official API HTTP or payload failure", "official JSON not an object",
         }
-        code = str(exc) if type(exc) is ValueError else ""
+        if type(exc) is FinancialLineCardinalityError:
+            report["expected_account_id_match_count"] = exc.primary_count
+            report["dart_operating_income_candidate_count"] = exc.dart_candidate_count
+            report["alternative_account_semantics_verified"] = False
+        code = str(exc) if type(exc) in (ValueError, FinancialLineCardinalityError) else ""
         report["failure_reason_code"] = code if code in safe_codes else "UNCLASSIFIED"
     return report
 
@@ -203,3 +225,4 @@ if __name__ == "__main__":
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print("OPENDART_LINEAGE_PILOT=" + json.dumps(result, ensure_ascii=False), flush=True)
+
