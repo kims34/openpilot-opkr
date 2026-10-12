@@ -37,3 +37,43 @@ jobs:
           grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_q3_original_numeric_compat.py
           grep -F '"real_orders_authorized": False' research_v1_opendart_m20_q3_original_numeric_compat.py
           grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_q3_original_numeric_compat.py
+
+  official-original-two-q3-readonly-numeric-shape:
+    if: github.event_name == 'push'
+    needs: offline-numeric-format-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Official fixed 2024 and 2025 original Q3 consolidated numeric compatibility, no amounts
+        run: |
+          python research_v1_opendart_m20_q3_original_numeric_compat.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research_results/opendart_m20_original_quarter_number_compat/summary.json').read_text(encoding='utf8'))
+          for gate in ('historical_publication_pit_verified','m20_signal_pit_admitted',
+                       'm20_performance_run_authorized','independent_holdout_authorized',
+                       'real_orders_authorized','funds_movement_authorized',
+                       'permissions_change_authorized','source_values_or_identifiers_saved'):
+              assert p[gate] is False, f'FROZEN_AUTHORITY_DRIFT:{gate}'
+          assert p['ordering']=='DISABLED'
+          assert p['source_status']=='ORIGINAL_NUMERIC_REPRESENTATION_SHAPE_ONLY_NOT_PIT', 'OFFICIAL_SOURCE_SHAPE_GAP_CHECK_FIXED_REASON_CODE'
+          assert p['original_q3_reports_examined']==2
+          # No requirement that concept/precision/entity line up: boolean mismatch
+          # must be reported as a blocker, never filled or implicitly rescued.
+          PY
+      - name: Upload only two-year representation booleans and fixed error codes, no financial values
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-original-q3-numeric-pair-flags-only
+          path: research_results/opendart_m20_original_quarter_number_compat/summary.json
+          retention-days: 7
+          if-no-files-found: warn
