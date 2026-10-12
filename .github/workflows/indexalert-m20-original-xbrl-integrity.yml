@@ -1,0 +1,65 @@
+name: IndexAlert M20 Original XBRL Archive Integrity
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_original_xbrl_pilot.py'
+      - 'test_research_v1_opendart_original_xbrl_pilot.py'
+      - '.github/workflows/indexalert-m20-original-xbrl-integrity.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_original_xbrl_pilot.py'
+      - 'test_research_v1_opendart_original_xbrl_pilot.py'
+      - '.github/workflows/indexalert-m20-original-xbrl-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-xbrl-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - run: python -m py_compile research_v1_opendart_original_xbrl_pilot.py test_research_v1_opendart_original_xbrl_pilot.py
+      - run: python -m unittest -v test_research_v1_opendart_original_xbrl_pilot.py
+      - name: Preserve original Frozen and no-authority boundaries
+        run: |
+          ! grep -E '(data.krx.co.kr|api.kiwoom.com|/api/dostk/ordr|kt10000|kt10001)' research_v1_opendart_original_xbrl_pilot.py
+          grep -F '"pit_source_admitted": False' research_v1_opendart_original_xbrl_pilot.py
+          grep -F '"performance_testing_authorized": False' research_v1_opendart_original_xbrl_pilot.py
+          grep -F '"sealed_holdout_authorized": False' research_v1_opendart_original_xbrl_pilot.py
+          grep -F '"real_orders_authorized": False' research_v1_opendart_original_xbrl_pilot.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_original_xbrl_pilot.py
+
+  official-readonly-original-xbrl:
+    if: github.event_name == 'push'
+    needs: offline-xbrl-integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Retrieve fixed 2024 and 2025 Q3 original XBRL archives, no PIT or profitability authority
+        run: |
+          python research_v1_opendart_original_xbrl_pilot.py
+          python -c "import json; p=json.load(open('research_results/opendart_m20_original_xbrl/summary.json',encoding='utf8')); assert p['source_status']=='TWO_OFFICIAL_ORIGINAL_XBRL_ARCHIVES_SHAPE_ONLY'; assert p['original_q3_archives_received']==2; assert p['pit_source_admitted'] is False; assert p['live_order_authorized'] is False"
+      - name: Retain aggregate metadata and content fingerprints only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-opendart-original-xbrl-no-pit
+          path: research_results/opendart_m20_original_xbrl/summary.json
+          retention-days: 7
+          if-no-files-found: warn
