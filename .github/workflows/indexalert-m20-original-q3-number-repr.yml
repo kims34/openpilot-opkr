@@ -1,0 +1,39 @@
+name: IndexAlert M20 Original Q3 Numeric Representation Gate
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_q3_original_numeric_compat.py'
+      - 'test_research_v1_opendart_m20_q3_original_numeric_compat.py'
+      - '.github/workflows/indexalert-m20-original-q3-number-repr.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_q3_original_numeric_compat.py'
+      - 'test_research_v1_opendart_m20_q3_original_numeric_compat.py'
+      - '.github/workflows/indexalert-m20-original-q3-number-repr.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-numeric-format-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Test original consolidated numeric-compatibility shape on synthetic data only
+        run: |
+          python -m py_compile research_v1_opendart_m20_q3_original_numeric_compat.py test_research_v1_opendart_m20_q3_original_numeric_compat.py
+          python -m unittest -v test_research_v1_opendart_m20_q3_original_numeric_compat.py
+      - name: Ensure zero broker, KRX, Holdout or PIT authority
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_q3_original_numeric_compat.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_q3_original_numeric_compat.py
+          grep -F '"real_orders_authorized": False' research_v1_opendart_m20_q3_original_numeric_compat.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_q3_original_numeric_compat.py
