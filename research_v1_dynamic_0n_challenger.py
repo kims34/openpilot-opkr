@@ -14,10 +14,10 @@ inputs are reported as blockers for a full marginal-portfolio-utility challenger
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
-import numpy as np
 import pandas as pd
 
 from research_v1_context import CONTEXT_FEATURES, add_context
+from research_v1_dynamic_0n_rank_diagnostics import rank_diagnostics
 from research_v1_distributional_netev import _fixed_record_map, freeze_original_topk
 from research_v1_fixed_horizon_label import add_fixed_horizon_target
 from research_v1_market_eligibility import veto_frozen_topk_nonstandard_market, tag_normal_market_eligibility
@@ -26,36 +26,6 @@ from research_v1_selected_calibration import selected_calibration_walk_forward
 from research_v1_distributional_long_history import _evaluate_selected
 from research_v1_supervised_cache import load_or_build
 from run_research_v1 import load_panel
-
-def rank_diagnostics(pred):
-    x=pred[pred["fh_label_available"].fillna(False).astype(bool)].copy()
-    x=x.sort_values(["decision_date","netev_low"],ascending=[True,False])
-    x["rank_all"]=x.groupby("decision_date").cumcount()+1
-    x["candidate_count"]=x.groupby("decision_date")["symbol"].transform("size")
-    bands={"r1_3":(1,3),"r4_5":(4,5),"r6_10":(6,10),"r11_plus":(11,10**9)}
-    out={}
-    for name,(lo,hi) in bands.items():
-        g=x[(x.rank_all>=lo)&(x.rank_all<=hi)].copy()
-        y=pd.to_numeric(g["fh_net_return"],errors="coerce").dropna().to_numpy(float)
-        gains=float(y[y>0].sum()) if len(y) else 0.0
-        losses=float(-y[y<0].sum()) if len(y) else 0.0
-        out[name]={"rows":int(len(y)),"mean_net_return":float(y.mean()) if len(y) else None,
-                   "profit_factor":float(gains/losses) if losses>0 else None,
-                   "positive_rate":float((y>0).mean()) if len(y) else None,
-                   "mean_netev_low":float(pd.to_numeric(g["netev_low"],errors="coerce").mean()) if len(g) else None}
-    # same diagnostics restricted to conservative-positive candidates
-    pos=x[x.netev_low>0].copy()
-    pos["rank_positive"]=pos.groupby("decision_date").cumcount()+1
-    out["positive_candidate_count_by_day"]={
-      "days_with_any":int(pos.decision_date.nunique()),
-      "mean":float(pos.groupby("decision_date").size().mean()) if len(pos) else 0.0,
-      "p50":float(pos.groupby("decision_date").size().quantile(.5)) if len(pos) else 0.0,
-      "p90":float(pos.groupby("decision_date").size().quantile(.9)) if len(pos) else 0.0,
-      "max":int(pos.groupby("decision_date").size().max()) if len(pos) else 0,
-      "days_gt3":int((pos.groupby("decision_date").size()>3).sum()) if len(pos) else 0,
-      "days_gt5":int((pos.groupby("decision_date").size()>5).sum()) if len(pos) else 0,
-      "days_gt10":int((pos.groupby("decision_date").size()>10).sum()) if len(pos) else 0}
-    return out
 
 def evaluate_policy(raw,pred,fixed_map,horizon,name,kind,k=None):
     eligible=pred[pred.netev_low>0].copy()
