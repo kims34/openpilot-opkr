@@ -1,0 +1,45 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-OPENAPI-KOSPI-HISTORY-USER-CONSENT-2026-10-12-v1",
+  "authorization_source": "USER_EXPLICIT_CHAT_APPROVAL",
+  "approved_at_kst_date": "2026-10-12",
+  "user_approval_text": "승인해",
+  "scope": "NONCOMMERCIAL_PRIVATE_RESEARCH",
+  "historical_window_start": "2015-01-01",
+  "historical_window_end": "2026-10-12",
+  "provider": "KRX_OPENAPI_APPROVED_SERVICE_ONLY",
+  "approved_product_names": [
+    "유가증권 종목기본정보",
+    "유가증권 일별매매정보"
+  ],
+  "api_endpoints": {
+    "security_master": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info",
+    "daily_trade": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd"
+  },
+  "sample_dates": [
+    "20150105",
+    "20260928",
+    "20261001"
+  ],
+  "max_network_requests_first_stage": 6,
+  "official_application_status": "PREVIOUSLY_USER_SHOWN_APPROVED_TWO_APIS",
+  "approval_valid_from": "2026-10-02",
+  "approval_valid_through": "2027-10-01",
+  "user_approved_staged_historical_collection": true,
+  "first_stage_manual_dispatch_only": true,
+  "normal_push_network_requests_allowed": false,
+  "includes_kosdaq_apis": false,
+  "includes_data_marketplace_authenticated_web_session": false,
+  "includes_paid_products": false,
+  "includes_independent_status_halt_delisting_source": false,
+  "phase1_raw_provider_records_publication_allowed": false,
+  "exact_historical_pit_admitted": false,
+  "research_profitability_authorized": false,
+  "sealed_holdout_authorized": false,
+  "champion_change_authorized": false,
+  "real_orders_authorized": false,
+  "broker_permissions_change_authorized": false,
+  "funds_movement_authorized": false,
+  "ordering": "DISABLED",
+  "note": "User consent is for scoped KRX OpenAPI research acquisition. Every online run still requires explicit manual workflow dispatch and secret presence. This consent does not validate exact permitted-use terms for a different KRX route or change frozen research admission."
+}

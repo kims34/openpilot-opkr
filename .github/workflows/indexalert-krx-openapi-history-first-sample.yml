@@ -1,0 +1,86 @@
+name: IndexAlert KRX OPEN API Historical First Sample
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_openapi_history_scoped_probe.py'
+      - 'test_research_v1_krx_openapi_history_scoped_probe.py'
+      - 'INDEXALERT_KRX_OPENAPI_HISTORY_USER_CONSENT_2026_10_12.json'
+      - '.github/workflows/indexalert-krx-openapi-history-first-sample.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_krx_openapi_history_scoped_probe.py'
+      - 'test_research_v1_krx_openapi_history_scoped_probe.py'
+      - 'INDEXALERT_KRX_OPENAPI_HISTORY_USER_CONSENT_2026_10_12.json'
+      - '.github/workflows/indexalert-krx-openapi-history-first-sample.yml'
+  workflow_dispatch:
+    inputs:
+      allow_approved_scoped_sample:
+        description: 'YES: six read-only KOSPI OPEN API requests for exact pinned 2015/2026 dates'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexalert-krx-openapi-scoped-hist-sample
+  cancel-in-progress: false
+
+jobs:
+  offline-no-network-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Compile and execute synthetic fail-closed guard tests
+        run: |
+          python -m py_compile research_v1_krx_openapi_history_scoped_probe.py test_research_v1_krx_openapi_history_scoped_probe.py
+          python -m unittest -v test_research_v1_krx_openapi_history_scoped_probe.py
+      - name: Push remains dry-run without secrets
+        env:
+          KRX_AUTH_KEY: ''
+          KRX_HISTORY_SAMPLE_EXECUTE: ''
+        run: |
+          python research_v1_krx_openapi_history_scoped_probe.py
+          python -c "import json; p=json.load(open('research_results/krx_openapi_history_2015_2026_first_probe/summary.json')); assert p['source_status']=='SOURCE_GAP_FAIL_CLOSED'; assert p['failure_reason_code']=='MANUAL_EXECUTION_CONSENT_REQUIRED'; assert p['request_count']==0; assert p['real_orders_authorized'] is False"
+      - name: Static approved endpoints and admission disabled
+        run: |
+          ! grep -E 'data.krx.co.kr/comm/|data.krx.co.kr/contents/|api.kiwoom.com|/api/dostk/ordr|/svc/apis/sto/ksq_' research_v1_krx_openapi_history_scoped_probe.py
+          grep -F '"performance_run_authorized": False' research_v1_krx_openapi_history_scoped_probe.py
+          grep -F '"real_orders_authorized": False' research_v1_krx_openapi_history_scoped_probe.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_history_scoped_probe.py
+
+  manual-approved-official-six-request-sample:
+    needs: offline-no-network-safety
+    if: github.event_name == 'workflow_dispatch' && inputs.allow_approved_scoped_sample == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      KRX_AUTH_KEY: ${{ secrets.KRX_AUTH_KEY }}
+      KRX_HISTORY_SAMPLE_EXECUTE: 'EXPLICIT_USER_APPROVED_20261012_OPENAPI_SAMPLE_ONLY'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: One-time KOSPI OpenAPI 3 trading days x 2 approved endpoints
+        run: |
+          python research_v1_krx_openapi_history_scoped_probe.py
+          python -c "import json; p=json.load(open('research_results/krx_openapi_history_2015_2026_first_probe/summary.json')); assert p['source_status']=='SCOPED_OFFICIAL_SAMPLE_COMPLETED_NOT_ADMITTED'; assert p['request_count']==6; assert p['private_full_history_acquisition_complete'] is False; assert p['performance_run_authorized'] is False; assert p['real_orders_authorized'] is False"
+      - name: Save metadata-only acquisition fingerprints, NEVER provider data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-approved-krx-openapi-hist-first-sample-meta-only
+          path: research_results/krx_openapi_history_2015_2026_first_probe/summary.json
+          retention-days: 7
+          if-no-files-found: warn
