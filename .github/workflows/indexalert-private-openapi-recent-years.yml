@@ -1,0 +1,43 @@
+name: IndexAlert Private KRX OPEN API Recent 2024–2026 Safety
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_recent_runner.py'
+      - 'test_research_v1_krx_openapi_private_recent_runner.py'
+      - '.github/workflows/indexalert-private-openapi-recent-years.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_recent_runner.py'
+      - 'test_research_v1_krx_openapi_private_recent_runner.py'
+      - '.github/workflows/indexalert-private-openapi-recent-years.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-recent-years-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      KRX_AUTH_KEY: ''
+      KRX_OPENAPI_HISTORY_SCOPED_CONSENT: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: All tests purely synthetic, no authorized KRX request
+        run: |
+          python -m py_compile research_v1_krx_openapi_private_recent_runner.py test_research_v1_krx_openapi_private_recent_runner.py
+          python -m unittest -v test_research_v1_krx_openapi_private_recent_runner.py test_research_v1_krx_openapi_private_year_runner.py test_research_v1_krx_openapi_private_history_batch.py
+      - name: Verify dry-run default and explicit no-orders
+        run: |
+          python research_v1_krx_openapi_private_recent_runner.py
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr/comm|/api/dostk/ordr|/svc/apis/sto/ksq' research_v1_krx_openapi_private_recent_runner.py
+          grep -F '"m20_performance_testing_authorized": False' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_private_history_batch.py
