@@ -1,0 +1,43 @@
+name: IndexAlert Recent 2023–2026 Private Source Integrity Audit Safety
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_recent_integrity_audit.py'
+      - 'test_research_v1_krx_openapi_recent_integrity_audit.py'
+      - '.github/workflows/indexalert-krx-recent-four-year-integrity.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_recent_integrity_audit.py'
+      - 'test_research_v1_krx_openapi_recent_integrity_audit.py'
+      - '.github/workflows/indexalert-krx-recent-four-year-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-no-credential-multi-year-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      KRX_AUTH_KEY: ''
+      KRX_OPENAPI_HISTORY_SCOPED_CONSENT: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Run synthetic original-source 4-year audit contract
+        run: |
+          python -m py_compile research_v1_krx_openapi_recent_integrity_audit.py test_research_v1_krx_openapi_recent_integrity_audit.py
+          python -m unittest -v test_research_v1_krx_openapi_recent_integrity_audit.py test_research_v1_krx_openapi_private_integrity_audit.py
+      - name: Default no-volume audit dry-run and no broker routes
+        run: |
+          python research_v1_krx_openapi_recent_integrity_audit.py
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr/comm|/api/dostk/ordr|/svc/apis/sto/ksq' research_v1_krx_openapi_recent_integrity_audit.py
+          grep -F '"m20_performance_testing_authorized": False' research_v1_krx_openapi_recent_integrity_audit.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_openapi_recent_integrity_audit.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_recent_integrity_audit.py
