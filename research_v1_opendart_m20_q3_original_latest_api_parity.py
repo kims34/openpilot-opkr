@@ -29,7 +29,7 @@ from research_v1_opendart_original_xbrl_pilot import (
     _official_xbrl_get, first_q3_original_receipts,
 )
 from research_v1_opendart_m20_q3_original_numeric_compat import (
-    _numeric_pair_atom, check_two_original_q3_numbers, AUTHORITY,
+    _numeric_pair_atom, AUTHORITY,
 )
 
 SOURCE = "OpenDART_OFFICIAL_FIXED_CFS"
@@ -74,6 +74,7 @@ def latest_consolidated_q3_operating_line(payload, *, corp_code, original_receip
         if row.get("account_id")!=ACCOUNT_ID:
             continue
         if (row.get("currency")!="KRW"
+                or row.get("fs_div") not in (None,"CFS")
                 or row.get("account_nm") not in OPERATING_LABELS):
             raise OriginalAPIParityError("CURRENT_CFS_OPERATING_ACCOUNT_SEMANTICS_INVALID")
         receipt=row.get("rcept_no")
@@ -95,14 +96,18 @@ def check_original_latest_parity(
     *, original24: bytes, original25: bytes, latest_api: dict,
     corp_code: str, first_2025_receipt: str,
 ) -> dict:
-    representation=check_two_original_q3_numbers(
-        original24=original24,original25=original25)
-    if not representation["minimal_original_pair_representation_consistent"]:
+    # Read each large historical archive only once; this preserves the
+    # existing strict original numeric candidate check without doing another
+    # full bounded XBRL parse of the same two original archives.
+    atom24=_numeric_pair_atom(original24,2024)
+    atom25=_numeric_pair_atom(original25,2025)
+    original_representation_same=(atom24[0]==atom25[0]
+        and atom24[1]==atom25[1] and atom24[2]==atom25[2]
+        and (atom25[3]-atom24[3]).is_finite())
+    if not original_representation_same:
         raise OriginalAPIParityError("ORIGINAL_Q3_PAIR_REPRESENTATION_MISMATCH")
     current,previous,receipt_same=latest_consolidated_q3_operating_line(
         latest_api,corp_code=corp_code,original_receipt=first_2025_receipt)
-    atom24=_numeric_pair_atom(original24,2024)
-    atom25=_numeric_pair_atom(original25,2025)
     q_current_equal=current==atom25[3]
     q_minus_4_equal=previous==atom24[3]
     return {
