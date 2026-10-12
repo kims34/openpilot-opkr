@@ -61,7 +61,7 @@ class RecentIntegrityContractTest(unittest.TestCase):
         out=auditmod.audit_all_recent(audit=spy)
         self.assertEqual(out["status"],"DRY_RUN_NO_STORAGE_ACCESS")
         self.assertEqual(spy.calls,[])
-        self.assertFalse(out["real_orders_authorized"])
+        self.assertFalse(out["live_orders_authorized"])
         self.assertFalse(out["m20_performance_testing_authorized"])
         self.assertEqual(out["ordering"],"DISABLED")
     def test_no_private_worker_is_hard_block(self):
@@ -107,7 +107,7 @@ class RecentIntegrityContractTest(unittest.TestCase):
             self.assertEqual(out["failed_year"],2024)
             self.assertEqual(out["completed_years"],[2023])
             self.assertEqual(len(spy.calls),2)
-            self.assertFalse(out["real_orders_authorized"])
+            self.assertFalse(out["live_orders_authorized"])
     def test_any_attempted_real_order_flag_stops(self):
         spy=FakeAudit(drift_year=2023)
         out=auditmod.audit_all_recent(execute=True,environment=VALID_ENV,audit=spy)
