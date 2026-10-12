@@ -11,6 +11,8 @@ RUN python -m pip install --upgrade pip \
     && pip install -r requirements-krx-historical-worker.txt
 
 COPY research_v1_krx_*.py ./
+# The M20 joined-source audit is read-only and has no network/order paths.
+COPY research_v1_m20_krx_private_post_disclosure_path.py ./
 COPY INDEXALERT_KRX_HISTORICAL_ACQUISITION_PLAN.json ./
 COPY INDEXALERT_KRX_HISTORICAL_EXECUTION_CONTRACT.json ./
 COPY INDEXALERT_KRX_PERMISSION_REPLY_EVIDENCE.json ./
