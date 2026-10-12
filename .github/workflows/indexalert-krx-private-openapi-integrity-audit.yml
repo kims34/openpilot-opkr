@@ -1,0 +1,43 @@
+name: IndexAlert KRX Private OpenAPI Source Integrity Audit
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_integrity_audit.py'
+      - 'test_research_v1_krx_openapi_private_integrity_audit.py'
+      - '.github/workflows/indexalert-krx-private-openapi-integrity-audit.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_integrity_audit.py'
+      - 'test_research_v1_krx_openapi_private_integrity_audit.py'
+      - '.github/workflows/indexalert-krx-private-openapi-integrity-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  no-network-private-integrity-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      KRX_AUTH_KEY: ''
+      KRX_OPENAPI_HISTORY_SCOPED_CONSENT: ''
+      INDEXALERT_TEST_PRIVATE_AUDIT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Audit content-addressed synthetic private history without writing source
+        run: |
+          python -m py_compile research_v1_krx_openapi_private_integrity_audit.py test_research_v1_krx_openapi_private_integrity_audit.py
+          python -m unittest -v test_research_v1_krx_openapi_private_integrity_audit.py test_research_v1_krx_openapi_private_history_batch.py test_research_v1_krx_openapi_private_year_runner.py
+      - name: Preserve no brokerage, no PIT, no performance admission
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr/comm|/api/dostk/ordr|/svc/apis/sto/ksq' research_v1_krx_openapi_private_integrity_audit.py
+          grep -F '"m20_performance_testing_authorized": False' research_v1_krx_openapi_private_integrity_audit.py
+          grep -F '"real_orders_authorized": False' research_v1_krx_openapi_private_integrity_audit.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_private_integrity_audit.py
