@@ -110,9 +110,16 @@ def latest_q3_2023_cfs_pair(payload:dict,*,corp_code:str,first_receipt:str):
 
 
 def inspect_original_vs_latest(archive22:bytes,archive23:bytes,api:dict,
-                               *,corp_code:str,receipt23:str)->dict:
-    first22=original_quarter_fact(archive22,2022)
-    first23=original_quarter_fact(archive23,2023)
+                               *,corp_code:str,receipt23:str,
+                               original_facts:tuple|None=None)->dict:
+    # The production runner may separately prevalidate each historic vintage
+    # to retain safe year-scoped failure stages. Direct offline callers still
+    # validate both originals here. Never persist either source fact.
+    if original_facts is None:
+        first22=original_quarter_fact(archive22,2022)
+        first23=original_quarter_fact(archive23,2023)
+    else:
+        first22,first23=original_facts
     now,prior,receipt_match,api_uses_dart=latest_q3_2023_cfs_pair(
         api,corp_code=corp_code,first_receipt=receipt23)
     return {
@@ -172,8 +179,12 @@ def run(slot:int,session=None)->dict:
             original[year]=original_first_receipt(listing,year)
         stage="ORIGINAL_XBRL_2022"
         raw22=_official_xbrl_get(session,key,original[2022])
+        stage="ORIGINAL_2022_Q3_FACT_PARSE"
+        first22=original_quarter_fact(raw22,2022)
         stage="ORIGINAL_XBRL_2023"
         raw23=_official_xbrl_get(session,key,original[2023])
+        stage="ORIGINAL_2023_Q3_FACT_PARSE"
+        first23=original_quarter_fact(raw23,2023)
         stage="LATEST_CFS_2023_THREE_MONTHS"
         api=_official_get(session,"fnlttSinglAcntAll.json",{
             "crtfc_key":key,"corp_code":corp,
@@ -181,7 +192,8 @@ def run(slot:int,session=None)->dict:
         })
         stage="EXACT_ORIGINAL_VS_LATEST_COMPARATIVE"
         report.update(inspect_original_vs_latest(
-            raw22,raw23,api,corp_code=corp,receipt23=original[2023]))
+            raw22,raw23,api,corp_code=corp,receipt23=original[2023],
+            original_facts=(first22,first23)))
         report["source_status"]="ORIGINAL_2022_2023_TO_CFS_3MONTH_PARITY_DIAGNOSTIC_ONLY"
     except Exception as ex:
         # Source parsers publish fixed reason codes. Preserve only allowlisted
