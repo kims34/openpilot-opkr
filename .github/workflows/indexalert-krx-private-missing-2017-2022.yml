@@ -1,0 +1,47 @@
+name: IndexAlert KRX Private Missing 2017–2022 Historical Source Safety
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_missing_2017_2022_runner.py'
+      - 'test_research_v1_krx_openapi_private_missing_2017_2022_runner.py'
+      - '.github/workflows/indexalert-krx-private-missing-2017-2022.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_missing_2017_2022_runner.py'
+      - 'test_research_v1_krx_openapi_private_missing_2017_2022_runner.py'
+      - '.github/workflows/indexalert-krx-private-missing-2017-2022.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-year-quota-no-trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      KRX_AUTH_KEY: ''
+      KRX_OPENAPI_HISTORY_SCOPED_CONSENT: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Compile and exercise six-year source cap and fail-stop tests
+        run: |
+          python -m py_compile research_v1_krx_openapi_private_missing_2017_2022_runner.py test_research_v1_krx_openapi_private_missing_2017_2022_runner.py
+          python -m unittest -v test_research_v1_krx_openapi_private_missing_2017_2022_runner.py
+      - name: Dry-run no source network and no brokerage orders
+        run: |
+          python research_v1_krx_openapi_private_missing_2017_2022_runner.py
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr/comm|data.krx.co.kr/contents|/api/dostk/ordr' research_v1_krx_openapi_private_missing_2017_2022_runner.py
+          grep -F 'SOURCE_CAPTURE_COMPLETE_NOT_PIT_ADMITTED' research_v1_krx_openapi_private_missing_2017_2022_runner.py
+          grep -F '"official_market_halt_delist_status_verified":False' research_v1_krx_openapi_private_missing_2017_2022_runner.py
+      - name: Build actual private-volumed Railway Docker image with source runner
+        run: |
+          grep -F 'COPY research_v1_krx_*.py ./' Dockerfile.krx-historical-worker
+          docker build -f Dockerfile.krx-historical-worker -t indexalert-krx-source-gap-runner-ci .
+          docker run --rm --entrypoint python indexalert-krx-source-gap-runner-ci -c "import research_v1_krx_openapi_private_missing_2017_2022_runner as x; assert len(x.PINNED_YEAR_RANGES)==6; assert x.execute_missing_years()['ordering']=='DISABLED'"
