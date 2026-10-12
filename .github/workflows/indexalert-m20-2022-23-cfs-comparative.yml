@@ -1,0 +1,94 @@
+name: IndexAlert M20 Original 2022/23 vs 2023 CFS Three-Month Comparative
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py'
+      - 'test_research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py'
+      - '.github/workflows/indexalert-m20-2022-23-cfs-comparative.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py'
+      - 'test_research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py'
+      - '.github/workflows/indexalert-m20-2022-23-cfs-comparative.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexalert-m20-2022-23-original-versus-2023-cfs
+  cancel-in-progress: false
+
+jobs:
+  offline-three-month-parity-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Synthetic old original-Q3 earnings versus later CFS 3-month fields
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py test_research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+      - name: No KRX/broker API routes and PIT/performance/holdout all false
+        run: |
+          ! grep -E 'api.kiwoom.com|data-dbg.krx.co.kr|data.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+          grep -F '"m20_performance_run_authorized":False' research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+          grep -F '"historical_xbrl_qname_equivalence_verified":False' research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+          grep -F '"real_orders_authorized":False' research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+          grep -F '"ordering":"DISABLED"' research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py
+
+  six-fixed-company-original-versus-current-comparative:
+    if: github.event_name == 'push'
+    needs: offline-three-month-parity-safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        cohort_slot: [0, 1, 2, 3, 4, 5]
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Official first-original 2022 and 2023 Q3 versus 2023 3mo and prior-year CFS
+        run: |
+          python research_v1_opendart_m20_2022_23_original_latest_cfs_parity.py --cohort-slot ${{ matrix.cohort_slot }}
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research_results/opendart_m20_2022_23_cfs_comparative_parity/slot_${{ matrix.cohort_slot }}.json').read_text(encoding='utf-8'))
+          for key in ('historical_xbrl_qname_equivalence_verified',
+                      'historical_security_corp_mapping_verified',
+                      'historical_intraday_publication_pit_verified',
+                      'm20_feature_pit_admitted','m20_performance_run_authorized',
+                      'independent_holdout_authorized','champion_change_authorized',
+                      'real_orders_authorized','funds_movement_authorized',
+                      'permissions_change_authorized',
+                      'data_values_issuer_ids_and_source_rows_saved'):
+              assert p[key] is False, 'FORBIDDEN_ADMISSION_OR_ORDER_AUTHORITY'
+          assert p['ordering']=='DISABLED'
+          assert p['cohort_slot']==${{ matrix.cohort_slot }}
+          assert p['source_status']=='ORIGINAL_2022_2023_TO_CFS_3MONTH_PARITY_DIAGNOSTIC_ONLY', 'ORIGINAL_OR_LATEST_CFS_SOURCE_GAP'
+          assert p['two_initial_original_Q3_XBRL_financial_facts_found'] is True
+          # Observed amount matches may be false, especially if source was
+          # restated; mismatches must remain visible, never backfilled.
+          PY
+      - name: Retain only taxonomy-shape and comparative equality booleans; no source values
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-2022-2023-original-versus-2023-cfs-slot-${{ matrix.cohort_slot }}-flags-only
+          path: research_results/opendart_m20_2022_23_cfs_comparative_parity/slot_${{ matrix.cohort_slot }}.json
+          retention-days: 7
+          if-no-files-found: warn
