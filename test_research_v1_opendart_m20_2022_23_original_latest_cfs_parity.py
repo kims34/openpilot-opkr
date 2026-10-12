@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from research_v1_opendart_m20_2022_23_original_latest_cfs_parity import (
     latest_q3_2023_cfs_pair,inspect_original_vs_latest,run,OriginalComparativeGap,
+    reject_nonzip_xbrl,XBRL_PROVIDER_CODES,
 )
 from research_v1_opendart_m20_six_issuer_q3_filing_coverage import COHORT
 from test_research_v1_opendart_m20_six_issuer_2022_2023_q3_originals import (
@@ -172,6 +173,49 @@ class HistoricalCFSReconciliationTests(unittest.TestCase):
                 pack=json.dumps(out)
                 for token in (SYNTHETIC_KEY, "-123456","345678",R22,R23)+COHORT:
                     self.assertNotIn(token,pack)
+    def test_original_xbrl_xml_error_status_only_never_provider_message(self):
+        for code,reason in XBRL_PROVIDER_CODES.items():
+            raw=('<result><status>'+code+'</status><message>'+
+                 'TOP_SECRET_BROKER_KEY_OR_ISSUER_ROW_8765'+'</message></result>').encode()
+            with self.subTest(status=code),self.assertRaises(OriginalComparativeGap) as ctx:
+                reject_nonzip_xbrl(raw)
+            self.assertEqual(str(ctx.exception),reason)
+            self.assertNotIn('SECRET',str(ctx.exception))
+
+    def test_nonzip_unknown_oversize_or_xml_entity_never_admitted(self):
+        for raw in (
+            b'<result><status>999</status></result>',
+            b'<bad><status>014</status></bad>',
+            b'<?xml version="1.0"?><!DOCTYPE result [<!ENTITY x SYSTEM "file:///private">]><result><status>&x;</status></result>',
+            b'<result><status>014</status></result>'+b' '*4097,
+            b'plain-response-secret-234',
+            b'',
+        ):
+            with self.subTest(prefix=raw[:10]),self.assertRaises(OriginalComparativeGap) as ctx:
+                reject_nonzip_xbrl(raw)
+            self.assertEqual(str(ctx.exception),'OFFICIAL_XBRL_UNRECOGNIZED_RESPONSE')
+        self.assertIsNone(reject_nonzip_xbrl(bytes((80,75,3,4))+b'ZIP'))
+
+    def test_live_reader_2022_provider_no_file_stops_before_2023(self):
+        s=ExtendedSession()
+        reply=b'<result><status>014</status><message>DO_NOT_LOG_KEY_987</message></result>'
+        with patch.dict(os.environ,{"OPENDART_API_KEY":SYNTHETIC_KEY},clear=True):
+            with patch(
+                "research_v1_opendart_m20_2022_23_original_latest_cfs_parity._official_xbrl_get",
+                return_value=reply,
+            ) as source:
+                out=run(5,s)
+        self.assertEqual(out['source_status'],'SOURCE_GAP_FAIL_CLOSED')
+        self.assertEqual(out['failure_stage'],'ORIGINAL_2022_Q3_FACT_PARSE')
+        self.assertEqual(out['failure_code'],'OFFICIAL_XBRL_FILE_NOT_FOUND')
+        self.assertEqual(source.call_count,1)
+        self.assertEqual(s.calls,['corpCode.xml','list.json','list.json'])
+        self.assertFalse(out['m20_performance_run_authorized'])
+        self.assertFalse(out['independent_holdout_authorized'])
+        self.assertFalse(out['real_orders_authorized'])
+        self.assertEqual(out['ordering'],'DISABLED')
+        self.assertNotIn('DO_NOT_LOG_KEY_987',json.dumps(out))
+
     def test_no_secret_never_uses_api(self):
         session=ExtendedSession()
         with patch.dict(os.environ,{},clear=True):
