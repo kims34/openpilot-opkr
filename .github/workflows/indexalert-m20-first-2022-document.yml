@@ -1,0 +1,91 @@
+name: IndexAlert M20 Fixed 2022 Original Filing Document Rescue
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_document_pilot.py'
+      - 'test_research_v1_opendart_m20_2022_first_document_pilot.py'
+      - '.github/workflows/indexalert-m20-first-2022-document.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_document_pilot.py'
+      - 'test_research_v1_opendart_m20_2022_first_document_pilot.py'
+      - '.github/workflows/indexalert-m20-first-2022-document.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-original-document-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up safe XML parser and official source helpers
+        run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Validate first-filing-only document integrity without credentials
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_first_document_pilot.py test_research_v1_opendart_m20_2022_first_document_pilot.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_first_document_pilot
+      - name: Guard actual source-only and no orders or performance admission
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_first_document_pilot.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_first_document_pilot.py
+          grep -F '"real_orders_authorized": False' research_v1_opendart_m20_2022_first_document_pilot.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_first_document_pilot.py
+
+  official-2022-first-document-source-only:
+    if: github.event_name == 'push'
+    needs: offline-original-document-integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Retrieve ONLY original first-filed 2022 Q3 DOCUMENT ZIP for fixed slot 5
+        run: |
+          python research_v1_opendart_m20_2022_first_document_pilot.py --fixed-slot 5
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('research_results/opendart_m20_first_2022_document/summary.json').read_text())
+          assert p["fixed_cohort_slot"] == 5
+          assert p["original_report_year"] == 2022
+          assert p["max_official_requests"] == 3
+          for key in (
+              "archive_is_standardized_financial_xbrl",
+              "original_2022_standalone_cfs_earnings_value_verified",
+              "historical_publication_instant_pit_verified",
+              "historical_market_cap_and_tradability_verified",
+              "m20_feature_pit_admitted",
+              "m20_performance_run_authorized",
+              "independent_holdout_authorized",
+              "real_orders_authorized",
+              "funds_movement_authorized",
+              "permissions_change_authorized",
+              "source_bytes_financial_values_and_identifiers_saved",
+          ):
+              assert p[key] is False, "FORBIDDEN_FINANCIAL_OR_TRADING_ADMISSION"
+          assert p["ordering"] == "DISABLED"
+          assert p["source_status"] == "ORIGINAL_2022_DOCUMENT_ZIP_PRESENT_SHAPE_ONLY", "OFFICIAL_DOCUMENT_SOURCE_GAP"
+          PY
+      - name: Upload flags-only source probe without disclosure bytes or issuer IDs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-original-2022-q3-first-document-flags-only
+          path: research_results/opendart_m20_first_2022_document/summary.json
+          retention-days: 7
+          if-no-files-found: warn
