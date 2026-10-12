@@ -39,10 +39,16 @@ class ExtendedSession(SyntheticOfficialSession):
     def get(self,url,*,params,timeout,allow_redirects,stream=False):
         if url.endswith("fnlttSinglAcntAll.json"):
             assert timeout==20 and not stream and not allow_redirects
-            assert params=={
-                "crtfc_key":SYNTHETIC_KEY,"corp_code":CORP,
-                "bsns_year":"2023","reprt_code":"11014","fs_div":"CFS",
+            assert set(params)=={
+                "crtfc_key","corp_code","bsns_year","reprt_code","fs_div",
             }
+            assert params["crtfc_key"]==SYNTHETIC_KEY
+            assert params["corp_code"] in {
+                f"{i+1:08d}" for i in range(6)
+            }
+            assert params["bsns_year"]=="2023"
+            assert params["reprt_code"]=="11014"
+            assert params["fs_div"]=="CFS"
             self.calls.append("fnlttSinglAcntAll.json")
             return FakeResponse(parsed=self.api)
         return super().get(
