@@ -1,0 +1,87 @@
+name: IndexAlert Approved KRX OpenAPI Historical Tiny Sample
+
+# Default-branch discovery bridge ONLY. No push/pull_request/schedule triggers.
+# The reviewed source is pinned to the research commit dd839a3146af...
+# Must explicitly click Run workflow and toggle the exact approval switch.
+on:
+  workflow_dispatch:
+    inputs:
+      run_six_approved_openapi_gets:
+        description: 'I authorize exactly 3 fixed KOSPI dates x 2 approved KRX OpenAPI GET requests; no orders'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexalert-krx-openapi-historical-first-sample-one-shot
+  cancel-in-progress: false
+
+jobs:
+  approved-six-readonly-requests:
+    if: ${{ inputs.run_six_approved_openapi_gets == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      KRX_AUTH_KEY: ${{ secrets.KRX_AUTH_KEY }}
+      KRX_HISTORY_SAMPLE_EXECUTE: 'EXPLICIT_USER_APPROVED_20261012_OPENAPI_SAMPLE_ONLY'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout the pinned, offline-tested research implementation
+        uses: actions/checkout@v4
+        with:
+          ref: dd839a3146af2261be4e3fde810a4a62881bacd3
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install minimal read-only requirements
+        run: python -m pip install requests==2.32.3
+
+      - name: Confirm exact checked-out pinned commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "dd839a3146af2261be4e3fde810a4a62881bacd3"
+          test -f "INDEXALERT_KRX_OPENAPI_HISTORY_USER_CONSENT_2026_10_12.json"
+          test -f "INDEXALERT_KRX_OPENAPI_CONNECTIVITY_EVIDENCE.json"
+          if [ -z "${KRX_AUTH_KEY:-}" ]; then
+            echo "BLOCKED: KRX_AUTH_KEY missing from GitHub Actions secrets (do not paste a key into logs or chat)."
+            exit 1
+          fi
+
+      - name: Reconfirm 16 offline fail-closed contract tests
+        run: python -m unittest -v test_research_v1_krx_openapi_history_scoped_probe.py
+
+      - name: Fetch only six preapproved KOSPI OpenAPI observations
+        run: |
+          python research_v1_krx_openapi_history_scoped_probe.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("research_results/krx_openapi_history_2015_2026_first_probe/summary.json")
+          result = json.loads(path.read_text(encoding="utf-8"))
+          assert result["request_count"] <= 6
+          assert result["real_orders_authorized"] is False
+          assert result["funds_movement_authorized"] is False
+          assert result["permission_change_authorized"] is False
+          assert result["performance_run_authorized"] is False
+          assert result["private_full_history_acquisition_complete"] is False
+          assert result["ordering"] == "DISABLED"
+          if result["source_status"] != "SCOPED_OFFICIAL_SAMPLE_COMPLETED_NOT_ADMITTED":
+              raise SystemExit("Source probe FAIL_CLOSED; see fixed reason code, no source promotion")
+          assert result["request_count"] == 6
+          PY
+
+      - name: Upload metadata-only checksums and aggregate receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-krx-approved-official-6-gets-metadata-only
+          path: research_results/krx_openapi_history_2015_2026_first_probe/summary.json
+          retention-days: 7
+          if-no-files-found: warn
