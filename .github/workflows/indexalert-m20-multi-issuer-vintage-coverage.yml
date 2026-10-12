@@ -1,0 +1,83 @@
+name: IndexAlert M20 Six Issuer Original Q3 First Filing Coverage
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_six_issuer_q3_filing_coverage.py'
+      - 'test_research_v1_opendart_m20_six_issuer_q3_filing_coverage.py'
+      - '.github/workflows/indexalert-m20-multi-issuer-vintage-coverage.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_six_issuer_q3_filing_coverage.py'
+      - 'test_research_v1_opendart_m20_six_issuer_q3_filing_coverage.py'
+      - '.github/workflows/indexalert-m20-multi-issuer-vintage-coverage.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexalert-m20-opendart-multi-issuer-vintage
+  cancel-in-progress: false
+
+jobs:
+  offline-fail-closed-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Compile and exercise predeclared six-by-four source coverage logic
+        run: |
+          python -m py_compile research_v1_opendart_m20_six_issuer_q3_filing_coverage.py test_research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+          python -m unittest -v test_research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+      - name: Fail closed on new market, broker, raw financial and order routes
+        run: |
+          ! grep -E 'api.kiwoom.com|data-dbg.krx.co.kr|data.krx.co.kr|fnlttXbrl.xml|/api/dostk/ordr|fnlttSinglAcntAll.json' research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+          grep -F '"m20_performance_run_authorized":False' research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+          grep -F '"real_orders_authorized":False' research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+          grep -F '"ordering":"DISABLED"' research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+
+  approved-official-only-vintage-index:
+    if: github.event_name == 'push'
+    needs: offline-fail-closed-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Read official OpenDART current registry once and <=24 periodic index windows
+        run: |
+          python research_v1_opendart_m20_six_issuer_q3_filing_coverage.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research_results/opendart_m20_six_issuer_q3_vintage/summary.json').read_text(encoding='utf-8'))
+          for key in ('historical_publication_pit_verified','m20_signal_pit_admitted',
+                      'm20_performance_run_authorized','independent_holdout_authorized',
+                      'real_orders_authorized','funds_movement_authorized',
+                      'permissions_change_authorized','raw_provider_values_or_identifiers_saved'):
+              assert p[key] is False, 'FORBIDDEN_AUTHORITY_DRIFT'
+          assert p['ordering']=='DISABLED'
+          assert p['source_status']=='FIXED_COHORT_ORIGINAL_Q3_DATE_COVERAGE_NOT_PIT', 'SOURCE_GAP_FAIL_CLOSED'
+          assert 1<=p['official_api_requests']<=25
+          assert p['potential_original_report_cells']==24
+          assert p['date_identified_original_report_cells']<=24
+          PY
+      - name: Publish ONLY fixed cohort aggregates; never official rows or identifiers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-fixed-six-issuer-2022-25-q3-vintage-counts-only
+          path: research_results/opendart_m20_six_issuer_q3_vintage/summary.json
+          retention-days: 7
+          if-no-files-found: warn
