@@ -153,6 +153,7 @@ def run(slot:int,session=None)->dict:
     if session is None:
         import requests
         session=requests.Session()
+    stage="CORPORATION_REGISTRY"
     try:
         registry=_official_get(session,"corpCode.xml",{"crtfc_key":key},
                                zip_response=True)
@@ -161,18 +162,23 @@ def run(slot:int,session=None)->dict:
             raise OriginalComparativeGap("FIXED_CORP_NOT_FOUND")
         original={}
         for year in YEARS:
+            stage=f"Q3_INDEX_{year}"
             start,end=_window(year)
             listing=_official_get(session,"list.json",{
                 "crtfc_key":key,"corp_code":corp,"bgn_de":start,
                 "end_de":end,"pblntf_ty":"A","page_count":"100",
             })
             original[year]=original_first_receipt(listing,year)
+        stage="ORIGINAL_XBRL_2022"
         raw22=_official_xbrl_get(session,key,original[2022])
+        stage="ORIGINAL_XBRL_2023"
         raw23=_official_xbrl_get(session,key,original[2023])
+        stage="LATEST_CFS_2023_THREE_MONTHS"
         api=_official_get(session,"fnlttSinglAcntAll.json",{
             "crtfc_key":key,"corp_code":corp,
             "bsns_year":"2023","reprt_code":"11014","fs_div":"CFS",
         })
+        stage="EXACT_ORIGINAL_VS_LATEST_COMPARATIVE"
         report.update(inspect_original_vs_latest(
             raw22,raw23,api,corp_code=corp,receipt23=original[2023]))
         report["source_status"]="ORIGINAL_2022_2023_TO_CFS_3MONTH_PARITY_DIAGNOSTIC_ONLY"
@@ -185,6 +191,7 @@ def run(slot:int,session=None)->dict:
         }
         msg=str(ex) if type(ex) is OriginalComparativeGap else ""
         report["source_status"]="SOURCE_GAP_FAIL_CLOSED"
+        report["failure_stage"]=stage
         report["failure_code"]=msg if msg in approved else "UNCLASSIFIED"
     return report
 
