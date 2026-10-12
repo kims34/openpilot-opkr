@@ -206,12 +206,34 @@ class KRXPrivateOpenAPIHistoryTests(unittest.TestCase):
                    "secret","20150105")
     def test_partial_and_full_empty_provider_day_semantics(self):
         row=b._inspect([],[],"20150105")
-        self.assertEqual(row["calendar_day_class"],"PROVIDER_BOTH_EMPTY_UNVERIFIED_HOLIDAY")
+        self.assertEqual(row["calendar_day_class"],
+                         "PROVIDER_BOTH_EMPTY_UNVERIFIED_CALENDAR_OR_SOURCE_GAP")
         self.assertFalse(row["daily_all_mapped_to_master"])
         with self.assertRaisesRegex(b.PrivateOpenAPIHistoryError,"PARTIAL_SOURCE_CALENDAR_SCOPE"):
             b._inspect(daily_records("20150105"),[],"20150105")
-        with self.assertRaisesRegex(b.PrivateOpenAPIHistoryError,"PARTIAL_SOURCE_CALENDAR_SCOPE"):
-            b._inspect([],master_records(),"20150105")
+        master_only=b._inspect([],master_records(),"20150105")
+        self.assertEqual(master_only["calendar_day_class"],
+                         "DAILY_EMPTY_MASTER_PRESENT_UNVERIFIED_CALENDAR_OR_SOURCE_GAP")
+        self.assertEqual(master_only["daily_rows"],0)
+        self.assertEqual(master_only["master_rows"],12)
+        self.assertFalse(master_only["daily_all_mapped_to_master"])
+        self.assertEqual(master_only["normal_ohlc_common_rows"],0)
+        self.assertNotIn("official_holiday_verified",master_only)
+    def test_master_only_source_date_is_persisted_as_unverified_not_cash_trading_day(self):
+        def no_daily(day,service,payload):
+            if service=="daily_trade" and day=="20150105":
+                return {"OutBlock_1":[]}
+            return payload
+        s=FakeSession(transform=no_daily)
+        result=self.evaluate(session=s)
+        self.assertEqual(result["status"],"PRIVATE_SAMPLE_STORED_NOT_SOURCE_ADMITTED")
+        self.assertEqual(result["provider_empty_pairs_not_calendar_attested"],1)
+        self.assertEqual(result["batch_sampled_common_rows"],12)
+        saved=read_private_json(self.root,"acquisitions/20150105.json")["value"]
+        self.assertEqual(saved["quality"]["calendar_day_class"],
+                         "DAILY_EMPTY_MASTER_PRESENT_UNVERIFIED_CALENDAR_OR_SOURCE_GAP")
+        self.assertFalse(saved["historical_pit_source_admitted"])
+        self.assertFalse(saved["official_trading_status_verified"])
     def test_duplicate_master_or_daily_security_fails(self):
         master=master_records()
         master[1]["ISU_SRT_CD"]=master[0]["ISU_SRT_CD"]
