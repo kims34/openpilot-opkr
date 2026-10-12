@@ -1,0 +1,63 @@
+name: IndexAlert M20 OpenDART Filing Vintage Date Guard
+
+on:
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_vintage_pilot.py'
+      - 'test_research_v1_opendart_m20_vintage_pilot.py'
+      - '.github/workflows/indexalert-m20-filing-vintage-guard.yml'
+  push:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_vintage_pilot.py'
+      - 'test_research_v1_opendart_m20_vintage_pilot.py'
+      - '.github/workflows/indexalert-m20-filing-vintage-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-date-vintage-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - run: python -m py_compile research_v1_opendart_m20_vintage_pilot.py test_research_v1_opendart_m20_vintage_pilot.py
+      - run: python -m unittest -v test_research_v1_opendart_m20_vintage_pilot.py
+      - name: No orders, no KRX routes, no PIT or performance admission
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr|kt10000' research_v1_opendart_m20_vintage_pilot.py
+          grep -F '"pit_source_admitted": False' research_v1_opendart_m20_vintage_pilot.py
+          grep -F '"sealed_holdout_authorized": False' research_v1_opendart_m20_vintage_pilot.py
+          grep -F '"live_order_authorized": False' research_v1_opendart_m20_vintage_pilot.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_vintage_pilot.py
+  official-date-only-pilot:
+    if: github.event_name == 'push'
+    needs: offline-date-vintage-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Check fixed-issuer original filing date history, no historical PIT assertion
+        run: |
+          python research_v1_opendart_m20_vintage_pilot.py
+          python -c "import json; p=json.load(open('research_results/opendart_m20_vintage/summary.json',encoding='utf8')); assert p['source_status']=='DATE_LEVEL_REPORT_VINTAGE_PILOT_ONLY'; assert p['pit_source_admitted'] is False; assert p['historical_publication_time_verified'] is False; assert p['live_order_authorized'] is False"
+      - name: Preserve metadata-only diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-filing-vintage-date-only
+          path: research_results/opendart_m20_vintage/summary.json
+          retention-days: 7
+          if-no-files-found: warn
