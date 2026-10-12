@@ -1,0 +1,45 @@
+name: IndexAlert Private KOSPI OpenAPI History Batch Safety
+
+on:
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_history_batch.py'
+      - 'test_research_v1_krx_openapi_private_history_batch.py'
+      - '.github/workflows/indexalert-private-openapi-history-batch.yml'
+  push:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_openapi_private_history_batch.py'
+      - 'test_research_v1_krx_openapi_private_history_batch.py'
+      - '.github/workflows/indexalert-private-openapi-history-batch.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-bounded-private-store:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      KRX_AUTH_KEY: ''
+      KRX_OPENAPI_HISTORY_SCOPED_CONSENT: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.3
+      - name: Compile and run test-only private acquisition and replay guards
+        run: |
+          python -m py_compile research_v1_krx_openapi_private_history_batch.py test_research_v1_krx_openapi_private_history_batch.py
+          python -m unittest -v test_research_v1_krx_openapi_private_history_batch.py
+      - name: Default dry run must make no network calls or write raw
+        run: |
+          python research_v1_krx_openapi_private_history_batch.py --start 2015-01-05 --end 2015-01-16
+      - name: No unauthorized remote routes, no performance/order promotion
+        run: |
+          ! grep -E 'data.krx.co.kr/comm|data.krx.co.kr/contents|api.kiwoom.com|/api/dostk/ordr|/svc/apis/sto/ksq' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"m20_performance_testing_authorized": False' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_openapi_private_history_batch.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_openapi_private_history_batch.py
