@@ -187,6 +187,52 @@ class HistoricalCFSReconciliationTests(unittest.TestCase):
         self.assertEqual(out["failure_code"],"LATEST_CFS_API_NOT_AVAILABLE")
         self.assertEqual(out["failure_stage"],"EXACT_ORIGINAL_VS_LATEST_COMPARATIVE")
         self.assertNotIn("SENSITIVE_API_KEY_12345",json.dumps(out))
+    def test_underlying_original_parser_gap_is_classified_without_pit(self):
+        from research_v1_opendart_m20_six_issuer_2022_2023_q3_originals import HistoricalOriginalGap
+        s=ExtendedSession()
+        with patch.dict(os.environ,{"OPENDART_API_KEY":SYNTHETIC_KEY},clear=True):
+            with patch(
+                "research_v1_opendart_m20_2022_23_original_latest_cfs_parity.original_quarter_fact",
+                side_effect=HistoricalOriginalGap("EXACT_CONSOLIDATED_Q3_KRW_OPERATING_FACT_NOT_UNIQUE"),
+            ):
+                out=run(5,s)
+        self.assertEqual(out["source_status"],"SOURCE_GAP_FAIL_CLOSED")
+        self.assertEqual(out["failure_stage"],"EXACT_ORIGINAL_VS_LATEST_COMPARATIVE")
+        self.assertEqual(out["failure_code"],"EXACT_CONSOLIDATED_Q3_KRW_OPERATING_FACT_NOT_UNIQUE")
+        self.assertFalse(out["m20_performance_run_authorized"])
+        self.assertFalse(out["real_orders_authorized"])
+        self.assertEqual(out["ordering"],"DISABLED")
+        self.assertFalse(out["two_initial_original_Q3_XBRL_financial_facts_found"])
+        self.assertNotIn(SYNTHETIC_KEY,json.dumps(out))
+
+    def test_xbrl_source_parser_gap_is_classified_and_not_admitted(self):
+        from research_v1_opendart_original_xbrl_pilot import OriginalXbrlProbeError
+        s=ExtendedSession()
+        with patch.dict(os.environ,{"OPENDART_API_KEY":SYNTHETIC_KEY},clear=True):
+            with patch(
+                "research_v1_opendart_m20_2022_23_original_latest_cfs_parity.original_quarter_fact",
+                side_effect=OriginalXbrlProbeError("OFFICIAL_XBRL_ZIP_ABSENT"),
+            ):
+                out=run(5,s)
+        self.assertEqual(out["failure_code"],"OFFICIAL_XBRL_ZIP_ABSENT")
+        self.assertEqual(out["source_status"],"SOURCE_GAP_FAIL_CLOSED")
+        self.assertFalse(out["historical_intraday_publication_pit_verified"])
+        self.assertFalse(out["independent_holdout_authorized"])
+
+    def test_unknown_error_text_never_leaks_in_reason_code(self):
+        s=ExtendedSession()
+        private="SOURCE_SECRET_KEY_AND_RAW_PROVIDER_MESSAGE_778899"
+        with patch.dict(os.environ,{"OPENDART_API_KEY":SYNTHETIC_KEY},clear=True):
+            with patch(
+                "research_v1_opendart_m20_2022_23_original_latest_cfs_parity.original_quarter_fact",
+                side_effect=ValueError(private),
+            ):
+                out=run(5,s)
+        self.assertEqual(out["failure_code"],"UNCLASSIFIED")
+        self.assertEqual(out["source_status"],"SOURCE_GAP_FAIL_CLOSED")
+        self.assertNotIn(private,json.dumps(out))
+        self.assertFalse(out["funds_movement_authorized"])
+
     def test_bad_slot_never_network(self):
         for slot in (-1,6,"0",None):
             with self.subTest(slot=slot):
