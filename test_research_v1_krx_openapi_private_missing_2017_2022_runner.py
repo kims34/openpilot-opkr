@@ -54,7 +54,7 @@ class KRXMissingSourceTests(unittest.TestCase):
         self.assertEqual(out["status"],"DRY_RUN_NO_NETWORK")
         self.assertEqual(spy.calls,[])
         self.assertEqual(out["actual_api_requests"],0)
-        self.assertFalse(out["real_orders_authorized"])
+        self.assertFalse(out["live_orders_authorized"])
         self.assertFalse(out["m20_performance_testing_authorized"])
         self.assertEqual(out["ordering"],"DISABLED")
     def test_staged_six_year_completion_is_only_unadmitted_source(self):
@@ -74,9 +74,9 @@ class KRXMissingSourceTests(unittest.TestCase):
                          out["actual_api_requests"])
         self.assertFalse(out["source_admitted"])
         self.assertFalse(out["historical_publication_pit_verified"])
-        self.assertFalse(out["sealed_holdout_authorized"])
+        self.assertFalse(out["independent_holdout_authorized"])
         self.assertFalse(out["funds_movement_authorized"])
-        self.assertFalse(out["real_orders_authorized"])
+        self.assertFalse(out["live_orders_authorized"])
         self.assertEqual(out["ordering"],"DISABLED")
         logged=json.dumps(out)
         for secret in ("005930","ISU_CD","AUTH_KEY","TDD_CLSPRC","1000000","api.kiwoom.com"):
@@ -96,7 +96,7 @@ class KRXMissingSourceTests(unittest.TestCase):
         self.assertEqual(out["completed_years"],[2017])
         self.assertEqual(out["failed_year"],2018)
         self.assertEqual(len(spy.calls),2)
-        self.assertFalse(out["real_orders_authorized"])
+        self.assertFalse(out["live_orders_authorized"])
     def test_per_year_budget_exceedance_fails_before_next_year(self):
         spy=SyntheticAnnual(overrun_year=2018)
         out=gap.execute_missing_years(execute=True,year_runner=spy)
