@@ -111,6 +111,31 @@ class KiwoomBoundedSourceProbeOfflineTest(unittest.TestCase):
         self.assertEqual(result["status"], "ROW_VALIDATION_REJECTED")
         self.assertEqual(result["pages"][0]["negative_activity_rows"], 1)
 
+
+    def test_negative_fractional_cumulative_value_is_rejected(self):
+        send, _ = fake_sender(pages=[[stock_row(acc_trde_prica="-0.5")]])
+        result = run(ENV, send=send)
+        self.assertEqual(result["status"], "ROW_VALIDATION_REJECTED")
+        self.assertEqual(result["pages"][0]["negative_activity_rows"], 1)
+
+    def test_negative_fractional_cumulative_quantity_is_rejected(self):
+        send, _ = fake_sender(pages=[[stock_row(acc_trde_qty="-1.25")]])
+        result = run(ENV, send=send)
+        self.assertEqual(result["status"], "ROW_VALIDATION_REJECTED")
+        self.assertEqual(result["pages"][0]["negative_activity_rows"], 1)
+
+    def test_large_negative_integer_is_rejected_without_float_overflow(self):
+        send, _ = fake_sender(pages=[[stock_row(acc_trde_prica="-" + "9" * 500)]])
+        result = run(ENV, send=send)
+        self.assertEqual(result["status"], "ROW_VALIDATION_REJECTED")
+        self.assertEqual(result["pages"][0]["negative_activity_rows"], 1)
+
+    def test_nonnegative_fractional_activity_preserves_schema_not_pit_authority(self):
+        send, _ = fake_sender(pages=[[stock_row(acc_trde_prica="0.5", acc_trde_qty="1.25")]])
+        result = run(ENV, send=send)
+        self.assertEqual(result["status"], "SOURCE_REACHABLE_METADATA_ONLY")
+        self.assertFalse(audit_kiwoom_probe(result)["source_admitted"])
+
     def test_negative_net_buy_is_allowed_as_signed_numeric_data(self):
         send, _ = fake_sender(pages=[[stock_row(frgnr_invsr="-42", orgn="-1")]])
         result = run(ENV, send=send)
@@ -146,6 +171,7 @@ class KiwoomBoundedSourceProbeOfflineTest(unittest.TestCase):
         )
         result = run(ENV, send=send)
         self.assertEqual(result["duplicate_dates"], 1)
+        self.assertEqual(result["status"], "PAGINATION_VALIDATION_REJECTED")
         self.assertFalse(audit_kiwoom_probe(result)["metadata_validation_pass"])
 
     def test_broker_data_error_is_not_source_success(self):
