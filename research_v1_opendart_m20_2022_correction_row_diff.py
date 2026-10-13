@@ -128,7 +128,63 @@ class _CandidateRows(HTMLParser):
         return self.full, self.numeric
 
 
-def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Counter, str]:
+# Treat text-only table fingerprints as structural diagnostics: source
+# financial text is processed only in memory and NEVER written or printed.
+MAX_TABLE_COUNT = 4000
+MAX_TABLE_TEXT_CHARS = 4 * 1024 * 1024
+MAX_TOTAL_TABLE_INPUT_CHARS = 40 * 1024 * 1024
+
+
+class _TableTextFingerprints(HTMLParser):
+    """Bounded normalized text fingerprints of every table, including notes."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack = []
+        self.nodes = 0
+        self.input_chars = 0
+        self.signatures = Counter()
+        self.total_tables = 0
+
+    def handle_starttag(self, tag, attrs):
+        self.nodes += 1
+        if self.nodes > MAX_HTML_NODES:
+            raise RowShapeGap("HTML_NODES_BUDGET_EXCEEDED")
+        if tag == "table":
+            if len(self.stack) >= 50 or self.total_tables + len(self.stack) >= MAX_TABLE_COUNT:
+                raise RowShapeGap("TABLE_SCAN_BUDGET_EXCEEDED")
+            self.stack.append([])
+
+    def handle_data(self, value):
+        if self.stack:
+            self.input_chars += len(value)
+            if self.input_chars > MAX_TOTAL_TABLE_INPUT_CHARS:
+                raise RowShapeGap("TABLE_INPUT_BUDGET_EXCEEDED")
+            for frame in self.stack:
+                frame.append(value)
+
+    def handle_endtag(self, tag):
+        if tag != "table":
+            return
+        if not self.stack:
+            raise RowShapeGap("TABLE_NESTING_UNVERIFIED")
+        parts = self.stack.pop()
+        raw = "".join(parts)
+        if len(raw) > MAX_TABLE_TEXT_CHARS:
+            raise RowShapeGap("TABLE_TEXT_BUDGET_EXCEEDED")
+        digest = hashlib.sha256(_norm(raw).encode("utf-8")).hexdigest()
+        self.signatures[digest] += 1
+        self.total_tables += 1
+        if self.total_tables > MAX_TABLE_COUNT:
+            raise RowShapeGap("TABLE_SCAN_BUDGET_EXCEEDED")
+
+    def finish(self):
+        if self.stack or self.total_tables == 0:
+            raise RowShapeGap("TABLE_NESTING_UNVERIFIED")
+        return self.signatures
+
+
+def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Counter, str, Counter]:
     if hashlib.sha256(raw).hexdigest() != expected_digest:
         raise RowShapeGap("DOCUMENT_SHA256_CHANGED")
     official = inspect_official_original_document(raw)
@@ -149,14 +205,19 @@ def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Coun
     parser.feed(decoded)
     parser.close()
     rows, numeric = parser.finish()
-    return rows, numeric, member_sha256
+    table_scanner = _TableTextFingerprints()
+    table_scanner.feed(decoded)
+    table_scanner.close()
+    table_signatures = table_scanner.finish()
+    return rows, numeric, member_sha256, table_signatures
 
 
 def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
-    a, anum, first_markup_digest = _diagnostic_rows(raw_original, expected_digest=EXPECTED_ORIGINAL_DOCUMENT_SHA256)
-    b, bnum, amended_markup_digest = _diagnostic_rows(raw_corrected, expected_digest=CORRECTED_ZIP_SHA256)
+    a, anum, first_markup_digest, original_tables = _diagnostic_rows(raw_original, expected_digest=EXPECTED_ORIGINAL_DOCUMENT_SHA256)
+    b, bnum, amended_markup_digest, corrected_tables = _diagnostic_rows(raw_corrected, expected_digest=CORRECTED_ZIP_SHA256)
     shared = sum((a & b).values())
     shared_numeric = sum((anum & bnum).values())
+    shared_tables = sum((original_tables & corrected_tables).values())
     return {
         "source_status": "ORIGINAL_CORRECTION_EXACT_OPERATING_ROW_SHAPE_COMPARE_ONLY",
         "first_edition_exact_label_row_candidates": sum(a.values()),
@@ -165,6 +226,11 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
         "exact_label_row_text_multisets_differ": a != b,
         "numeric_peer_shape_multisets_differ": anum != bnum,
         "embedded_markup_bytes_differ": first_markup_digest != amended_markup_digest,
+        "original_source_text_tables": sum(original_tables.values()),
+        "corrected_source_text_tables": sum(corrected_tables.values()),
+        "identical_table_text_multiset_members": shared_tables,
+        "all_table_text_multisets_identical": original_tables == corrected_tables,
+        "table_text_differences_are_not_financial_fact_differences": True,
         "identical_numeric_peer_row_candidates_multiset": shared_numeric,
         "financial_semantic_differences_still_unverified": True,
         "published_financial_amounts_disclosed": False,
@@ -220,6 +286,8 @@ def run(session=None) -> dict:
             "HTML_NODES_BUDGET_EXCEEDED", "ROW_CANDIDATE_BUDGET_EXCEEDED",
             "ROW_CELL_TEXT_BUDGET_EXCEEDED", "NO_EXACT_OPERATING_ROW_CANDIDATES",
             "FIXED_ISSUER_MAPPING_UNVERIFIED",
+            "TABLE_SCAN_BUDGET_EXCEEDED", "TABLE_INPUT_BUDGET_EXCEEDED",
+            "TABLE_TEXT_BUDGET_EXCEEDED", "TABLE_NESTING_UNVERIFIED",
         }
         why = str(exc) if type(exc) is RowShapeGap else ""
         result["source_status"] = "SOURCE_GAP_FAIL_CLOSED"

@@ -8,6 +8,12 @@ import research_v1_opendart_m20_2022_correction_row_diff as target
 
 
 class CandidateRowsTests(unittest.TestCase):
+    def _tables(self, html):
+        scanner = target._TableTextFingerprints()
+        scanner.feed(html)
+        scanner.close()
+        return scanner.finish()
+
     def _scan(self, html):
         parser = target._CandidateRows()
         parser.feed(html)
@@ -30,31 +36,33 @@ class CandidateRowsTests(unittest.TestCase):
         anum = Counter({("영업이익", ("10", "9")): 1})
         b = Counter({("영업이익", "11", "9"): 1})
         bnum = Counter({("영업이익", ("11", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64), (b, bnum, "y" * 64)]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64, Counter({"ta": 1})), (b, bnum, "y" * 64, Counter({"tb": 1}))]):
             result = target.compare(b"fake-original", b"fake-amended")
         self.assertTrue(result["exact_label_row_text_multisets_differ"])
         self.assertTrue(result["numeric_peer_shape_multisets_differ"])
         self.assertEqual(result["identical_exact_label_row_candidates_multiset"], 0)
         self.assertTrue(result["financial_semantic_differences_still_unverified"])
         self.assertTrue(result["embedded_markup_bytes_differ"])
+        self.assertFalse(result["all_table_text_multisets_identical"])
         self.assertNotIn("11", str(result))
         self.assertNotIn("10", str(result))
 
     def test_identical_candidates_do_not_override_different_document_hashes(self):
         a = Counter({("영업이익", "10", "9"): 1})
         n = Counter({("영업이익", ("10", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, n, "x" * 64), (a, n, "x" * 64)]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, n, "x" * 64, Counter({"t": 1})), (a, n, "x" * 64, Counter({"t": 1}))]):
             result = target.compare(b"original", b"amended")
         self.assertFalse(result["exact_label_row_text_multisets_differ"])
         self.assertFalse(result["numeric_peer_shape_multisets_differ"])
         self.assertFalse(result["embedded_markup_bytes_differ"])
+        self.assertTrue(result["all_table_text_multisets_identical"])
         self.assertTrue(result["financial_semantic_differences_still_unverified"])
 
     def test_identical_earnings_rows_do_not_imply_same_markup_content(self):
         a = Counter({("영업이익", "10", "9"): 1})
         n = Counter({("영업이익", ("10", "9")): 1})
         with patch.object(target, "_diagnostic_rows", side_effect=[
-            (a, n, "a" * 64), (a, n, "b" * 64),
+            (a, n, "a" * 64, Counter({"t": 1})), (a, n, "b" * 64, Counter({"u": 1})),
         ]):
             result = target.compare(b"original", b"amendment")
         self.assertFalse(result["exact_label_row_text_multisets_differ"])
@@ -63,6 +71,29 @@ class CandidateRowsTests(unittest.TestCase):
         for key in ("2022_q3_original_cfs_profit_verified",
                     "m20_feature_pit_admitted", "real_orders_authorized"):
             self.assertNotIn(key, result)
+
+    def test_source_tables_changed_outside_profit_rows_are_source_only(self):
+        a = self._tables("<table><tr><td>영업이익</td><td>100</td></tr></table>"
+                         "<table><tr><td>주석</td><td>문구 A</td></tr></table>")
+        b = self._tables("<table><tr><td>영업이익</td><td>100</td></tr></table>"
+                         "<table><tr><td>주석</td><td>문구 B</td></tr></table>")
+        self.assertEqual(sum(a.values()), 2)
+        self.assertEqual(sum(b.values()), 2)
+        self.assertEqual(sum((a & b).values()), 1)
+
+    def test_table_text_fingerprints_ignore_html_spacing_not_financial_authority(self):
+        a = self._tables("<table><tr><td>영업 이익</td><td>1,000</td></tr></table>")
+        b = self._tables("<table><tr><td>영업\n이익</td><td>1,000</td></tr></table>")
+        self.assertEqual(a, b)
+
+    def test_unbalanced_table_and_budget_fail_closed(self):
+        scanner = target._TableTextFingerprints()
+        scanner.feed("<table><tr><td>메모</td></tr>")
+        with self.assertRaisesRegex(target.RowShapeGap, "TABLE_NESTING_UNVERIFIED"):
+            scanner.finish()
+        with patch.object(target, "MAX_TABLE_TEXT_CHARS", 2):
+            with self.assertRaisesRegex(target.RowShapeGap, "TABLE_TEXT_BUDGET_EXCEEDED"):
+                self._tables("<table><td>abc</td></table>")
 
     def test_layout_budget_hard_stop(self):
         with patch.object(target, "MAX_CELLS_PER_ROW", 1):
