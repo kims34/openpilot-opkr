@@ -90,7 +90,10 @@ def audit_kiwoom_probe(report: Mapping[str, Any] | None) -> dict[str, Any]:
             failures.append("row_count_invalid")
             continue
         count += rows
-        for field in ("invalid_dates", "missing_required_rows", "invalid_numeric_rows"):
+        for field in (
+            "invalid_dates", "missing_required_rows", "invalid_numeric_rows",
+            "negative_activity_rows", "nonmonotonic_date_pairs",
+        ):
             if type(page.get(field)) is not int or page[field] != 0:
                 failures.append(field + "_present")
         if not isinstance(page.get("raw_sha256"), str) or HEX64.fullmatch(page["raw_sha256"]) is None:
