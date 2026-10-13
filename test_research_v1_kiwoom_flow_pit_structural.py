@@ -72,6 +72,10 @@ class CandidateKiwoomFlowPITTest(unittest.TestCase):
         with self.assertRaisesRegex(KiwoomFlowPITError, "venue unknown"):
             audit_candidate_pit([rec(venue="AUTO")])
 
+    def test_unhashable_malformed_venue_is_rejected_cleanly(self):
+        with self.assertRaisesRegex(KiwoomFlowPITError, "venue unknown"):
+            audit_candidate_pit([rec(venue=["KRX"])])
+
     def test_no_automatic_venue_aggregation(self):
         out = audit_candidate_pit([rec(), rec(venue="NXT")])
         self.assertEqual(out["candidate_rows"], 2)
