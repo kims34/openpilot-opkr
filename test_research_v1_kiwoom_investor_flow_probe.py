@@ -182,6 +182,23 @@ class KiwoomBoundedSourceProbeOfflineTest(unittest.TestCase):
         result = run(ENV, send=send)
         self.assertEqual(result["status"], "PAGINATION_VALIDATION_REJECTED")
 
+    def test_maximum_three_pages_is_reported_as_truncated(self):
+        send, requests = fake_sender(
+            pages=[
+                [stock_row("20261008")],
+                [stock_row("20261007")],
+                [stock_row("20261006")],
+                [stock_row("20261005")],
+            ],
+            next_keys=["PAGE_B", "PAGE_C", "PAGE_D", None],
+        )
+        result = run(ENV, send=send)
+        self.assertEqual(result["status"], "PAGINATION_LIMIT_REACHED")
+        self.assertFalse(result["pagination_exhausted"])
+        self.assertFalse(result["history_exhausted"])
+        self.assertEqual(len(result["pages"]), 3)
+        self.assertEqual(len(requests), 4)
+
     def test_broker_data_error_is_not_source_success(self):
         send, _ = fake_sender(data_code=8050)
         result = run(ENV, send=send)
