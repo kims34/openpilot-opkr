@@ -29,3 +29,21 @@ Only stages, numeric error/detail codes, boolean proxy configuration indicators 
 **Important**: `broker_connected=true` is not proof of profitability, genuine fills or Tiny Live readiness. Type00 REG ACK with no events remains inconclusive. Automated and CI runs mock out the broker; no online test was performed by creating this tool.
 
 Only the final `assessment` and `system/direct.STAGE`, `RETURN_CODE`, and `DETAIL_CODE` are needed for an escalation. Do not retry indefinitely. Keep all ordering disabled. The owner must explicitly authorize real trading separately.
+
+## Downloadable Windows ZIP (no credentials included)
+
+GitHub Actions workflow **Kiwoom REAL Type00 Python Readonly** now packages the exact read-only scripts, a pinned requirements file, and `RUN_KIWOOM_READONLY_DIAG.cmd` into artifact `kiwoom-readonly-pc-diagnostic` after offline validation. Download it from the latest **successful** workflow run on Draft PR #415 and unzip on the already registered Windows PC. No scripts run automatically on download/unzip.
+
+From an existing terminal session in which your REAL credentials are already securely configured, enter the unzipped folder and run:
+
+```cmd
+RUN_KIWOOM_READONLY_DIAG.cmd
+```
+
+If Python cannot import dependencies, install the exact pinned versions first (once) using your existing trusted Python environment:
+
+```cmd
+py -3 -m pip install -r kiwoom_readonly_pc_requirements.txt
+```
+
+The launch script does **not** create or retrieve API keys; if the current shell does not have credentials, it safely exits without broker requests. It does **not** turn on order submission or modify any permissions. Avoid double-clicking unless those same secret-bearing environment variables are already available in that session. Use only one controlled read-only run; repeated retries are not required. Never share full environment output, IPs, provider raw messages, tokens, or credentials.
