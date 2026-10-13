@@ -108,7 +108,11 @@ def run(env, send=request):
                 time.sleep(0.3)
         result["duplicate_dates"] = len(all_dates)-len(set(all_dates))
         result["requested_body"] = BODY
-        result["history_exhausted"] = not more
+        # A terminal broker continuation is NOT proof of full historical depth
+        # or any historical as-published revision. Report this distinction.
+        result["pagination_exhausted"] = not more
+        result["history_exhausted"] = False
+        result["historical_retention_verified"] = False
         result["status"] = "SOURCE_REACHABLE_METADATA_ONLY" if all_dates else "SOURCE_REACHABLE_EMPTY"
         result["publication_time_verified"] = False
         result["historical_revision_policy_verified"] = False
