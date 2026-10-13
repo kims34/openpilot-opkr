@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "evidence_id": "INDEXALERT-INVESTOR-FLOW-KRX-FIRST-ROUTING-2026-10-14-v1",
+  "observed_on": "2026-10-14 KST",
+  "evidence_class": "METADATA_ONLY_SOURCE_ROUTE_HANDOFF_NO_NEW_AUTHENTICATED_REQUEST",
+  "research_baseline_sha": "3b8b7830612a6284d7c7a60628cb527cb741627a",
+  "isolated_flow_branch": "indexalert-investor-flow-validation-v1",
+  "krx_market_audit_branch": "indexalert-krx-pit-source-audit-20261013",
+  "krx_market_audit_sha": "595db195b7a107ebab4e9c53eb629a5aa4de511c",
+  "source_statuses": {
+    "krx_investor_flow": {
+      "source": "KRX_Data_Marketplace_MDCSTAT02303",
+      "observed_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+      "prior_authenticated_probe_run": 36976873119,
+      "prior_probe_date": "2026-10-02",
+      "prior_probe_security": "005930",
+      "prior_probe_sessions": [
+        "2026-09-21",
+        "2026-09-22",
+        "2026-09-23"
+      ],
+      "observed_probe_row_count": 3,
+      "original_numeric_rows_persisted": false,
+      "authorization_record": "INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json",
+      "prior_authenticated_bounded_route_verified": true,
+      "authenticated_full_historical_flow_panel_verified": false,
+      "exact_2022_historical_flow_verified": false,
+      "original_as_published_vintages_verified": false,
+      "complete_historical_issuer_universe_verified": false,
+      "route_suitable_for_next_official_source_feasibility": "candidate_subject_to_execution_consent_and_original_source_checks"
+    },
+    "krx_daily_market_not_investor_flow": {
+      "source": "KRX_OPENAPI_APPROVED_KOSPI_DAILY_TRADE_AND_SECURITY_MASTER",
+      "audited_years": "2015-2026",
+      "private_source_weekday_checkpoint_count": 3071,
+      "unresolved_calendar_or_source_empty_date_count": 184,
+      "quarantined_securities_count": 27,
+      "private_storage_integrity_metadata_verified": true,
+      "contains_complete_foreign_institution_investor_flow": false,
+      "can_substitute_for_investor_flow": false,
+      "PIT_approved_for_investor_alpha": false,
+      "evidence": "evidence/krx/2026-10-13-krx-market-source-pit-handoff.md",
+      "evidence_branch": "indexalert-krx-pit-source-audit-20261013"
+    },
+    "kiwoom_investor_flow": {
+      "source": "KIWOOM_REST_KA10059",
+      "last_observed_bounded_probe_run": 38382700355,
+      "last_observed_bounded_probe_status": "AUTH_NOT_CONFIGURED",
+      "scope_of_auth_failure": "GITHUB_ACTIONS_EXECUTION_CONTEXT_ONLY",
+      "railway_key_variable_names_present": true,
+      "authenticated_ka10059_sample_verified": false,
+      "original_broker_vintages_verified": false,
+      "credential_export_or_redeployment_performed": false,
+      "recommended_role": "OPTIONAL_LATER_CROSS_CHECK_NOT_AN_ALPHA_UNBLOCKER"
+    }
+  },
+  "execution_boundaries": {
+    "krx_historical_acquisition_requires_its_separately_frozen_source_contract_and_exact_execution_authorization": true,
+    "repeat_old_six_get_openapi_sample": false,
+    "automatically_dispatch_authenticated_flow_historical_requests": false,
+    "private_source_data_in_public_evidence": false,
+    "mix_daily_ohlc_as_investor_flow": false,
+    "assume_single_security_three_day_probe_proves_full_history": false
+  },
+  "immediate_next_source_path": [
+    "Reuse authenticated KRX investor-flow tiny-probe evidence and exact user-scoped license; do not relabel the market-OHLC archival ledger as flow data",
+    "Within the KRX source owner's existing consent and private storage boundary, prove a bounded original 2022 per-security flow response and net-buy units/venue/category mapping, without persisting raw rows into public GitHub",
+    "Validate episode-level official issuer mappings, historical revisions, publication availability, complete period coverage and closed-session status",
+    "Only after primary-source admission preregister independent post-cost/post-tax, Frozen/PIT/WF/purge compliant flow-alpha evaluation"
+  ],
+  "gates": {
+    "source_admitted": false,
+    "official_historical_2022_flow_vintage_verified": false,
+    "historical_full_universe_flow_verified": false,
+    "full_market_calendar_and_status_pit_verified": false,
+    "historical_flow_performance_run_authorized": false,
+    "independent_holdout_authorized": false,
+    "champion_change_authorized": false,
+    "live_trading_authorized": false,
+    "ordering_enabled": false,
+    "user_action_required_now": false
+  },
+  "source_links": [
+    "https://github.com/kims34/openpilot-opkr/actions/runs/36976873119",
+    "https://github.com/kims34/openpilot-opkr/actions/runs/38382700355",
+    "https://github.com/kims34/openpilot-opkr/actions/runs/38466312612",
+    "https://github.com/kims34/openpilot-opkr/pull/416"
+  ]
+}
