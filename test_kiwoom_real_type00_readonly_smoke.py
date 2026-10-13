@@ -41,6 +41,71 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     return_code({"return_code": value})
 
+    def test_type00_data_before_registration_ack_is_never_admitted(self):
+        # A broker-like REAL message can arrive before any successful REG
+        # acknowledgement. It must never count as a subscribed event or
+        # broker-native execution proof, even if the payload looks authentic.
+        frames = [
+            '{"trnm":"LOGIN","return_code":0}',
+            json.dumps({
+                "trnm": "REAL",
+                "data": [{
+                    "type": "00",
+                    "values": {
+                        "9201": "synthetic-account", "913": "체결",
+                        "909": "synthetic-order-no", "908": "103012",
+                        "914": "1000", "915": "1",
+                    },
+                }],
+            }),
+            '{"trnm":"REG","return_code":0}',
+        ]
+
+        class OfflineSocket:
+            def __init__(self):
+                self.frames = list(frames)
+                self.sent = []
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def send(self, payload):
+                self.sent.append(json.loads(payload))
+
+            async def recv(self):
+                if not self.frames:
+                    raise AssertionError("unexpected read after pre-ACK REAL")
+                return self.frames.pop(0)
+
+        socket, state = OfflineSocket(), SmokeState()
+        with patch("kiwoom_real_type00_readonly_smoke.websockets.connect",
+                   return_value=socket) as connect, \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=AssertionError("real network forbidden")) as rest:
+            with self.assertRaises(ReadOnlySmokeError) as thrown:
+                asyncio.run(_run_ws(
+                    "synthetic-token", "synthetic-account", time.monotonic(), state))
+        self.assertEqual(thrown.exception.stage, "TYPE00_FRAME_BEFORE_REG_ACK")
+        self.assertTrue(state.WS_LOGIN_OK)
+        self.assertTrue(state.TYPE00_REG_SENT)
+        self.assertFalse(state.TYPE00_REG_ACK_OK)
+        self.assertEqual(state.TYPE00_EVENT_COUNT, 0)
+        self.assertEqual(state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT, 0)
+        self.assertFalse(state.BROKER_NATIVE_EXECUTION_ID_CAPTURE_TESTED)
+        self.assertFalse(state.GENUINE_LIVE_PROVENANCE_VERIFIED)
+        self.assertEqual(state.ORDERING, "DISABLED")
+        self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
+        self.assertFalse(state.FUNDS_MOVEMENT_AUTHORIZED)
+        self.assertEqual([x["trnm"] for x in socket.sent], ["LOGIN", "REG"])
+        self.assertEqual(len(socket.frames), 1)  # later REG ACK never consumed
+        connect.assert_called_once()
+        rest.assert_not_called()
+        self.assertNotIn("synthetic-account", json.dumps(state.__dict__))
+        self.assertNotIn("synthetic-token", json.dumps(state.__dict__))
+
     def test_ws_return_code_accepts_official_numeric_strings_only(self):
         # The official Kiwoom client accepts numeric strings on WS replies.
         # Preserve fail-closed behavior for missing and ambiguous formats.
