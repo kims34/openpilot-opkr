@@ -56,3 +56,12 @@ After source admission, preregister a *single*, non-retuned independent evaluati
 **Unchanged authorisations:** `ORDERING=false`, actual orders/transfer/account permissions forbidden, `Champion` frozen, `M20` frozen, consumed Holdout not reopened.
 
 **User action at this checkpoint:** none. Any future access/configuration blocker must be demonstrated by a real limited test before requesting manual intervention.
+
+## Executed verification checkpoint — 2026-10-13 KST
+
+- [Isolated offline CI #38382575489](https://github.com/kims34/openpilot-opkr/actions/runs/38382575489): **SUCCESS**, **15/15 synthetic fail-closed tests passed**. This is not a live-data test.
+- [Bounded Kiwoom metadata workflow #38382700355](https://github.com/kims34/openpilot-opkr/actions/runs/38382700355): workflow **SUCCESS**, real data probe status **`AUTH_NOT_CONFIGURED`**. This means the **GitHub Actions context for this branch** did not receive `KIWOOM_APP_KEY` and `KIWOOM_APP_SECRET`. No authenticated ka10059 response and **zero** validated investor-flow market-data rows resulted. Workflow success is not data-source success.
+- Read-only Railway configuration inspection found variable **names** `KIWOOM_APP_KEY`, `KIWOOM_APP_SECRET`, `KIWOOM_BASE_URL`, `KIWOOM_ENV`, and `KIWOOM_ORDERING_ENABLED` on existing `indexalert-kiwoom-real-readonly` and `indexalert-kiwoom-real-readonly-run` services. Railway OAuth redacts values. Presence of names does not attest key validity or broker availability; no credential was exported, copied or changed, and neither service was redeployed.
+- No source-vintage claim, acquisition contract admission, experimental preregistration, profitability claim, holdout read, live order, secret modification, or Railway mutation occurred.
+
+**Next authorized operation:** where an isolated existing-key **read-only** runner can be invoked without mutating concurrent services, execute the existing bounded ka10059 probe with `ORDERING=false`, save only non-secret response metadata, then separately validate historical publication/vintage/coverage/rights. Do not force moving Railway secrets to GitHub or ask the user to paste keys into chat. Until that operation is feasible, `SOURCE_NOT_ADMITTED` is the definitive research state.
