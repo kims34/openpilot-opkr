@@ -75,11 +75,19 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
     if not isinstance(obj, dict):
         raise DiagnosticError("INVALID_LOCAL_SMOKE_STRUCTURE")
     stage = obj.get("STAGE")
-    if stage not in _ALLOWED_STAGES:
+    if not isinstance(stage, str) or stage not in _ALLOWED_STAGES:
         raise DiagnosticError("INVALID_LOCAL_SMOKE_STAGE")
     error_class = obj.get("ERROR_CLASS")
-    if error_class is not None and error_class not in _ALLOWED_ERRORS:
+    if error_class is not None and (
+        not isinstance(error_class, str) or error_class not in _ALLOWED_ERRORS
+    ):
         raise DiagnosticError("INVALID_LOCAL_SMOKE_ERROR_CLASS")
+    for key in _SUMMARY_FIELDS:
+        if key not in obj:
+            raise DiagnosticError("MISSING_LOCAL_SMOKE_FIELD")
+    count = obj.get("TYPE00_EVENT_COUNT")
+    if type(count) is not int or count < 0:
+        raise DiagnosticError("INVALID_LOCAL_SMOKE_EVENT_COUNT")
     for key in ("RETURN_CODE", "DETAIL_CODE"):
         value = obj.get(key)
         if key == "DETAIL_CODE" and value is None:
