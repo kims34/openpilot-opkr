@@ -36,3 +36,12 @@ Only after official source and PIT gates independently pass:
 
 ## CI evidence
 See the dedicated GitHub Actions job run and artifact `runtime-opt-parity-report` on this branch for observed serial/parallel test phase timings, exact testcase parity and outcome. Do not claim a speedup until the job completes and the report says `test_outcomes_identical=true`.
+
+## CI observed outcome — 2026-10-13 KST
+- [CI run 38381997417](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417), branch `index-alert-backtest-runtime-opt-v1-20261013`, workflow code revision `55e7fe2b3fe322e39f817914ff1ed5b589bbe0da`.
+- Serial control, four independent suites (cost, risk, gates, cache), and exact parity aggregation: **all six jobs succeeded**.
+- Exact **34 test cases** matched in identifier and pass status; canonical testcase digest SHA-256: `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`.
+- Serial regression test process: **2.8951 s**. Parallel longest suite test process: **2.7165 s**. Test-phase speed ratio **1.066x** (approximately 6.2% reduction); excludes environment setup, queueing, installation, artifact I/O and aggregation.
+- **Do not claim full CI wall-time speedup or actual trading backtest speedup**: these were not measured, and independently admitted source panels for official evaluation are unavailable.
+- [Parity artifact](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417/artifacts/11803677039), ZIP digest `sha256:6ce417d0474c2b89789f0a7d4d7d4ee7f06e6751acab0327722b885c0d8abd01`.
+- This passing run authorizes **no performance evaluation, Holdout, champion promotion, live trading or data-source admission**.
