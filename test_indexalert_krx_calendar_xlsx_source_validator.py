@@ -12,7 +12,7 @@ DATE="2026-06-03"
 OTHER="2026-07-17"
 def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               bad_style=False,second_sheet=False,extra_path=None,external=False,
-              hidden=False):
+              hidden=False,mislinked=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -26,7 +26,7 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
     xml=f'<worksheet xmlns="{S}"><sheetData><row r="1">{hdr}</row><row r="2">{r2}</row><row r="3">{r3}</row></sheetData></worksheet>'
     state=' state="hidden"' if hidden else ""
     sheet2='<sheet name="Second" sheetId="2"/>' if second_sheet else ""
-    w=f'<workbook xmlns="{S}"><sheets><sheet name="Holidays" sheetId="1"{state}/>{sheet2}</sheets></workbook>'
+    w=f'<workbook xmlns="{S}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Holidays" sheetId="1" r:id="rId1"{state}/>{sheet2}</sheets></workbook>'
     styles=f'<styleSheet xmlns="{S}"><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>'
     content_types='<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>'
     with BytesIO() as output:
@@ -37,9 +37,14 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
             z.writestr("xl/worksheets/sheet1.xml",xml)
             if extra_path:
                 z.writestr(extra_path,b"x")
+            rel_target = "worksheets/sheet2.xml" if mislinked else "worksheets/sheet1.xml"
+            target_mode = ' TargetMode="External"' if external else ""
             if external:
-                z.writestr("xl/_rels/workbook.xml.rels",
-                    '<Relationships><Relationship TargetMode="External" Target="https://example.com"/></Relationships>')
+                rel_target = "https://example.com/evil.xml"
+            z.writestr("xl/_rels/workbook.xml.rels",
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"'
+                + target_mode + ' Target="' + rel_target + '"/></Relationships>')
         return output.getvalue()
 
 
@@ -87,7 +92,7 @@ class XlsxSourceRows(unittest.TestCase):
 
     def test_unsafe_traversal_and_external_relationships_fail(self):
         for opts in ({"extra_path":"../../secret.xml"},{"external":True},
-                     {"extra_path":"xl/externalLinks/link1.xml"}):
+                     {"extra_path":"xl/externalLinks/link1.xml"},{"mislinked":True}):
             raw=make_book(**opts)
             self.assertTrue(check(raw,claim(raw),2026)["status"].startswith("FAIL_CLOSED"))
 
