@@ -1,0 +1,75 @@
+name: IndexAlert M20 OpenDART First-Original 2022 Provenance
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_source_proof.py'
+      - 'test_research_v1_opendart_m20_2022_source_proof.py'
+      - '.github/workflows/indexalert-m20-2022-source-proof.yml'
+permissions:
+  contents: read
+jobs:
+  offline-security-and-lineage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Compile and test original-filing provenance without secret
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_source_proof.py test_research_v1_opendart_m20_2022_source_proof.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_source_proof
+      - name: Source-only safety guards
+        run: |
+          ! grep -E 'api.kiwoom.com|/api/dostk/ordr|data-dbg.krx.co.kr|data.krx.co.kr' research_v1_opendart_m20_2022_source_proof.py
+          grep -F '"m20_performance_run_authorized"' research_v1_opendart_m20_2022_source_proof.py
+          grep -F '"independent_holdout_authorized"' research_v1_opendart_m20_2022_source_proof.py
+  official-original-read-only:
+    needs: offline-security-and-lineage
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Reuse exact first edition 2022 document and fingerprint (no performance)
+        run: |
+          python research_v1_opendart_m20_2022_source_proof.py
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_2022_provenance/proof.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"] == 5 and x["original_year"] == 2022
+          assert x["max_official_requests"] == 3
+          assert x["source_status"] == "FIRST_FILED_2022_DOCUMENT_PROVENANCE_ONLY_NOT_PIT"
+          assert x["original_receipt_date_confirmed_from_official_index"] is True
+          assert x["zip_integrity_confirmed"] is True
+          assert re.fullmatch(r"[a-f0-9]{64}", x["document_sha256"])
+          assert x["index_is_date_precision_not_publication_time"] is True
+          assert x["full_later_correction_history_not_enumerated"] is True
+          assert x["ordering"] == "DISABLED"
+          for k in ("is_standardized_financial_xbrl", "original_cfs_q3_three_month_operating_profit_verified",
+                    "original_q3_qminus4_comparability_verified", "historical_corp_security_mapping_verified",
+                    "historical_publication_instant_pit_verified", "full_correction_lineage_verified",
+                    "complete_universe_historical_panel_verified", "market_cap_and_tradability_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized", "independent_holdout_authorized",
+                    "champion_change_authorized", "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized", "raw_document_identifiers_or_financial_values_persisted"):
+              assert x[k] is False, k
+          PY
+      - name: Store only safe receipt-index shape and immutable SHA256
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-opendart-2022-original-source-proof
+          path: research_results/opendart_m20_2022_provenance/proof.json
+          retention-days: 7
+          if-no-files-found: warn
