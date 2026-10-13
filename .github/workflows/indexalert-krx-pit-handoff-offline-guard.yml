@@ -11,6 +11,8 @@ on:
       - 'test_indexalert_krx_calendar_gap_boundary.py'
       - 'research_v1_krx_calendar_receipt_adapter.py'
       - 'test_indexalert_krx_calendar_receipt_adapter.py'
+      - 'research_v1_krx_historical_status_pit_gate.py'
+      - 'test_indexalert_krx_historical_status_pit_gate.py'
       - '.github/workflows/indexalert-krx-pit-handoff-offline-guard.yml'
   workflow_dispatch:
 
@@ -29,4 +31,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Verify sanitized KRX handoff and synthetic calendar gap boundaries; no external calls or secrets
-        run: python -m unittest -v test_indexalert_krx_market_source_pit_boundaries.py test_indexalert_krx_calendar_gap_boundary.py test_indexalert_krx_calendar_receipt_adapter.py
+        run: python -m unittest -v test_indexalert_krx_market_source_pit_boundaries.py test_indexalert_krx_calendar_gap_boundary.py test_indexalert_krx_calendar_receipt_adapter.py test_indexalert_krx_historical_status_pit_gate.py
