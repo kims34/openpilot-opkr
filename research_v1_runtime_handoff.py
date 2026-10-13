@@ -53,6 +53,7 @@ def _digest_files(root: Path, filenames: list[str]) -> dict[str, str]:
     root = Path(root)
     seen: set[str] = set()
     digests: dict[str, str] = {}
+    initial_stats: dict[str, os.stat_result] = {}
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
     file_flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_CLOEXEC", 0)
 
@@ -94,6 +95,27 @@ def _digest_files(root: Path, filenames: list[str]) -> dict[str, str]:
                         if _identity(before) != _identity(after) or _identity(before) != _identity(current):
                             raise UnsafeHandoff("artifact replaced or mutated while hashing: " + name)
                         digests[name] = h.hexdigest()
+                        initial_stats[name] = before
+
+            # Important: previous artifacts can be rewritten/replaced while
+            # the subsequent artifacts are being hashed. Revalidate all
+            # previously observed paths at the end of the batch. This
+            # metadata pass is intentionally cheap (no redundant rehash)
+            # and rejects common concurrent writer/rename races.
+            for name, original in initial_stats.items():
+                parts = PurePosixPath(name)
+                with ExitStack() as component_stack:
+                    parent_fd = root_fd
+                    for component in parts.parts[:-1]:
+                        child_fd = os.open(component, directory_flags, dir_fd=parent_fd)
+                        component_stack.callback(os.close, child_fd)
+                        parent_fd = child_fd
+                    final = os.stat(parts.parts[-1], dir_fd=parent_fd,
+                                    follow_symlinks=False)
+                    if _identity(original) != _identity(final):
+                        raise UnsafeHandoff(
+                            "artifact changed after earlier file hash: " + name
+                        )
     except OSError as exc:
         raise UnsafeHandoff("missing, unsafe or changed artifact directory/file") from exc
     return digests
