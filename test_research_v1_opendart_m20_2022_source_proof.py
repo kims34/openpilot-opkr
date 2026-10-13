@@ -45,6 +45,61 @@ class SourceProofTests(unittest.TestCase):
         self.assertEqual(r["same_period_later_version_rows_in_initial_window"], 1)
         self.assertTrue(r["full_later_correction_history_not_enumerated"])
 
+    def test_official_correction_and_attachment_addition_are_separate(self):
+        added = {
+            "rcept_no": "20221117000003",
+            "rcept_dt": "20221117",
+            "report_nm": "[첨부추가]분기보고서 (2022.09)",
+        }
+        amended = {
+            "rcept_no": "20221118000004",
+            "rcept_dt": "20221118",
+            "report_nm": "[첨부정정]분기보고서 (2022.09)",
+        }
+        listing = {**INDEX, "list": [FIRST, LATER, added, amended]}
+        proof = target._bounded_revision_shape(listing, FIRST["rcept_no"])
+        self.assertEqual(proof["same_period_later_version_rows_in_initial_window"], 3)
+        self.assertEqual(proof["same_period_confirmed_corrections_in_initial_window"], 2)
+        self.assertEqual(
+            proof["same_period_attachment_additions_not_corrections_in_initial_window"], 1
+        )
+        self.assertTrue(proof["full_later_correction_history_not_enumerated"])
+
+    def test_nonstandard_prefix_and_suffix_fail_closed_not_counted_as_correction(self):
+        names = (
+            "[기타]분기보고서 (2022.09)",
+            "분기보고서 (2022.09) [정정]",
+            "[기재정정]분기보고서 (2022.09) 추가문서",
+        )
+        for i, name in enumerate(names):
+            with self.subTest(name=name):
+                unclassified = dict(
+                    LATER, rcept_no=f"2022111700000{i + 1}", rcept_dt="20221117",
+                    report_nm=name,
+                )
+                with self.assertRaisesRegex(
+                    target.SourceGap, "UNCLASSIFIED_SAME_PERIOD_FOLLOWUP"
+                ):
+                    target._bounded_revision_shape(
+                        {**INDEX, "list": [FIRST, unclassified]}, FIRST["rcept_no"]
+                    )
+
+    def test_official_rm_correction_notice_is_not_full_lineage(self):
+        original = dict(FIRST, rm="연정")
+        result = target._bounded_revision_shape(
+            {**INDEX, "list": [original]}, FIRST["rcept_no"]
+        )
+        self.assertTrue(result["original_index_indicates_possible_later_correction"])
+        self.assertEqual(result["same_period_confirmed_corrections_in_initial_window"], 0)
+        self.assertTrue(result["full_later_correction_history_not_enumerated"])
+
+    def test_official_withdrawal_notice_fails_closed(self):
+        original = dict(FIRST, rm="철")
+        with self.assertRaisesRegex(target.SourceGap, "FIRST_FILING_WITHDRAWAL_MARKED"):
+            target._bounded_revision_shape(
+                {**INDEX, "list": [original]}, FIRST["rcept_no"]
+            )
+
     def test_bad_original_edition_blocked(self):
         with self.assertRaises(target.SourceGap):
             target._bounded_revision_shape(INDEX, LATER["rcept_no"])
@@ -66,6 +121,8 @@ class SourceProofTests(unittest.TestCase):
         binary = b"PK\\x03\\x04-test-only"
         def stub(session, endpoint, params, zip_response=False):
             self.assertIn(endpoint, ("corpCode.xml", "list.json"))
+            if endpoint == "list.json":
+                self.assertEqual(params["last_reprt_at"], "N")
             return b"registry" if endpoint == "corpCode.xml" else INDEX
         with (
             patch.dict(os.environ, {"OPENDART_API_KEY": "FAKEKEY"}),
