@@ -160,7 +160,7 @@ LAYOUT_MAX_TEXT_CHARS = 36 * 1024 * 1024
 # original DART SGML can contain explanatory note tables and restated values.
 MAX_DIAGNOSTIC_CELL_CHARS = 4096
 NUMERIC_CELL_SHAPE = re.compile(
-    r"-?(?:0|[1-9][0-9]{0,2}(?:,[0-9]{3})+|[1-9][0-9]*)(?:\\.[0-9]+)?\\Z"
+    r"-?(?:0|[1-9][0-9]{0,2}(?:,[0-9]{3})+|[1-9][0-9]*)(?:\.[0-9]+)?\Z"
 )
 OPERATING_ROW_LABELS = frozenset((
     "영업이익", "영업손실", "영업이익(손실)", "영업이익(영업손실)",
@@ -197,7 +197,7 @@ class _BoundedDisclosureHTML(HTMLParser):
         if not self.row_open:
             return
         cells = [
-            re.sub(r"\\s+", "", unicodedata.normalize("NFKC", x)).strip()
+            re.sub(r"\s+", "", unicodedata.normalize("NFKC", x)).strip()
             for x in self.row_cells
         ]
         if any(x in OPERATING_ROW_LABELS for x in cells[:2]):
