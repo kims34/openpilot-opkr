@@ -1,0 +1,105 @@
+name: IndexAlert Backtest Runtime Optimization (Offline Parity)
+
+on:
+  push:
+    branches:
+      - index-alert-backtest-runtime-opt-v1-20261013
+    paths:
+      - 'research_v1_runtime_manifest.py'
+      - 'test_research_v1_runtime_manifest.py'
+      - 'research_v1_runtime_ci.py'
+      - 'requirements-indexalert-runtime-ci.txt'
+      - '.github/workflows/indexalert-backtest-runtime-opt-ci.yml'
+  pull_request:
+    branches:
+      - index-alert-research-v1
+    paths:
+      - 'research_v1_runtime_manifest.py'
+      - 'test_research_v1_runtime_manifest.py'
+      - 'research_v1_runtime_ci.py'
+      - 'requirements-indexalert-runtime-ci.txt'
+      - '.github/workflows/indexalert-backtest-runtime-opt-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-opt-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  serial-regression-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-indexalert-runtime-ci.txt
+      - run: python -m pip install -r requirements-indexalert-runtime-ci.txt
+      - name: Unchanged existing regression tests in one serial process
+        run: python research_v1_runtime_ci.py --suite all --out runtime_opt_results/baseline.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-opt-baseline
+          path: runtime_opt_results/
+          if-no-files-found: error
+          retention-days: 14
+
+  independent-parallel-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [cost, risk, gates, cache]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-indexalert-runtime-ci.txt
+      - run: python -m pip install -r requirements-indexalert-runtime-ci.txt
+      - name: Run isolated offline suite; no profitability/model/data trials
+        run: python research_v1_runtime_ci.py --suite ${{ matrix.suite }} --out runtime_opt_results/${{ matrix.suite }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-opt-${{ matrix.suite }}
+          path: runtime_opt_results/
+          if-no-files-found: error
+          retention-days: 14
+
+  exact-parity:
+    needs: [serial-regression-reference, independent-parallel-regressions]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: runtime-opt-*
+          merge-multiple: true
+          path: runtime_opt_results/
+      - name: Require identical testcase names and outcomes before approval
+        run: |
+          python research_v1_runtime_ci.py \
+            --serial runtime_opt_results/baseline.json \
+            --parallel-dir runtime_opt_results \
+            --out runtime_opt_results/parity.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-opt-parity-report
+          path: runtime_opt_results/parity.json
+          if-no-files-found: error
+          retention-days: 14
