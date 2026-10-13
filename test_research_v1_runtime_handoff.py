@@ -149,6 +149,64 @@ class ReadOnlyHandoffTests(unittest.TestCase):
         with self.assertRaises(UnsafeHandoff):
             self.create(filenames=[None])
 
+
+    def test_earlier_file_rewritten_during_later_hash_fails(self):
+        # The first file passed per-file checks, but changes while a later
+        # file begins hashing. Final all-file verification must catch it.
+        first = self.root / "cost_report.json"
+        original_open = os.open
+        injected = [False]
+
+        def write_first_during_later_open(path, flags, *args, **kwargs):
+            if path == "fixed_records.bin" and not injected[0]:
+                injected[0] = True
+                first.write_bytes(b'{"modified_during_batch": true}')
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch.object(handoff.os, "open", side_effect=write_first_during_later_open):
+            with self.assertRaises(UnsafeHandoff):
+                self.create()
+        self.assertTrue(injected[0])
+
+    def test_earlier_file_same_bytes_replaced_during_batch_fails(self):
+        # A replaced path with identical content must not silently pass.
+        first = self.root / "cost_report.json"
+        original = first.read_bytes()
+        original_open = os.open
+        injected = [False]
+
+        def replace_first_during_later_open(path, flags, *args, **kwargs):
+            if path == "fixed_records.bin" and not injected[0]:
+                injected[0] = True
+                first.rename(self.root / "retired.json")
+                first.write_bytes(original)
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch.object(handoff.os, "open", side_effect=replace_first_during_later_open):
+            with self.assertRaises(UnsafeHandoff):
+                self.create()
+        self.assertTrue(injected[0])
+
+    def test_prior_nested_directory_swapped_during_batch_fails(self):
+        # Recheck the full dirfd path, not just previously hashed leaf bytes.
+        (self.root / "zz_tail").write_bytes(b"synthetic-later-file")
+        original_open = os.open
+        injected = [False]
+
+        def swap_prior_directory(path, flags, *args, **kwargs):
+            if path == "zz_tail" and not injected[0]:
+                injected[0] = True
+                (self.root / "sub").rename(self.root / "sub_original")
+                (self.root / "sub").symlink_to(
+                    self.root / "sub_original", target_is_directory=True
+                )
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch.object(handoff.os, "open", side_effect=swap_prior_directory):
+            with self.assertRaises(UnsafeHandoff):
+                self.create(filenames=["sub/fixed_records.bin", "zz_tail"])
+        self.assertTrue(injected[0])
+
     def test_signature_or_source_admission_cannot_be_inferred(self):
         receipt = self.create()
         self.assertNotIn("signature", receipt)
