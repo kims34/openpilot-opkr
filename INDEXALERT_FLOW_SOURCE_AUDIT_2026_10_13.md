@@ -111,3 +111,36 @@ An additional `research_v1_kiwoom_flow_pit_structural.py` module and `test_resea
 **Official documentation reference pinned for review:** `Kiwoom-Securities/Kiwoom-REST-API` at commit `953e5dbff123f437ab4d11a78a95191a685eb51f`, file `examples/국내주식/종목정보/get_domestic_stock_investor_by_institution.py`, blob `ebf61f1c8e1f0cd1131598a347763d87ab917f84`. It defines `ka10059`, `POST /api/dostk/stkinfo`, `amt_qty_tp` amount/quantity, `trde_tp` net/buy/sell, `unit_tp` 1/1000, and row fields `stk_invsr_orgn`, `dt`, `acc_trde_qty`, `acc_trde_prica`, `frgnr_invsr`, `orgn`. Parameter documentation is NOT actual historical retention, publication-time equivalence or units cross-validation. Historical foreign/institution net-buy value/turnover ratios remain unadmitted.
 
 **Next blocker:** use a separately authorised, non-mutating, already provisioned read-only environment to observe authentic `ka10059` response metadata. Railway inventory showed `indexalert-kiwoom-real-readonly-run` is configured with `print(INDEXALERT_START_COMMAND_ATTESTED_NO_NETWORK=true)` and `indexalert-kiwoom-real-readonly` uses `python -B smoke.py`. Neither currently provides a verified non-disruptive path for the bounded source query through the available connection, so no Railway redeployment, start-command change, variable export or secret migration was performed. Read-only Github Actions probe remained `AUTH_NOT_CONFIGURED`.
+
+## 2026-10-13 continuation — independent KRX/Kiwoom parity contract
+
+The isolated branch now includes `research_v1_kiwoom_krx_flow_parity.py` and `test_research_v1_kiwoom_krx_flow_parity.py`. These are **offline schema/semantics checks only** that can be used *after* separately approved, normalized real records exist. Nothing here acquires or persists numeric external data.
+
+### Why this separate verifier is needed
+
+- Official Kiwoom `ka10059` documents `frgnr_invsr`, `orgn` and cumulative trading fields, but their exact KRW normalization, data-finality and historical retention/vintage are **not established** by sample code.
+- KRX Data Marketplace presents investor-trading data by individual securities; the prior 3-day `MDCSTAT02303` sample established limited route reachability but neither full history nor disclosure-time PIT.
+- Official KRX data distribution guidance distinguishes simple viewing from redistribution or revenue-generating program development which may require a separate agreement: https://openapi.krx.co.kr/contents/OPP/DATA/OPPDATA003.jsp . This guidance does NOT itself establish the commercial/user-specific rights for any requested data route; source-specific intended-use rights remain independently unverified.
+- KRX / NXT / SOR and broker consolidated results cannot be automatically compared or summed. `orgn` is the aggregate institutional measure and must not be summed with its own constituent categories or unrelated `etc_corp`.
+
+### Implemented parity guard
+
+- Requires **same ISIN, symbol, trade day, KRX-only venue/scope and investor metric**. Compares separate `FOREIGN_NET_BUY_VALUE` and `INSTITUTION_NET_BUY_VALUE` records, never arbitrary blended categories.
+- Expects each side to have been independently normalized to *exact signed integer KRW* with a pinned normalization contract and response digest, otherwise rejects; **does not assert that a caller-supplied contract hash proves correct units**.
+- Counts all unmatched dates/issuer/metrics in each source and all numeric disagreements. It does not drop nonmatching rows, assume 0 for missing, silently select only matching transactions or tune a comparison tolerance to the observed result.
+- Even exact numeric agreement sets `source_originals_authenticated=false`, `historical_units_independently_attested=false`, `original_as_published_pit_verified=false`, `historical_issuer_universe_complete=false`, `source_admitted=false`, `performance_testing_authorized=false`, `holdout_authorized=false`, `ordering_enabled=false`. No strategy experiment was preregistered.
+
+### Actual tests and resolution
+
+The first all-module CI run [#38417196181](https://github.com/kims34/openpilot-opkr/actions/runs/38417196181) returned **2 test fixture errors** due to mistaken positional synthetic helper arguments (sample amount was passed as source label); the source guard did not silently pass. Corrected the test fixtures, then reran the full suite:
+
+**[GitHub Actions #38417306875](https://github.com/kims34/openpilot-opkr/actions/runs/38417306875)**, commit `94a7f6aee7d46c2e008b73d4b39cdf7008bf5663`, **SUCCESS, `Ran 70 tests`, `OK`**. These are 70 offline **unit/safety/negative tests**, not 70 live responses or profitability backtests.
+
+### Missing evidence to actually move toward profitability
+
+1. An approved, non-disruptive authenticated read-only `ka10059` route with redacted source metadata in the **already approved** environment (do not copy credentials or change another team's REAL service).
+2. Independently verified original historical value, source response, as-published release instant, revision and exact Kiwoom-vs-KRX unit+venue+definition mapping.
+3. An attested all-stock PIT historical universe including halted/delisted/renamed securities, plus licence/permitted archival and economic backtest use.
+4. Only then register independent single-shot comparison of volume/foreign/institutional factors using Frozen protocols, net post-cost/post-tax economics and untouched independent Holdout procedure.
+
+All missing items remain unverified. No direct orders, fund movements, account/secret modifications, service redeploys or H5/M20/Champion/Holdout changes were performed.
