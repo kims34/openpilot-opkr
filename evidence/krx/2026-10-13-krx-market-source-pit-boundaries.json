@@ -200,10 +200,17 @@
     "manual_dispatch_only": true,
     "workflow_path": ".github/workflows/indexalert-krx-openapi-approved-six-get-bridge.yml",
     "pinned_source_commit": "dd839a3146af2261be4e3fde810a4a62881bacd3",
-    "current_run_evidence_verified_in_this_audit": false,
-    "manual_toggle_required": true,
+    "current_run_evidence_verified_in_this_audit": true,
     "status_source_approval_included": false,
-    "no_implicit_repeat_or_expansion": true
+    "no_implicit_repeat_or_expansion": true,
+    "verified_workflow_dispatch_run": 38203814820,
+    "verified_workflow_dispatch_conclusion": "SUCCESS",
+    "verified_workflow_job": 114674734929,
+    "verified_workflow_artifact": 11727893147,
+    "execution_stage_check": "SIX_REQUESTS_COMPLETED_AS_ASSERTED_BY_SUCCESSFUL_ACTION_JOB",
+    "reexecution_needed": false,
+    "manual_toggle_required_for_any_new_dispatch": true,
+    "assertion_source": "GitHub Actions job 114674734929 (16 unit tests passed; six-request assertion passed); successful metadata-only artifact 11727893147"
   },
   "safety": {
     "ORDERING": false,
