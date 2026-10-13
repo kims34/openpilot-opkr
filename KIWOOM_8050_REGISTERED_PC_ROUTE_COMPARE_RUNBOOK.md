@@ -32,7 +32,7 @@ Only the final `assessment` and `system/direct.STAGE`, `RETURN_CODE`, and `DETAI
 
 ## Downloadable Windows ZIP (no credentials included)
 
-GitHub Actions workflow **Kiwoom REAL Type00 Python Readonly** now packages the exact read-only scripts, a pinned requirements file, and `RUN_KIWOOM_READONLY_DIAG.cmd` into artifact `kiwoom-readonly-pc-diagnostic` after offline validation. Download it from the latest **successful** workflow run on Draft PR #415 and unzip on the already registered Windows PC. No scripts run automatically on download/unzip.
+GitHub Actions workflow **Kiwoom REAL Type00 Python Readonly** uploads **five allowlisted source files directly** into artifact `kiwoom-readonly-pc-diagnostic` after offline validation. Download it from the latest **successful** workflow run on Draft PR #415, then unzip **once** on the already registered Windows PC: `RUN_KIWOOM_READONLY_DIAG.cmd` must be visible directly in the extracted folder, alongside the two Python scripts. CI downloads the uploaded artifact again and checks the exact five-file layout and byte-for-byte source integrity. No scripts run automatically on download/unzip.
 
 From an existing terminal session in which your REAL credentials are already securely configured, enter the unzipped folder and run:
 
