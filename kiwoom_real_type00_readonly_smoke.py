@@ -138,6 +138,25 @@ def return_code(obj: Mapping[str, Any]) -> int:
     return code
 
 
+def ws_return_code(obj: Mapping[str, Any]) -> int:
+    """Parse WS-only codes: Kiwoom can send 0, "0", or "0000".
+
+    Missing or ambiguous responses still fail closed; REST maintains its
+    separate strict integer-only contract. Never coerce bool/float/null.
+    """
+    if "return_code" not in obj:
+        raise ValueError("missing WS return_code")
+    code = obj["return_code"]
+    if isinstance(code, str):
+        raw = code.strip()
+        if not re.fullmatch(r"[0-9]{1,10}", raw):
+            raise ValueError("invalid WS return_code")
+        code = int(raw)
+    if type(code) is not int or not 0 <= code <= 2_147_483_647:
+        raise ValueError("invalid WS return_code")
+    return code
+
+
 def classify_detail(message: Any) -> tuple[int | None, str | None]:
     text = "" if message is None else str(message)
     match = re.search(r"(?:\[|CODE=)(\d{3,5})(?::|\b)", text)
@@ -335,7 +354,7 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
                 if _name(obj) != "LOGIN":
                     raise ReadOnlySmokeError("WS_LOGIN_PROTOCOL", 0)
                 try:
-                    code = return_code(obj)
+                    code = ws_return_code(obj)
                 except Exception:
                     raise ReadOnlySmokeError("WS_LOGIN_PROTOCOL", 0) from None
                 if code != 0:
@@ -376,7 +395,7 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
                     continue
                 if name == "REG":
                     try:
-                        code = return_code(obj)
+                        code = ws_return_code(obj)
                     except Exception:
                         raise ReadOnlySmokeError("TYPE00_REG_PROTOCOL", 0) from None
                     if code != 0:
