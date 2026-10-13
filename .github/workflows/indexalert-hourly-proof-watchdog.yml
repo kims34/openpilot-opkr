@@ -1,0 +1,65 @@
+name: IndexAlert Hourly Proof Watchdog (read-only)
+
+# GitHub schedule only starts when this workflow is on the default branch.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [indexalert-hourly-proof-watchdog-20261013]
+    paths:
+      - '.github/workflows/indexalert-hourly-proof-watchdog.yml'
+      - 'tools/indexalert_hourly_proof_watchdog.py'
+      - 'tools/test_indexalert_hourly_proof_watchdog.py'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: indexalert-hourly-proof-watchdog
+  cancel-in-progress: false
+
+jobs:
+  readonly-proof-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out watchdog only
+        uses: actions/checkout@v4
+        with:
+          path: watchdog
+          persist-credentials: false
+
+      - name: Check out independent research branch (read-only)
+        uses: actions/checkout@v4
+        with:
+          ref: index-alert-research-v1
+          path: research
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test watchdog fail-closed contract
+        run: python -m unittest -v test_indexalert_hourly_proof_watchdog.py
+        working-directory: watchdog/tools
+
+      - name: Run existing offline research-governance regression
+        run: python -m unittest -v test_research_v1_continuous_research test_research_v1_research_orchestrator test_research_v1_successor_core
+        working-directory: research
+
+      - name: Read GitHub workstream evidence (no source data, secrets or orders)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python watchdog/tools/indexalert_hourly_proof_watchdog.py --output "${{ runner.temp }}/indexalert-hourly-proof-status.json"
+
+      - name: Archive flags-only status even if a check fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-hourly-proof-status
+          path: ${{ runner.temp }}/indexalert-hourly-proof-status.json
+          if-no-files-found: warn
+          retention-days: 7
