@@ -118,8 +118,13 @@ def run(env, send=request):
         result["status"] = "SOURCE_REACHABLE_METADATA_ONLY" if all_dates else "SOURCE_REACHABLE_EMPTY"
         result["publication_time_verified"] = False
         result["historical_revision_policy_verified"] = False
-        if result["duplicate_dates"]:
-            # Terminal pagination with duplicated days is not a valid source.
+        # Do not advertise a successful bounded source when the response
+        # remains truncated at the hard cap or pages go backwards in time.
+        if not result["pagination_exhausted"]:
+            result["status"] = "PAGINATION_LIMIT_REACHED"
+        elif result["duplicate_dates"] or any(
+            prev < curr for prev, curr in zip(all_dates, all_dates[1:])
+        ):
             result["status"] = "PAGINATION_VALIDATION_REJECTED"
         return result
     except Exception as exc:
