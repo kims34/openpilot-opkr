@@ -73,6 +73,7 @@ class SourceProofTests(unittest.TestCase):
             patch.object(target, "_registry", return_value={COHORT[5]: "00000001"}),
             patch.object(target, "_fetch_first_document", return_value=binary),
             patch.object(target, "inspect_original_document_layout", return_value=DIAG),
+            patch.object(target, "EXPECTED_ORIGINAL_DOCUMENT_SHA256", hashlib.sha256(binary).hexdigest()),
         ):
             proof = target.run(object())
         self.assertEqual(proof["source_status"],
@@ -85,6 +86,39 @@ class SourceProofTests(unittest.TestCase):
         for sensitive in ("FAKEKEY", "00000001", FIRST["rcept_no"],
                           LATER["rcept_no"]):
             self.assertNotIn(sensitive, serialized)
+
+    def test_sha256_drift_fails_closed_before_layout_or_pit(self):
+        binary = b"untrusted-altered-or-repacked-first-document"
+        calls = []
+
+        def stub(session, endpoint, params, zip_response=False):
+            calls.append(endpoint)
+            return b"registry" if endpoint == "corpCode.xml" else INDEX
+
+        with (
+            patch.dict(os.environ, {"OPENDART_API_KEY": "FAKEKEY"}),
+            patch.object(target, "_official_get", side_effect=stub),
+            patch.object(target, "_registry", return_value={COHORT[5]: "00000001"}),
+            patch.object(target, "_fetch_first_document", return_value=binary),
+            patch.object(target, "inspect_original_document_layout") as layout,
+        ):
+            proof = target.run(object())
+        self.assertEqual(calls, ["corpCode.xml", "list.json"])
+        layout.assert_not_called()
+        self.assertEqual(proof["source_status"], "SOURCE_GAP_FAIL_CLOSED")
+        self.assertEqual(proof["failure_stage"], "ORIGINAL_DOCUMENT_ZIP")
+        self.assertEqual(proof["failure_code"], "ORIGINAL_DOCUMENT_SHA256_DRIFT")
+        self.assertNotIn("document_sha256", proof)
+        self.assertFalse(proof["m20_feature_pit_admitted"])
+        self.assertFalse(proof["m20_performance_run_authorized"])
+        self.assertFalse(proof["real_orders_authorized"])
+        self.assertNotIn("FAKEKEY", str(proof))
+
+    def test_expected_original_digest_is_pinned_to_previous_official_evidence(self):
+        self.assertEqual(
+            target.EXPECTED_ORIGINAL_DOCUMENT_SHA256,
+            "56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb",
+        )
 
     def test_exception_never_leaks_provider_key_or_response(self):
         with (
