@@ -156,6 +156,16 @@ def inspect_official_original_document(source: bytes) -> dict:
 LAYOUT_MAX_NODES = 500_000
 LAYOUT_MAX_TEXT_CHARS = 36 * 1024 * 1024
 
+# Shape-only diagnostics. These DO NOT identify authoritative statement rows:
+# original DART SGML can contain explanatory note tables and restated values.
+MAX_DIAGNOSTIC_CELL_CHARS = 4096
+NUMERIC_CELL_SHAPE = re.compile(
+    r"-?(?:0|[1-9][0-9]{0,2}(?:,[0-9]{3})+|[1-9][0-9]*)(?:\\.[0-9]+)?\\Z"
+)
+OPERATING_ROW_LABELS = frozenset((
+    "영업이익", "영업손실", "영업이익(손실)", "영업이익(영업손실)",
+))
+
 
 
 class _BoundedDisclosureHTML(HTMLParser):
@@ -169,6 +179,36 @@ class _BoundedDisclosureHTML(HTMLParser):
         self.in_cell = 0
         self.table_found = False
         self.profit_cell = False
+        self.table_depth = 0
+        self.row_open = False
+        self.row_cells = []
+        self.active_cell = None
+        self.profit_row_shapes = 0
+        self.profit_rows_with_two_numeric_peers = 0
+        self.profit_rows_with_four_numeric_peers = 0
+
+    def _finish_cell(self):
+        if self.active_cell is not None:
+            self.row_cells.append("".join(self.active_cell))
+            self.active_cell = None
+
+    def _finish_row(self):
+        self._finish_cell()
+        if not self.row_open:
+            return
+        cells = [
+            re.sub(r"\\s+", "", unicodedata.normalize("NFKC", x)).strip()
+            for x in self.row_cells
+        ]
+        if any(x in OPERATING_ROW_LABELS for x in cells[:2]):
+            self.profit_row_shapes += 1
+            amounts = sum(bool(NUMERIC_CELL_SHAPE.fullmatch(
+                x.replace(",", ""))) for x in cells[1:])
+            # Only a shape hint; no amount, quarter, statement or PIT binding.
+            self.profit_rows_with_two_numeric_peers += amounts >= 2
+            self.profit_rows_with_four_numeric_peers += amounts >= 4
+        self.row_open = False
+        self.row_cells = []
 
     def handle_starttag(self, tag, attrs):
         self.nodes += 1
@@ -176,23 +216,44 @@ class _BoundedDisclosureHTML(HTMLParser):
             raise OriginalDocumentGap("DOCUMENT_LAYOUT_NODES_LIMIT")
         if tag in ("table", "tr", "td", "th"):
             self.table_found = True
+        if tag == "table":
+            self.table_depth += 1
+        if tag == "tr" and self.table_depth:
+            self._finish_row()
+            self.row_open = True
         if tag in ("td", "th"):
             self.in_cell += 1
+            if self.row_open and self.table_depth:
+                self._finish_cell()  # implied </td> in older DART SGML
+                self.active_cell = []
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
         if tag in ("td", "th"):
+            self._finish_cell()
             self.in_cell = max(0, self.in_cell - 1)
 
     def handle_endtag(self, tag):
         if tag in ("td", "th"):
+            self._finish_cell()
             self.in_cell = max(0, self.in_cell - 1)
+        if tag == "tr":
+            self._finish_row()
+        if tag == "table":
+            self._finish_row()
+            self.table_depth = max(0, self.table_depth - 1)
 
     def handle_data(self, data):
         self.chars += len(data)
         if self.chars > LAYOUT_MAX_TEXT_CHARS:
             raise OriginalDocumentGap("DOCUMENT_LAYOUT_TEXT_LIMIT")
         self.parts.append(data)
+        if self.active_cell is not None:
+            if sum(map(len, self.active_cell)) + len(data) > MAX_DIAGNOSTIC_CELL_CHARS:
+                # Overlong table text is not a financial row candidate.
+                self.active_cell = None
+            else:
+                self.active_cell.append(data)
         if self.in_cell and any(
             token in unicodedata.normalize("NFKC", data).replace(" ", "")
             for token in ("영업이익", "영업손실")
@@ -230,6 +291,9 @@ def inspect_original_document_layout(source: bytes) -> dict:
     table_tag = False
     profit_cell = False
     non_xml_count = 0
+    operating_row_shapes = 0
+    operating_rows_two_numeric_peers = 0
+    operating_rows_four_numeric_peers = 0
     try:
         with zipfile.ZipFile(io.BytesIO(source)) as archive:
             for entry in archive.infolist():
@@ -252,6 +316,7 @@ def inspect_original_document_layout(source: bytes) -> dict:
                         scanner = _BoundedDisclosureHTML()
                         scanner.feed(text)
                         scanner.close()
+                        scanner._finish_row()
                     except (ValueError, AssertionError, UnicodeError) as ex:
                         if isinstance(ex, OriginalDocumentGap):
                             raise
@@ -264,6 +329,9 @@ def inspect_original_document_layout(source: bytes) -> dict:
                     contents.extend(scanner.parts)
                     table_tag |= scanner.table_found
                     profit_cell |= scanner.profit_cell
+                    operating_row_shapes += scanner.profit_row_shapes
+                    operating_rows_two_numeric_peers += scanner.profit_rows_with_two_numeric_peers
+                    operating_rows_four_numeric_peers += scanner.profit_rows_with_four_numeric_peers
                     continue
                 parsed += 1
                 for node in root.iter():
@@ -299,6 +367,18 @@ def inspect_original_document_layout(source: bytes) -> dict:
         "document_contains_operating_profit_term": any(w in text for w in
             ("영업이익", "영업손실")),
         "document_contains_operating_profit_cell_text": profit_cell,
+        "document_has_three_month_period_hint": bool(
+            re.search(r"(?:3개월|3개월간|3월간|3months)", text, re.I)
+        ),
+        "document_has_nine_month_cumulative_hint": bool(
+            "9개월" in text or "누적" in text
+        ),
+        "document_has_prior_comparative_hint": bool(
+            ("전분기" in text or "전년동기" in text or "전기" in text)
+        ),
+        "profit_row_shape_count_not_facts": operating_row_shapes,
+        "profit_row_with_2_numeric_peer_cells_count": operating_rows_two_numeric_peers,
+        "profit_row_with_4_numeric_peer_cells_count": operating_rows_four_numeric_peers,
         "original_q3_cfs_three_month_profit_bound": False,
         "raw_source_text_or_financial_values_persisted": False,
         "original_document_financial_semantics_validated": False,

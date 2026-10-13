@@ -80,6 +80,12 @@ jobs:
               assert p[key] is False, "FORBIDDEN_FINANCIAL_OR_TRADING_ADMISSION"
           assert p["ordering"] == "DISABLED"
           assert p["source_status"] == "ORIGINAL_2022_DOCUMENT_LAYOUT_DIAGNOSTIC_ONLY", "OFFICIAL_DOCUMENT_LAYOUT_SOURCE_GAP"
+          # Row cardinalities are only SGML layout hints and never earnings.
+          assert isinstance(p["profit_row_shape_count_not_facts"], int)
+          assert isinstance(p["profit_row_with_2_numeric_peer_cells_count"], int)
+          assert isinstance(p["profit_row_with_4_numeric_peer_cells_count"], int)
+          assert p["profit_row_with_2_numeric_peer_cells_count"] <= p["profit_row_shape_count_not_facts"]
+          assert p["profit_row_with_4_numeric_peer_cells_count"] <= p["profit_row_with_2_numeric_peer_cells_count"]
           assert p["original_q3_cfs_three_month_profit_bound"] is False
           assert p["raw_source_text_or_financial_values_persisted"] is False
           PY

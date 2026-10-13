@@ -96,6 +96,40 @@ class OriginalDocument2022Tests(unittest.TestCase):
         self.assertTrue(result["document_contains_operating_profit_term"])
         self.assertFalse(SAFETY["original_statement_binding_verified"])
 
+
+    def test_profit_row_shape_counts_are_not_financial_fact_admission(self):
+        sgml = (
+            "<DOCUMENT><TABLE>"
+            "<TR><TH>과목</TH><TH>당분기 3개월</TH><TH>전분기 3개월</TH>"
+            "<TR><TD>영업이익<TD>1,200<TD>(900)</TR>"
+            "<TR><TD>영업이익<TD>1,300<TD>1,400<TD>1,500<TD>1,600</TR>"
+            "<TR><TD>영업이익 주석<TD>5,000<TD>9,999</TR>"
+            "</TABLE><P>누적 9개월 연결재무제표</DOCUMENT>"
+        ).encode("utf-8")
+        report = inspect_original_document_layout(valid_zip(payload=sgml))
+        self.assertEqual(report["profit_row_shape_count_not_facts"], 2)
+        self.assertEqual(report["profit_row_with_2_numeric_peer_cells_count"], 1)
+        self.assertEqual(report["profit_row_with_4_numeric_peer_cells_count"], 1)
+        self.assertTrue(report["document_has_three_month_period_hint"])
+        self.assertTrue(report["document_has_nine_month_cumulative_hint"])
+        self.assertTrue(report["document_has_prior_comparative_hint"])
+        self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
+        self.assertFalse(report["original_document_financial_semantics_validated"])
+        for amount in ("1,200", "1,300", "1,400", "1,500", "1,600"):
+            self.assertNotIn(amount, json.dumps(report))
+
+    def test_narrative_only_no_shape_candidates(self):
+        markup = "<DOCUMENT><P>당분기 영업이익 1,234 입니다.</P></DOCUMENT>"
+        report = inspect_original_document_layout(valid_zip(payload=markup.encode()))
+        self.assertEqual(report["profit_row_shape_count_not_facts"], 0)
+        self.assertEqual(report["profit_row_with_2_numeric_peer_cells_count"], 0)
+        self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
+
+    def test_label_with_fuzzy_profit_not_considered_exact(self):
+        markup = "<DOCUMENT><TABLE><TR><TD>영업이익 조정액</TD><TD>100</TD><TD>200</TD></TR></TABLE></DOCUMENT>"
+        report = inspect_original_document_layout(valid_zip(payload=markup.encode()))
+        self.assertEqual(report["profit_row_shape_count_not_facts"], 0)
+
     def test_entity_declaration_blocks_even_html_fallback(self):
         data = b'<!DOCTYPE DOCUMENT [<!ENTITY x SYSTEM "file:///etc/passwd">]><DOCUMENT><TABLE>&x;</TABLE></DOCUMENT>'
         with self.assertRaisesRegex(OriginalDocumentGap, "DOCUMENT_LAYOUT_ENTITY_DECLARATION"):
