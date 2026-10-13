@@ -10,7 +10,7 @@ import urllib.request
 BASE = "https://api.kiwoom.com"
 BODY = {"dt": "20261008", "stk_cd": "005930", "amt_qty_tp": "1",
         "trde_tp": "0", "unit_tp": "1"}
-FIELDS = ("dt", "frgnr_invsr", "orgn", "acc_trde_prica")
+FIELDS = ("dt", "frgnr_invsr", "orgn", "acc_trde_prica", "acc_trde_qty")
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -77,13 +77,26 @@ def run(env, send=request):
             missing = sum(any(row.get(k) in (None, "") for k in FIELDS) for row in rows)
             numeric_bad = sum(any(not re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?", str(row.get(k, "")))
                                   for k in FIELDS[1:]) for row in rows)
+            # Broker response may include stopped/zero-trade sessions, so zero
+            # volume/value is not missing data. Negative *cumulative* volume
+            # or trade value is not a valid daily observation.
+            negative_activity = sum(any(
+                re.fullmatch(r"[+-]?[0-9]+(?:\\.[0-9]+)?", str(row.get(k, "")))
+                and float(str(row[k])) < 0
+                for k in ("acc_trde_prica", "acc_trde_qty")
+            ) for row in rows)
+            # The current query expects reverse chronological pagination.
+            # Log anomalies as metadata only; never silently reorder rows.
+            nonmonotonic_dates = sum(a < b for a, b in zip(dates, dates[1:]))
             all_dates.extend(dates)
             h = {k.lower():v for k,v in headers.items()}
             more = h.get("cont-yn") == "Y"
             result["pages"].append({"rows":len(rows),"min_date":min(dates,default=None),
                 "max_date":max(dates,default=None),"invalid_dates":bad,"missing_required_rows":missing,
-                "invalid_numeric_rows":numeric_bad,"raw_sha256":digest,"more":more})
-            if bad or missing or numeric_bad:
+                "invalid_numeric_rows":numeric_bad,"negative_activity_rows":negative_activity,
+                "nonmonotonic_date_pairs":nonmonotonic_dates,
+                "raw_sha256":digest,"more":more})
+            if bad or missing or numeric_bad or negative_activity or nonmonotonic_dates:
                 return dict(result, status="ROW_VALIDATION_REJECTED")
             if not more:
                 break
