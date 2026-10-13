@@ -41,6 +41,56 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     return_code({"return_code": value})
 
+    def test_one_shot_completion_requires_events_and_admission(self):
+        # REG ACK only is a valuable read-only broker-auth milestone, but
+        # cannot be mistaken for observed broker-native events. This test
+        # performs zero real REST or WS requests, and it never authorizes orders.
+        def synthetic_account(state):
+            state.TOKEN_OK = True
+            state.ACCOUNT_ENDPOINT_OK = True
+            state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN = True
+            return "synthetic-token", "synthetic-account", time.monotonic()
+
+        def fake_ws(kind):
+            async def run(_token, _account, _issued, state):
+                state.WS_CONNECTED = True
+                state.WS_LOGIN_OK = True
+                state.TYPE00_REG_SENT = True
+                state.TYPE00_REG_ACK_OK = kind != "no_ack"
+                state.TYPE00_EVENT_COUNT = 1 if kind == "event" else 0
+            return run
+
+        for kind, exit_code, stage in (
+            ("no_ack", 2, "TYPE00_ADMISSION_INCOMPLETE"),
+            ("ack_only", 3, "TYPE00_ACK_ONLY_NO_EVENTS"),
+            ("event", 0, "REAL_TYPE00_READ_ONLY_SMOKE"),
+        ):
+            with self.subTest(kind=kind):
+                with patch("kiwoom_real_type00_readonly_smoke._token_and_account",
+                           side_effect=synthetic_account) as account, \
+                     patch("kiwoom_real_type00_readonly_smoke._run_ws",
+                           side_effect=fake_ws(kind)) as ws, \
+                     patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                           side_effect=AssertionError("real HTTP forbidden")) as rest, \
+                     patch("sys.stdout", new_callable=io.StringIO) as output:
+                    with self.assertRaises(SystemExit) as stopped:
+                        main()
+                self.assertEqual(stopped.exception.code, exit_code)
+                state = json.loads(output.getvalue())
+                self.assertEqual(state["STAGE"], stage)
+                self.assertEqual(state["ORDERING"], "DISABLED")
+                self.assertFalse(state["REAL_ORDERS_AUTHORIZED"])
+                self.assertFalse(state["FUNDS_MOVEMENT_AUTHORIZED"])
+                self.assertFalse(state["PERMISSION_CHANGE_AUTHORIZED"])
+                self.assertFalse(state["GENUINE_LIVE_PROVENANCE_VERIFIED"])
+                self.assertEqual(state["TYPE00_EVENT_COUNT"], 1 if kind == "event" else 0)
+                self.assertEqual(state["TYPE00_REG_ACK_OK"], kind != "no_ack")
+                self.assertNotIn("synthetic-token", output.getvalue())
+                self.assertNotIn("synthetic-account", output.getvalue())
+                account.assert_called_once()
+                ws.assert_called_once()
+                rest.assert_not_called()
+
     def test_type00_data_before_registration_ack_is_never_admitted(self):
         # A broker-like REAL message can arrive before any successful REG
         # acknowledgement. It must never count as a subscribed event or
