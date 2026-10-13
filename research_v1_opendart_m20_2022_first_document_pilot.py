@@ -168,6 +168,23 @@ OPERATING_ROW_LABELS = frozenset((
 
 
 
+
+# Fixed-year date-window markers are diagnostics only. A matching printed date
+# near an accounting table is not original-vintage statement or PIT proof.
+def _has_q3_period_window(text: str, year: int) -> bool:
+    if type(year) is not int or year not in (2021, 2022):
+        raise OriginalDocumentGap("DOCUMENT_PERIOD_YEAR_INVALID")
+    compact = re.sub(r"\s+", "", unicodedata.normalize("NFKC", text))
+    month_day = lambda m, d: rf"{year}(?:[.\-/]|년)0?{m}(?:[.\-/]|월)0?{d}(?:일)?"
+    start = re.search(month_day(7, 1), compact)
+    if start is None:
+        return False
+    # Both dates must describe a plausible interval, not arbitrary far-away
+    # mentions in the same full filing. All checks remain shape-only.
+    end = re.search(month_day(9, 30), compact[start.end():start.end()+160])
+    return end is not None
+
+
 class _BoundedDisclosureHTML(HTMLParser):
     """HTML/SGML layout flags only. Never extract financial observations."""
 
@@ -199,6 +216,13 @@ class _BoundedDisclosureHTML(HTMLParser):
         self.tables_with_profit_and_nearby_three_month_context = 0
         self.tables_with_profit_and_last_title_income_context = 0
         self.tables_with_profit_and_last_title_consolidated_income_context = 0
+        self.tables_with_profit_and_2022_q3_window_in_table = 0
+        self.tables_with_profit_and_2021_q3_window_in_table = 0
+        self.tables_with_profit_and_both_period_windows_in_table = 0
+        self.tables_with_profit_and_2022_q3_window_in_prefix = 0
+        self.tables_with_profit_and_2021_q3_window_in_prefix = 0
+        self.tables_with_profit_and_both_period_windows_in_prefix = 0
+        self.tables_with_profit_and_quarter_marker_in_table = 0
 
     def _finish_cell(self):
         if self.active_cell is not None:
@@ -213,8 +237,21 @@ class _BoundedDisclosureHTML(HTMLParser):
             re.sub(r"\s+", "", unicodedata.normalize("NFKC", x)).strip()
             for x in self.row_cells
         ]
-        if self.table_frames and "3개월" in "".join(cells):
-            self.table_frames[-1]["three_month_header"] = True
+        if self.table_frames:
+            frame = self.table_frames[-1]
+            row = "".join(cells)
+            if "3개월" in row:
+                frame["three_month_header"] = True
+            # Bound the retained *header* text only; actual row amounts
+            # remain ephemeral and are never included in output.
+            if frame["rows_checked"] < 12:
+                frame["rows_checked"] += 1
+                if _has_q3_period_window(row, 2022):
+                    frame["period_2022"] = True
+                if _has_q3_period_window(row, 2021):
+                    frame["period_2021"] = True
+                if "3분기" in row or "제3분기" in row:
+                    frame["quarter_marker"] = True
         if any(x in OPERATING_ROW_LABELS for x in cells[:2]):
             self.profit_row_shapes += 1
             amounts = sum(bool(NUMERIC_CELL_SHAPE.fullmatch(
@@ -256,6 +293,12 @@ class _BoundedDisclosureHTML(HTMLParser):
                     "포괄손익계산서", "손익계산서")),
                 "three_month_header": False,
                 "profit_rows": 0,
+                "rows_checked": 0,
+                "period_2022": False,
+                "period_2021": False,
+                "prefix_period_2022": _has_q3_period_window(prefix, 2022),
+                "prefix_period_2021": _has_q3_period_window(prefix, 2021),
+                "quarter_marker": "3분기" in prefix,
             })
             self.table_depth += 1
         if tag == "tr" and self.table_depth:
@@ -292,6 +335,17 @@ class _BoundedDisclosureHTML(HTMLParser):
                 self.tables_examined += 1
                 if frame["profit_rows"]:
                     self.tables_with_profit_row += 1
+                    self.tables_with_profit_and_2022_q3_window_in_table += bool(frame["period_2022"])
+                    self.tables_with_profit_and_2021_q3_window_in_table += bool(frame["period_2021"])
+                    self.tables_with_profit_and_both_period_windows_in_table += bool(
+                        frame["period_2022"] and frame["period_2021"]
+                    )
+                    self.tables_with_profit_and_2022_q3_window_in_prefix += bool(frame["prefix_period_2022"])
+                    self.tables_with_profit_and_2021_q3_window_in_prefix += bool(frame["prefix_period_2021"])
+                    self.tables_with_profit_and_both_period_windows_in_prefix += bool(
+                        frame["prefix_period_2022"] and frame["prefix_period_2021"]
+                    )
+                    self.tables_with_profit_and_quarter_marker_in_table += bool(frame["quarter_marker"])
                     if frame["nearby_three_month"]:
                         self.tables_with_profit_and_nearby_three_month_context += 1
                     if frame["title_income"]:
@@ -369,6 +423,13 @@ def inspect_original_document_layout(source: bytes) -> dict:
         "tables_with_operating_row_and_nearby_three_month_context": 0,
         "tables_with_operating_row_and_last_title_income_context": 0,
         "tables_with_operating_row_and_last_title_consolidated_income_context": 0,
+        "tables_profit_2022_q3_window_in_first_twelve_rows": 0,
+        "tables_profit_2021_q3_window_in_first_twelve_rows": 0,
+        "tables_profit_both_q3_windows_in_first_twelve_rows": 0,
+        "tables_profit_2022_q3_window_in_nearby_text": 0,
+        "tables_profit_2021_q3_window_in_nearby_text": 0,
+        "tables_profit_both_q3_windows_in_nearby_text": 0,
+        "tables_profit_quarter_marker_in_first_twelve_rows": 0,
     }
     try:
         with zipfile.ZipFile(io.BytesIO(source)) as archive:
@@ -424,6 +485,20 @@ def inspect_original_document_layout(source: bytes) -> dict:
                          scanner.tables_with_profit_and_last_title_income_context),
                         ("tables_with_operating_row_and_last_title_consolidated_income_context",
                          scanner.tables_with_profit_and_last_title_consolidated_income_context),
+                        ("tables_profit_2022_q3_window_in_first_twelve_rows",
+                         scanner.tables_with_profit_and_2022_q3_window_in_table),
+                        ("tables_profit_2021_q3_window_in_first_twelve_rows",
+                         scanner.tables_with_profit_and_2021_q3_window_in_table),
+                        ("tables_profit_both_q3_windows_in_first_twelve_rows",
+                         scanner.tables_with_profit_and_both_period_windows_in_table),
+                        ("tables_profit_2022_q3_window_in_nearby_text",
+                         scanner.tables_with_profit_and_2022_q3_window_in_prefix),
+                        ("tables_profit_2021_q3_window_in_nearby_text",
+                         scanner.tables_with_profit_and_2021_q3_window_in_prefix),
+                        ("tables_profit_both_q3_windows_in_nearby_text",
+                         scanner.tables_with_profit_and_both_period_windows_in_prefix),
+                        ("tables_profit_quarter_marker_in_first_twelve_rows",
+                         scanner.tables_with_profit_and_quarter_marker_in_table),
                     ):
                         table_diagnostics[name] += observed
                     continue

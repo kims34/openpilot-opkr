@@ -11,7 +11,7 @@ import zipfile
 from research_v1_opendart_m20_2022_first_document_pilot import (
     COHORT, DOCUMENT_ERROR_CODES, FROZEN_SLOT,
     OriginalDocumentGap, SAFETY,
-    _fetch_first_document, inspect_official_original_document, inspect_original_document_layout, run,
+    _fetch_first_document, inspect_official_original_document, inspect_original_document_layout, _has_q3_period_window, run,
 )
 
 
@@ -193,6 +193,41 @@ class OriginalDocument2022Tests(unittest.TestCase):
         row = inspect_original_document_layout(valid_zip(payload=markup))
         self.assertEqual(row["tables_with_operating_row_and_last_title_income_context"], 1)
         self.assertEqual(row["tables_with_operating_row_and_last_title_consolidated_income_context"], 0)
+
+
+    def test_period_window_only_accepts_complete_fixed_quarter_interval(self):
+        self.assertTrue(_has_q3_period_window("2022.07.01 ~ 2022.09.30", 2022))
+        self.assertTrue(_has_q3_period_window("2021년7월1일부터 2021년9월30일까지", 2021))
+        self.assertFalse(_has_q3_period_window("2022.01.01 ~ 2022.09.30", 2022))
+        self.assertFalse(_has_q3_period_window("2022.07.01 ~ 2023.09.30", 2022))
+        self.assertFalse(_has_q3_period_window("2022.07.01", 2022))
+        with self.assertRaises(OriginalDocumentGap):
+            _has_q3_period_window("2023.07.01 ~ 2023.09.30", 2023)
+
+    def test_period_window_table_but_no_financial_fact_binding(self):
+        markup = (
+            "<DOCUMENT><TABLE><TR><TH>2022.07.01~2022.09.30</TH>"
+            "<TH>2021.07.01~2021.09.30</TH><TH>제3분기</TH></TR>"
+            "<TR><TD>영업이익</TD><TD>500</TD><TD>300</TD></TR>"
+            "</TABLE></DOCUMENT>"
+        ).encode()
+        out = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(out["tables_profit_2022_q3_window_in_first_twelve_rows"], 1)
+        self.assertEqual(out["tables_profit_2021_q3_window_in_first_twelve_rows"], 1)
+        self.assertEqual(out["tables_profit_both_q3_windows_in_first_twelve_rows"], 1)
+        self.assertEqual(out["tables_profit_quarter_marker_in_first_twelve_rows"], 1)
+        self.assertFalse(out["original_q3_cfs_three_month_profit_bound"])
+        self.assertFalse(out["original_document_financial_semantics_validated"])
+        self.assertNotIn('"500"', json.dumps(out))
+
+    def test_separate_ytd_cumulative_date_not_three_month_window(self):
+        markup = (
+            "<DOCUMENT><TABLE><TR><TH>2022.01.01~2022.09.30</TH></TR>"
+            "<TR><TD>영업이익</TD><TD>500</TD></TR></TABLE></DOCUMENT>"
+        ).encode()
+        out = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(out["tables_profit_2022_q3_window_in_first_twelve_rows"], 0)
+        self.assertEqual(out["tables_with_exact_operating_row"], 1)
 
     def test_entity_declaration_blocks_even_html_fallback(self):
         data = b'<!DOCTYPE DOCUMENT [<!ENTITY x SYSTEM "file:///etc/passwd">]><DOCUMENT><TABLE>&x;</TABLE></DOCUMENT>'

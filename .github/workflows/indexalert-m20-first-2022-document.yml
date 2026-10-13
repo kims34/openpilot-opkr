@@ -91,6 +91,9 @@ jobs:
           assert p["table_section_proximity_is_statement_proof"] is False
           assert p["tables_with_operating_row_and_three_month_header"] <= p["tables_with_exact_operating_row"]
           assert p["tables_with_operating_three_month_and_nearby_consolidated_income_heading"] <= p["tables_with_operating_three_month_and_nearby_consolidated_heading"]
+          assert p["tables_profit_both_q3_windows_in_first_twelve_rows"] <= p["tables_profit_2022_q3_window_in_first_twelve_rows"]
+          assert p["tables_profit_both_q3_windows_in_first_twelve_rows"] <= p["tables_profit_2021_q3_window_in_first_twelve_rows"]
+          assert p["tables_profit_both_q3_windows_in_nearby_text"] <= p["tables_with_exact_operating_row"] if "tables_profit_both_q3_windows_in_nearby_text" in p else True
           assert p["original_q3_cfs_three_month_profit_bound"] is False
           assert p["raw_source_text_or_financial_values_persisted"] is False
           PY
