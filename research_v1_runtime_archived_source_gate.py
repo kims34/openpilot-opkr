@@ -55,7 +55,7 @@ class SourceDriftError(ValueError):
 def git_blob_sha1(contents: bytes) -> str:
     """Git object identity; not a collision-resistant authenticated signature."""
     return hashlib.sha1(
-        b"blob " + str(len(contents)).encode("ascii") + b"\\0" + contents
+        b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
     ).hexdigest()
 
 
