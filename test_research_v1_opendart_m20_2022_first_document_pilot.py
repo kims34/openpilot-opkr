@@ -130,6 +130,45 @@ class OriginalDocument2022Tests(unittest.TestCase):
         report = inspect_original_document_layout(valid_zip(payload=markup.encode()))
         self.assertEqual(report["profit_row_shape_count_not_facts"], 0)
 
+
+    def test_table_local_header_prevents_cross_table_leakage(self):
+        markup = (
+            "<DOCUMENT><TITLE>연결 포괄손익계산서</TITLE>"
+            "<TABLE><TR><TD>당분기 3개월</TD><TD>전분기 3개월</TD></TR></TABLE>"
+            "<TABLE><TR><TD>영업이익</TD><TD>100</TD><TD>200</TD></TR></TABLE>"
+            "</DOCUMENT>"
+        ).encode()
+        row = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(row["tables_with_exact_operating_row"], 1)
+        self.assertEqual(row["tables_with_operating_row_and_three_month_header"], 0)
+        self.assertFalse(row["original_statement_binding_verified"] if
+                         "original_statement_binding_verified" in row else SAFETY[
+                             "original_statement_binding_verified"])
+
+    def test_table_local_header_and_section_are_only_shape_hints(self):
+        markup = (
+            "<DOCUMENT><P>연결 포괄손익계산서</P>"
+            "<TABLE><TR><TH>3개월</TH><TH>3개월</TH></TR>"
+            "<TR><TD>영업이익</TD><TD>100</TD><TD>200</TD></TR></TABLE></DOCUMENT>"
+        ).encode()
+        row = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(row["tables_with_operating_row_and_three_month_header"], 1)
+        self.assertEqual(row["tables_with_operating_three_month_and_nearby_consolidated_income_heading"], 1)
+        self.assertFalse(row["table_section_proximity_is_statement_proof"])
+        self.assertFalse(row["original_q3_cfs_three_month_profit_bound"])
+        self.assertFalse(row["original_document_financial_semantics_validated"])
+        self.assertNotIn("100", json.dumps(row))
+
+    def test_operating_row_without_consolidated_heading_not_admitted(self):
+        markup = (
+            "<DOCUMENT><P>별도 포괄손익계산서</P>"
+            "<TABLE><TR><TH>3개월</TH></TR>"
+            "<TR><TD>영업이익</TD><TD>100</TD><TD>200</TD></TR></TABLE></DOCUMENT>"
+        ).encode()
+        row = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(row["tables_with_operating_row_and_three_month_header"], 1)
+        self.assertEqual(row["tables_with_operating_three_month_and_nearby_consolidated_heading"], 0)
+
     def test_entity_declaration_blocks_even_html_fallback(self):
         data = b'<!DOCTYPE DOCUMENT [<!ENTITY x SYSTEM "file:///etc/passwd">]><DOCUMENT><TABLE>&x;</TABLE></DOCUMENT>'
         with self.assertRaisesRegex(OriginalDocumentGap, "DOCUMENT_LAYOUT_ENTITY_DECLARATION"):

@@ -186,6 +186,12 @@ class _BoundedDisclosureHTML(HTMLParser):
         self.profit_row_shapes = 0
         self.profit_rows_with_two_numeric_peers = 0
         self.profit_rows_with_four_numeric_peers = 0
+        self.table_frames = []
+        self.tables_examined = 0
+        self.tables_with_profit_row = 0
+        self.tables_with_profit_and_three_month_header = 0
+        self.tables_with_profit_three_month_and_consolidated_context = 0
+        self.tables_with_profit_three_month_and_consolidated_income_context = 0
 
     def _finish_cell(self):
         if self.active_cell is not None:
@@ -200,6 +206,8 @@ class _BoundedDisclosureHTML(HTMLParser):
             re.sub(r"\s+", "", unicodedata.normalize("NFKC", x)).strip()
             for x in self.row_cells
         ]
+        if self.table_frames and "3개월" in "".join(cells):
+            self.table_frames[-1]["three_month_header"] = True
         if any(x in OPERATING_ROW_LABELS for x in cells[:2]):
             self.profit_row_shapes += 1
             amounts = sum(bool(NUMERIC_CELL_SHAPE.fullmatch(
@@ -207,6 +215,8 @@ class _BoundedDisclosureHTML(HTMLParser):
             # Only a shape hint; no amount, quarter, statement or PIT binding.
             self.profit_rows_with_two_numeric_peers += amounts >= 2
             self.profit_rows_with_four_numeric_peers += amounts >= 4
+            if self.table_frames:
+                self.table_frames[-1]["profit_rows"] += 1
         self.row_open = False
         self.row_cells = []
 
@@ -217,6 +227,20 @@ class _BoundedDisclosureHTML(HTMLParser):
         if tag in ("table", "tr", "td", "th"):
             self.table_found = True
         if tag == "table":
+            # Nearby *preceding* text is just a section hint, not an
+            # authoritative report/statement binding.
+            prefix = re.sub(
+                r"\\s+", "",
+                unicodedata.normalize("NFKC", "".join(self.parts[-50:])[-1200:]),
+            )
+            self.table_frames.append({
+                "context_consolidated": any(w in prefix for w in (
+                    "연결포괄손익계산서", "연결손익계산서", "연결재무제표")),
+                "context_income": any(w in prefix for w in (
+                    "포괄손익계산서", "손익계산서")),
+                "three_month_header": False,
+                "profit_rows": 0,
+            })
             self.table_depth += 1
         if tag == "tr" and self.table_depth:
             self._finish_row()
@@ -241,6 +265,17 @@ class _BoundedDisclosureHTML(HTMLParser):
             self._finish_row()
         if tag == "table":
             self._finish_row()
+            if self.table_frames:
+                frame = self.table_frames.pop()
+                self.tables_examined += 1
+                if frame["profit_rows"]:
+                    self.tables_with_profit_row += 1
+                    if frame["three_month_header"]:
+                        self.tables_with_profit_and_three_month_header += 1
+                        if frame["context_consolidated"]:
+                            self.tables_with_profit_three_month_and_consolidated_context += 1
+                            if frame["context_income"]:
+                                self.tables_with_profit_three_month_and_consolidated_income_context += 1
             self.table_depth = max(0, self.table_depth - 1)
 
     def handle_data(self, data):
@@ -294,6 +329,13 @@ def inspect_original_document_layout(source: bytes) -> dict:
     operating_row_shapes = 0
     operating_rows_two_numeric_peers = 0
     operating_rows_four_numeric_peers = 0
+    table_diagnostics = {
+        "source_tables_examined": 0,
+        "tables_with_exact_operating_row": 0,
+        "tables_with_operating_row_and_three_month_header": 0,
+        "tables_with_operating_three_month_and_nearby_consolidated_heading": 0,
+        "tables_with_operating_three_month_and_nearby_consolidated_income_heading": 0,
+    }
     try:
         with zipfile.ZipFile(io.BytesIO(source)) as archive:
             for entry in archive.infolist():
@@ -332,6 +374,17 @@ def inspect_original_document_layout(source: bytes) -> dict:
                     operating_row_shapes += scanner.profit_row_shapes
                     operating_rows_two_numeric_peers += scanner.profit_rows_with_two_numeric_peers
                     operating_rows_four_numeric_peers += scanner.profit_rows_with_four_numeric_peers
+                    for name, observed in (
+                        ("source_tables_examined", scanner.tables_examined),
+                        ("tables_with_exact_operating_row", scanner.tables_with_profit_row),
+                        ("tables_with_operating_row_and_three_month_header",
+                         scanner.tables_with_profit_and_three_month_header),
+                        ("tables_with_operating_three_month_and_nearby_consolidated_heading",
+                         scanner.tables_with_profit_three_month_and_consolidated_context),
+                        ("tables_with_operating_three_month_and_nearby_consolidated_income_heading",
+                         scanner.tables_with_profit_three_month_and_consolidated_income_context),
+                    ):
+                        table_diagnostics[name] += observed
                     continue
                 parsed += 1
                 for node in root.iter():
@@ -379,6 +432,8 @@ def inspect_original_document_layout(source: bytes) -> dict:
         "profit_row_shape_count_not_facts": operating_row_shapes,
         "profit_row_with_2_numeric_peer_cells_count": operating_rows_two_numeric_peers,
         "profit_row_with_4_numeric_peer_cells_count": operating_rows_four_numeric_peers,
+        **table_diagnostics,
+        "table_section_proximity_is_statement_proof": False,
         "original_q3_cfs_three_month_profit_bound": False,
         "raw_source_text_or_financial_values_persisted": False,
         "original_document_financial_semantics_validated": False,
