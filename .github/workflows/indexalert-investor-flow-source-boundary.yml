@@ -1,0 +1,32 @@
+name: IndexAlert Isolated Investor Flow Source Boundary
+
+on:
+  push:
+    branches:
+      - indexalert-investor-flow-validation-v1
+    paths:
+      - research_v1_kiwoom_flow_source_gate.py
+      - test_research_v1_kiwoom_flow_source_gate.py
+      - .github/workflows/indexalert-investor-flow-source-boundary.yml
+  pull_request:
+    paths:
+      - research_v1_kiwoom_flow_source_gate.py
+      - test_research_v1_kiwoom_flow_source_gate.py
+      - .github/workflows/indexalert-investor-flow-source-boundary.yml
+
+permissions:
+  contents: read
+
+jobs:
+  offline-source-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse isolated source admission code
+        run: python -m py_compile research_v1_kiwoom_flow_source_gate.py test_research_v1_kiwoom_flow_source_gate.py
+      - name: Run offline synthetic metadata boundary tests
+        run: python -m unittest -v test_research_v1_kiwoom_flow_source_gate.py
