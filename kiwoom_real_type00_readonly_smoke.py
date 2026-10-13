@@ -32,6 +32,18 @@ ACCOUNT_URL = REAL_BASE_URL + "/api/dostk/acnt"
 WS_URL = "wss://api.kiwoom.com:10000/api/dostk/websocket"
 MAX_JSON_BYTES = 1024 * 1024
 FALSE_VALUES = frozenset({"0", "false", "off", "no"})
+# websockets 15.x discovers proxy settings by default. A direct connection
+# can be explicitly selected for a single read-only smoke on an approved host.
+# No proxy URL, private IP, token, or credential may be emitted.
+WS_PROXY_POLICIES = frozenset({"system", "direct"})
+
+
+def _ws_proxy_options() -> dict[str, Any]:
+    policy = str(os.getenv("KIWOOM_WS_PROXY_POLICY") or "system").strip().lower()
+    if policy not in WS_PROXY_POLICIES:
+        raise ReadOnlySmokeError("CONFIG")
+    return {"proxy": None} if policy == "direct" else {}
+
 TYPE00_ALLOWED_FIELDS = frozenset({
     "9201","9203","9205","9001","912","913","302","900","901","902","903",
     "904","905","906","907","908","909","910","911","10","27","28","914",
@@ -64,6 +76,7 @@ class SmokeState:
     TOKEN_OK: bool = False
     ACCOUNT_ENDPOINT_OK: bool = False
     WS_CONNECTED: bool = False
+    WS_PROXY_POLICY: str = "SYSTEM"
     WS_LOGIN_OK: bool = False
     TYPE00_REG_SENT: bool = False
     TYPE00_REG_ACK_OK: bool = False
@@ -149,6 +162,7 @@ def _name(obj: Mapping[str, Any]) -> str:
 
 
 def _config() -> tuple[str, str]:
+    _ws_proxy_options()  # invalid proxy policy rejects before OAuth
     if os.getenv("KIWOOM_ENV") != "REAL":
         raise ReadOnlySmokeError("CONFIG")
     if os.getenv("KIWOOM_BASE_URL") != REAL_BASE_URL:
@@ -263,6 +277,8 @@ async def _recv_text(ws, timeout: float) -> str:
 
 
 async def _run_ws(token: str, account: str, issued_monotonic: float, state: SmokeState) -> None:
+    proxy_options = _ws_proxy_options()
+    state.WS_PROXY_POLICY = "DIRECT" if "proxy" in proxy_options else "SYSTEM"
     try:
         async with websockets.connect(
             WS_URL,
@@ -270,6 +286,7 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
             close_timeout=3,
             max_size=MAX_JSON_BYTES,
             ping_interval=None,
+            **proxy_options,
         ) as ws:
             state.WS_CONNECTED = True
             state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = max(0, int(time.monotonic() - issued_monotonic))
