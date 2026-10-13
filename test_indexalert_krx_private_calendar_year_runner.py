@@ -133,5 +133,38 @@ class TestPrivateCalendarYearRunner(unittest.TestCase):
                 self.assertEqual(result["status"],"FAIL_CLOSED_NO_AUTHORIZED_SOURCE")
                 mock.assert_not_called()
 
+    def test_real_xlsx_rows_are_checked_before_private_source_verifier(self):
+        import json
+        import tempfile
+        from test_indexalert_krx_calendar_xlsx_source_validator import make_book, claim as make_claim
+        raw=make_book()
+        data=make_claim(raw)
+        with tempfile.TemporaryDirectory() as folder:
+            doc=Path(folder)/"original.xlsx"
+            note=Path(folder)/"claim.json"
+            doc.write_bytes(raw)
+            note.write_text(json.dumps(data),encoding="utf-8")
+            env={"RAILWAY_SERVICE_NAME":"indexalert-krx-historical-worker",
+                 "KRX_PRIVATE_RAW_DIR":"/data"}
+            proof={"status":"EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT",
+                   "verified_original_pairs":201,"original_empty_day_count":14}
+            with (patch.dict("os.environ",env,clear=True),
+                  patch("research_v1_krx_private_calendar_year_runner._in_private_mount",return_value=True),
+                  patch("pathlib.Path.exists",return_value=True),
+                  patch("pathlib.Path.is_symlink",return_value=False),
+                  patch("research_v1_krx_private_calendar_year_runner.audit_private_scope",
+                        return_value=proof) as private):
+                out=run_year(year=2026,document=doc,claim=note,
+                        expected_document_sha256=hashlib.sha256(raw).hexdigest(),execute=True)
+                self.assertEqual(out["status"],"EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT")
+                private.assert_called_once()
+                self.assertFalse(out["source_admitted_for_pit"])
+                data["calendar_closed_days"]=["2026-06-03","2026-07-16"]
+                note.write_text(json.dumps(data),encoding="utf-8")
+                blocked=run_year(year=2026,document=doc,claim=note,
+                        expected_document_sha256=hashlib.sha256(raw).hexdigest(),execute=True)
+                self.assertEqual(blocked["status"],"FAIL_CLOSED_NO_AUTHORIZED_SOURCE")
+                self.assertEqual(private.call_count,1)
+
 if __name__=="__main__":
     unittest.main()
