@@ -142,7 +142,7 @@ class ValueParityTest(unittest.TestCase):
             audit_cross_source_parity([r(amount=True)], [krx()])
 
     def test_unparseable_amount_rejected(self):
-        with self.assertRaisesRegex(InvestorFlowParityError, "invalid amount"):
+        with self.assertRaisesRegex(InvestorFlowParityError, "exact integer"):
             audit_cross_source_parity([r(amount="not-a-number")], [krx()])
 
     def test_unparseable_date_rejected(self):
