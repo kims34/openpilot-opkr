@@ -98,6 +98,23 @@ class ExactPrivateDaySetBoundary(unittest.TestCase):
         self.assertEqual(len(a["original_pair_scope_sha256"]),64)
         self.assertNotIn("2026-06-03",json.dumps(a))
 
+    def test_original_private_snapshot_digest_binding(self):
+        rows=original()
+        expected=hashlib.sha256(json.dumps(
+            [{"day":r["day"],"pair_sha256":r["pair_sha256"]} for r in rows],
+            sort_keys=True,separators=(",",":")
+        ).encode()).hexdigest()
+        x=check(start=START,end=END,verified_original_days=rows,
+                reference_closed_iso_days=["2026-06-03"],
+                expected_original_audit_snapshot_sha256=expected)
+        self.assertEqual(x["original_audit_compatible_snapshot_sha256"],expected)
+        self.assertEqual(x["status"],"EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT")
+        x_bad=check(start=START,end=END,verified_original_days=rows,
+                    reference_closed_iso_days=["2026-06-03"],
+                    expected_original_audit_snapshot_sha256="f"*64)
+        self.assertEqual(x_bad["status"],"FAIL_CLOSED_ORIGINAL_SNAPSHOT_FINGERPRINT_DRIFT")
+        self.assertFalse(x_bad["original_official_calendar_attested"])
+
     def test_injected_synthetic_callback_never_proves_original(self):
         by={r["day"]:r for r in original()}
         x=audit_private_scope(
