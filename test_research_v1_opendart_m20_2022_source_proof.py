@@ -67,11 +67,13 @@ class SourceProofTests(unittest.TestCase):
         def stub(session, endpoint, params, zip_response=False):
             self.assertIn(endpoint, ("corpCode.xml", "list.json"))
             return b"registry" if endpoint == "corpCode.xml" else INDEX
-        with patch.dict(os.environ, {"OPENDART_API_KEY": "FAKEKEY"}), \\
-             patch.object(target, "_official_get", side_effect=stub), \\
-             patch.object(target, "_registry", return_value={COHORT[5]: "00000001"}), \\
-             patch.object(target, "_fetch_first_document", return_value=binary), \\
-             patch.object(target, "inspect_original_document_layout", return_value=DIAG):
+        with (
+            patch.dict(os.environ, {"OPENDART_API_KEY": "FAKEKEY"}),
+            patch.object(target, "_official_get", side_effect=stub),
+            patch.object(target, "_registry", return_value={COHORT[5]: "00000001"}),
+            patch.object(target, "_fetch_first_document", return_value=binary),
+            patch.object(target, "inspect_original_document_layout", return_value=DIAG),
+        ):
             proof = target.run(object())
         self.assertEqual(proof["source_status"],
                          "FIRST_FILED_2022_DOCUMENT_PROVENANCE_ONLY_NOT_PIT")
@@ -85,8 +87,10 @@ class SourceProofTests(unittest.TestCase):
             self.assertNotIn(sensitive, serialized)
 
     def test_exception_never_leaks_provider_key_or_response(self):
-        with patch.dict(os.environ, {"OPENDART_API_KEY": "FAKEKEY"}), \\
-             patch.object(target, "_official_get", side_effect=ValueError("FAKEKEY private issuer data")):
+        with (
+            patch.dict(os.environ, {"OPENDART_API_KEY": "FAKEKEY"}),
+            patch.object(target, "_official_get", side_effect=ValueError("FAKEKEY private issuer data")),
+        ):
             proof = target.run(object())
         self.assertEqual(proof["source_status"], "SOURCE_GAP_FAIL_CLOSED")
         self.assertEqual(proof["failure_code"], "OFFICIAL_SOURCE_OR_LAYOUT_UNVERIFIED")
