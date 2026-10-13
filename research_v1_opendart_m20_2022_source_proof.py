@@ -62,31 +62,74 @@ class SourceGap(ValueError):
     """Non-sensitive error code only."""
 
 
+# Official OpenDART list.json report_nm prefixes, source: DS001 / 2019001.
+# A later attachment addition is a later filing edition, NOT a correction.
+_REPORT_NAME = f"분기보고서 ({YEAR}.09)"
+_ALLOWED_FOLLOWUPS = {
+    f"[기재정정]{_REPORT_NAME}": "CORRECTION",
+    f"[첨부정정]{_REPORT_NAME}": "CORRECTION",
+    f"[첨부추가]{_REPORT_NAME}": "ATTACHMENT_ADDED",
+}
+
+
 def _bounded_revision_shape(index: dict, receipt: str) -> dict:
-    """Inspect same-period filing matches; never claim full correction lineage."""
+    """Classify *initial bounded index* editions, never full revision lineage.
+
+    The full official index is first validated by original_first_receipt().
+    An unfamiliar same-period prefix fails closed; mere substring proximity
+    must not be counted as a confirmed correction. No report names leak.
+    """
     rows = index.get("list")
     if not isinstance(rows, list):
         raise SourceGap("FILING_INDEX_NOT_VALIDATED")
-    matches = [r for r in rows
-               if isinstance(r, dict)
-               and f"분기보고서 ({YEAR}.09)" in str(r.get("report_nm", ""))]
-    if not matches:
+    matched = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("report_nm"), str):
+            raise SourceGap("FILING_INDEX_NOT_VALIDATED")
+        if _REPORT_NAME in row["report_nm"]:
+            matched.append(row)
+    if not matched:
         raise SourceGap("FIRST_REPORT_NOT_IN_INDEX")
-    original = [r for r in matches if r.get("rcept_no") == receipt]
-    if len(original) != 1 or original[0].get("report_nm", "").strip() != f"분기보고서 ({YEAR}.09)":
+    original = [row for row in matched if row.get("rcept_no") == receipt]
+    if len(original) != 1 or original[0]["report_nm"].strip() != _REPORT_NAME:
         raise SourceGap("FIRST_VERSION_MISMATCH")
-    date = original[0]["rcept_dt"]
-    later = [r for r in matches if r["rcept_no"] != receipt and r["rcept_dt"] > date]
-    if len(later) != len(matches)-1:
-        raise SourceGap("AMBIGUOUS_SAME_DAY_OR_EARLIER_VERSION")
+    day = original[0].get("rcept_dt")
+    if not isinstance(day, str):
+        raise SourceGap("FILING_INDEX_NOT_VALIDATED")
+    # Official 'rm' markers: 정 = related correction after this filing;
+    # 철 = withdrawn/treated-as-withdrawn. They are NOT a full change history.
+    rm = original[0].get("rm") or ""
+    if not isinstance(rm, str):
+        raise SourceGap("FILING_INDEX_NOT_VALIDATED")
+    if "철" in rm:
+        raise SourceGap("FIRST_FILING_WITHDRAWAL_MARKED")
+    corrections = 0
+    attachment_additions = 0
+    for row in matched:
+        if row["rcept_no"] == receipt:
+            continue
+        name = row["report_nm"].strip()
+        kind = _ALLOWED_FOLLOWUPS.get(name)
+        if kind is None:
+            raise SourceGap("UNCLASSIFIED_SAME_PERIOD_FOLLOWUP")
+        later_day = row.get("rcept_dt")
+        if not isinstance(later_day, str) or later_day <= day:
+            raise SourceGap("AMBIGUOUS_SAME_DAY_OR_EARLIER_VERSION")
+        if kind == "CORRECTION":
+            corrections += 1
+        else:
+            attachment_additions += 1
     return {
         "original_receipt_date_confirmed_from_official_index": True,
-        "same_period_later_version_rows_in_initial_window": len(later),
+        "same_period_later_version_rows_in_initial_window": corrections + attachment_additions,
+        "same_period_confirmed_corrections_in_initial_window": corrections,
+        "same_period_attachment_additions_not_corrections_in_initial_window": attachment_additions,
+        "original_index_indicates_possible_later_correction": "정" in rm,
+        "original_filing_withdrawal_marker_absent": True,
         "initial_window_fully_paginated": True,
         "index_is_date_precision_not_publication_time": True,
         "full_later_correction_history_not_enumerated": True,
     }
-
 
 def run(session=None) -> dict:
     key = os.environ.get("OPENDART_API_KEY", "").strip()
@@ -117,7 +160,8 @@ def run(session=None) -> dict:
         start, end = _window(YEAR)
         index = _official_get(session, "list.json", {
             "crtfc_key": key, "corp_code": company, "bgn_de": start,
-            "end_de": end, "pblntf_ty": "A", "page_count": "100",
+            "end_de": end, "pblntf_ty": "A", "last_reprt_at": "N",
+            "page_count": "100",
         })
         first_receipt = original_first_receipt(index, YEAR)
         revision = _bounded_revision_shape(index, first_receipt)
@@ -165,6 +209,7 @@ def run(session=None) -> dict:
         allowed = {
             "FIXED_ISSUER_MAPPING_ABSENT", "FILING_INDEX_NOT_VALIDATED",
             "FIRST_REPORT_NOT_IN_INDEX", "FIRST_VERSION_MISMATCH",
+            "UNCLASSIFIED_SAME_PERIOD_FOLLOWUP", "FIRST_FILING_WITHDRAWAL_MARKED",
             "AMBIGUOUS_SAME_DAY_OR_EARLIER_VERSION",
             "ORIGINAL_ARCHIVE_NOT_INTACT", "ORIGINAL_DOCUMENT_SHA256_DRIFT",
             "UNAUTHORIZED_FINANCIAL_ADMISSION",
