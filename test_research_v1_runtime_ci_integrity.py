@@ -123,5 +123,83 @@ class ImmutableCaseParityTest(unittest.TestCase):
             ci.run_suite("cost", self.root / "collect.json")
 
 
+
+class OneRunnerFailClosedTest(unittest.TestCase):
+    """Offline-only mock subprocesses; no data, holdout or trade orders."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+
+    def test_failed_child_process_fails_closed(self):
+        import research_v1_runtime_one_runner as runner
+        class Finished:
+            returncode = 1
+            stdout = "offline fixture failed"
+            stderr = ""
+        with patch.object(runner.subprocess, "run", return_value=Finished()), \
+             self.assertRaises(RuntimeError):
+            runner._run("risk", self.root / "risk.json")
+
+    def test_missing_case_report_fails_closed(self):
+        import research_v1_runtime_one_runner as runner
+        class Finished:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        with patch.object(runner.subprocess, "run", return_value=Finished()), \
+             self.assertRaises(FileNotFoundError):
+            runner._run("cost", self.root / "cost.json")
+
+    def test_one_failed_parallel_child_rejects_combined_run(self):
+        import research_v1_runtime_one_runner as runner
+        def fake_child(suite, out):
+            if suite == "risk":
+                raise RuntimeError("synthetic risk worker failure")
+        with patch.object(runner, "_run", side_effect=fake_child), \
+             self.assertRaisesRegex(RuntimeError, "fail-closed parallel execution"):
+            runner.benchmark(self.root)
+        self.assertFalse((self.root / "one_runner_report.json").exists())
+
+    def test_missing_parity_file_rejected(self):
+        import research_v1_runtime_one_runner as runner
+        with patch.object(runner, "_run", return_value=None), \
+             patch.object(runner, "compare", return_value=None), \
+             self.assertRaises(FileNotFoundError):
+            runner.benchmark(self.root)
+        self.assertFalse((self.root / "one_runner_report.json").exists())
+
+    def test_synthetic_exact_parity_preserves_disabled_flags(self):
+        import research_v1_runtime_one_runner as runner
+        records = {}
+        expected = {}
+        for suite in ci.SUITES:
+            cases = [[Path(ci.SUITES[suite][0]).stem, "test_synthetic_" + suite, "passed"]]
+            records[suite] = cases
+            expected[suite] = (1, ci.case_digest(cases))
+        all_cases = sorted(case for cases in records.values() for case in cases)
+        records["all"] = all_cases
+        expected["all"] = (len(all_cases), ci.case_digest(all_cases))
+        def fake_child(suite, out):
+            cases = records[suite]
+            payload = {
+                "suite": suite, "test_files": ci._expected_files(suite),
+                "exit_code": 0, "duration_seconds": 1.0,
+                "test_count": len(cases), "cases": cases,
+                "case_digest_sha256": ci.case_digest(cases),
+                "profitability_evaluated": False,
+                "source_admission_modified": False,
+                "holdout_accessed": False, "ordering": False,
+            }
+            out.write_text(json.dumps(payload), encoding="utf-8")
+        with patch.dict(ci.PINNED_CASES, expected, clear=True), \
+             patch.object(runner, "_run", side_effect=fake_child):
+            report = runner.benchmark(self.root)
+        self.assertIs(report["test_outcomes_identical"], True)
+        for key in ("economic_backtest_measured", "official_data_pit_admitted",
+                    "full_workflow_wall_speedup_measured", "holdout_accessed", "ordering"):
+            self.assertIs(report[key], False)
+
 if __name__ == "__main__":
     unittest.main()
