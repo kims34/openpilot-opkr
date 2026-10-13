@@ -10,6 +10,7 @@ from research_v1_kiwoom_flow_pit_structural import (
 def rec(**replacements):
     candidate = {
         "source": "KIWOOM_REST_KA10059",
+        "capture_mode": "HISTORICAL_RECONSTRUCTION",
         "isin": "KR7005930003",  # Format sample only; NOT identity authority
         "symbol": "005930",
         "venue": "KRX",
@@ -43,6 +44,66 @@ class CandidateKiwoomFlowPITTest(unittest.TestCase):
         # structurally consistent, the result cannot be admitted as PIT.
         out = audit_candidate_pit([rec()])
         self.assertFalse(out["broker_publication_time_contract_verified"])
+
+    def test_historical_late_extraction_not_automatically_lookahead(self):
+        # Archived data are often downloaded years later. The release must
+        # still be independently proven and this never admits historical PIT.
+        out = audit_candidate_pit([rec(
+            capture_mode="HISTORICAL_RECONSTRUCTION",
+            ingested_at="2026-10-13T20:00:00+09:00",
+            decision_at="2026-10-09T09:00:00+09:00",
+        )])
+        self.assertEqual(out["capture_mode"], "HISTORICAL_RECONSTRUCTION")
+        self.assertFalse(out["prospective_ingestion_before_decision_checked"])
+        self.assertFalse(out["source_admitted"])
+
+    def test_prospective_ingested_after_decision_is_lookahead(self):
+        with self.assertRaisesRegex(KiwoomFlowPITError, "prospective lookahead"):
+            audit_candidate_pit([rec(capture_mode="PROSPECTIVE_CAPTURE")])
+
+    def test_prospective_ingested_before_decision_is_structurally_consistent(self):
+        out = audit_candidate_pit([rec(
+            capture_mode="PROSPECTIVE_CAPTURE",
+            ingested_at="2026-10-08T18:05:00+09:00",
+        )])
+        self.assertTrue(out["prospective_ingestion_before_decision_checked"])
+        self.assertFalse(out["source_admitted"])
+        self.assertFalse(out["performance_testing_authorized"])
+
+    def test_prospective_local_receive_must_precede_decision_even_when_published_early(self):
+        with self.assertRaisesRegex(KiwoomFlowPITError, "prospective lookahead"):
+            audit_candidate_pit([rec(
+                capture_mode="PROSPECTIVE_CAPTURE",
+                published_at="2026-10-08T11:00:00+09:00",
+                available_at="2026-10-08T12:00:00+09:00",
+                ingested_at="2026-10-09T09:01:00+09:00",
+                decision_at="2026-10-09T09:00:00+09:00",
+            )])
+
+    def test_missing_capture_mode_rejected(self):
+        candidate = rec()
+        del candidate["capture_mode"]
+        with self.assertRaisesRegex(KiwoomFlowPITError, "missing required"):
+            audit_candidate_pit([candidate])
+
+    def test_invalid_capture_mode_rejected(self):
+        with self.assertRaisesRegex(KiwoomFlowPITError, "capture mode"):
+            audit_candidate_pit([rec(capture_mode="AUTO")])
+
+    def test_unhashable_capture_mode_rejected(self):
+        with self.assertRaisesRegex(KiwoomFlowPITError, "capture mode"):
+            audit_candidate_pit([rec(capture_mode=["PROSPECTIVE_CAPTURE"])])
+
+    def test_mixed_capture_modes_rejected(self):
+        with self.assertRaisesRegex(KiwoomFlowPITError, "mixed historical/prospective"):
+            audit_candidate_pit([
+                rec(),
+                rec(event_date="2026-10-09",
+                    capture_mode="PROSPECTIVE_CAPTURE",
+                    ingested_at="2026-10-09T08:55:00+09:00",
+                    published_at="2026-10-09T08:30:00+09:00",
+                    available_at="2026-10-09T08:45:00+09:00"),
+            ])
 
     def test_same_record_unavailable_until_after_decision_fails(self):
         with self.assertRaisesRegex(KiwoomFlowPITError, "lookahead"):
