@@ -95,6 +95,15 @@ class KiwoomInvestorFlowGateTest(unittest.TestCase):
         })
         self.assertIn("overlapping_or_unsorted_pages", audit_kiwoom_probe(report)["metadata_failures"])
 
+    def test_reject_false_exhaustion_with_live_next_key(self):
+        report = example()
+        report["pages"][0]["more"] = True
+        report["history_exhausted"] = True
+        self.assertIn("pagination_exhaustion_conflict", audit_kiwoom_probe(report)["metadata_failures"])
+
+    def test_structural_pass_not_authenticated_proof(self):
+        self.assertFalse(audit_kiwoom_probe(example())["authenticated_route_evidence_verified"])
+
     def test_reject_invalid_response_hash(self):
         report = example()
         report["pages"][0]["raw_sha256"] = "invalid"
