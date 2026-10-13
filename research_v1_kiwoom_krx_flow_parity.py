@@ -54,7 +54,7 @@ def _normalize(rows: Sequence[Mapping[str, Any]], source: str) -> dict:
             raise InvestorFlowParityError("source family mismatch")
         if row["venue"] != "KRX" or row["market_scope"] != "KRX_ONLY":
             raise InvestorFlowParityError("cannot compare broker NXT/SOR/combined to KRX-only")
-        if row["measure"] not in METRICS:
+        if not isinstance(row["measure"], str) or row["measure"] not in METRICS:
             raise InvestorFlowParityError("only foreign/aggregate institution net-buy value allowed")
         if not isinstance(row["isin"], str) or ISIN.fullmatch(row["isin"]) is None:
             raise InvestorFlowParityError("invalid historical ISIN format")
