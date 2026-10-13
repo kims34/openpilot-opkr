@@ -18,9 +18,11 @@ ISIN = re.compile(r"^KR[0-9A-Z]{10}$")
 SYMBOL = re.compile(r"^[0-9]{6}$")
 VENUES = frozenset(("KRX", "NXT", "SOR"))
 SOURCE = "KIWOOM_REST_KA10059"
+CAPTURE_MODES = frozenset(("HISTORICAL_RECONSTRUCTION", "PROSPECTIVE_CAPTURE"))
 REQUIRED = (
     "source", "isin", "symbol", "venue", "event_date",
     "published_at", "available_at", "ingested_at", "decision_at",
+    "capture_mode",
     "response_sha256",
 )
 
@@ -62,6 +64,7 @@ def audit_candidate_pit(rows: Sequence[Mapping[str, Any]] | None) -> dict[str, A
         raise KiwoomFlowPITError("nonempty candidate records required")
     seen = set()
     earliest, latest = None, None
+    observed_modes: set[str] = set()
     for index, row in enumerate(rows):
         if not isinstance(row, Mapping):
             raise KiwoomFlowPITError(f"record {index}: mapping required")
@@ -70,6 +73,12 @@ def audit_candidate_pit(rows: Sequence[Mapping[str, Any]] | None) -> dict[str, A
             raise KiwoomFlowPITError(f"record {index}: missing required fields {missing}")
         if row["source"] != SOURCE:
             raise KiwoomFlowPITError(f"record {index}: source mismatch")
+        capture_mode = row["capture_mode"]
+        if not isinstance(capture_mode, str) or capture_mode not in CAPTURE_MODES:
+            raise KiwoomFlowPITError(f"record {index}: missing or invalid capture mode")
+        observed_modes.add(capture_mode)
+        if len(observed_modes) > 1:
+            raise KiwoomFlowPITError("mixed historical/prospective capture modes")
         if not isinstance(row["isin"], str) or not ISIN.fullmatch(row["isin"]):
             raise KiwoomFlowPITError(f"record {index}: official issue-id format missing")
         if not isinstance(row["symbol"], str) or not SYMBOL.fullmatch(row["symbol"]):
@@ -90,6 +99,16 @@ def audit_candidate_pit(rows: Sequence[Mapping[str, Any]] | None) -> dict[str, A
             )
         if available > decision:
             raise KiwoomFlowPITError(f"record {index}: lookahead: data not available at decision")
+        if capture_mode == "PROSPECTIVE_CAPTURE" and ingested > decision:
+            # Actual production capture cannot use data received *after* its
+            # decision, even if the broker says it published earlier.
+            raise KiwoomFlowPITError(
+                f"record {index}: prospective lookahead: ingested after decision"
+            )
+        # Retrospective ingestion can occur years after a historical decision;
+        # this is NOT itself lookahead if an independent as-published source
+        # proves available_at <= historical decision. No such proof is supplied
+        # here, so the historical admission gate remains unconditionally false.
         key = (row["isin"], row["venue"], event)
         if key in seen:
             raise KiwoomFlowPITError(f"record {index}: duplicated issue/venue/day")
@@ -99,6 +118,10 @@ def audit_candidate_pit(rows: Sequence[Mapping[str, Any]] | None) -> dict[str, A
     return {
         "source": SOURCE,
         "candidate_rows": len(rows),
+        "capture_mode": next(iter(observed_modes)),
+        "prospective_ingestion_before_decision_checked": (
+            "PROSPECTIVE_CAPTURE" in observed_modes
+        ),
         "earliest_event_date": earliest.isoformat(),
         "latest_event_date": latest.isoformat(),
         "structural_asof_timeline_valid": True,
@@ -110,7 +133,9 @@ def audit_candidate_pit(rows: Sequence[Mapping[str, Any]] | None) -> dict[str, A
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
         "interpretation": (
-            "Structural as-of alignment is necessary, NOT historical PIT evidence. "
+            "Retrospective collection after a historical decision is allowed only "
+            "as unadmitted structural metadata; prospective mode requires ingestion "
+            "before decision. Structural as-of alignment is necessary, NOT historical PIT evidence. "
             "Independently archived source vintages, official identities/coverage, "
             "venue, exact unit semantics, licence and availability proof are absent."
         ),
