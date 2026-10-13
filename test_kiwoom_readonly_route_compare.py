@@ -72,6 +72,9 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
         for secret in ("synthetic-never-print", "synthetic-private-account", "private-proxy"):
             self.assertNotIn(secret, json.dumps(reduced))
         for field, replacement in [
+            ("STAGE", []),
+            ("ERROR_CLASS", []),
+            ("TYPE00_EVENT_COUNT", True),
             ("ORDERING", "ENABLED"),
             ("REAL_ORDERS_AUTHORIZED", True),
             ("FUNDS_MOVEMENT_AUTHORIZED", True),
@@ -99,6 +102,10 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                     probe._safe_summary(json.dumps(mutation), 0, "system")
         with self.assertRaises(probe.DiagnosticError):
             probe._safe_summary(json.dumps(state()), 0, "system")
+        incomplete = state()
+        incomplete.pop("WS_LOGIN_OK")
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(incomplete), 2, "system")
         ack = state(stage="TYPE00_ACK_ONLY_NO_EVENTS", code=0, detail=None,
                     login_ok=True, ack_ok=True)
         self.assertEqual(probe._safe_summary(json.dumps(ack), 3, "system")["STAGE"],
