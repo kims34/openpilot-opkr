@@ -32,6 +32,12 @@ from research_v1_opendart_m20_2022_first_document_pilot import (
 SLOT = 5
 YEAR = 2022
 MAX_CALLS = 3
+# Pinned from the independent successful official first-filing run #38381866190.
+# A ZIP digest change may be a provider repackage, revised content, or a
+# changed retrieval; none is silently admitted as the audited original.
+EXPECTED_ORIGINAL_DOCUMENT_SHA256 = (
+    "56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb"
+)
 OUTPUT = Path("research_results/opendart_m20_2022_provenance/proof.json")
 SAFE_FALSE = (
     "is_standardized_financial_xbrl",
@@ -117,6 +123,11 @@ def run(session=None) -> dict:
         revision = _bounded_revision_shape(index, first_receipt)
         stage = "ORIGINAL_DOCUMENT_ZIP"
         source = _fetch_first_document(session, key, first_receipt)
+        source_digest = hashlib.sha256(source).hexdigest()
+        if source_digest != EXPECTED_ORIGINAL_DOCUMENT_SHA256:
+            # Neither an apparently valid ZIP nor a dated receipt can override
+            # the bytes previously pinned by a successful official read.
+            raise SourceGap("ORIGINAL_DOCUMENT_SHA256_DRIFT")
         parsed = inspect_original_document_layout(source)
         if (not parsed["official_original_document_zip_received"]
                 or not parsed["zip_crc_and_bounded_read_completed"]):
@@ -124,7 +135,7 @@ def run(session=None) -> dict:
         report.update(revision)
         report.update({
             "official_initial_2022_document_received": True,
-            "document_sha256": hashlib.sha256(source).hexdigest(),
+            "document_sha256": source_digest,
             "zip_integrity_confirmed": True,
             "structured_markup_entries": parsed["structured_markup_entries_inspected"],
             "sgml_html_entries": parsed["non_xml_sgml_html_layout_entries"],
@@ -155,7 +166,8 @@ def run(session=None) -> dict:
             "FIXED_ISSUER_MAPPING_ABSENT", "FILING_INDEX_NOT_VALIDATED",
             "FIRST_REPORT_NOT_IN_INDEX", "FIRST_VERSION_MISMATCH",
             "AMBIGUOUS_SAME_DAY_OR_EARLIER_VERSION",
-            "ORIGINAL_ARCHIVE_NOT_INTACT", "UNAUTHORIZED_FINANCIAL_ADMISSION",
+            "ORIGINAL_ARCHIVE_NOT_INTACT", "ORIGINAL_DOCUMENT_SHA256_DRIFT",
+            "UNAUTHORIZED_FINANCIAL_ADMISSION",
         }
         reason = str(exc) if type(exc) in (SourceGap, OriginalDocumentGap) else ""
         report["failure_code"] = reason if reason in allowed else "OFFICIAL_SOURCE_OR_LAYOUT_UNVERIFIED"
