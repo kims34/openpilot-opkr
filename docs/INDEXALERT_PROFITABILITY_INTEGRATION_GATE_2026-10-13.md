@@ -30,3 +30,9 @@
 - 사용자 작업이 꼭 필요한 허가/외부 장애인 경우에만 보고. 루틴 현황 알림 및 중복 과거 수익성 분석 금지.
 
 **총괄 다음 게이트:** 각 Work의 실제 커밋/증거 수집 → PIT/market/source PASS 다중 검증 → 단일 M20 비용차감 WF 판정 → 분리된 독립 승격·실거래 승인.
+
+
+## 2026-10-13 후속 수집 (원본 PIT 미통과 상태 유지)
+- [OpenDART 공식 run 38392847048](https://github.com/kims34/openpilot-opkr/actions/runs/38392847048)의 offline source/lineage, official original read-only 두 job이 모두 성공함을 별도 확인. [소스 전담 Draft PR #412](https://github.com/kims34/openpilot-opkr/pull/412)의 최초 2022 source digest `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb` 고정 재확인; **이는 ZIP 원본 일치만 PASS이며 2022 분기 CFS 사실값, 정확한 available-at, 정정 전체 연혁, 종목 이력, 공식 M20 수익성 통과가 아님**.
+- [최적화 Draft PR #413](https://github.com/kims34/openpilot-opkr/pull/413)의 독립 [run 38381997417](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417), [38382214223](https://github.com/kims34/openpilot-opkr/actions/runs/38382214223)는 각각 6/6 jobs, 34/34 testcase parity. 기존 비교기에서 **양쪽 동일 테스트 누락 시 오탐 PASS 가능**을 발견. 격리 브랜치 [code a9b2c90](https://github.com/kims34/openpilot-opkr/commit/a9b2c90b6f4da209aefed374210a47e434f7ce77), [synthetic tests 0ef696c](https://github.com/kims34/openpilot-opkr/commit/0ef696c104c4cc0e806c95f7db20a73df7c20c22), [workflow 4959c45](https://github.com/kims34/openpilot-opkr/commit/4959c4518c593dc13d097657ff859359db483f89)로 고정 34개 identity digest와 suites pinned 검증을 추가. [new run 38413552682](https://github.com/kims34/openpilot-opkr/actions/runs/38413552682)는 최초 조회 시 pending, 아직 수정을 PASS로 표시하지 않음.
+- 위 진행은 오프라인 검증과 문서/PR 기록만 대상. 공식 수익성 평가/Independent Holdout 및 Tiny Live 권한은 **NOT VERIFIED / DISABLED**.
