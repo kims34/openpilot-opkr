@@ -29,9 +29,12 @@ def krx(amount="1000", **changes):
 
 class ValueParityTest(unittest.TestCase):
     def test_matching_synthetic_rows_not_admitted(self):
-        result = audit_cross_source_parity([r()], [krx()])
+        result = audit_cross_source_parity(
+            [r(), r(amount="-40", measure="INSTITUTION_NET_BUY_VALUE")],
+            [krx(), krx(amount="-40", measure="INSTITUTION_NET_BUY_VALUE")],
+        )
         self.assertTrue(result["declared_scope_exact_numeric_match"])
-        self.assertEqual(result["matched_rows"], 1)
+        self.assertEqual(result["matched_rows"], 2)
         for key in (
             "historical_units_independently_attested",
             "source_originals_authenticated",
@@ -42,13 +45,60 @@ class ValueParityTest(unittest.TestCase):
         ):
             self.assertFalse(result[key], key)
 
+    def test_foreign_only_panel_cannot_claim_both_flow_measures(self):
+        out = audit_cross_source_parity([r()], [krx()])
+        self.assertEqual(out["numeric_mismatch_rows"], 0)
+        self.assertEqual(out["declared_incomplete_measure_pair_count"], 1)
+        self.assertFalse(out["declared_scope_exact_numeric_match"])
+
+    def test_broker_institution_missing_even_when_foreign_matches(self):
+        out = audit_cross_source_parity(
+            [r()],
+            [krx(), krx("-100", measure="INSTITUTION_NET_BUY_VALUE")],
+        )
+        self.assertEqual(out["declared_incomplete_measure_pair_count"], 1)
+        self.assertEqual(out["krx_only_rows"], 1)
+        self.assertFalse(out["declared_scope_exact_numeric_match"])
+
+    def test_distinct_vendor_unit_contracts_never_claim_exact_parity(self):
+        out = audit_cross_source_parity(
+            [r(), r("KIWOOM_KA10059", "50", "INSTITUTION_NET_BUY_VALUE")],
+            [krx(normalization_contract_sha256="c" * 64),
+             krx("50", measure="INSTITUTION_NET_BUY_VALUE",
+                 normalization_contract_sha256="c" * 64)],
+        )
+        self.assertEqual(out["numeric_mismatch_rows"], 0)
+        self.assertEqual(out["declared_incomplete_measure_pair_count"], 0)
+        self.assertFalse(out["declared_normalization_contracts_match"])
+        self.assertFalse(out["declared_scope_exact_numeric_match"])
+        self.assertFalse(out["historical_units_independently_attested"])
+
+    def test_decimal_string_not_valid_canonical_integer_krw(self):
+        with self.assertRaisesRegex(InvestorFlowParityError, "exact integer"):
+            audit_cross_source_parity([r(amount="1000.0")], [krx()])
+
+    def test_scientific_notation_not_valid_canonical_integer_krw(self):
+        with self.assertRaisesRegex(InvestorFlowParityError, "exact integer"):
+            audit_cross_source_parity([r(amount="1e3")], [krx()])
+
+    def test_thousands_separators_not_valid_canonical_integer_krw(self):
+        with self.assertRaisesRegex(InvestorFlowParityError, "exact integer"):
+            audit_cross_source_parity([r(amount="1,000")], [krx()])
+
+    def test_whitespace_not_valid_canonical_integer_krw(self):
+        with self.assertRaisesRegex(InvestorFlowParityError, "exact integer"):
+            audit_cross_source_parity([r(amount=" 1000 ")], [krx()])
+
     def test_broker_numeric_mismatch_never_rounded_into_pass(self):
         result = audit_cross_source_parity([r(amount="1000")], [krx("1001")])
         self.assertFalse(result["declared_scope_exact_numeric_match"])
         self.assertEqual(result["numeric_mismatch_rows"], 1)
 
     def test_negative_net_buy_is_permitted(self):
-        result = audit_cross_source_parity([r(amount="-1000")], [krx("-1000")])
+        result = audit_cross_source_parity(
+            [r(amount="-1000"), r(amount="-8", measure="INSTITUTION_NET_BUY_VALUE")],
+            [krx("-1000"), krx("-8", measure="INSTITUTION_NET_BUY_VALUE")],
+        )
         self.assertTrue(result["declared_scope_exact_numeric_match"])
 
     def test_missing_broker_date_does_not_disappear(self):
