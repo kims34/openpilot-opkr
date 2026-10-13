@@ -30,23 +30,39 @@ class CandidateRowsTests(unittest.TestCase):
         anum = Counter({("영업이익", ("10", "9")): 1})
         b = Counter({("영업이익", "11", "9"): 1})
         bnum = Counter({("영업이익", ("11", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum), (b, bnum)]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64), (b, bnum, "y" * 64)]):
             result = target.compare(b"fake-original", b"fake-amended")
         self.assertTrue(result["exact_label_row_text_multisets_differ"])
         self.assertTrue(result["numeric_peer_shape_multisets_differ"])
         self.assertEqual(result["identical_exact_label_row_candidates_multiset"], 0)
         self.assertTrue(result["financial_semantic_differences_still_unverified"])
+        self.assertTrue(result["embedded_markup_bytes_differ"])
         self.assertNotIn("11", str(result))
         self.assertNotIn("10", str(result))
 
     def test_identical_candidates_do_not_override_different_document_hashes(self):
         a = Counter({("영업이익", "10", "9"): 1})
         n = Counter({("영업이익", ("10", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, n), (a, n)]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, n, "x" * 64), (a, n, "x" * 64)]):
             result = target.compare(b"original", b"amended")
         self.assertFalse(result["exact_label_row_text_multisets_differ"])
         self.assertFalse(result["numeric_peer_shape_multisets_differ"])
+        self.assertFalse(result["embedded_markup_bytes_differ"])
         self.assertTrue(result["financial_semantic_differences_still_unverified"])
+
+    def test_identical_earnings_rows_do_not_imply_same_markup_content(self):
+        a = Counter({("영업이익", "10", "9"): 1})
+        n = Counter({("영업이익", ("10", "9")): 1})
+        with patch.object(target, "_diagnostic_rows", side_effect=[
+            (a, n, "a" * 64), (a, n, "b" * 64),
+        ]):
+            result = target.compare(b"original", b"amendment")
+        self.assertFalse(result["exact_label_row_text_multisets_differ"])
+        self.assertTrue(result["embedded_markup_bytes_differ"])
+        self.assertTrue(result["financial_semantic_differences_still_unverified"])
+        for key in ("2022_q3_original_cfs_profit_verified",
+                    "m20_feature_pit_admitted", "real_orders_authorized"):
+            self.assertNotIn(key, result)
 
     def test_layout_budget_hard_stop(self):
         with patch.object(target, "MAX_CELLS_PER_ROW", 1):
