@@ -22,6 +22,16 @@ class ArchivedRegressionSourcesTest(unittest.TestCase):
         pin = patch.dict(gate.ARCHIVED_GIT_BLOBS, self.mock_hashes, clear=True)
         pin.start()
         self.addCleanup(pin.stop)
+        self.mock_impl_hashes = {}
+        for i, filename in enumerate(gate.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS):
+            content = ("synthetic implementation bytes " + str(i) + "\\n").encode()
+            (self.root / filename).write_bytes(content)
+            self.mock_impl_hashes[filename] = gate.git_blob_sha1(content)
+        pinned_impl = patch.dict(
+            gate.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS, self.mock_impl_hashes, clear=True
+        )
+        pinned_impl.start()
+        self.addCleanup(pinned_impl.stop)
 
     def test_git_blob_exact_object_identity(self):
         # Independent git-hash-object reference: blob of b'hello\\n'.
@@ -32,6 +42,8 @@ class ArchivedRegressionSourcesTest(unittest.TestCase):
         verdict = gate.validate_source_definitions(self.root)
         self.assertTrue(verdict["git_blob_shas_verified"])
         self.assertEqual(verdict["archived_regression_source_files"], 8)
+        self.assertEqual(verdict["archived_direct_implementation_files"], 9)
+        self.assertIs(verdict["all_transitive_imports_pinned"], False)
         for key in ("source_pit_admitted", "profitability_evaluated",
                     "holdout_accessed", "ordering"):
             self.assertIs(verdict[key], False)
@@ -41,6 +53,27 @@ class ArchivedRegressionSourcesTest(unittest.TestCase):
         file.write_bytes(file.read_bytes() + b"\ndef test_same_name(): pass\n")
         with self.assertRaises(gate.SourceDriftError):
             gate.validate_source_definitions(self.root)
+
+    def test_unchanged_test_name_but_changed_implementation_rejected(self):
+        implementation = self.root / "research_v1_portfolio.py"
+        implementation.write_bytes(implementation.read_bytes() + b"\\n# changed algorithm\\n")
+        with self.assertRaises(gate.SourceDriftError):
+            gate.validate_source_definitions(self.root)
+
+    def test_missing_or_relinked_implementation_fails_closed(self):
+        implementation = self.root / "research_v1_pit_run_purged.py"
+        implementation.unlink()
+        with self.assertRaises(gate.SourceDriftError):
+            gate.validate_source_definitions(self.root)
+        implementation.symlink_to(self.root / "research_v1_core.py")
+        with self.assertRaises(gate.SourceDriftError):
+            gate.validate_source_definitions(self.root)
+
+    def test_fake_implementation_blob_manifest_is_not_sufficient(self):
+        # One file silently removed from a locally weakened manifest should
+        # not be treated as a proof of all direct implementations. This
+        # control pins the independent expected manifest cardinality.
+        self.assertEqual(len(gate.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS), 9)
 
     def test_requirements_dependency_version_change_rejected(self):
         (self.root / "requirements-indexalert-runtime-ci.txt").write_bytes(
