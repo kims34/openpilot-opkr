@@ -1,0 +1,28 @@
+name: IndexAlert KRX Source PIT Handoff Offline Guard
+
+on:
+  push:
+    branches:
+      - indexalert-krx-pit-source-audit-20261013
+    paths:
+      - 'evidence/krx/2026-10-13-krx-market-source-pit-boundaries.json'
+      - 'test_indexalert_krx_market_source_pit_boundaries.py'
+      - '.github/workflows/indexalert-krx-pit-handoff-offline-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata-only-no-network-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify committed sanitized KRX handoff; no external calls or secrets
+        run: python -m unittest -v test_indexalert_krx_market_source_pit_boundaries.py
