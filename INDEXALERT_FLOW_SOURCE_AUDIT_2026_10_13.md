@@ -65,3 +65,19 @@ After source admission, preregister a *single*, non-retuned independent evaluati
 - No source-vintage claim, acquisition contract admission, experimental preregistration, profitability claim, holdout read, live order, secret modification, or Railway mutation occurred.
 
 **Next authorized operation:** where an isolated existing-key **read-only** runner can be invoked without mutating concurrent services, execute the existing bounded ka10059 probe with `ORDERING=false`, save only non-secret response metadata, then separately validate historical publication/vintage/coverage/rights. Do not force moving Railway secrets to GitHub or ask the user to paste keys into chat. Until that operation is feasible, `SOURCE_NOT_ADMITTED` is the definitive research state.
+
+## 2026-10-13 23:27 KST — continuation / independent negative tests
+
+The hourly continuation state and GitHub were rechecked. The isolated branch and draft PR #416 remained unmerged; the primary research branch remained at `3b8b7830612a6284d7c7a60628cb527cb741627a`, so no conflicting research-base edit was required. The research continuation automation was enabled and had run on 2026-10-13 22:25 KST (automation scheduling is separate from a successful GitHub data collection).
+
+**Concrete new code changes in the isolated branch only:**
+
+1. Existing `research_v1_kiwoom_investor_flow_probe.py` now requires both cumulative trading value `acc_trde_prica` **and cumulative trading quantity `acc_trde_qty`**, rather than silently accepting a source row that cannot support the requested activity analysis. Signed negative foreign/institution net buying remains permissible; negative cumulative trading value or trading volume fails closed. Zero activity is not auto-filled or rejected as missing. Within-page reverse-date anomalies are recorded and block acceptance of metadata.
+2. New `test_research_v1_kiwoom_investor_flow_probe.py` tests the existing *original* probe using an injected in-memory transport, without any external networking or broker credentials. Tests cover an absent key, unsafe ORDERING, wrong host, token rejected, missing quantity, signed flow, inactive row, future day, reversed dates, missing next-key, duplicate cross-page days, broker data error and no credential/token leakage into serialized evidence.
+3. The isolated source metadata gate now verifies new zero-anomaly counters and corresponding negative regressions. The CI workflow was extended to execute both test modules.
+
+**Exact executed CI evidence:** [run #38413548428](https://github.com/kims34/openpilot-opkr/actions/runs/38413548428), commit `89990927a412cbc69df08b4602d615a34f30a64d`, conclusion **SUCCESS**, `Ran 31 tests` / `OK` (31 synthetic/offline tests, *not* 31 historical trials).
+
+**Admission remains unchanged:** no real authenticated `ka10059` data acquisition, no complete historical security-level/venue-specific official panel, no release-time/vintage record-level PIT, no new strategy preregistration or financial backtest. The previous GitHub bounded source check was `AUTH_NOT_CONFIGURED` in that Actions environment, while separately held Railway credentials were not migrated or modified. `ORDERING=false`; no live account actions; existing H5/M20, Champion and Holdout unchanged.
+
+**Next work item:** obtain authorized primary-source original-response *metadata* on the previously configured read-only environment without copying credentials, then verify broker vs KRX venue/unit/individual-investor category parity and the acquisition licence. Keep sampled-route reachability separate from retrospective source-admission and complete 2015–2026 PIT universe coverage.
