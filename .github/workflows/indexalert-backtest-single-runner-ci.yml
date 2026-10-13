@@ -7,6 +7,8 @@ on:
     paths:
       - 'research_v1_runtime_single_runner.py'
       - 'test_research_v1_runtime_single_runner.py'
+      - 'research_v1_runtime_handoff.py'
+      - 'test_research_v1_runtime_handoff.py'
       - '.github/workflows/indexalert-backtest-single-runner-ci.yml'
   pull_request:
     branches:
@@ -14,6 +16,8 @@ on:
     paths:
       - 'research_v1_runtime_single_runner.py'
       - 'test_research_v1_runtime_single_runner.py'
+      - 'research_v1_runtime_handoff.py'
+      - 'test_research_v1_runtime_handoff.py'
       - '.github/workflows/indexalert-backtest-single-runner-ci.yml'
   workflow_dispatch:
 
@@ -41,6 +45,7 @@ jobs:
         run: |
           python -m unittest -v test_research_v1_runtime_ci_integrity
           python -m unittest -v test_research_v1_runtime_single_runner
+          python -m unittest -v test_research_v1_runtime_handoff
       - name: Existing immutable offline tests, one-runner serial vs concurrent
         run: python research_v1_runtime_single_runner.py --out-dir runtime_opt_results/one_runner
       - name: Upload exact regression parity and test-phase timings
