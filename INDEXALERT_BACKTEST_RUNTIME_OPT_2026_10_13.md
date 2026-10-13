@@ -1,0 +1,38 @@
+# IndexAlert backtest execution environment — isolated optimization evidence
+
+Date: 2026-10-13 KST. Scope: engineering-only, NOT a new trial, NOT a market-data source-admission certificate.
+
+## Base and isolation
+- Research source baseline: `index-alert-research-v1` at `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Engineering branch: `index-alert-backtest-runtime-opt-v1-20261013`.
+- Do not alter research/dev branches, Frozen H5, M20 preregistration, 504/126/126, 20-session purge/embargo, 5-day H5 horizon, taxes, costs, champion/holdout gates, or `ORDERING=false`.
+
+## Existing bottlenecks identified by code inspection
+1. `.github/workflows/indexalert-research-v1.yml` builds a preliminary marcap PIT panel and then executes four dependent research analyses sequentially in its `pit-preliminary` job. Its `smoke-test-and-backtest` job likewise executes multiple analyses sequentially. These are archived developmental methods, not approved official profitability verdicts.
+2. `.github/workflows/indexalert-research-v1-fast.yml` restores year/date/name caches and computes six challenger recipes sequentially. A matching path/date cache key alone is insufficient proof of source or policy immutability. This archived workflow must NOT be replayed as an independent OOS result.
+3. `research_v1_supervised_cache.py` already validates policy and a source fingerprint, but its underlying fingerprint uses aggregate 64-bit hashes; it is not a source-byte SHA-256 or independent admission certificate. Current code invalidates mismatched existing labels instead of silently accepting them, which must be preserved.
+4. `research_v1_cost_sensitivity.py` computes selection once then multiple cost scenarios; the cost scenarios can be fan-out tasks only when the identical fully admitted immutable selection/evaluation data exist. Risk/ES and cost stress can also be independent consumers of one pinned portfolio path; model fitting, fold ordering, and capital-state transitions must NOT be parallelized across dependencies.
+
+## Implemented (without running profitability)
+- `research_v1_runtime_manifest.py` builds a SHA-256 content-addressed key of exact source bytes, calculation code bytes, independent source receipt, frozen policy and runtime lock. A missing source admission flag/hash, altered input, code, policy or runtime makes a cache non-reusable. It never authorizes evaluation, holdout or orders.
+- Synthetic regression tests verify deterministic same-byte reuse, tamper rejection, all required admission gates, and no order/holdout authorization.
+- New isolated GitHub Actions workflow runs existing **offline unit tests only**, independently by cost/risk/frozen-gate/cache groups, alongside one serial control; comparison rejects even one different test identity or status. Outputs wall-clock test process timings, SHA-256 testcase parity and artifacts; measures no backtest wall-time improvement.
+- No data acquisition, original evidence mutation, market-model fitting, numerical profitability generation, or consumed holdout read.
+- Tests using synthetic market bars are only software regression fixtures; success does not admit financial source data.
+
+## Preparation for future data-admitted economic evaluation
+Only after official source and PIT gates independently pass:
+- Persist one verified, immutable source panel and lineage receipts. Never trust GitHub cache name/date alone; require content and policy digest parity.
+- Build pinned supervised features and fixed original rank/entry/exit paths once. Reuse only when byte-identical receipt, code and policy hashes match; any upstream change invalidates dependent artifacts.
+- Fan-out *post-selection* cost, risk/ES and sensitivity analyses as read-only consumers of identical pinned artifacts; independently reproduce serial results before promotion. Keep cash days and stateful trade-position transitions ordered.
+- Keep a fixed scheduler barrier before joining outputs. No silent missing-job substitution, no rank4+ backfill, no false `PIT_ADMITTED` from a local manifest, and no new official returns until external admission passes.
+- Benchmark end-to-end on admissible, previously sanctioned replay only; distinguish setup time, data acquisition time, model time and post-processing time. The new CI measures **offline regression test duration only**, not expected full profitability run speed.
+
+## Admission / authorization state
+- H5: archival developmental evidence only; no new holdout or promotion.
+- M20: `NOT_EVALUABLE_NEW_EVIDENCE_REQUIRED` until multi-year original-filing PIT evidence and official KRX tradability/economics are admitted.
+- KRX unverified status/affected symbols are never converted to eligible positions by cache reuse.
+- `ORDERING=false`, no live orders, funds transfer, permission changes or Champion mutation.
+
+## CI evidence
+See the dedicated GitHub Actions job run and artifact `runtime-opt-parity-report` on this branch for observed serial/parallel test phase timings, exact testcase parity and outcome. Do not claim a speedup until the job completes and the report says `test_outcomes_identical=true`.
