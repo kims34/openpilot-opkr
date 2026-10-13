@@ -229,6 +229,31 @@ class OriginalDocument2022Tests(unittest.TestCase):
         self.assertEqual(out["tables_profit_2022_q3_window_in_first_twelve_rows"], 0)
         self.assertEqual(out["tables_with_exact_operating_row"], 1)
 
+
+    def test_quarter_marker_and_consolidated_income_headline_intersection(self):
+        markup = (
+            "<DOCUMENT><P>연결 포괄손익계산서&nbsp;</P>"
+            "<TABLE><TR><TD>제24기 3분기<TD>비교 표시</TR>"
+            "<TR><TD>영업이익<TD>200<TD>100</TR></TABLE></DOCUMENT>"
+        ).encode()
+        result = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(result["tables_profit_quarter_marker_in_first_twelve_rows"], 1)
+        self.assertEqual(result["tables_profit_with_nearby_exact_consolidated_income_heading"], 1)
+        self.assertEqual(result["tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading"], 1)
+        self.assertFalse(result["original_q3_cfs_three_month_profit_bound"])
+        self.assertFalse(result["original_document_financial_semantics_validated"])
+
+    def test_unrelated_consolidated_balance_sheet_heading_does_not_claim_income(self):
+        markup = (
+            "<DOCUMENT><P>연결재무제표&nbsp;</P>"
+            "<TABLE><TR><TD>3분기<TD>분기</TR>"
+            "<TR><TD>영업이익<TD>200<TD>100</TR></TABLE></DOCUMENT>"
+        ).encode()
+        result = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(result["tables_profit_with_nearby_consolidated_heading"], 1)
+        self.assertEqual(result["tables_profit_with_nearby_exact_consolidated_income_heading"], 0)
+        self.assertEqual(result["tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading"], 0)
+
     def test_entity_declaration_blocks_even_html_fallback(self):
         data = b'<!DOCTYPE DOCUMENT [<!ENTITY x SYSTEM "file:///etc/passwd">]><DOCUMENT><TABLE>&x;</TABLE></DOCUMENT>'
         with self.assertRaisesRegex(OriginalDocumentGap, "DOCUMENT_LAYOUT_ENTITY_DECLARATION"):

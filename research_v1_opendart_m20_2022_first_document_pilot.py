@@ -223,6 +223,12 @@ class _BoundedDisclosureHTML(HTMLParser):
         self.tables_with_profit_and_2021_q3_window_in_prefix = 0
         self.tables_with_profit_and_both_period_windows_in_prefix = 0
         self.tables_with_profit_and_quarter_marker_in_table = 0
+        self.tables_profit_with_nearby_consolidated_heading = 0
+        self.tables_profit_with_nearby_income_heading = 0
+        self.tables_profit_with_nearby_exact_consolidated_income_heading = 0
+        self.tables_profit_with_quarter_and_nearby_consolidated_heading = 0
+        self.tables_profit_with_quarter_and_nearby_income_heading = 0
+        self.tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading = 0
 
     def _finish_cell(self):
         if self.active_cell is not None:
@@ -287,6 +293,8 @@ class _BoundedDisclosureHTML(HTMLParser):
                     "포괄손익계산서", "손익계산서")),
                 "title_consolidated_income": any(w in self.latest_title for w in (
                     "연결포괄손익계산서", "연결손익계산서")),
+                "context_exact_consolidated_income": any(w in prefix for w in (
+                    "연결포괄손익계산서", "연결손익계산서")),
                 "context_consolidated": any(w in prefix for w in (
                     "연결포괄손익계산서", "연결손익계산서", "연결재무제표")),
                 "context_income": any(w in prefix for w in (
@@ -335,6 +343,21 @@ class _BoundedDisclosureHTML(HTMLParser):
                 self.tables_examined += 1
                 if frame["profit_rows"]:
                     self.tables_with_profit_row += 1
+                    self.tables_profit_with_nearby_consolidated_heading += bool(frame["context_consolidated"])
+                    self.tables_profit_with_nearby_income_heading += bool(frame["context_income"])
+                    self.tables_profit_with_nearby_exact_consolidated_income_heading += bool(
+                        frame["context_exact_consolidated_income"]
+                    )
+                    if frame["quarter_marker"]:
+                        self.tables_profit_with_quarter_and_nearby_consolidated_heading += bool(
+                            frame["context_consolidated"]
+                        )
+                        self.tables_profit_with_quarter_and_nearby_income_heading += bool(
+                            frame["context_income"]
+                        )
+                        self.tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading += bool(
+                            frame["context_exact_consolidated_income"]
+                        )
                     self.tables_with_profit_and_2022_q3_window_in_table += bool(frame["period_2022"])
                     self.tables_with_profit_and_2021_q3_window_in_table += bool(frame["period_2021"])
                     self.tables_with_profit_and_both_period_windows_in_table += bool(
@@ -430,6 +453,12 @@ def inspect_original_document_layout(source: bytes) -> dict:
         "tables_profit_2021_q3_window_in_nearby_text": 0,
         "tables_profit_both_q3_windows_in_nearby_text": 0,
         "tables_profit_quarter_marker_in_first_twelve_rows": 0,
+        "tables_profit_with_nearby_consolidated_heading": 0,
+        "tables_profit_with_nearby_income_heading": 0,
+        "tables_profit_with_nearby_exact_consolidated_income_heading": 0,
+        "tables_profit_with_quarter_and_nearby_consolidated_heading": 0,
+        "tables_profit_with_quarter_and_nearby_income_heading": 0,
+        "tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading": 0,
     }
     try:
         with zipfile.ZipFile(io.BytesIO(source)) as archive:
@@ -499,6 +528,18 @@ def inspect_original_document_layout(source: bytes) -> dict:
                          scanner.tables_with_profit_and_both_period_windows_in_prefix),
                         ("tables_profit_quarter_marker_in_first_twelve_rows",
                          scanner.tables_with_profit_and_quarter_marker_in_table),
+                        ("tables_profit_with_nearby_consolidated_heading",
+                         scanner.tables_profit_with_nearby_consolidated_heading),
+                        ("tables_profit_with_nearby_income_heading",
+                         scanner.tables_profit_with_nearby_income_heading),
+                        ("tables_profit_with_nearby_exact_consolidated_income_heading",
+                         scanner.tables_profit_with_nearby_exact_consolidated_income_heading),
+                        ("tables_profit_with_quarter_and_nearby_consolidated_heading",
+                         scanner.tables_profit_with_quarter_and_nearby_consolidated_heading),
+                        ("tables_profit_with_quarter_and_nearby_income_heading",
+                         scanner.tables_profit_with_quarter_and_nearby_income_heading),
+                        ("tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading",
+                         scanner.tables_profit_with_quarter_and_nearby_exact_consolidated_income_heading),
                     ):
                         table_diagnostics[name] += observed
                     continue
