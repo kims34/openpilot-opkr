@@ -56,7 +56,7 @@ def _parse_day(value: object) -> date:
 
 def reconcile_exact_date_sets(
     *, start: str, end: str, verified_original_days: list[dict],
-    reference_closed_iso_days: list[str], expected_empty_count: int | None = None,
+    reference_closed_iso_days: list[str], expected_empty_count: int | None = None,\n    expected_original_audit_snapshot_sha256: str | None = None,
 ) -> dict:
     """Compare exact dates in memory; return ONLY aggregate counts/digests.
 
@@ -74,7 +74,7 @@ def reconcile_exact_date_sets(
         "empty_on_reference_closed": 0,
         "empty_on_reference_open": 0,
         "nonempty_on_reference_closed": 0,
-        "original_pair_scope_sha256": None,
+        "original_pair_scope_sha256": None,\n        "original_audit_compatible_snapshot_sha256": None,
         "comparison_metadata_sha256": None,
         **BLOCK,
     }
@@ -127,7 +127,7 @@ def reconcile_exact_date_sets(
             return report
         # Pair fingerprints are from private _check_one and already bound to raw SHA.
         # Final digest reveals no original provider pair hashes or exact days.
-        report["original_pair_scope_sha256"]=hashlib.sha256(json.dumps(
+        report["original_audit_compatible_snapshot_sha256"]=hashlib.sha256(json.dumps(\n            [{"day":d.replace("-",""),"pair_sha256":p} for d,p in sorted(pair_hashes)],\n            sort_keys=True,separators=(",",":")\n        ).encode("utf-8")).hexdigest()\n        if (expected_original_audit_snapshot_sha256 is not None\n                and report["original_audit_compatible_snapshot_sha256"] != expected_original_audit_snapshot_sha256):\n            report["status"]="FAIL_CLOSED_ORIGINAL_SNAPSHOT_FINGERPRINT_DRIFT"\n            return report\n        report["original_pair_scope_sha256"]=hashlib.sha256(json.dumps(
             sorted(pair_hashes),separators=(",",":")
         ).encode("utf-8")).hexdigest()
         comparison={
