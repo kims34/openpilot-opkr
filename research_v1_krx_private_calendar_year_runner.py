@@ -8,13 +8,14 @@ Even a date-set match is only source consistency, NOT PIT source admission.
 
 Example (AFTER authorized original KRX export and independent SHA are staged):
   python -B research_v1_krx_private_calendar_year_runner.py \
-    --year 2025 --document /data/krx-calendar/2025-original.xls \
+    --year 2025 --document /data/krx-calendar/2025-source-export.csv \
     --claim /data/krx-calendar/2025-claimed-dates.json \
     --expected-document-sha256 <independently pinned source sha256> --audit
 
 Output is aggregate JSON with no day-level observations or security IDs.
-The external holiday spreadsheet rows cannot be cryptographically verified
-against the manually normalized claim by this code, and are NOT attested.
+The CSV date rows must match the normalized claim exactly, or this runner
+refuses. Original KRX file origin and historical publication remain unverified;
+binary XLS/XLSX/HTML are unsupported and always rejected.
 """
 from __future__ import annotations
 
@@ -26,7 +27,7 @@ import os
 from pathlib import Path
 import re
 
-from research_v1_krx_official_calendar_input_preflight import normalize_calendar_export_claim
+from research_v1_krx_calendar_csv_source_validator import extract_and_reconcile_csv
 from research_v1_krx_private_date_set_comparator import audit_private_scope
 
 SHA = re.compile(r"^[a-f0-9]{64}$")
@@ -97,8 +98,8 @@ def run_year(
         if hashlib.sha256(original_blob).hexdigest() != expected_document_sha256:
             report["status"] = "FAIL_CLOSED_PINNED_DOCUMENT_SHA_MISMATCH"
             return report
-        ref = normalize_calendar_export_claim(original_blob, claim_data, year)
-        if ref["status"] != "SOURCE_BYTES_HASH_BOUND_CALENDAR_CLAIM_ONLY_NOT_PIT":
+        ref = extract_and_reconcile_csv(original_blob, claim_data, year)
+        if ref["status"] != "SOURCE_CSV_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT":
             return report
         inventory = json.loads(MANIFEST.read_text(encoding="utf-8"))
         matches = [
