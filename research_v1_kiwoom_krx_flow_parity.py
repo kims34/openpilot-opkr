@@ -32,6 +32,10 @@ class InvestorFlowParityError(ValueError):
 def _normalized_amount(value: Any) -> Decimal:
     if isinstance(value, bool) or not isinstance(value, (int, str, Decimal)):
         raise InvestorFlowParityError("normalized KRW amount must be exact integer")
+    if isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]+", value) is None:
+        # Canonical integer KRW only: do not accept fractional, exponent,
+        # grouped or whitespace-bearing amounts that may hide a unit error.
+        raise InvestorFlowParityError("normalized KRW amount must be exact integer")
     try:
         amount = Decimal(value)
     except (InvalidOperation, ValueError) as exc:
@@ -79,7 +83,25 @@ def _normalize(rows: Sequence[Mapping[str, Any]], source: str) -> dict:
         result[key] = _normalized_amount(row["amount_krw"])
     if len(contracts) != 1:
         raise InvestorFlowParityError(f"{source}: mixed normalization contracts")
-    return result
+    return result, next(iter(contracts))
+
+
+def _incomplete_measure_pairs(broker: Mapping, krx: Mapping) -> int:
+    """Count issuer/day keys missing either required measure on either source.
+
+    A foreign-only panel is not sufficient to test the independent institution
+    flow question, even if every foreign observation matches perfectly.
+    """
+    combined = set(broker) | set(krx)
+    observation_keys = {(isin, symbol, day) for isin, symbol, day, _ in combined}
+    return sum(
+        any(
+            (isin, symbol, day, metric) not in broker
+            or (isin, symbol, day, metric) not in krx
+            for metric in METRICS
+        )
+        for isin, symbol, day in observation_keys
+    )
 
 
 def audit_cross_source_parity(
@@ -96,8 +118,9 @@ def audit_cross_source_parity(
         raise InvestorFlowParityError("nonempty broker candidate rows required")
     if not isinstance(krx_rows, (list, tuple)) or not krx_rows:
         raise InvestorFlowParityError("nonempty official KRX candidate rows required")
-    broker = _normalize(broker_rows, SOURCES[0])
-    krx = _normalize(krx_rows, SOURCES[1])
+    broker, broker_contract = _normalize(broker_rows, SOURCES[0])
+    krx, krx_contract = _normalize(krx_rows, SOURCES[1])
+    declared_normalization_contracts_match = broker_contract == krx_contract
     keys_b = set(broker)
     keys_k = set(krx)
     matched = keys_b & keys_k
@@ -105,7 +128,12 @@ def audit_cross_source_parity(
     # requiring source review, not proof of which vendor is wrong.
     mismatches = sum(broker[key] != krx[key] for key in matched)
     only_b, only_k = len(keys_b - keys_k), len(keys_k - keys_b)
-    exact = bool(matched) and mismatches == 0 and only_b == 0 and only_k == 0
+    incomplete_pairs = _incomplete_measure_pairs(broker, krx)
+    exact = (
+        bool(matched)
+        and mismatches == 0 and only_b == 0 and only_k == 0
+        and incomplete_pairs == 0 and declared_normalization_contracts_match
+    )
     return {
         "source_pair": list(SOURCES),
         "broker_rows": len(broker),
@@ -114,6 +142,8 @@ def audit_cross_source_parity(
         "broker_only_rows": only_b,
         "krx_only_rows": only_k,
         "numeric_mismatch_rows": mismatches,
+        "declared_incomplete_measure_pair_count": incomplete_pairs,
+        "declared_normalization_contracts_match": declared_normalization_contracts_match,
         "declared_scope_exact_numeric_match": exact,
         "historical_units_independently_attested": False,
         "source_originals_authenticated": False,
@@ -124,7 +154,9 @@ def audit_cross_source_parity(
         "holdout_authorized": False,
         "ordering_enabled": False,
         "note": (
-            "Exact figures are conditional on unverified self-declared KRW normalization. "
+            "Both foreign and institution aggregate must exist for every declared issuer/day. "
+            "Exact figures require a shared declared normalization contract but are still "
+            "conditional on unverified self-declared KRW normalization. "
             "There is no KRX-NXT venue inference, no missing-to-zero imputation, "
             "no original release-time proof and no research approval."
         ),
