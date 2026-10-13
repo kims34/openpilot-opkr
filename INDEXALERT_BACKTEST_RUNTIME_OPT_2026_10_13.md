@@ -45,3 +45,9 @@ See the dedicated GitHub Actions job run and artifact `runtime-opt-parity-report
 - **Do not claim full CI wall-time speedup or actual trading backtest speedup**: these were not measured, and independently admitted source panels for official evaluation are unavailable.
 - [Parity artifact](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417/artifacts/11803677039), ZIP digest `sha256:6ce417d0474c2b89789f0a7d4d7d4ee7f06e6751acab0327722b885c0d8abd01`.
 - This passing run authorizes **no performance evaluation, Holdout, champion promotion, live trading or data-source admission**.
+
+## Independent second CI reproduction on draft PR
+- [Draft PR #413](https://github.com/kims34/openpilot-opkr/pull/413) against `index-alert-research-v1`, **unmerged**. Review is separate from approved changes.
+- [Pull-request CI run 38382214223](https://github.com/kims34/openpilot-opkr/actions/runs/38382214223): second independent execution; **6/6 jobs passed**, exact **34/34** test-case identity/outcome parity. Testcase digest is identical to first run: `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`.
+- Second-run test-process durations: serial **4.8867 s**, parallel longest suite **2.2094 s**, apparent phase ratio **2.212x**. These changes between runners illustrate why one must **not** promise a backtest/CI overall acceleration from microbenchmark phase timings.
+- Frozen research branch and production environment remain unchanged. No official profitability/performance trial authorized or executed.
