@@ -12,6 +12,7 @@ from kiwoom_real_type00_readonly_smoke import (
     SmokeState,
     classify_detail,
     return_code,
+    ws_return_code,
     strict_json,
     _config,
     _ws_proxy_options,
@@ -39,6 +40,66 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     return_code({"return_code": value})
+
+    def test_ws_return_code_accepts_official_numeric_strings_only(self):
+        # The official Kiwoom client accepts numeric strings on WS replies.
+        # Preserve fail-closed behavior for missing and ambiguous formats.
+        for value in (0, "0", "0000", "805004", " 0 "):
+            with self.subTest(valid=value):
+                expected = 805004 if value == "805004" else 0
+                self.assertEqual(ws_return_code({"return_code": value}), expected)
+        for value in (True, 0.0, -1, "-1", "0x0", "", " ", "zero",
+                      "0.0", "1e0", None, [], "00000000000"):
+            with self.subTest(invalid=value):
+                with self.assertRaises(ValueError):
+                    ws_return_code({"return_code": value})
+        with self.assertRaises(ValueError):
+            ws_return_code({})
+
+    def test_official_ws_string_success_codes_do_not_override_fault_barriers(self):
+        # Numeric-string LOGIN and REG codes permit only the readonly
+        # registration path; a later malformed REAL event must still stop.
+        class SyntheticSocket:
+            def __init__(self):
+                self.frames = [
+                    '{"trnm":"LOGIN","return_code":"0"}',
+                    '{"trnm":"REG","return_code":"0000"}',
+                    '{"trnm":"REAL","data":"malformed"}',
+                ]
+                self.sent = []
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def send(self, payload):
+                self.sent.append(json.loads(payload))
+
+            async def recv(self):
+                return self.frames.pop(0)
+
+        sock, state = SyntheticSocket(), SmokeState()
+        with patch("kiwoom_real_type00_readonly_smoke.websockets.connect",
+                   return_value=sock) as connect, \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=AssertionError("no real REST request")) as rest:
+            with self.assertRaises(ReadOnlySmokeError) as err:
+                asyncio.run(_run_ws(
+                    "synthetic-token", "synthetic-account", time.monotonic(), state))
+        self.assertEqual(err.exception.stage, "TYPE00_FRAME_PROTOCOL")
+        self.assertTrue(state.WS_LOGIN_OK)
+        self.assertTrue(state.TYPE00_REG_SENT)
+        self.assertTrue(state.TYPE00_REG_ACK_OK)
+        self.assertEqual([msg["trnm"] for msg in sock.sent], ["LOGIN", "REG"])
+        self.assertFalse(state.GENUINE_LIVE_PROVENANCE_VERIFIED)
+        self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
+        self.assertFalse(state.FUNDS_MOVEMENT_AUTHORIZED)
+        self.assertEqual(state.TYPE00_EVENT_COUNT, 0)
+        self.assertNotIn("synthetic-token", json.dumps(state.__dict__))
+        connect.assert_called_once()
+        rest.assert_not_called()
 
     def test_8050_is_token_or_login_auth(self):
         self.assertEqual(classify_detail("[8050: login auth]"), (8050, "TOKEN_OR_LOGIN_AUTH"))
