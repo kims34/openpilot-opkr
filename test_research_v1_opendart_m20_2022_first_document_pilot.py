@@ -62,6 +62,16 @@ class OriginalDocument2022Tests(unittest.TestCase):
         self.assertFalse(report["document_contains_operating_profit_cell_text"])
         self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
 
+
+    def test_safe_dtd_without_entities_does_not_block_layout(self):
+        raw = valid_zip(payload=(
+            '<!DOCTYPE DOCUMENT SYSTEM "https://unused.invalid/disclosure.dtd">'
+            '<DOCUMENT><TITLE>연결재무제표</TITLE></DOCUMENT>'
+        ).encode("utf-8"))
+        report = inspect_original_document_layout(raw)
+        self.assertTrue(report["document_contains_consolidated_term"])
+        self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
+
     def test_valid_crc_but_unsafe_xml_must_fail_closed(self):
         for payload in (
             b"<document><bad></document>",

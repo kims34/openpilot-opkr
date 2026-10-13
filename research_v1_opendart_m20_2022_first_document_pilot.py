@@ -175,7 +175,7 @@ def inspect_original_document_layout(source: bytes) -> dict:
                 if not entry.filename.lower().endswith((".xml", ".htm", ".html", ".xhtml")):
                     continue
                 try:
-                    root = fromstring(archive.read(entry), forbid_dtd=True,
+                    root = fromstring(archive.read(entry), forbid_dtd=False,
                                       forbid_entities=True, forbid_external=True)
                 except (DefusedXmlException, ParseError, ValueError, UnicodeError):
                     raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_UNSAFE") from None
@@ -279,6 +279,8 @@ def run(session=None) -> dict:
         receipt = original_first_receipt(listing, ORIGINAL_YEAR)
         stage = "EXACT_FIRST_SUBMITTED_2022_DOCUMENT_ZIP"
         source = _fetch_first_document(session, key, receipt)
+        # A layout/DTD parse failure must not hide already verified ZIP receipt.
+        result.update(inspect_official_original_document(source))
         result.update(inspect_original_document_layout(source))
         result["source_status"] = "ORIGINAL_2022_DOCUMENT_LAYOUT_DIAGNOSTIC_ONLY"
     except Exception as ex:
