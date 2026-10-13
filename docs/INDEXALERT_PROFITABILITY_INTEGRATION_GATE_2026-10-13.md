@@ -56,3 +56,15 @@
 - 최초 2022/2021 standalone 3개월 CFS 영업이익 사실값과 각 공표시각 PIT, 원본 XBRL 014 결손, issuer/security history, KRX 거래상태/기업행위/체결 및 비용 검증은 계속 **NOT VERIFIED / FAIL CLOSED**. 정정본을 최초시점 값으로 역삽입 금지. M20 수익성 RUN/Holdout/Champion/Tiny Live 전부 불승인.
 - [격리 최적화 PR #413](https://github.com/kims34/openpilot-opkr/pull/413) 후속 [Actions 38419111311](https://github.com/kims34/openpilot-opkr/actions/runs/38419111311) **6/6 jobs SUCCESS**, 기존 frozen 오프라인 34-case SHA 일치, integrity/adversarial 모의테스트 **13/13 성공** ([커밋 b22e4f3](https://github.com/kims34/openpilot-opkr/commit/b22e4f39517c2bc38e173e63e8fd52f29a535dad)). 그러나 실제 one-runner benchmark는 **미실행**, workflow 수정을 안전 검사가 차단. 기존 CI의 테스트 시간 serial 2.7647초 대 parallel 최장 3.3876초 (비율 0.816)로 이번에도 병렬이 더 느림. 공식 시장 수익률, 전체 실제 M20 백테스트 속도 또는 세후 위험조정 수익이 좋아졌다고 주장할 증거 없음.
 - 본 문서는 기존 초안 상태, 증거 판정만 갱신. 승인 없는 주문·실거래·정책 완화·PR 병합·운영 배포 없음.
+
+
+## 2026-10-14 KST 연속 검증: 격리 CI 최적화 및 M20 데이터 입증 경계
+
+- 담당 외부 변경을 직접 검토: 연구 HEAD `3b8b7830612a6284d7c7a60628cb527cb741627a`, 개발 HEAD `1e6367d2863a86c3470da13d81a955d277eba485`; 최적화 PR #413과 독립 단일 실행기 PR #418 모두 Draft. PR #418의 base는 최적화 격리 브랜치이며 연구/개발/운영 기준선을 변경하지 않음.
+- [단일 실행기 CI #38419649711](https://github.com/kims34/openpilot-opkr/actions/runs/38419649711)의 원본 로그에서 1/1 Actions job SUCCESS, 기존 불변 회귀 34/34 테스트 SHA256 `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`, 추가 오프라인 integrity 13개 + 단일 실행기 4개 + handoff 11개 성공 확인. **실제 비모의 회귀 phase** 직렬 2.9656초, 4개 동시 child process 2.6209초, 약 **1.1315배**. 같은 로그의 synthetic/mock phase 4개 테스트 또는 큰 speed ratio는 경제적 성능 증거가 아니며 채택 근거로 취급하지 않음. 전체 CI 실행/실데이터 백테스트 속도는 NOT VERIFIED.
+- PR #418의 `research_v1_runtime_handoff.py`는 로컬 아티팩트 byte/hash 무결성과 no-follow 경로 검증만 하며 발행 주체 인증, 원본 PIT 승인, 복수 파일 원자 스냅샷을 입증하지 않음. 원본 식별/거래가능성/승인증거 없이 cache/handoff 결과를 경제성 실험에 투입 불가.
+- [OpenDART #38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742) 2/2 official/offline PASS: 고정 2022 Q3 원본과 정정 SGML의 영업손익 후보 행 및 숫자 인접 시그니처 15개씩 동일. 별개의 원본 ZIP SHA는 상이해도, 선택된 **후보 행**의 일치만 검증한 것. 최초 2022/2021 3개월 CFS 영업이익 사실값, 정확한 발표시각, historical issuer/security mapping과 correction PIT lineage는 **NOT VERIFIED**.
+- Railway 실제 dedicated KRX audit 배포 `16c93d7c-7cd0-4d84-a327-298d2805376c` 원본 로그: 2017~2022 weekday pairs 1,565/1,565, invalid stored pair 0 → **RAW INTEGRITY PASS**. 원본 거래일/휴장 공백 90일, sampled zero-activity OHLC 12,003건 및 other invalid 1건, historical official trading status/corporate actions/real fill -> **NOT VERIFIED**. `m20_performance_testing_authorized=false`, `ordering=DISABLED`, `real_orders_authorized=false`.
+- **총괄 M20 판정:** 원본 파일 무결성 PASS / PIT 공표시점 NOT VERIFIED / 연결 독립 3개월 earnings semantics NOT VERIFIED / official market tradability NOT VERIFIED / after-tax NetEV·CAGR·PF·MDD·ES95/99 NOT VERIFIED. 이미 실패·소비한 H5 Holdout 재사용 불가. M20 성과 재생성·Champion 승격·Tiny Live·실매매 불승인.
+
+**다음 미완료 증거:** OpenDART 담당의 최초 공표시점·원본 3개월 CFS 값 및 정정 lineage, KRX 담당의 공식 휴장/상장·거래정지·기업행위/실제 체결, 최적화 담당의 단일 실행기 전체 wall 시간 및 실제 허용된 동일 입력 경제성 평가의 독립 속도 검증. PR #413/#414/#418 병합 또는 운영 배포하지 말 것. 개인정보·원시 재무·종목·비밀값 저장 금지.
