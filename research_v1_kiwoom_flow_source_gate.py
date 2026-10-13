@@ -52,6 +52,21 @@ def _valid_day(value: Any) -> bool:
         return False
 
 
+def _contains_secret_key_nested(value: Any, depth: int = 0) -> bool:
+    # Source probe JSON only; recursively reject suspicious field names rather
+    # than accidentally publishing a token in an uploaded metadata report.
+    if depth > 12:
+        return True
+    if isinstance(value, Mapping):
+        return any(
+            str(key).lower() in SENSITIVE_KEYS or _contains_secret_key_nested(v, depth + 1)
+            for key, v in value.items()
+        )
+    if isinstance(value, (list, tuple)):
+        return any(_contains_secret_key_nested(item, depth + 1) for item in value)
+    return False
+
+
 def audit_kiwoom_probe(report: Mapping[str, Any] | None) -> dict[str, Any]:
     """Inspect metadata, never infer admission from status or fabricated flags.
 
@@ -63,6 +78,8 @@ def audit_kiwoom_probe(report: Mapping[str, Any] | None) -> dict[str, Any]:
         return _result(["missing_or_invalid_report"], False, 0, False)
     if any(str(k).lower() in SENSITIVE_KEYS for k in report):
         failures.append("sensitive_key_in_metadata")
+    if _contains_secret_key_nested(report):
+        failures.append("sensitive_key_in_nested_metadata")
     for k in ("ordering", "performance_admitted", "raw_rows_persisted"):
         if report.get(k) is not False:
             failures.append("unsafe_" + k)
@@ -117,12 +134,13 @@ def audit_kiwoom_probe(report: Mapping[str, Any] | None) -> dict[str, Any]:
     duplicate_days = report.get("duplicate_dates")
     if type(duplicate_days) is not int or duplicate_days != 0:
         failures.append("duplicate_or_unverified_dates")
-    if pages and isinstance(pages[-1], Mapping) and pages[-1].get("more") is True and report.get("history_exhausted") is True:
+    if pages and isinstance(pages[-1], Mapping) and pages[-1].get("more") is True and report.get("pagination_exhausted") is True:
         failures.append("pagination_exhaustion_conflict")
-    if report.get("history_exhausted") is not True:
-        # This covers incomplete (truncated) pagination, NOT full-history
-        # coverage: ka10059 may impose its own undocumented retention window.
+    if report.get("pagination_exhausted") is not True:
         failures.append("pagination_not_exhausted")
+    if report.get("history_exhausted") is not False or report.get("historical_retention_verified") is not False:
+        # Current broker response cannot attest to data back to 2015.
+        failures.append("unverified_history_misrepresented")
     if count == 0:
         failures.append("zero_observations")
     if report.get("status") == "SOURCE_REACHABLE_EMPTY" and count != 0:
@@ -142,7 +160,9 @@ def _result(failures: list[str], reachable: bool, rows: int, presented: bool) ->
         "metadata_validation_pass": not failures,
         "metadata_failures": list(dict.fromkeys(failures)),
         "observed_rows_metadata_only": rows,
-        "bounded_route_reachability": reachable and not failures,
+        # Self-reported metadata cannot establish authenticated reachability.
+        "reported_bounded_response_shape_compatible": reachable and not failures,
+        "bounded_route_reachability": False,
         "authenticated_route_evidence_verified": False,
         "full_universe_coverage_verified": False,
         "broker_historical_vintage_pit_verified": False,
