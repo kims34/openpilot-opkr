@@ -230,7 +230,7 @@ class _BoundedDisclosureHTML(HTMLParser):
             # Nearby *preceding* text is just a section hint, not an
             # authoritative report/statement binding.
             prefix = re.sub(
-                r"\\s+", "",
+                r"\s+", "",
                 unicodedata.normalize("NFKC", "".join(self.parts[-50:])[-1200:]),
             )
             self.table_frames.append({
