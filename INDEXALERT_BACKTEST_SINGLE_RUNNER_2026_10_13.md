@@ -51,3 +51,19 @@ Continuation on the **same isolated** PR #418, without changing original researc
 Exact pinned SHA256 of 34 regression test cases and outcomes (same as historic fixed baseline): `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`.
 
 **Speed finding:** One runner's four subprocesses are only ~1.032x and ~1.026x faster than its serial regression reference for these new executions. Total CI wall times vary substantially; this is not proof of CI speedup or actual H5/M20 profitability backtest speedup. Do not claim a production optimization from these synthetic/offline tests alone. Keep both PR #418 and PR #413 unmerged; `ORDERING=false`.
+
+
+## 2026-10-13 follow-up: file-open race hardening, fail-closed
+
+Audit found a precise *check-to-use* weakness in the previous offline handoff: `Path.is_symlink()` / `is_file()` checks were separate from `Path.open()`. An attacker or faulty concurrent writer could switch a final file (or an intermediate directory) to a symlink after the check and before the read. A byte digest alone would then describe the substituted file rather than the intended path.
+
+**Patch:** `research_v1_runtime_handoff.py` now opens artifact root and each nested directory using POSIX `O_DIRECTORY | O_NOFOLLOW` with relative directory file descriptors, and final artifact using `O_NOFOLLOW | O_NONBLOCK`. It requires an ordinary regular file and checks `fstat()` before/after hashing plus a no-follow relative `stat()` against the opened file's identity (device, inode, type, size, mtime/ctime). Any mismatch/missing path becomes `UnsafeHandoff`, and `handoff_matches` is false on errors. Systems lacking the no-follow primitives fail closed. **No source authorization is granted by local hashing**.
+
+**Additional adversarial controls:** 5 new synthetic tests perform a simulated final-leaf symlink swap at the exact `os.open` boundary, intermediate-directory symlink swap, in-place file rewrite during a hash update, nonregular FIFO rejection (nonblocking), and nonstring filename rejection. Existing six artifact-handoff tests remain. There is no new real trading data, model training, Holdout or official PIT experiment.
+
+**Actual independent passing Actions evidence** at patch HEAD `2f5e270d939005d94baef9f1baea349fb85cbdbc`:
+- [Push run 38419370644](https://github.com/kims34/openpilot-opkr/actions/runs/38419370644): **SUCCESS**; handoff 11/11 synthetic cases, immutable 34-case legacy regression parity with SHA256 `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`. Same-runner serial subprocess 1.7237 s vs four concurrent processes 1.6707 s; approximately 31 seconds from created→updated GitHub run metadata.
+- [PR run 38419377500](https://github.com/kims34/openpilot-opkr/actions/runs/38419377500): **SUCCESS**; handoff 11/11 synthetic cases, unchanged 34-case SHA256 parity. Serial subprocess 2.7281 s vs concurrent 2.4622 s; approximately 52 seconds from created→updated. Other synthetic control counts may differ across branches/revisions, but the pinned 34-case suite remained identical.
+- These are only offline test phase samples on different runners; there is **no demonstrated full-CI speedup and no H5/M20 profitability/backtest speedup**. Do not merge as a trading performance improvement.
+
+**Remaining security limit:** fd-relative no-follow opens reduce symlink TOCTOU; they do **not** create an atomic snapshot of multiple files, prevent all simultaneous noncooperative byte rewrites, authenticate publishers or prove KRX/OpenDART completeness/PIT. A separate independently authenticated source receipt and immutable upstream artifact store are mandatory before any official evaluation. Keep Draft PR #418 unmerged, original PR #413 unmerged, frozen H5/M20 gates intact, `ORDERING=false`.
