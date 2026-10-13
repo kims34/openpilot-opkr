@@ -74,7 +74,7 @@ def audit_candidate_pit(rows: Sequence[Mapping[str, Any]] | None) -> dict[str, A
             raise KiwoomFlowPITError(f"record {index}: official issue-id format missing")
         if not isinstance(row["symbol"], str) or not SYMBOL.fullmatch(row["symbol"]):
             raise KiwoomFlowPITError(f"record {index}: symbol format invalid")
-        if row["venue"] not in VENUES:
+        if not isinstance(row["venue"], str) or row["venue"] not in VENUES:
             raise KiwoomFlowPITError(f"record {index}: exchange/venue unknown")
         digest = row["response_sha256"]
         if not isinstance(digest, str) or SHA256.fullmatch(digest) is None:
