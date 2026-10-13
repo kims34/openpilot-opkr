@@ -6,10 +6,13 @@ authenticated frozen upstream cache identity is mandatory for actual use.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
 
 SCHEMA = "indexalert-readonly-handoff-v1"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -28,44 +31,72 @@ def _sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def _digest_files(root: Path, filenames: list[str]) -> dict[str, str]:
-    if type(filenames) is not list or not filenames:
-        raise UnsafeHandoff("nonempty explicit file list required")
-    if type(root) is not Path:
-        root = Path(root)
-    if not root.is_dir() or root.is_symlink():
-        raise UnsafeHandoff("missing or symlinked artifact directory")
+def _identity(info: os.stat_result) -> tuple[int, ...]:
+    """Detect replacement/mutation by device, inode, size, mtime and ctime."""
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+            info.st_mtime_ns, info.st_ctime_ns)
 
-    base = root.resolve(strict=True)
+
+def _digest_files(root: Path, filenames: list[str]) -> dict[str, str]:
+    """Hash regular files opened relative to no-follow directory descriptors.
+
+    No check-then-open Path.is_symlink/open race: the kernel rejects symlink
+    resolution at each opened path component. This still is NOT an immutable
+    multi-file snapshot or an authenticated source/PIT admission certificate.
+    """
+    if type(filenames) is not list or not filenames or any(
+        type(name) is not str or not name for name in filenames
+    ):
+        raise UnsafeHandoff("nonempty list of explicit file names required")
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise UnsafeHandoff("no-follow directory descriptors unavailable: fail closed")
+    root = Path(root)
     seen: set[str] = set()
     digests: dict[str, str] = {}
-    for name in sorted(filenames):
-        if type(name) is not str or not name or "\\" in name:
-            raise UnsafeHandoff("invalid artifact name")
-        parts = PurePosixPath(name)
-        if (parts.is_absolute() or any(x in (".", "..", "") for x in name.split("/"))
-                or name.startswith("/") or name in seen):
-            raise UnsafeHandoff("duplicate, absolute or traversing artifact name")
-        seen.add(name)
-        current = root
-        for part in parts.parts:
-            current = current / part
-            if current.is_symlink():
-                raise UnsafeHandoff("symbolic-link artifact path not allowed: " + name)
-        if not current.is_file() or not current.resolve(strict=True).is_relative_to(base):
-            raise UnsafeHandoff("missing or outside-root artifact: " + name)
-        before = current.stat()
-        h = hashlib.sha256()
-        with current.open("rb") as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b""):
-                h.update(chunk)
-        after = current.stat()
-        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-                after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
-            raise UnsafeHandoff("artifact mutated during read: " + name)
-        digests[name] = h.hexdigest()
-    return digests
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_CLOEXEC", 0)
 
+    try:
+        with ExitStack() as root_stack:
+            root_fd = os.open(root, directory_flags)
+            root_stack.callback(os.close, root_fd)
+            if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
+                raise UnsafeHandoff("artifact root is not a directory")
+            for name in sorted(filenames):
+                if "\\" in name or "\x00" in name:
+                    raise UnsafeHandoff("invalid artifact path separator or NUL")
+                parts = PurePosixPath(name)
+                if (parts.is_absolute()
+                        or any(p in (".", "..", "") for p in name.split("/"))
+                        or name in seen):
+                    raise UnsafeHandoff("duplicate, absolute or traversing artifact name")
+                seen.add(name)
+
+                # A dirfd-based walk prevents symlink traversal even if a path
+                # is swapped between a pre-check and open; no path pre-check.
+                with ExitStack() as component_stack:
+                    parent_fd = root_fd
+                    for component in parts.parts[:-1]:
+                        next_fd = os.open(component, directory_flags, dir_fd=parent_fd)
+                        component_stack.callback(os.close, next_fd)
+                        parent_fd = next_fd
+                    fd = os.open(parts.parts[-1], file_flags, dir_fd=parent_fd)
+                    with os.fdopen(fd, "rb") as source:
+                        before = os.fstat(source.fileno())
+                        if not stat.S_ISREG(before.st_mode):
+                            raise UnsafeHandoff("non-regular artifact forbidden: " + name)
+                        h = hashlib.sha256()
+                        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                            h.update(chunk)
+                        after = os.fstat(source.fileno())
+                        current = os.stat(parts.parts[-1], dir_fd=parent_fd,
+                                          follow_symlinks=False)
+                        if _identity(before) != _identity(after) or _identity(before) != _identity(current):
+                            raise UnsafeHandoff("artifact replaced or mutated while hashing: " + name)
+                        digests[name] = h.hexdigest()
+    except OSError as exc:
+        raise UnsafeHandoff("missing, unsafe or changed artifact directory/file") from exc
+    return digests
 
 def make_handoff(*, root: Path, filenames: list[str],
                  upstream_cache_key_sha256: str) -> dict:
