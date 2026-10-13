@@ -29,6 +29,17 @@ from research_v1_opendart_m20_2022_first_document_pilot import (
 )
 
 MAX_OFFICIAL_REQUESTS = 5
+
+# Counts from strict existing source-only diagnostics; never financial facts.
+# These guards locate WHY exact Q3 CFS 3-month values remain unbound.
+STATEMENT_LAYOUT_SHAPES = {
+    "candidate_three_month_header": "tables_with_operating_row_and_three_month_header",
+    "candidate_nearby_exact_cfs_title": "tables_profit_with_nearby_exact_consolidated_income_heading",
+    "candidate_last_title_exact_cfs": "tables_with_operating_row_and_last_title_consolidated_income_context",
+    "candidate_both_q3_period_windows": "tables_profit_both_q3_windows_in_first_twelve_rows",
+    "candidate_quarter_and_cfs_context": "tables_profit_with_quarter_and_nearby_consolidated_heading",
+}
+
 OUTPUT = Path("research_results/opendart_m20_2022_correction_document/source_pair.json")
 SAFETY = {
     "original_standardized_xbrl_verified": False,
@@ -99,6 +110,7 @@ def _archive_fingerprint(session, key: str, receipt: str, *, original: bool) -> 
         "q3_2021_profit_table_period_hint_not_fact": (
             layout["tables_profit_2021_q3_window_in_first_twelve_rows"] > 0
         ),
+        **{k: layout[v] for k, v in STATEMENT_LAYOUT_SHAPES.items()},
         "cfs_three_month_financial_semantics_verified": False,
     }
 
@@ -144,6 +156,11 @@ def execute(session, key: str) -> dict:
         "corrected_2022_period_table_hint_not_fact": amended["q3_2022_profit_table_period_hint_not_fact"],
         "original_2021_period_table_hint_not_fact": earliest["q3_2021_profit_table_period_hint_not_fact"],
         "corrected_2021_period_table_hint_not_fact": amended["q3_2021_profit_table_period_hint_not_fact"],
+        **{f"original_{name}": earliest[name] for name in STATEMENT_LAYOUT_SHAPES},
+        **{f"corrected_{name}": amended[name] for name in STATEMENT_LAYOUT_SHAPES},
+        # Even multiple nearby labels are not sufficient as the authoritative
+        # 2022/2021 consolidated July–September statement/cell binding.
+        "strict_source_financial_semantics_still_unverified": True,
         "source_pair_index_period_links_validated": True,
         "source_pair_actual_financial_changes_unverified": True,
         "source_pair_publication_instants_unverified": True,

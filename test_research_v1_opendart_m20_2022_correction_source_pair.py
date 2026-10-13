@@ -54,6 +54,7 @@ class SourcePairTests(unittest.TestCase):
             "tables_with_exact_operating_row": 12,
             "tables_profit_2022_q3_window_in_first_twelve_rows": 0,
             "tables_profit_2021_q3_window_in_first_twelve_rows": 0,
+            **{source_key: 0 for source_key in proof.STATEMENT_LAYOUT_SHAPES.values()},
         }
         with (
             patch.object(proof, "_fetch_first_document", return_value=blob),
@@ -63,6 +64,8 @@ class SourcePairTests(unittest.TestCase):
             result = proof._archive_fingerprint(object(), "FAKEKEY", CORRECTED["rcept_no"], original=False)
         self.assertEqual(result["digest"], hashlib.sha256(blob).hexdigest())
         self.assertFalse(result["cfs_three_month_financial_semantics_verified"])
+        for label in proof.STATEMENT_LAYOUT_SHAPES:
+            self.assertEqual(result[label], 0)
 
     def test_approved_three_index_calls_before_ephemeral_document_reads(self):
         calls = []
@@ -86,6 +89,7 @@ class SourcePairTests(unittest.TestCase):
                 "profit_row_candidate_tables_not_facts": 10,
                 "q3_2022_profit_table_period_hint_not_fact": False,
                 "q3_2021_profit_table_period_hint_not_fact": False,
+                **{label: 0 for label in proof.STATEMENT_LAYOUT_SHAPES},
             }
 
         with (
@@ -101,12 +105,41 @@ class SourcePairTests(unittest.TestCase):
         self.assertTrue(result["original_and_corrected_zip_bytes_differ"])
         self.assertEqual(result["verified_original_and_corrected_archives_count"], 2)
         self.assertTrue(result["source_pair_actual_financial_changes_unverified"])
+        self.assertTrue(result["strict_source_financial_semantics_still_unverified"])
+        for label in proof.STATEMENT_LAYOUT_SHAPES:
+            self.assertEqual(result[f"original_{label}"], 0)
+            self.assertEqual(result[f"corrected_{label}"], 0)
         self.assertFalse(result["original_cfs_q3_2022_2021_three_month_profit_verified"])
         for x in ("m20_performance_run_authorized", "m20_feature_pit_admitted",
                   "independent_holdout_authorized", "real_orders_authorized"):
             self.assertFalse(result[x])
         for secret in ("FAKEKEY", "00000001", CORRECTED["rcept_no"]):
             self.assertNotIn(secret, str(result))
+
+
+    def test_even_apparently_strong_table_context_never_auto_admits_financial_facts(self):
+        blob = b"FAKE_ARCHIVE_CONTENT_NOT_FOR_REPORT"
+        fake_layout = {
+            "zip_crc_and_bounded_read_completed": True,
+            "non_xml_sgml_html_layout_entries": 1,
+            "safely_parsed_strict_xml_count": 0,
+            "tables_with_exact_operating_row": 1,
+            "tables_profit_2022_q3_window_in_first_twelve_rows": 1,
+            "tables_profit_2021_q3_window_in_first_twelve_rows": 1,
+            **{key: 1 for key in proof.STATEMENT_LAYOUT_SHAPES.values()},
+        }
+        with (
+            patch.object(proof, "_fetch_first_document", return_value=blob),
+            patch.object(proof, "inspect_official_original_document",
+                         return_value={"official_original_document_zip_received": True}),
+            patch.object(proof, "inspect_original_document_layout", return_value=fake_layout),
+        ):
+            only_source = proof._archive_fingerprint(object(), "PRIVATE_KEY",
+                                                       CORRECTED["rcept_no"], original=False)
+        self.assertEqual(only_source["candidate_three_month_header"], 1)
+        self.assertEqual(only_source["candidate_nearby_exact_cfs_title"], 1)
+        self.assertFalse(only_source["cfs_three_month_financial_semantics_verified"])
+        self.assertNotIn("PRIVATE_KEY", str(only_source))
 
     def test_provider_errors_are_redacted(self):
         with (
