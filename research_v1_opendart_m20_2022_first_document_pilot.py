@@ -192,6 +192,13 @@ class _BoundedDisclosureHTML(HTMLParser):
         self.tables_with_profit_and_three_month_header = 0
         self.tables_with_profit_three_month_and_consolidated_context = 0
         self.tables_with_profit_three_month_and_consolidated_income_context = 0
+        self.title_open = False
+        self.title_parts = []
+        self.latest_title = ""
+        self.title_elements_seen = 0
+        self.tables_with_profit_and_nearby_three_month_context = 0
+        self.tables_with_profit_and_last_title_income_context = 0
+        self.tables_with_profit_and_last_title_consolidated_income_context = 0
 
     def _finish_cell(self):
         if self.active_cell is not None:
@@ -226,14 +233,23 @@ class _BoundedDisclosureHTML(HTMLParser):
             raise OriginalDocumentGap("DOCUMENT_LAYOUT_NODES_LIMIT")
         if tag in ("table", "tr", "td", "th"):
             self.table_found = True
+        if tag == "title":
+            self.title_open = True
+            self.title_parts = []
+            self.title_elements_seen += 1
         if tag == "table":
             # Nearby *preceding* text is just a section hint, not an
             # authoritative report/statement binding.
             prefix = re.sub(
                 r"\s+", "",
-                unicodedata.normalize("NFKC", "".join(self.parts[-50:])[-1200:]),
+                unicodedata.normalize("NFKC", "".join(self.parts[-120:])[-2400:]),
             )
             self.table_frames.append({
+                "nearby_three_month": "3개월" in prefix,
+                "title_income": any(w in self.latest_title for w in (
+                    "포괄손익계산서", "손익계산서")),
+                "title_consolidated_income": any(w in self.latest_title for w in (
+                    "연결포괄손익계산서", "연결손익계산서")),
                 "context_consolidated": any(w in prefix for w in (
                     "연결포괄손익계산서", "연결손익계산서", "연결재무제표")),
                 "context_income": any(w in prefix for w in (
@@ -258,6 +274,12 @@ class _BoundedDisclosureHTML(HTMLParser):
             self.in_cell = max(0, self.in_cell - 1)
 
     def handle_endtag(self, tag):
+        if tag == "title":
+            self.title_open = False
+            self.latest_title = re.sub(
+                r"\s+", "", unicodedata.normalize("NFKC", "".join(self.title_parts))
+            )[-256:]
+            self.title_parts = []
         if tag in ("td", "th"):
             self._finish_cell()
             self.in_cell = max(0, self.in_cell - 1)
@@ -270,6 +292,12 @@ class _BoundedDisclosureHTML(HTMLParser):
                 self.tables_examined += 1
                 if frame["profit_rows"]:
                     self.tables_with_profit_row += 1
+                    if frame["nearby_three_month"]:
+                        self.tables_with_profit_and_nearby_three_month_context += 1
+                    if frame["title_income"]:
+                        self.tables_with_profit_and_last_title_income_context += 1
+                        if frame["title_consolidated_income"]:
+                            self.tables_with_profit_and_last_title_consolidated_income_context += 1
                     if frame["three_month_header"]:
                         self.tables_with_profit_and_three_month_header += 1
                         if frame["context_consolidated"]:
@@ -283,6 +311,8 @@ class _BoundedDisclosureHTML(HTMLParser):
         if self.chars > LAYOUT_MAX_TEXT_CHARS:
             raise OriginalDocumentGap("DOCUMENT_LAYOUT_TEXT_LIMIT")
         self.parts.append(data)
+        if self.title_open:
+            self.title_parts.append(data)
         if self.active_cell is not None:
             if sum(map(len, self.active_cell)) + len(data) > MAX_DIAGNOSTIC_CELL_CHARS:
                 # Overlong table text is not a financial row candidate.
@@ -335,6 +365,10 @@ def inspect_original_document_layout(source: bytes) -> dict:
         "tables_with_operating_row_and_three_month_header": 0,
         "tables_with_operating_three_month_and_nearby_consolidated_heading": 0,
         "tables_with_operating_three_month_and_nearby_consolidated_income_heading": 0,
+        "title_elements_seen": 0,
+        "tables_with_operating_row_and_nearby_three_month_context": 0,
+        "tables_with_operating_row_and_last_title_income_context": 0,
+        "tables_with_operating_row_and_last_title_consolidated_income_context": 0,
     }
     try:
         with zipfile.ZipFile(io.BytesIO(source)) as archive:
@@ -383,6 +417,13 @@ def inspect_original_document_layout(source: bytes) -> dict:
                          scanner.tables_with_profit_three_month_and_consolidated_context),
                         ("tables_with_operating_three_month_and_nearby_consolidated_income_heading",
                          scanner.tables_with_profit_three_month_and_consolidated_income_context),
+                        ("title_elements_seen", scanner.title_elements_seen),
+                        ("tables_with_operating_row_and_nearby_three_month_context",
+                         scanner.tables_with_profit_and_nearby_three_month_context),
+                        ("tables_with_operating_row_and_last_title_income_context",
+                         scanner.tables_with_profit_and_last_title_income_context),
+                        ("tables_with_operating_row_and_last_title_consolidated_income_context",
+                         scanner.tables_with_profit_and_last_title_consolidated_income_context),
                     ):
                         table_diagnostics[name] += observed
                     continue

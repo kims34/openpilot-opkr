@@ -86,6 +86,8 @@ jobs:
           assert isinstance(p["profit_row_with_4_numeric_peer_cells_count"], int)
           assert p["profit_row_with_2_numeric_peer_cells_count"] <= p["profit_row_shape_count_not_facts"]
           assert p["profit_row_with_4_numeric_peer_cells_count"] <= p["profit_row_with_2_numeric_peer_cells_count"]
+          assert p["tables_with_operating_row_and_last_title_consolidated_income_context"] <= p["tables_with_operating_row_and_last_title_income_context"]
+          assert p["tables_with_operating_row_and_nearby_three_month_context"] <= p["tables_with_exact_operating_row"]
           assert p["table_section_proximity_is_statement_proof"] is False
           assert p["tables_with_operating_row_and_three_month_header"] <= p["tables_with_exact_operating_row"]
           assert p["tables_with_operating_three_month_and_nearby_consolidated_income_heading"] <= p["tables_with_operating_three_month_and_nearby_consolidated_heading"]

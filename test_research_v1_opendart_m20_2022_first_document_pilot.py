@@ -169,6 +169,31 @@ class OriginalDocument2022Tests(unittest.TestCase):
         self.assertEqual(row["tables_with_operating_row_and_three_month_header"], 1)
         self.assertEqual(row["tables_with_operating_three_month_and_nearby_consolidated_heading"], 0)
 
+
+    def test_profit_table_nearby_section_is_non_authoritative(self):
+        markup = (
+            "<DOCUMENT><TITLE>연결 포괄손익계산서&nbsp;</TITLE>"
+            "<P>당기 3개월 전기 3개월</P>"
+            "<TABLE><TR><TD>영업이익<TD>100<TD>200</TR></TABLE>"
+            "</DOCUMENT>"
+        ).encode()
+        row = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(row["tables_with_operating_row_and_nearby_three_month_context"], 1)
+        self.assertEqual(row["tables_with_operating_row_and_last_title_income_context"], 1)
+        self.assertEqual(row["tables_with_operating_row_and_last_title_consolidated_income_context"], 1)
+        self.assertEqual(row["title_elements_seen"], 1)
+        self.assertFalse(row["original_q3_cfs_three_month_profit_bound"])
+
+    def test_separate_title_does_not_imply_consolidated(self):
+        markup = (
+            "<DOCUMENT><TITLE>별도 포괄손익계산서&nbsp;</TITLE>"
+            "<TABLE><TR><TD>영업이익<TD>100<TD>200</TR></TABLE>"
+            "</DOCUMENT>"
+        ).encode()
+        row = inspect_original_document_layout(valid_zip(payload=markup))
+        self.assertEqual(row["tables_with_operating_row_and_last_title_income_context"], 1)
+        self.assertEqual(row["tables_with_operating_row_and_last_title_consolidated_income_context"], 0)
+
     def test_entity_declaration_blocks_even_html_fallback(self):
         data = b'<!DOCTYPE DOCUMENT [<!ENTITY x SYSTEM "file:///etc/passwd">]><DOCUMENT><TABLE>&x;</TABLE></DOCUMENT>'
         with self.assertRaisesRegex(OriginalDocumentGap, "DOCUMENT_LAYOUT_ENTITY_DECLARATION"):
