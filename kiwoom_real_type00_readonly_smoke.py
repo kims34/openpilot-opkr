@@ -24,6 +24,8 @@ from typing import Any, Mapping
 
 import requests
 import websockets
+from websockets.asyncio.client import get_proxy as _websockets_get_proxy
+from websockets.uri import parse_uri as _websockets_parse_uri
 
 
 REAL_BASE_URL = "https://api.kiwoom.com"
@@ -77,6 +79,9 @@ class SmokeState:
     ACCOUNT_ENDPOINT_OK: bool = False
     WS_CONNECTED: bool = False
     WS_PROXY_POLICY: str = "SYSTEM"
+    REST_CONFIGURED_PROXY_PRESENT: bool | None = None
+    WS_SYSTEM_CONFIGURED_PROXY_PRESENT: bool | None = None
+    REST_WS_CONFIGURED_PROXY_URLS_EQUAL: bool | None = None
     WS_LOGIN_OK: bool = False
     TYPE00_REG_SENT: bool = False
     TYPE00_REG_ACK_OK: bool = False
@@ -161,6 +166,22 @@ def _name(obj: Mapping[str, Any]) -> str:
     return name.upper()
 
 
+def _proxy_route_snapshot() -> tuple[bool | None, bool | None, bool | None]:
+    """Report *configuration* parity only; not public IP or proven egress.
+
+    Neither proxy URLs (which can embed secrets) nor private addresses are
+    returned or emitted.  No socket or credential is needed for this check.
+    A resolution problem is UNKNOWN, never an implied matching path.
+    """
+    try:
+        rest_settings = requests.utils.get_environ_proxies(TOKEN_URL)
+        rest_proxy = requests.utils.select_proxy(TOKEN_URL, rest_settings)
+        ws_proxy = _websockets_get_proxy(_websockets_parse_uri(WS_URL))
+        return bool(rest_proxy), bool(ws_proxy), rest_proxy == ws_proxy
+    except Exception:
+        return None, None, None
+
+
 def _config() -> tuple[str, str]:
     _ws_proxy_options()  # invalid proxy policy rejects before OAuth
     if os.getenv("KIWOOM_ENV") != "REAL":
@@ -178,6 +199,11 @@ def _config() -> tuple[str, str]:
 
 def _token_and_account(state: SmokeState) -> tuple[str, str, float]:
     app_key, app_secret = _config()
+    (
+        state.REST_CONFIGURED_PROXY_PRESENT,
+        state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT,
+        state.REST_WS_CONFIGURED_PROXY_URLS_EQUAL,
+    ) = _proxy_route_snapshot()
     try:
         token_response = requests.post(
             TOKEN_URL,
