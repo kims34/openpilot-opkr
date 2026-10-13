@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import math
 import json
 import re
 import subprocess
@@ -21,6 +22,56 @@ SUITES = {
     "gates": ("test_research_v1_medium_swing_prereg.py", "test_research_v1_purged.py"),
     "cache": ("test_research_v1_supervised_cache.py", "test_research_v1_runtime_manifest.py"),
 }
+
+
+# Exact test identity and result hashes from independent, archived 2026-10-13
+# successful executions 38381997417 and 38382214223 (34 cases).
+# Do not regenerate these from a newly shortened test run: an accidental
+# identical omission from both serial and parallel would otherwise pass.
+PINNED_CASES = {
+    "cost": (9, "0a11d4eca07ce83f32758d8fe8aa62ab5e5450bd9e9bd6413bdb9691e13213c9"),
+    "risk": (9, "49185a1d6fcf193c710959d8b07e274114c884158f2d7ffac226bc9df9bd47e6"),
+    "gates": (8, "717cd517fb407727db2dee99e1fdcdc39d9033f70dabbb68609dcd4a1ee6cd33"),
+    "cache": (8, "2353b8399ba17dc1ec22334bf7be99609ceef05c4342fd3c1e99134a637f59a5"),
+    "all": (34, "5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34"),
+}
+
+
+def _expected_files(suite: str) -> list[str]:
+    return [name for sub in (SUITES if suite == "all" else (suite,))
+            for name in SUITES[sub]]
+
+
+def _acceptable(report: object, suite: str) -> bool:
+    """Reject fabricated/missing/relabelled cases even if all runners agree."""
+    if type(report) is not dict or report.get("suite") != suite:
+        return False
+    cases = report.get("cases")
+    if type(cases) is not list or any(
+        type(row) is not list or len(row) != 3
+        or any(type(v) is not str or not v for v in row)
+        for row in cases
+    ):
+        return False
+    pinned_count, pinned_digest = PINNED_CASES[suite]
+    if (len(cases) != pinned_count or cases != sorted(cases)
+            or len({(row[0], row[1]) for row in cases}) != len(cases)):
+        return False
+    duration = report.get("duration_seconds")
+    if type(duration) not in (int, float) or not math.isfinite(duration) or duration <= 0:
+        return False
+    return (
+        type(report.get("exit_code")) is int and report["exit_code"] == 0
+        and type(report.get("test_count")) is int and report["test_count"] == pinned_count
+        and report.get("test_files") == _expected_files(suite)
+        and all(row[2] == "passed" for row in cases)
+        and report.get("case_digest_sha256") == pinned_digest
+        and case_digest(cases) == pinned_digest
+        and report.get("profitability_evaluated") is False
+        and report.get("source_admission_modified") is False
+        and report.get("holdout_accessed") is False
+        and report.get("ordering") is False
+    )
 
 
 def canonical_cases(junit_file: Path) -> list[list[str]]:
@@ -38,7 +89,7 @@ def case_digest(cases: list[list[str]]) -> str:
 
 
 def run_suite(suite: str, out: Path) -> None:
-    files = [x for s in (SUITES if suite == "all" else (suite,)) for x in SUITES[s]]
+    files = _expected_files(suite)
     out.parent.mkdir(parents=True, exist_ok=True)
     junit = out.with_suffix(".xml")
     cmd = [sys.executable, "-m", "pytest", "-q", "--disable-warnings",
@@ -59,27 +110,22 @@ def run_suite(suite: str, out: Path) -> None:
     if completed.stderr:
         print(completed.stderr[-1500:], file=sys.stderr)
     print("RUNTIME_OPT_RUN=" + json.dumps({k: v for k, v in result.items() if k != "cases"}))
-    if completed.returncode or not cases or any(x[2] != "passed" for x in cases):
-        raise SystemExit("Offline regression suite failed (or collected no tests)")
+    if not _acceptable(result, suite):
+        raise SystemExit("Offline regression suite failed pinned-case identity / outcome gate")
 
 
 def compare(serial: Path, parallel_dir: Path, out: Path) -> None:
     base = json.loads(serial.read_text(encoding="utf-8"))
     pieces = [json.loads((parallel_dir / (s + ".json")).read_text(encoding="utf-8"))
               for s in SUITES]
-    def acceptable(x):
-        return (x.get("exit_code") == 0 and x.get("test_count", 0) > 0
-                and all(case[2] == "passed" for case in x.get("cases", []))
-                and x.get("profitability_evaluated") is False
-                and x.get("source_admission_modified") is False
-                and x.get("holdout_accessed") is False
-                and x.get("ordering") is False
-                and x.get("case_digest_sha256") == case_digest(x.get("cases", [])))
     merged = sorted(case for p in pieces for case in p["cases"])
-    parity = (acceptable(base) and all(acceptable(p) for p in pieces)
-              and len(merged) == len(set(tuple(c) for c in merged))
-              and merged == base["cases"]
-              and case_digest(merged) == base["case_digest_sha256"])
+    parity = (
+        _acceptable(base, "all")
+        and all(_acceptable(p, suite) for suite, p in zip(SUITES, pieces))
+        and len(merged) == len(set(tuple(c) for c in merged))
+        and merged == base["cases"]
+        and case_digest(merged) == PINNED_CASES["all"][1]
+    )
     serial_seconds = base["duration_seconds"]
     max_parallel_seconds = max(p["duration_seconds"] for p in pieces)
     report = {
