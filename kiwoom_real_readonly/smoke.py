@@ -218,6 +218,9 @@ def _config() -> tuple[str, str]:
 
 def _token_and_account(state: SmokeState) -> tuple[str, str, float]:
     app_key, app_secret = _config()
+    # Record which WS routing policy was requested even if token/account
+    # issuance fails before the websocket transport is ever initialized.
+    state.WS_PROXY_POLICY = "DIRECT" if "proxy" in _ws_proxy_options() else "SYSTEM"
     (
         state.REST_CONFIGURED_PROXY_PRESENT,
         state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT,
