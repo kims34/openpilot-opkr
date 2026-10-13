@@ -1,0 +1,226 @@
+{
+  "schema_version": "1",
+  "evidence_id": "INDEXALERT-KRX-READONLY-PRIVATE-INTEGRITY-VS-PIT-AUDIT-2026-10-13-v1",
+  "created_date_kst": "2026-10-13",
+  "provenance_scope": "SANITIZED_RAILWAY_RUNTIME_LOGS_PLUS_EXISTING_GITHUB_CODE_AND_SUCCESSFUL_CI_ONLY",
+  "upstream_development": {
+    "branch": "index-alert-position-regen-fix-v1",
+    "commit": "1e6367d2863a86c3470da13d81a955d277eba485"
+  },
+  "upstream_research": {
+    "branch": "index-alert-research-v1",
+    "observed_commit": "3b8b7830612a6284d7c7a60628cb527cb741627a"
+  },
+  "railway": {
+    "project_id": "d1c1a050-b7d6-41ce-b300-13c20f82a20a",
+    "service_name": "indexalert-krx-historical-worker",
+    "service_id": "003812ee-102b-42b6-bda4-36925885b428",
+    "volume_name": "indexalert-krx-historical-data",
+    "volume_mount": "/data",
+    "observed_deployment_id": "16c93d7c-7cd0-4d84-a327-298d2805376c",
+    "observed_deployment_status": "SUCCESS",
+    "observed_source_commit": "1e6367d2863a86c3470da13d81a955d277eba485",
+    "observed_start_command": "python -B research_v1_krx_openapi_missing_2017_2022_integrity_audit.py --audit",
+    "observation_date_utc": "2026-10-12",
+    "latest_observed_runtime_log": "INDEXALERT_MISSING_2017_2022_INTEGRITY_FINAL",
+    "changes_to_running_service": false
+  },
+  "offline_verification": {
+    "status": "PRIVATE_WEEKDAY_SOURCE_STORAGE_INTEGRITY_VERIFIED_NOT_PIT",
+    "verified_weekday_pairs": 3071,
+    "missing_weekday_pair_count": 0,
+    "unverified_exchange_calendar_or_source_gap_days": 184,
+    "trading_days_officially_reconciled": false,
+    "full_original_market_data_source_admitted": false,
+    "source_raw_stored_privately_only": true,
+    "source_raw_rows_emitted_publicly": false,
+    "per_year": [
+      {
+        "year": 2015,
+        "verified_weekday_pairs": 261,
+        "unverified_exchange_calendar_or_source_gap_days": 13,
+        "reported_metadata_snapshot_sha256": "919b306be06696ecad8e32578d981b6e1fc7479c38bfee2a55cdbfd39c5970f6",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2016,
+        "verified_weekday_pairs": 261,
+        "unverified_exchange_calendar_or_source_gap_days": 15,
+        "reported_metadata_snapshot_sha256": "99720d33ed393db89ff7186d09e79ccd19f30647a7552be1abc1dc30a1263590",
+        "reported_sampled_other_invalid_ohlc_rows": 2,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2017,
+        "verified_weekday_pairs": 260,
+        "unverified_exchange_calendar_or_source_gap_days": 17,
+        "reported_metadata_snapshot_sha256": "1a6657f2b41c6abaf11173d826c82234ecdc543175becb9b3caae2c403278bfd",
+        "reported_sampled_other_invalid_ohlc_rows": 1,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2018,
+        "verified_weekday_pairs": 261,
+        "unverified_exchange_calendar_or_source_gap_days": 17,
+        "reported_metadata_snapshot_sha256": "e79a3ee9d969b68e718bb4e5e2b2a474a7121b0b2d73d61c570dbda45af7bf92",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2019,
+        "verified_weekday_pairs": 261,
+        "unverified_exchange_calendar_or_source_gap_days": 15,
+        "reported_metadata_snapshot_sha256": "68644f7c28f22eaab67bf890dc4ac3b86aade209747cde03985c412128fdf6bd",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2020,
+        "verified_weekday_pairs": 262,
+        "unverified_exchange_calendar_or_source_gap_days": 14,
+        "reported_metadata_snapshot_sha256": "6f8307d12784ca584e76fdf4cb77b0716a4192a27e26445dba129a8b86f15624",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2021,
+        "verified_weekday_pairs": 261,
+        "unverified_exchange_calendar_or_source_gap_days": 13,
+        "reported_metadata_snapshot_sha256": "362716e7bb5e025a9dcd39207b1ee095d97c633b8ca907722c766edf799ec2a1",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2022,
+        "verified_weekday_pairs": 260,
+        "unverified_exchange_calendar_or_source_gap_days": 14,
+        "reported_metadata_snapshot_sha256": "0b110aaa452f43788e9880f4bf769981dee5f31c617485ca49cc7e7918306c9e",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2023,
+        "verified_weekday_pairs": 260,
+        "unverified_exchange_calendar_or_source_gap_days": 15,
+        "reported_metadata_snapshot_sha256": "fe38e28e75cf24e755a06e15ef70abc60f7ac7d969c9c3ba7c91065e3bf5fe99",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2024,
+        "verified_weekday_pairs": 262,
+        "unverified_exchange_calendar_or_source_gap_days": 18,
+        "reported_metadata_snapshot_sha256": "25aa16f254a3eb05d52e0dfc70c079f587c7f8933b1bc8499b2525f71b1fd547",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2025,
+        "verified_weekday_pairs": 261,
+        "unverified_exchange_calendar_or_source_gap_days": 19,
+        "reported_metadata_snapshot_sha256": "223f83cd787acde6fb12edd5f3583be0b8352ac7415ed94a270f0f71e1297556",
+        "reported_sampled_other_invalid_ohlc_rows": 1,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      },
+      {
+        "year": 2026,
+        "verified_weekday_pairs": 201,
+        "unverified_exchange_calendar_or_source_gap_days": 14,
+        "reported_metadata_snapshot_sha256": "6df1b20d1ec3d65c9de9777afba2e076e042222eab86602a777146d068045742",
+        "reported_sampled_other_invalid_ohlc_rows": 0,
+        "integrity_class": "STORAGE_ONLY_NOT_PIT"
+      }
+    ],
+    "subgroup_evidence": [
+      {
+        "window": "2015-2016",
+        "verified_weekday_pairs": 522,
+        "calendar_or_source_gaps_unverified": 28,
+        "source_snapshot_hashes": "2015 and 2016 per-year fingerprints above",
+        "railway_log_markers": [
+          "INDEXALERT_PRIVATE_KRX_OPENAPI_INTEGRITY"
+        ],
+        "status": "INTEGRITY_ONLY"
+      },
+      {
+        "window": "2017-2022",
+        "verified_weekday_pairs": 1565,
+        "calendar_or_source_gaps_unverified": 90,
+        "aggregate_fingerprint_sha256": "e2503a3bc623d4386e5783ec19272916fe6abba9bc191c14040d2c0831c7f01a",
+        "official_api_requests_in_capture_stage": 3130,
+        "private_raw_objects_created_in_capture_stage": 2773,
+        "github_actions_run": 38251143908,
+        "status": "INTEGRITY_ONLY"
+      },
+      {
+        "window": "2023-2026",
+        "verified_weekday_pairs": 984,
+        "calendar_or_source_gaps_unverified": 66,
+        "aggregate_fingerprint_sha256": "be12af649926d95a9694381e41f3dffa0add637b72fd46fe1e7aed9a407499a0",
+        "github_actions_run": 38212546566,
+        "status": "INTEGRITY_ONLY"
+      }
+    ]
+  },
+  "status_and_pit": {
+    "quarantined_issue_count": 27,
+    "problem_27_tradability_admitted": false,
+    "official_halt_status_verified": false,
+    "official_delisting_and_cleanup_status_verified": false,
+    "historical_security_identity_pit_verified": false,
+    "original_publication_and_available_at_lineage_verified": false,
+    "complete_exchange_trading_calendar_attested": false,
+    "corporate_actions_and_adjustment_lineage_verified": false,
+    "true_fill_recovery_and_transaction_economics_verified": false,
+    "independent_expected_universe_verified": false,
+    "current_openapi_two_services_are_NOT_full_historical_status_sources": true,
+    "source_contract_gates_C_and_D": "BLOCKED",
+    "permitted_for_official_pit_profitability_backtest": [],
+    "not_permitted_for_official_pit_profitability_backtest": [
+      "2015-2026 full universe",
+      "all unresolved calendar/source days",
+      "problem 27 securities",
+      "halt/cleanup/delist-affected rows",
+      "all historical records without original availability lineage"
+    ]
+  },
+  "controlled_openapi_sample": {
+    "approved_source_file": "INDEXALERT_KRX_OPENAPI_HISTORY_USER_CONSENT_2026_10_12.json",
+    "approved_services": [
+      "유가증권 종목기본정보",
+      "유가증권 일별매매정보"
+    ],
+    "dates": [
+      "20150105",
+      "20260928",
+      "20261001"
+    ],
+    "maximum_requests": 6,
+    "manual_dispatch_only": true,
+    "workflow_path": ".github/workflows/indexalert-krx-openapi-approved-six-get-bridge.yml",
+    "pinned_source_commit": "dd839a3146af2261be4e3fde810a4a62881bacd3",
+    "current_run_evidence_verified_in_this_audit": false,
+    "manual_toggle_required": true,
+    "status_source_approval_included": false,
+    "no_implicit_repeat_or_expansion": true
+  },
+  "safety": {
+    "ORDERING": false,
+    "real_orders_authorized": false,
+    "funds_movement_authorized": false,
+    "broker_permission_change_authorized": false,
+    "champion_change_authorized": false,
+    "frozen_h5_changed": false,
+    "holdout_authorized": false,
+    "performance_run_authorized": false,
+    "additional_network_requests_executed_for_this_audit": false,
+    "railway_config_changed": false
+  },
+  "github_evidence": [
+    "https://github.com/kims34/openpilot-opkr/actions/runs/38251143908",
+    "https://github.com/kims34/openpilot-opkr/actions/runs/38212546566",
+    "https://github.com/kims34/openpilot-opkr/blob/index-alert-position-regen-fix-v1/INDEXALERT_KRX_STORED_INTEGRITY_VALIDATION.json",
+    "https://github.com/kims34/openpilot-opkr/blob/index-alert-research-v1/INDEXALERT_KRX_OPENAPI_HISTORY_USER_CONSENT_2026_10_12.json"
+  ]
+}
