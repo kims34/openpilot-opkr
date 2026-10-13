@@ -246,7 +246,7 @@ def inspect_original_document_layout(source: bytes) -> dict:
                     # Never interpret its text/cells as financial facts.
                     text = _decode_disclosure_markup(raw)
                     if not any(mark in text.lower() for mark in
-                               ("<document", "<html", "<table", "<body")):
+                               ("<html", "<table", "<tr", "<td", "<th", "<body", "<p")):
                         raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_UNSAFE")
                     try:
                         scanner = _BoundedDisclosureHTML()
