@@ -1,0 +1,73 @@
+name: IndexAlert M20 2022 Correction Candidate Row Diff
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_correction_row_diff.py'
+      - 'test_research_v1_opendart_m20_2022_correction_row_diff.py'
+      - '.github/workflows/indexalert-m20-2022-correction-row-diff.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-opendart-candidate-row-diff
+  cancel-in-progress: false
+jobs:
+  offline-row-security-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Test row-diff source without credentials
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_correction_row_diff.py test_research_v1_opendart_m20_2022_correction_row_diff.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_correction_row_diff
+      - name: No order endpoints and no performance authority
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_correction_row_diff.py
+          grep -F '"m20_performance_run_authorized"' research_v1_opendart_m20_2022_correction_row_diff.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_correction_row_diff.py
+  official-safe-candidate-row-diff:
+    needs: offline-row-security-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Compare original and correction rows in memory without amounts
+        run: |
+          python research_v1_opendart_m20_2022_correction_row_diff.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x = json.loads(Path("research_results/opendart_m20_2022_row_diff/counts.json").read_text())
+          assert x["source_status"] == "ORIGINAL_CORRECTION_EXACT_OPERATING_ROW_SHAPE_COMPARE_ONLY"
+          assert x["fixed_cohort_slot"] == 5 and x["max_official_requests"] == 5
+          assert x["financial_semantic_differences_still_unverified"] is True
+          assert x["raw_source_rows_values_or_identifiers_persisted"] is False
+          assert x["ordering"] == "DISABLED"
+          for k in ("original_cfs_q3_2022_2021_three_month_profit_verified",
+                    "normalized_cfs_operating_profit_changed_verified",
+                    "historical_publication_instant_pit_verified",
+                    "full_correction_lineage_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized"):
+            assert x[k] is False, k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-operating-row-diff-counts-only
+          path: research_results/opendart_m20_2022_row_diff/counts.json
+          retention-days: 7
+          if-no-files-found: warn
