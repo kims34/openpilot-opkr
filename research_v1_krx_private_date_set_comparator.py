@@ -16,6 +16,7 @@ from datetime import date, timedelta
 import hashlib
 import json
 from pathlib import Path
+import os
 import re
 from typing import Callable
 
@@ -56,7 +57,8 @@ def _parse_day(value: object) -> date:
 
 def reconcile_exact_date_sets(
     *, start: str, end: str, verified_original_days: list[dict],
-    reference_closed_iso_days: list[str], expected_empty_count: int | None = None,\n    expected_original_audit_snapshot_sha256: str | None = None,
+    reference_closed_iso_days: list[str], expected_empty_count: int | None = None,
+    expected_original_audit_snapshot_sha256: str | None = None,
 ) -> dict:
     """Compare exact dates in memory; return ONLY aggregate counts/digests.
 
@@ -74,7 +76,8 @@ def reconcile_exact_date_sets(
         "empty_on_reference_closed": 0,
         "empty_on_reference_open": 0,
         "nonempty_on_reference_closed": 0,
-        "original_pair_scope_sha256": None,\n        "original_audit_compatible_snapshot_sha256": None,
+        "original_pair_scope_sha256": None,
+        "original_audit_compatible_snapshot_sha256": None,
         "comparison_metadata_sha256": None,
         **BLOCK,
     }
@@ -104,7 +107,7 @@ def reconcile_exact_date_sets(
             value=row.get("day")
             if type(value) is not str or not RAW_DAY.fullmatch(value):
                 return report
-            day=date.strptime(value,"%Y%m%d") if hasattr(date,"strptime") else date.fromisoformat(value[:4]+"-"+value[4:6]+"-"+value[6:])
+            day=date.fromisoformat(value[:4]+"-"+value[4:6]+"-"+value[6:])
             if day not in expected or day in seen:
                 return report
             p=row.get("pair_sha256")
@@ -127,7 +130,15 @@ def reconcile_exact_date_sets(
             return report
         # Pair fingerprints are from private _check_one and already bound to raw SHA.
         # Final digest reveals no original provider pair hashes or exact days.
-        report["original_audit_compatible_snapshot_sha256"]=hashlib.sha256(json.dumps(\n            [{"day":d.replace("-",""),"pair_sha256":p} for d,p in sorted(pair_hashes)],\n            sort_keys=True,separators=(",",":")\n        ).encode("utf-8")).hexdigest()\n        if (expected_original_audit_snapshot_sha256 is not None\n                and report["original_audit_compatible_snapshot_sha256"] != expected_original_audit_snapshot_sha256):\n            report["status"]="FAIL_CLOSED_ORIGINAL_SNAPSHOT_FINGERPRINT_DRIFT"\n            return report\n        report["original_pair_scope_sha256"]=hashlib.sha256(json.dumps(
+        report["original_audit_compatible_snapshot_sha256"]=hashlib.sha256(json.dumps(
+            [{"day":d.replace("-",""),"pair_sha256":p} for d,p in sorted(pair_hashes)],
+            sort_keys=True,separators=(",",":")
+        ).encode("utf-8")).hexdigest()
+        if (expected_original_audit_snapshot_sha256 is not None
+                and report["original_audit_compatible_snapshot_sha256"] != expected_original_audit_snapshot_sha256):
+            report["status"]="FAIL_CLOSED_ORIGINAL_SNAPSHOT_FINGERPRINT_DRIFT"
+            return report
+        report["original_pair_scope_sha256"]=hashlib.sha256(json.dumps(
             sorted(pair_hashes),separators=(",",":")
         ).encode("utf-8")).hexdigest()
         comparison={
@@ -169,11 +180,21 @@ def audit_private_scope(
     """
     fail={"status":"FAIL_CLOSED_NOT_AUTHORIZED_PRIVATE_AUDIT_ENV",**BLOCK}
     if existing_audit is None:
+        # Fail before importing the production-only provider dependencies.
+        # No GitHub CI runner, laptop or arbitrary root may pretend to be
+        # the dedicated original KRX historical worker and mounted volume.
+        base=os.getenv("KRX_PRIVATE_RAW_DIR")
+        required=(Path(base) / "openapi_kospi_history_v1") if base else None
+        actual=Path(private_root)
+        if (os.getenv("RAILWAY_SERVICE_NAME")!="indexalert-krx-historical-worker"
+                or required is None or actual!=required
+                or not actual.is_relative_to(Path("/data"))):
+            return fail
         from research_v1_krx_openapi_private_integrity_audit import (
             _check_one, _trusted_private_root,
         )
         try:
-            root=_trusted_private_root(Path(private_root))
+            root=_trusted_private_root(actual)
         except Exception:
             return fail
         verify=_check_one
@@ -197,6 +218,7 @@ def audit_private_scope(
         start=start,end=end,verified_original_days=receipts,
         reference_closed_iso_days=reference_closed_iso_days,
         expected_empty_count=expected_empty_count,
+        expected_original_audit_snapshot_sha256=expected_original_audit_snapshot_sha256,
     )
     if existing_audit is not None:
         report["status"]="SYNTHETIC_CALLBACK_NOT_ORIGINAL_SOURCE_PROOF"
