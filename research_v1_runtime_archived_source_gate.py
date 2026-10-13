@@ -96,7 +96,7 @@ def validate_source_definitions(root: Path) -> dict:
             raise SourceDriftError("archived source missing or nonregular: " + name)
         digest = git_blob_sha1(path.read_bytes())
         if digest != expected:
-            raise SourceDriftError("archived test/requirements blob changed: " + name)
+            raise SourceDriftError("archived blob mismatch: " + name + " expected=" + expected + " observed=" + digest)
         actual[name] = digest
     return {
         "source_definition_drift_detected": False,
