@@ -440,6 +440,22 @@ def main() -> None:
     try:
         token, account, issued = _token_and_account(state)
         asyncio.run(_run_ws(token, account, issued, state))
+        if not (
+            state.TOKEN_OK
+            and state.ACCOUNT_ENDPOINT_OK
+            and state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN
+            and state.WS_LOGIN_OK
+            and state.TYPE00_REG_SENT
+            and state.TYPE00_REG_ACK_OK
+        ):
+            raise ReadOnlySmokeError("TYPE00_ADMISSION_INCOMPLETE", 0)
+        if state.TYPE00_EVENT_COUNT <= 0:
+            # REG ACK is authenticated subscription evidence, not proof
+            # that any actual broker-native event/execution was observed.
+            # Exit 3 signals inconclusive rather than a false green.
+            state.STAGE = "TYPE00_ACK_ONLY_NO_EVENTS"
+            state.RETURN_CODE = 0
+            _emit(state, exit_code=3)
         state.STAGE = "REAL_TYPE00_READ_ONLY_SMOKE"
         state.RETURN_CODE = 0
         _emit(state, exit_code=0)
