@@ -79,7 +79,6 @@ def audit_kiwoom_probe(report: Mapping[str, Any] | None) -> dict[str, Any]:
         failures.append("page_count_invalid")
         pages = []
     count = 0
-    seen_days: set[str] = set()
     earliest: str | None = None
     latest: str | None = None
     for index, page in enumerate(pages):
@@ -115,6 +114,8 @@ def audit_kiwoom_probe(report: Mapping[str, Any] | None) -> dict[str, Any]:
     duplicate_days = report.get("duplicate_dates")
     if type(duplicate_days) is not int or duplicate_days != 0:
         failures.append("duplicate_or_unverified_dates")
+    if pages and isinstance(pages[-1], Mapping) and pages[-1].get("more") is True and report.get("history_exhausted") is True:
+        failures.append("pagination_exhaustion_conflict")
     if report.get("history_exhausted") is not True:
         # This covers incomplete (truncated) pagination, NOT full-history
         # coverage: ka10059 may impose its own undocumented retention window.
@@ -139,6 +140,7 @@ def _result(failures: list[str], reachable: bool, rows: int, presented: bool) ->
         "metadata_failures": list(dict.fromkeys(failures)),
         "observed_rows_metadata_only": rows,
         "bounded_route_reachability": reachable and not failures,
+        "authenticated_route_evidence_verified": False,
         "full_universe_coverage_verified": False,
         "broker_historical_vintage_pit_verified": False,
         "licence_and_publication_verified": False,
