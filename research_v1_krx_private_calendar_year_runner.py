@@ -13,9 +13,9 @@ Example (AFTER authorized original KRX export and independent SHA are staged):
     --expected-document-sha256 <independently pinned source sha256> --audit
 
 Output is aggregate JSON with no day-level observations or security IDs.
-The CSV date rows must match the normalized claim exactly, or this runner
+The original CSV or XLSX date rows must match the claim exactly, or this runner
 refuses. Original KRX file origin and historical publication remain unverified;
-binary XLS/XLSX/HTML are unsupported and always rejected.
+binary legacy XLS/HTML and unsupported spreadsheets are always rejected.
 """
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ from pathlib import Path
 import re
 
 from research_v1_krx_calendar_csv_source_validator import extract_and_reconcile_csv
+from research_v1_krx_calendar_xlsx_source_validator import read_holiday_source_xlsx
 from research_v1_krx_private_date_set_comparator import audit_private_scope
 
 SHA = re.compile(r"^[a-f0-9]{64}$")
@@ -98,8 +99,13 @@ def run_year(
         if hashlib.sha256(original_blob).hexdigest() != expected_document_sha256:
             report["status"] = "FAIL_CLOSED_PINNED_DOCUMENT_SHA_MISMATCH"
             return report
-        ref = extract_and_reconcile_csv(original_blob, claim_data, year)
-        if ref["status"] != "SOURCE_CSV_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT":
+        if original_blob.startswith(b"PK\x03\x04"):
+            ref = read_holiday_source_xlsx(original_blob, claim_data, year)
+            accepted = "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT"
+        else:
+            ref = extract_and_reconcile_csv(original_blob, claim_data, year)
+            accepted = "SOURCE_CSV_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT"
+        if ref["status"] != accepted:
             return report
         inventory = json.loads(MANIFEST.read_text(encoding="utf-8"))
         matches = [
