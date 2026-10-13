@@ -190,3 +190,19 @@ missing. Prior GitHub Actions bounded probe was
 `AUTH_NOT_CONFIGURED`; no credential migration or Railway mutation
 was performed. Draft PR #416 remains unmerged. Do not change
 Frozen/H5/M20, Champion, Holdout or `ORDERING=false`.
+
+## 2026-10-14 KST — separate retrospective versus prospective data-ingestion semantics
+
+Review of `research_v1_kiwoom_flow_pit_structural.py` found an ambiguity: the module checked `available_at <= decision_at` but did not distinguish historical **as-published replay** from an actual prospective data capture. Those two cases require different conditions for the local ingestion clock; applying `ingested_at <= decision_at` indiscriminately would falsely exclude valid historical archive downloads done long after an actual historical decision, while omitting that rule for live capture would allow a network response arriving after the decision into an allegedly contemporaneous signal.
+
+In the **isolated source-audit branch only**, the candidate structural validator now requires an explicit `capture_mode` for every row:
+
+- `HISTORICAL_RECONSTRUCTION`: permits later archival local ingestion *structurally*, but **does not trust self-declared broker `published_at` / `available_at` timestamps**; original archived release/vintage, rights, revision records and independent contemporaneous availability remain unverified, so `source_admitted=false` and all performance/holdout permissions remain false.
+- `PROSPECTIVE_CAPTURE`: additionally requires `ingested_at <= decision_at`; the source can claim an early publication but cannot be used to generate a signal before its actual local ingestion. The existing chronological constraints `event_day_start <= published_at <= available_at <= ingested_at` and `available_at <= decision_at` remain.
+- Unknown, missing or nonstring capture modes and mixed historical/prospective modes in one batch fail closed; no implicit mode conversion is performed.
+
+**Actually executed test result**: [GitHub Actions #38464634914](https://github.com/kims34/openpilot-opkr/actions/runs/38464634914), commit `c5e0cc678589647606762b5c5ff3157cce90af41`, **SUCCESS: `Ran 85 tests`, `OK`**. Eight new offline synthetic tests address late retrospective archival ingestion, prospective late arrival, valid prospective timing, unknown/missing/mixed modes and nonstring capture mode. These tests are **not** genuine KRX/Kiwoom historical-data PIT proof or trading-performance tests.
+
+**Additional non-mutating Railway observation (2026-10-14 KST):** inspected up to 120 most recent runtime-log entries for each of two existing REAL read-only services (`indexalert-kiwoom-real-readonly-run`, `indexalert-kiwoom-real-readonly`); log result included 64 and 42 entries respectively, service status `SUCCESS`. No rows in those inspected logs carried `ka10059`, `INVESTOR_FLOW_PROBE`, `SOURCE_REACHABLE`, or `AUTH_NOT_CONFIGURED` indicators. Absence of those terms within that bounded log query **cannot prove no earlier broker requests happened**. No API requests, Railway redeploys, service configuration changes, auth-variable reads or key movement were performed. Authenticated broker source evidence remains **not established** in this task.
+
+**Coordinator handoff:** continue at `SOURCE_NOT_ADMITTED` / `NEW_OFFICIAL_SOURCE_EVIDENCE_REQUIRED`. Existing H5/M20, Champion, Frozen conditions, sealed Holdout and `ORDERING=false` unchanged. PR #416 remains draft/unmerged.
