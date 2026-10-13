@@ -133,7 +133,7 @@ class OriginalDocument2022Tests(unittest.TestCase):
 
     def test_table_local_header_prevents_cross_table_leakage(self):
         markup = (
-            "<DOCUMENT><TITLE>연결 포괄손익계산서</TITLE>"
+            "<DOCUMENT><TITLE>연결 포괄손익계산서&nbsp;</TITLE>"
             "<TABLE><TR><TD>당분기 3개월</TD><TD>전분기 3개월</TD></TR></TABLE>"
             "<TABLE><TR><TD>영업이익</TD><TD>100</TD><TD>200</TD></TR></TABLE>"
             "</DOCUMENT>"
@@ -147,7 +147,7 @@ class OriginalDocument2022Tests(unittest.TestCase):
 
     def test_table_local_header_and_section_are_only_shape_hints(self):
         markup = (
-            "<DOCUMENT><P>연결 포괄손익계산서</P>"
+            "<DOCUMENT><P>연결 포괄손익계산서&nbsp;</P>"
             "<TABLE><TR><TH>3개월</TH><TH>3개월</TH></TR>"
             "<TR><TD>영업이익</TD><TD>100</TD><TD>200</TD></TR></TABLE></DOCUMENT>"
         ).encode()
@@ -161,7 +161,7 @@ class OriginalDocument2022Tests(unittest.TestCase):
 
     def test_operating_row_without_consolidated_heading_not_admitted(self):
         markup = (
-            "<DOCUMENT><P>별도 포괄손익계산서</P>"
+            "<DOCUMENT><P>별도 포괄손익계산서&nbsp;</P>"
             "<TABLE><TR><TH>3개월</TH></TR>"
             "<TR><TD>영업이익</TD><TD>100</TD><TD>200</TD></TR></TABLE></DOCUMENT>"
         ).encode()
