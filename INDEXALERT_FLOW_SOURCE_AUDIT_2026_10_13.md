@@ -144,3 +144,49 @@ The first all-module CI run [#38417196181](https://github.com/kims34/openpilot-o
 4. Only then register independent single-shot comparison of volume/foreign/institutional factors using Frozen protocols, net post-cost/post-tax economics and untouched independent Holdout procedure.
 
 All missing items remain unverified. No direct orders, fund movements, account/secret modifications, service redeploys or H5/M20/Champion/Holdout changes were performed.
+
+## Follow-up — reject falsely matched partial foreign/institution flow panels
+
+The prior `research_v1_kiwoom_krx_flow_parity.py` code could emit
+`declared_scope_exact_numeric_match=true` when **only foreign flow** was
+present in both normalized source candidates and the institution leg was
+missing from both. It could also report numeric parity across two
+**different declared normalization contract hashes**. Neither was safe as
+a readiness signal for the intended foreign+institution comparative study.
+
+**Code changes (isolated branch only):**
+- Require both `FOREIGN_NET_BUY_VALUE` and `INSTITUTION_NET_BUY_VALUE`
+  for every declared security/day **in each source** before a complete
+  declared-scope match can be true. `declared_incomplete_measure_pair_count`
+  counts incomplete issuer/day pairs, rather than silently using the
+  intersection or imputing zeros.
+- Require the two sources to declare the **same pinned KRW-normalization
+  contract hash** for `declared_scope_exact_numeric_match`. A same-hash
+  *claim* by itself is not proof of correct unit conversion; the
+  `historical_units_independently_attested` flag remains false.
+- Enforce canonical signed integer KRW text. Fractional, scientific
+  notation, thousands separators and whitespace fail closed; negative
+  institutional/foreign net-buy values are legitimate.
+- Preserve zero source/holdout/trading authority: matched mock values
+  cannot establish timestamp vintage, rights, issuer mapping or
+  post-tax/post-cost profitability.
+
+**Real executed CI:** initial code/test update exposed a pre-existing
+test expectation mismatch for an intentionally malformed amount
+([#38419234583](https://github.com/kims34/openpilot-opkr/actions/runs/38419234583),
+`77` run, `1` assertion failure). This was corrected without
+changing the new guard. [GitHub Actions
+#38419356861](https://github.com/kims34/openpilot-opkr/actions/runs/38419356861),
+commit `18dd88182310facc57040d8611dfa6a4732cb334`, then ran
+**77/77** offline unit and synthetic negative tests: `SUCCESS`,
+`Ran 77 tests`, `OK`. This is **zero** actual market-data
+performance trials.
+
+**Handoff state:** `SOURCE_NOT_ADMITTED` / `NO_PERFORMANCE_RUN`.
+Full archived and authorized historical KRX/Kiwoom original responses,
+point-in-time publication/revision lineage, delisted/paused security
+universe, same-unit venue definitions and legal-use permissions remain
+missing. Prior GitHub Actions bounded probe was
+`AUTH_NOT_CONFIGURED`; no credential migration or Railway mutation
+was performed. Draft PR #416 remains unmerged. Do not change
+Frozen/H5/M20, Champion, Holdout or `ORDERING=false`.
