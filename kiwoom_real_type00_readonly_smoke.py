@@ -405,6 +405,11 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
                     continue
                 if name != "REAL":
                     continue
+                if not state.TYPE00_REG_ACK_OK:
+                    # An unsolicited REAL frame cannot become admitted
+                    # subscription or execution evidence before broker REG
+                    # acceptance, even if a later REG ACK arrives.
+                    raise ReadOnlySmokeError("TYPE00_FRAME_BEFORE_REG_ACK", 0)
                 try:
                     events, matched, seen_execution = _type00_observation(obj, account)
                 except Exception:
