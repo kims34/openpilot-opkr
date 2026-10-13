@@ -199,7 +199,7 @@ def inspect_original_document_layout(source: bytes) -> dict:
         raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_ABSENT")
     if sum(map(len, contents)) > LAYOUT_MAX_TEXT_CHARS:
         raise OriginalDocumentGap("DOCUMENT_LAYOUT_TEXT_LIMIT")
-    text = re.sub(r"\\s+", "", unicodedata.normalize("NFKC", "".join(contents)))
+    text = re.sub(r"\s+", "", unicodedata.normalize("NFKC", "".join(contents)))
     return {
         **checked,
         "safely_parsed_structured_xml_count": parsed,
