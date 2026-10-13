@@ -43,12 +43,12 @@ class ValueParityTest(unittest.TestCase):
             self.assertFalse(result[key], key)
 
     def test_broker_numeric_mismatch_never_rounded_into_pass(self):
-        result = audit_cross_source_parity([r("1000")], [krx("1001")])
+        result = audit_cross_source_parity([r(amount="1000")], [krx("1001")])
         self.assertFalse(result["declared_scope_exact_numeric_match"])
         self.assertEqual(result["numeric_mismatch_rows"], 1)
 
     def test_negative_net_buy_is_permitted(self):
-        result = audit_cross_source_parity([r("-1000")], [krx("-1000")])
+        result = audit_cross_source_parity([r(amount="-1000")], [krx("-1000")])
         self.assertTrue(result["declared_scope_exact_numeric_match"])
 
     def test_missing_broker_date_does_not_disappear(self):
