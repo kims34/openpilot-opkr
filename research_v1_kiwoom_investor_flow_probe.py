@@ -1,5 +1,6 @@
 """Bounded ka10059 source feasibility probe; no orders or public numeric rows."""
 import datetime as dt
+from decimal import Decimal
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ BASE = "https://api.kiwoom.com"
 BODY = {"dt": "20261008", "stk_cd": "005930", "amt_qty_tp": "1",
         "trde_tp": "0", "unit_tp": "1"}
 FIELDS = ("dt", "frgnr_invsr", "orgn", "acc_trde_prica", "acc_trde_qty")
+NUMERIC_PATTERN = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?")
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -75,14 +77,14 @@ def run(env, send=request):
                 except ValueError:
                     bad += 1
             missing = sum(any(row.get(k) in (None, "") for k in FIELDS) for row in rows)
-            numeric_bad = sum(any(not re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?", str(row.get(k, "")))
+            numeric_bad = sum(any(not NUMERIC_PATTERN.fullmatch(str(row.get(k, "")))
                                   for k in FIELDS[1:]) for row in rows)
             # Broker response may include stopped/zero-trade sessions, so zero
             # volume/value is not missing data. Negative *cumulative* volume
             # or trade value is not a valid daily observation.
             negative_activity = sum(any(
-                re.fullmatch(r"[+-]?[0-9]+(?:\\.[0-9]+)?", str(row.get(k, "")))
-                and float(str(row[k])) < 0
+                NUMERIC_PATTERN.fullmatch(str(row.get(k, "")))
+                and Decimal(str(row[k])) < 0
                 for k in ("acc_trde_prica", "acc_trde_qty")
             ) for row in rows)
             # The current query expects reverse chronological pagination.
@@ -116,6 +118,9 @@ def run(env, send=request):
         result["status"] = "SOURCE_REACHABLE_METADATA_ONLY" if all_dates else "SOURCE_REACHABLE_EMPTY"
         result["publication_time_verified"] = False
         result["historical_revision_policy_verified"] = False
+        if result["duplicate_dates"]:
+            # Terminal pagination with duplicated days is not a valid source.
+            result["status"] = "PAGINATION_VALIDATION_REJECTED"
         return result
     except Exception as exc:
         return dict(result, status="TRANSPORT_OR_PARSE_FAILED", error_type=type(exc).__name__)
