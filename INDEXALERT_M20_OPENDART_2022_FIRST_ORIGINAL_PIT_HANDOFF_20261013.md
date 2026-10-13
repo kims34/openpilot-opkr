@@ -42,3 +42,13 @@ This report contains *verified source metadata only*; it does **not** contain, i
 - `ORDERING=DISABLED`; no broker API/network use, no live trading or capital movement.
 
 **For the separate M20 profitability Work:** this file and the run are **source-gap/provenance evidence only**. Do not pass source-shape rows or the ZIP digest as an M20 feature, label, price or alpha result. Performance remains `NOT_EVALUABLE_NEW_EVIDENCE_REQUIRED` until every original-data and PIT gate has independent affirmative evidence. Frozen/H5 and the preregistered M20 experiment/Champion/holdout remain untouched.
+
+
+## 2026-10-13 continuation — original ZIP fingerprint fail-closed regression
+
+- Change commits: `7e3605036488e9c8805a3b176543613e9e2e5054` (source SHA-256 gate), `71586fac66c4ce945685c6e26cbfeacfa09984ab` (positive and negative regression cases), `d976330498991c59d2571c043e1e09528bbdc0c8` (official CI SHA assertion).
+- [Latest completed real official run #38392847048](https://github.com/kims34/openpilot-opkr/actions/runs/38392847048), head `d976330498991c59d2571c043e1e09528bbdc0c8`: **offline-security-and-lineage SUCCESS** and **official-original-read-only SUCCESS**.
+- The original 2022 slot-5 document ZIP SHA-256 matched the previously audited `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`. The prior digest is now pinned and checked **before** SGML layout inspection; any changed ZIP is `SOURCE_GAP_FAIL_CLOSED / ORIGINAL_DOCUMENT_SHA256_DRIFT` without recording the altered hash, financial contents or admitting M20 PIT.
+- New regression explicitly proves that a mismatched response skips layout, rejects M20/holdout/orders and does not expose provider keys; fixed expected hash is independently asserted by offline tests and official CI.
+- Latest actual evidence artifact ID `11811306026`, `indexalert-m20-opendart-2022-original-source-proof`, ZIP artifact digest `sha256:2738ccf8f1794d9975a384671d96822c4b003040c151c2f382030c53ce1ec1d8` (7-day retention). This archive is a **flags-only report**, not the OpenDART document ZIP.
+- Continuing source gate: the source remains **non-XBRL SGML**; neither 2022 nor 2021 three-month original CFS operating-profit fact is bound to a validated statement/window. Original XBRL provider `014`, entire correction history, intraday publication instant and historical issuer/security PIT remain unresolved. No M20 performance or live admission.
