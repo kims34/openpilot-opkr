@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 import re
 import stat
+import unicodedata
 import zipfile
 
 from defusedxml.ElementTree import fromstring
@@ -150,6 +151,72 @@ def inspect_official_original_document(source: bytes) -> dict:
         raise OriginalDocumentGap("DOCUMENT_ZIP_INTEGRITY_INVALID") from None
 
 
+
+LAYOUT_MAX_NODES = 500_000
+LAYOUT_MAX_TEXT_CHARS = 36 * 1024 * 1024
+
+
+def inspect_original_document_layout(source: bytes) -> dict:
+    """Coarse XML layout flags only, NOT a bindable Q3 CFS financial fact.
+
+    Financial terms may occur in footnotes or narrative; no actual amount,
+    period, current/prior value, share identity, or PIT validity is asserted.
+    Entire original ZIP is CRC and bounded-read verified first.
+    """
+    checked = inspect_official_original_document(source)
+    contents = []
+    parsed = 0
+    nodes = 0
+    table_tag = False
+    profit_cell = False
+    try:
+        with zipfile.ZipFile(io.BytesIO(source)) as archive:
+            for entry in archive.infolist():
+                if not entry.filename.lower().endswith((".xml", ".htm", ".html", ".xhtml")):
+                    continue
+                try:
+                    root = fromstring(archive.read(entry), forbid_dtd=True,
+                                      forbid_entities=True, forbid_external=True)
+                except (DefusedXmlException, ParseError, ValueError, UnicodeError):
+                    raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_UNSAFE") from None
+                parsed += 1
+                for node in root.iter():
+                    nodes += 1
+                    if nodes > LAYOUT_MAX_NODES:
+                        raise OriginalDocumentGap("DOCUMENT_LAYOUT_NODES_LIMIT")
+                    tag = node.tag.rsplit("}", 1)[-1].upper() if type(node.tag) is str else ""
+                    if tag in ("TABLE", "TR", "TD", "TH"):
+                        table_tag = True
+                    if node.text:
+                        contents.append(node.text)
+                        if tag in ("TD", "TH"):
+                            cell = unicodedata.normalize("NFKC", node.text)
+                            if any(word in cell.replace(" ", "") for word in ("영업이익", "영업손실")):
+                                profit_cell = True
+    except (zipfile.BadZipFile, RuntimeError, EOFError, OSError, UnicodeError):
+        raise OriginalDocumentGap("DOCUMENT_LAYOUT_ZIP_UNREADABLE") from None
+    if parsed == 0:
+        raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_ABSENT")
+    if sum(map(len, contents)) > LAYOUT_MAX_TEXT_CHARS:
+        raise OriginalDocumentGap("DOCUMENT_LAYOUT_TEXT_LIMIT")
+    text = re.sub(r"\\s+", "", unicodedata.normalize("NFKC", "".join(contents)))
+    return {
+        **checked,
+        "safely_parsed_structured_xml_count": parsed,
+        "document_contains_table_tags": table_tag,
+        "document_contains_consolidated_term": any(w in text for w in
+            ("연결재무제표", "연결포괄손익계산서", "연결손익계산서")),
+        "document_contains_income_statement_term": any(w in text for w in
+            ("손익계산서", "포괄손익계산서")),
+        "document_contains_operating_profit_term": any(w in text for w in
+            ("영업이익", "영업손실")),
+        "document_contains_operating_profit_cell_text": profit_cell,
+        "original_q3_cfs_three_month_profit_bound": False,
+        "raw_source_text_or_financial_values_persisted": False,
+        "original_document_financial_semantics_validated": False,
+    }
+
+
 def _fetch_first_document(session, key: str, receipt: str) -> bytes:
     if type(receipt) is not str or not RECEIPT.fullmatch(receipt):
         raise OriginalDocumentGap("DOCUMENT_RECEIPT_INVALID")
@@ -212,14 +279,17 @@ def run(session=None) -> dict:
         receipt = original_first_receipt(listing, ORIGINAL_YEAR)
         stage = "EXACT_FIRST_SUBMITTED_2022_DOCUMENT_ZIP"
         source = _fetch_first_document(session, key, receipt)
-        result.update(inspect_official_original_document(source))
-        result["source_status"] = "ORIGINAL_2022_DOCUMENT_ZIP_PRESENT_SHAPE_ONLY"
+        result.update(inspect_original_document_layout(source))
+        result["source_status"] = "ORIGINAL_2022_DOCUMENT_LAYOUT_DIAGNOSTIC_ONLY"
     except Exception as ex:
         result["source_status"] = "SOURCE_GAP_FAIL_CLOSED"
         result["failure_stage"] = stage
         allowed = {
             "DOCUMENT_RESPONSE_BYTES_INVALID",
             "DOCUMENT_RESPONSE_NOT_VERIFIABLE_ZIP",
+            "DOCUMENT_LAYOUT_XML_UNSAFE", "DOCUMENT_LAYOUT_NODES_LIMIT",
+            "DOCUMENT_LAYOUT_ZIP_UNREADABLE", "DOCUMENT_LAYOUT_XML_ABSENT",
+            "DOCUMENT_LAYOUT_TEXT_LIMIT",
             "DOCUMENT_ARCHIVE_FILE_COUNT_INVALID",
             "DOCUMENT_ARCHIVE_EXPANSION_LIMIT",
             "DOCUMENT_ARCHIVE_ENTRY_UNSAFE",

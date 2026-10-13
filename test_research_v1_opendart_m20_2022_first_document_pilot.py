@@ -11,7 +11,7 @@ import zipfile
 from research_v1_opendart_m20_2022_first_document_pilot import (
     COHORT, DOCUMENT_ERROR_CODES, FROZEN_SLOT,
     OriginalDocumentGap, SAFETY,
-    _fetch_first_document, inspect_official_original_document, run,
+    _fetch_first_document, inspect_official_original_document, inspect_original_document_layout, run,
 )
 
 
@@ -34,6 +34,43 @@ class OriginalDocument2022Tests(unittest.TestCase):
             "independent_holdout_authorized", "real_orders_authorized",
             "funds_movement_authorized", "permissions_change_authorized",
         )))
+
+
+    def test_coarse_layout_labels_never_admit_numeric_pit_or_orders(self):
+        raw = valid_zip(payload=(
+            "<DOCUMENT><TITLE>연결 재무제표</TITLE>"
+            "<TABLE><TR><TD>영업이익</TD><TD>987654321</TD></TR></TABLE>"
+            "<TITLE>포괄손익계산서</TITLE></DOCUMENT>"
+        ).encode("utf-8"))
+        report = inspect_original_document_layout(raw)
+        for name in ("document_contains_consolidated_term",
+                     "document_contains_income_statement_term",
+                     "document_contains_table_tags",
+                     "document_contains_operating_profit_term",
+                     "document_contains_operating_profit_cell_text"):
+            self.assertTrue(report[name], name)
+        self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
+        self.assertFalse(report["original_document_financial_semantics_validated"])
+        self.assertFalse(report["raw_source_text_or_financial_values_persisted"])
+        self.assertNotIn("987654321", json.dumps(report))
+
+    def test_narrative_profits_are_not_financial_fact_evidence(self):
+        raw = valid_zip(payload="<document><p>연결재무제표 영업이익</p></document>".encode())
+        report = inspect_original_document_layout(raw)
+        self.assertTrue(report["document_contains_operating_profit_term"])
+        self.assertFalse(report["document_contains_table_tags"])
+        self.assertFalse(report["document_contains_operating_profit_cell_text"])
+        self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
+
+    def test_valid_crc_but_unsafe_xml_must_fail_closed(self):
+        for payload in (
+            b"<document><bad></document>",
+            b'<!DOCTYPE DOC [<!ENTITY x SYSTEM "file:///secret">]><DOC>&x;</DOC>',
+        ):
+            with self.subTest(payload=payload[:10]), self.assertRaisesRegex(
+                OriginalDocumentGap, "DOCUMENT_LAYOUT_XML_UNSAFE"
+            ):
+                inspect_original_document_layout(valid_zip(payload=payload))
 
     def test_status_014_and_020_are_distinguished_without_exposing_message(self):
         for code in ("013", "014", "020", "010"):
@@ -96,7 +133,7 @@ class OriginalDocument2022Tests(unittest.TestCase):
         self.assertEqual(official.call_args_list[1].args[2]["end_de"], "20230228")
         first.assert_called_once_with({"status": "000"}, 2022)
         doc.assert_called_once_with(fake_session, "TEST_KEY_ONLY", "20221114000001")
-        self.assertEqual(r["source_status"], "ORIGINAL_2022_DOCUMENT_ZIP_PRESENT_SHAPE_ONLY")
+        self.assertEqual(r["source_status"], "ORIGINAL_2022_DOCUMENT_LAYOUT_DIAGNOSTIC_ONLY")
         self.assertFalse(r["m20_performance_run_authorized"])
         self.assertEqual(r["max_official_requests"], 3)
         self.assertNotIn("TEST_KEY_ONLY", json.dumps(r))

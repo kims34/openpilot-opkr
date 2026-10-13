@@ -79,7 +79,9 @@ jobs:
           ):
               assert p[key] is False, "FORBIDDEN_FINANCIAL_OR_TRADING_ADMISSION"
           assert p["ordering"] == "DISABLED"
-          assert p["source_status"] == "ORIGINAL_2022_DOCUMENT_ZIP_PRESENT_SHAPE_ONLY", "OFFICIAL_DOCUMENT_SOURCE_GAP"
+          assert p["source_status"] == "ORIGINAL_2022_DOCUMENT_LAYOUT_DIAGNOSTIC_ONLY", "OFFICIAL_DOCUMENT_LAYOUT_SOURCE_GAP"
+          assert p["original_q3_cfs_three_month_profit_bound"] is False
+          assert p["raw_source_text_or_financial_values_persisted"] is False
           PY
       - name: Upload flags-only source probe without disclosure bytes or issuer IDs
         if: always()
