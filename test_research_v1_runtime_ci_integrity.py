@@ -201,5 +201,108 @@ class OneRunnerFailClosedTest(unittest.TestCase):
                     "full_workflow_wall_speedup_measured", "holdout_accessed", "ordering"):
             self.assertIs(report[key], False)
 
+
+class CacheManifestNoFollowTest(unittest.TestCase):
+    """Synthetic-only local filesystem race controls (not PIT authorization)."""
+
+    def setUp(self):
+        from research_v1_runtime_manifest import REQUIRED_GATES
+        t = tempfile.TemporaryDirectory()
+        self.addCleanup(t.cleanup)
+        self.root = Path(t.name)
+        self.source = self.root / "original.bin"
+        self.code = self.root / "frozen.py"
+        self.source.write_bytes(b"synthetic original")
+        self.code.write_bytes(b"synthetic code")
+        self.args = {
+            "source_files": {"data": self.source},
+            "code_files": {"code": self.code},
+            "receipt": {
+                "admission_status": "PIT_ADMITTED",
+                "source_evidence_sha256": "a" * 64,
+                "coverage_evidence_sha256": "b" * 64,
+                "admission_code_sha256": "c" * 64,
+                "holdout_access_authorized": False,
+                "live_orders_authorized": False,
+                **{k: True for k in REQUIRED_GATES},
+            },
+            "frozen_policy": {"synthetic_fixture": "unchanged"},
+            "runtime_lock": {"python": "synthetic 3.12"},
+        }
+
+    def test_exact_synthetic_input_still_matches(self):
+        import research_v1_runtime_manifest as m
+        receipt = m.cache_manifest(**self.args)
+        self.assertTrue(m.cache_matches(receipt, **self.args))
+        self.assertFalse(receipt["evaluation_authorized"])
+        self.assertFalse(receipt["holdout_authorized"])
+        self.assertFalse(receipt["live_orders_authorized"])
+
+    def test_source_leaf_swapped_to_symlink_at_open_rejected(self):
+        import research_v1_runtime_manifest as m
+        original_open = m.os.open
+        swapped = [False]
+        def swap_at_open(path, flags, *a, **kw):
+            if path == "original.bin" and not swapped[0]:
+                swapped[0] = True
+                self.source.rename(self.root / "retired.bin")
+                self.source.symlink_to(self.root / "retired.bin")
+            return original_open(path, flags, *a, **kw)
+        with patch.object(m.os, "open", side_effect=swap_at_open), \
+             self.assertRaises(m.UnverifiedSourceError):
+            m.cache_manifest(**self.args)
+        self.assertTrue(swapped[0])
+
+    def test_intermediate_directory_symlink_rejected(self):
+        import research_v1_runtime_manifest as m
+        directory = self.root / "source_dir"
+        directory.mkdir()
+        (directory / "data.bin").write_bytes(b"synthetic")
+        (self.root / "shortcut").symlink_to(directory, target_is_directory=True)
+        args = dict(self.args)
+        args["source_files"] = {"source": self.root / "shortcut" / "data.bin"}
+        with self.assertRaises(m.UnverifiedSourceError):
+            m.cache_manifest(**args)
+
+    def test_source_mutation_during_later_code_read_rejected(self):
+        import research_v1_runtime_manifest as m
+        original_open = m.os.open
+        changed = [False]
+        def mutate_previous(path, flags, *a, **kw):
+            if path == "frozen.py" and not changed[0]:
+                changed[0] = True
+                self.source.write_bytes(b"altered during code read")
+            return original_open(path, flags, *a, **kw)
+        with patch.object(m.os, "open", side_effect=mutate_previous), \
+             self.assertRaises(m.UnverifiedSourceError):
+            m.cache_manifest(**self.args)
+        self.assertTrue(changed[0])
+
+    def test_same_byte_inode_replacement_during_later_read_rejected(self):
+        import research_v1_runtime_manifest as m
+        original_open = m.os.open
+        moved = [False]
+        def replace_previous(path, flags, *a, **kw):
+            if path == "frozen.py" and not moved[0]:
+                moved[0] = True
+                raw = self.source.read_bytes()
+                self.source.rename(self.root / "retired_original.bin")
+                self.source.write_bytes(raw)
+            return original_open(path, flags, *a, **kw)
+        with patch.object(m.os, "open", side_effect=replace_previous), \
+             self.assertRaises(m.UnverifiedSourceError):
+            m.cache_manifest(**self.args)
+        self.assertTrue(moved[0])
+
+    def test_fifo_cache_input_rejected_nonblocking(self):
+        import os
+        import research_v1_runtime_manifest as m
+        fifo = self.root / "pipe"
+        os.mkfifo(fifo)
+        args = dict(self.args)
+        args["source_files"] = {"fifo": fifo}
+        with self.assertRaises(m.UnverifiedSourceError):
+            m.cache_manifest(**args)
+
 if __name__ == "__main__":
     unittest.main()
