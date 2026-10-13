@@ -22,6 +22,8 @@ def example():
                 "invalid_dates": 0,
                 "missing_required_rows": 0,
                 "invalid_numeric_rows": 0,
+                "negative_activity_rows": 0,
+                "nonmonotonic_date_pairs": 0,
                 "raw_sha256": hashlib.sha256(b"synthetic-metadata-only").hexdigest(),
                 "more": False,
             },
@@ -68,6 +70,16 @@ class KiwoomInvestorFlowGateTest(unittest.TestCase):
         report = example()
         report["pages"][0]["invalid_numeric_rows"] = 1
         self.assertFalse(audit_kiwoom_probe(report)["metadata_validation_pass"])
+
+    def test_reject_negative_cumulative_activity(self):
+        report = example()
+        report["pages"][0]["negative_activity_rows"] = 1
+        self.assertIn("negative_activity_rows_present", audit_kiwoom_probe(report)["metadata_failures"])
+
+    def test_reject_nonmonotonic_dates(self):
+        report = example()
+        report["pages"][0]["nonmonotonic_date_pairs"] = 1
+        self.assertIn("nonmonotonic_date_pairs_present", audit_kiwoom_probe(report)["metadata_failures"])
 
     def test_reject_duplicate_dates(self):
         report = example()
