@@ -9,6 +9,8 @@ on:
       - 'test_research_v1_runtime_pinned_parallel.py'
       - 'research_v1_runtime_archived_source_gate.py'
       - 'test_research_v1_runtime_archived_source_gate.py'
+      - 'research_v1_runtime_archived_env_gate.py'
+      - 'test_research_v1_runtime_archived_env_gate.py'
       - '.github/workflows/indexalert-backtest-pinned-parallel-ci.yml'
   pull_request:
     branches:
@@ -18,6 +20,8 @@ on:
       - 'test_research_v1_runtime_pinned_parallel.py'
       - 'research_v1_runtime_archived_source_gate.py'
       - 'test_research_v1_runtime_archived_source_gate.py'
+      - 'research_v1_runtime_archived_env_gate.py'
+      - 'test_research_v1_runtime_archived_env_gate.py'
       - '.github/workflows/indexalert-backtest-pinned-parallel-ci.yml'
   workflow_dispatch:
 
@@ -41,6 +45,8 @@ jobs:
           cache-dependency-path: requirements-indexalert-runtime-ci.txt
       - name: Install same pinned offline test dependencies
         run: python -m pip install -r requirements-indexalert-runtime-ci.txt
+      - name: Require archived Python 3.12 + 22 dependency versions
+        run: python research_v1_runtime_archived_env_gate.py
       - name: Enforce original CI regression-source blob identities before any test
         run: python research_v1_runtime_archived_source_gate.py
       - name: Fail-closed archived-case and missing-case tampering tests
@@ -48,6 +54,7 @@ jobs:
           python -m unittest -q test_research_v1_runtime_ci_integrity
           python -m unittest -q test_research_v1_runtime_pinned_parallel
           python -m unittest -q test_research_v1_runtime_archived_source_gate
+          python -m unittest -q test_research_v1_runtime_archived_env_gate
       - name: Four disjoint regression suites vs immutable archived 34-case SHA
         run: |
           python research_v1_runtime_pinned_parallel.py --out-dir runtime_opt_results/pinned_parallel
