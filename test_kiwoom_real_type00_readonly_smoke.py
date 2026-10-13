@@ -243,6 +243,34 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 with self.assertRaises(ReadOnlySmokeError):
                     _config()
 
+    def test_direct_route_is_reported_even_before_websocket_exists(self):
+        # The paired diagnostic must be able to classify a second-run
+        # token-stage failure without confusing it with the system route.
+        env = {
+            "KIWOOM_ENV": "REAL",
+            "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "synthetic-key",
+            "KIWOOM_APP_SECRET": "synthetic-secret",
+            "KIWOOM_WS_PROXY_POLICY": "direct",
+        }
+        with patch.dict(os.environ, env, clear=True), \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=[SimpleNamespace(content=b'{"return_code":3,"return_msg":"[8050: auth]"}')]) as post, \
+             patch("kiwoom_real_type00_readonly_smoke._run_ws",
+                   side_effect=AssertionError("WS must not start")) as ws, \
+             patch("sys.stdout", new_callable=io.StringIO) as output:
+            with self.assertRaises(SystemExit) as stopped:
+                main()
+        self.assertEqual(stopped.exception.code, 2)
+        emitted = json.loads(output.getvalue())
+        self.assertEqual(emitted["STAGE"], "TOKEN")
+        self.assertEqual(emitted["WS_PROXY_POLICY"], "DIRECT")
+        self.assertFalse(emitted["WS_CONNECTED"])
+        self.assertFalse(emitted["REAL_ORDERS_AUTHORIZED"])
+        post.assert_called_once()
+        ws.assert_not_called()
+
     def test_type00_observation_is_redacted_count_only(self):
         obj = {
             "trnm": "REAL",
