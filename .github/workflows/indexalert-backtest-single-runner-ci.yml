@@ -1,0 +1,53 @@
+name: IndexAlert One-Runner Offline CI Wall-Time Probe
+
+on:
+  push:
+    branches:
+      - index-alert-backtest-single-runner-opt-v1-20261013
+    paths:
+      - 'research_v1_runtime_single_runner.py'
+      - 'test_research_v1_runtime_single_runner.py'
+      - '.github/workflows/indexalert-backtest-single-runner-ci.yml'
+  pull_request:
+    branches:
+      - index-alert-backtest-runtime-opt-v1-20261013
+    paths:
+      - 'research_v1_runtime_single_runner.py'
+      - 'test_research_v1_runtime_single_runner.py'
+      - '.github/workflows/indexalert-backtest-single-runner-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: single-runner-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  one-runner-offline-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-indexalert-runtime-ci.txt
+      - name: Install pinned offline test dependencies
+        run: python -m pip install -r requirements-indexalert-runtime-ci.txt
+      - name: Synthetic negative controls and pinned regression integrity checks
+        run: |
+          python -m unittest -v test_research_v1_runtime_ci_integrity
+          python -m unittest -v test_research_v1_runtime_single_runner
+      - name: Existing immutable offline tests, one-runner serial vs concurrent
+        run: python research_v1_runtime_single_runner.py --out-dir runtime_opt_results/one_runner
+      - name: Upload exact regression parity and test-phase timings
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-opt-one-runner-evidence
+          path: runtime_opt_results/one_runner/
+          if-no-files-found: warn
+          retention-days: 14
