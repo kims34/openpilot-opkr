@@ -22,6 +22,8 @@ from research_v1_krx_official_calendar_input_preflight import normalize_calendar
 
 SS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 PKGREL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+PACKAGE_REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+SHEET_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MAX_XML = 8_000_000
 MAX_UNCOMPRESSED = 12_000_000
@@ -141,7 +143,8 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                 names.add(name)
                 total+=item.file_size
             if total > MAX_UNCOMPRESSED or not (
-                {"[Content_Types].xml","xl/workbook.xml","xl/worksheets/sheet1.xml"} <= names
+                {"[Content_Types].xml","xl/workbook.xml","xl/worksheets/sheet1.xml",
+                 "xl/_rels/workbook.xml.rels"} <= names
             ):
                 return error
             # Relationship XML may carry remote links. Reject all external
@@ -161,6 +164,24 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                 return error
             sheet=sheets.find(SS+"sheet")
             if sheet.attrib.get("state","visible")!="visible":
+                return error
+            # The displayed workbook's one declared worksheet MUST resolve
+            # via its actual relationship ID to exactly the XML we parse.
+            # Otherwise an attacker can place correct dates in an unused
+            # sheet1.xml while the workbook displays a different sheet.
+            relationship_id=sheet.attrib.get(PKGREL+"id")
+            if not relationship_id:
+                return error
+            relroot=parse_xml(book.read("xl/_rels/workbook.xml.rels"))
+            worksheet_targets=[
+                r for r in relroot.findall(PACKAGE_REL+"Relationship")
+                if r.attrib.get("Type")==SHEET_TYPE
+            ]
+            if (len(worksheet_targets)!=1
+                    or worksheet_targets[0].attrib.get("Id")!=relationship_id
+                    or worksheet_targets[0].attrib.get("Target") not in (
+                        "worksheets/sheet1.xml", "/xl/worksheets/sheet1.xml"
+                    )):
                 return error
             shared=(strings_from_shared(parse_xml(book.read("xl/sharedStrings.xml")))
                     if "xl/sharedStrings.xml" in names else [])
