@@ -27,3 +27,7 @@ The third-party `exchange_calendars==4.13.1` XKRX annual count comparison is an 
 - Never set M20 source PIT approved, unlock frozen or holdout, change Champion, set ordering to true, place orders or move funds from these diagnostics.
 
 Status: **3,071 stored weekday source checkpoints; 184 unresolved date-level source/calendar classifications; 27 securities excluded; no newly PIT-admitted full universe; gates C/D BLOCKED.**
+
+## Verified CI result for new comparator
+
+[GitHub Actions run 38465362744](https://github.com/kims34/openpilot-opkr/actions/runs/38465362744) completed **SUCCESS** (source code commit `5246c9d756b795ee24b7377f84a20b5af996cf67`): **57/57 synthetic/metadata-only offline unittest tests passed**. This does NOT mean original private per-date records or certified original exchange calendar were compared on the Railway volume. The suite runs without KRX credentials or network access. Older intermediate CI attempts during development had code/test issues and were corrected; only this final validated commit is the verified test evidence.
