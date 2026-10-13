@@ -15,6 +15,7 @@ from kiwoom_real_type00_readonly_smoke import (
     strict_json,
     _config,
     _ws_proxy_options,
+    _proxy_route_snapshot,
     _run_ws,
     main,
     _type00_observation,
@@ -259,6 +260,44 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
                 self.assertFalse(state.GENUINE_LIVE_PROVENANCE_VERIFIED)
                 self.assertNotIn("synthetic-account", json.dumps(state.__dict__))
+
+    def test_proxy_route_snapshot_is_offline_redacted_and_non_authoritative(self):
+        # Identifies configuration-level mismatches without emitting credentials,
+        # private routing addresses, full URLs, or asserting real public-IP parity.
+        cases = (
+            (None, None, (False, False, True)),
+            ("http://rest-proxy.internal:8080", None, (True, False, False)),
+            ("http://common.internal:8080", "http://common.internal:8080",
+             (True, True, True)),
+            ("http://rest-proxy.internal:8080", "http://ws-proxy.internal:8080",
+             (True, True, False)),
+        )
+        for rest_url, ws_url, expected in cases:
+            with self.subTest(expected=expected):
+                settings = {"https": rest_url} if rest_url else {}
+                with patch("kiwoom_real_type00_readonly_smoke.requests.utils.get_environ_proxies",
+                           return_value=settings) as rest_read, \
+                     patch("kiwoom_real_type00_readonly_smoke._websockets_get_proxy",
+                           return_value=ws_url) as ws_read, \
+                     patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                           side_effect=AssertionError("HTTP network forbidden")) as net:
+                    observed = _proxy_route_snapshot()
+                self.assertEqual(observed, expected)
+                rest_read.assert_called_once()
+                ws_read.assert_called_once()
+                net.assert_not_called()
+                state = SmokeState()
+                state.REST_CONFIGURED_PROXY_PRESENT, \
+                    state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT, \
+                    state.REST_WS_CONFIGURED_PROXY_URLS_EQUAL = observed
+                redacted = json.dumps(state.__dict__)
+                self.assertNotIn("internal", redacted)
+                self.assertNotIn("8080", redacted)
+                self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
+
+        with patch("kiwoom_real_type00_readonly_smoke.requests.utils.get_environ_proxies",
+                   side_effect=ValueError("redact endpoint")):
+            self.assertEqual(_proxy_route_snapshot(), (None, None, None))
 
     def test_ws_proxy_routing_requires_explicit_opt_in(self):
         # websockets 15 auto-selects proxies by default. The opt-in direct
