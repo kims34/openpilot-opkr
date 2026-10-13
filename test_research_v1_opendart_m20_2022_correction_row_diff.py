@@ -36,7 +36,7 @@ class CandidateRowsTests(unittest.TestCase):
         anum = Counter({("영업이익", ("10", "9")): 1})
         b = Counter({("영업이익", "11", "9"): 1})
         bnum = Counter({("영업이익", ("11", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64, Counter({"ta": 1})), (b, bnum, "y" * 64, Counter({"tb": 1}))]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64, Counter({"ta": 1}), {"ta": [{"nested": False, "operating_label_text_hint": True, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": False}]})), (b, bnum, "y" * 64, Counter({"tb": 1}), {"tb": [{"nested": False, "operating_label_text_hint": True, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": False}]})]):
             result = target.compare(b"fake-original", b"fake-amended")
         self.assertTrue(result["exact_label_row_text_multisets_differ"])
         self.assertTrue(result["numeric_peer_shape_multisets_differ"])
@@ -50,7 +50,7 @@ class CandidateRowsTests(unittest.TestCase):
     def test_identical_candidates_do_not_override_different_document_hashes(self):
         a = Counter({("영업이익", "10", "9"): 1})
         n = Counter({("영업이익", ("10", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, n, "x" * 64, Counter({"t": 1})), (a, n, "x" * 64, Counter({"t": 1}))]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, n, "x" * 64, Counter({"t": 1}), {}), (a, n, "x" * 64, Counter({"t": 1}), {})]):
             result = target.compare(b"original", b"amended")
         self.assertFalse(result["exact_label_row_text_multisets_differ"])
         self.assertFalse(result["numeric_peer_shape_multisets_differ"])
@@ -62,7 +62,7 @@ class CandidateRowsTests(unittest.TestCase):
         a = Counter({("영업이익", "10", "9"): 1})
         n = Counter({("영업이익", ("10", "9")): 1})
         with patch.object(target, "_diagnostic_rows", side_effect=[
-            (a, n, "a" * 64, Counter({"t": 1})), (a, n, "b" * 64, Counter({"u": 1})),
+            (a, n, "a" * 64, Counter({"t": 1}), {}), (a, n, "b" * 64, Counter({"u": 1}), {"u": [{"nested": False, "operating_label_text_hint": False, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": True}]}),
         ]):
             result = target.compare(b"original", b"amendment")
         self.assertFalse(result["exact_label_row_text_multisets_differ"])
@@ -85,6 +85,35 @@ class CandidateRowsTests(unittest.TestCase):
         a = self._tables("<table><tr><td>영업 이익</td><td>1,000</td></tr></table>")
         b = self._tables("<table><tr><td>영업\n이익</td><td>1,000</td></tr></table>")
         self.assertEqual(a, b)
+
+    def test_source_only_classifies_new_nearby_note_table_not_financial_fact(self):
+        original = "<p>본문</p><table><tr><td>영업이익</td><td>100</td></tr></table>"
+        corrected = (original +
+                     "<p>주석</p><table><tr><td>보충 설명</td><td>3개월</td></tr></table>")
+        first = self._tables(original)
+        second = self._tables(corrected)
+        self.assertEqual(sum((second - first).values()), 1)
+        self.assertEqual(sum(second.values()), 2)
+        scanner = target._TableTextFingerprints()
+        scanner.feed(corrected)
+        scanner.close()
+        self.assertEqual(len(scanner.contexts), 2)
+        only_added = next(x for x in scanner.contexts if not first[x])
+        flags = scanner.contexts[only_added][0]
+        self.assertTrue(flags["preceding_notes_term_hint"])
+        self.assertTrue(flags["three_month_text_hint"])
+        self.assertFalse(flags["operating_label_text_hint"])
+
+    def test_nested_table_context_is_unclassified(self):
+        scanner = target._TableTextFingerprints()
+        scanner.feed("<p>연결손익계산서</p><table><tr><td>"
+                     "<table><tr><td>추가</td></tr></table></td></tr></table>")
+        scanner.close()
+        self.assertEqual(sum(scanner.signatures.values()), 2)
+        self.assertEqual(
+            sum(any(x["nested"] for x in group) for group in scanner.contexts.values()),
+            1,
+        )
 
     def test_unbalanced_table_and_budget_fail_closed(self):
         scanner = target._TableTextFingerprints()

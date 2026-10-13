@@ -145,6 +145,9 @@ class _TableTextFingerprints(HTMLParser):
         self.input_chars = 0
         self.signatures = Counter()
         self.total_tables = 0
+        # Metadata is transient and boolean-only. No table text/digest is output.
+        self.contexts = {}
+        self.outside_prefix = ""
 
     def handle_starttag(self, tag, attrs):
         self.nodes += 1
@@ -153,7 +156,11 @@ class _TableTextFingerprints(HTMLParser):
         if tag == "table":
             if len(self.stack) >= 50 or self.total_tables + len(self.stack) >= MAX_TABLE_COUNT:
                 raise RowShapeGap("TABLE_SCAN_BUDGET_EXCEEDED")
-            self.stack.append([])
+            self.stack.append({
+                "parts": [],
+                "prefix": _norm(self.outside_prefix[-400:]),
+                "nested": bool(self.stack),
+            })
 
     def handle_data(self, value):
         if self.stack:
@@ -161,18 +168,32 @@ class _TableTextFingerprints(HTMLParser):
             if self.input_chars > MAX_TOTAL_TABLE_INPUT_CHARS:
                 raise RowShapeGap("TABLE_INPUT_BUDGET_EXCEEDED")
             for frame in self.stack:
-                frame.append(value)
+                frame["parts"].append(value)
+        else:
+            self.outside_prefix = (self.outside_prefix + value)[-400:]
 
     def handle_endtag(self, tag):
         if tag != "table":
             return
         if not self.stack:
             raise RowShapeGap("TABLE_NESTING_UNVERIFIED")
-        parts = self.stack.pop()
-        raw = "".join(parts)
+        frame = self.stack.pop()
+        raw = "".join(frame["parts"])
         if len(raw) > MAX_TABLE_TEXT_CHARS:
             raise RowShapeGap("TABLE_TEXT_BUDGET_EXCEEDED")
-        digest = hashlib.sha256(_norm(raw).encode("utf-8")).hexdigest()
+        normal = _norm(raw)
+        digest = hashlib.sha256(normal.encode("utf-8")).hexdigest()
+        prefix = frame["prefix"]
+        self.contexts.setdefault(digest, []).append({
+            "nested": frame["nested"],
+            "operating_label_text_hint": any(x in normal for x in OPERATING_ROW_LABELS),
+            "three_month_text_hint": "3개월" in normal,
+            "both_years_text_hint": "2022" in normal and "2021" in normal,
+            "preceding_exact_cfs_title_hint": any(
+                x in prefix for x in ("연결포괄손익계산서", "연결손익계산서")
+            ),
+            "preceding_notes_term_hint": "주석" in prefix,
+        })
         self.signatures[digest] += 1
         self.total_tables += 1
         if self.total_tables > MAX_TABLE_COUNT:
@@ -184,7 +205,7 @@ class _TableTextFingerprints(HTMLParser):
         return self.signatures
 
 
-def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Counter, str, Counter]:
+def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Counter, str, Counter, dict]:
     if hashlib.sha256(raw).hexdigest() != expected_digest:
         raise RowShapeGap("DOCUMENT_SHA256_CHANGED")
     official = inspect_official_original_document(raw)
@@ -209,15 +230,37 @@ def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Coun
     table_scanner.feed(decoded)
     table_scanner.close()
     table_signatures = table_scanner.finish()
-    return rows, numeric, member_sha256, table_signatures
+    return rows, numeric, member_sha256, table_signatures, table_scanner.contexts
 
 
 def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
-    a, anum, first_markup_digest, original_tables = _diagnostic_rows(raw_original, expected_digest=EXPECTED_ORIGINAL_DOCUMENT_SHA256)
-    b, bnum, amended_markup_digest, corrected_tables = _diagnostic_rows(raw_corrected, expected_digest=CORRECTED_ZIP_SHA256)
+    a, anum, first_markup_digest, original_tables, _ = _diagnostic_rows(raw_original, expected_digest=EXPECTED_ORIGINAL_DOCUMENT_SHA256)
+    b, bnum, amended_markup_digest, corrected_tables, corrected_contexts = _diagnostic_rows(raw_corrected, expected_digest=CORRECTED_ZIP_SHA256)
     shared = sum((a & b).values())
     shared_numeric = sum((anum & bnum).values())
     shared_tables = sum((original_tables & corrected_tables).values())
+    # The multiset difference is the only supported "added table" meaning.
+    # If text already existed in the original, a duplicate cannot be
+    # attributed unambiguously to a new section and stays unclassified.
+    added = corrected_tables - original_tables
+    bounded_added = sum(added.values())
+    ambiguous = 0
+    classified = []
+    for digest, count in added.items():
+        if original_tables[digest] > 0:
+            ambiguous += count
+        else:
+            metadata = corrected_contexts.get(digest, [])
+            if len(metadata) != corrected_tables[digest]:
+                raise RowShapeGap("TABLE_CONTEXT_MULTIPLICITY_INVALID")
+            for item in metadata:
+                if item["nested"]:
+                    ambiguous += 1
+                else:
+                    classified.append(item)
+    if len(classified) + ambiguous != bounded_added:
+        raise RowShapeGap("ADDED_TABLE_ATTRIBUTION_INCOMPLETE")
+
     return {
         "source_status": "ORIGINAL_CORRECTION_EXACT_OPERATING_ROW_SHAPE_COMPARE_ONLY",
         "first_edition_exact_label_row_candidates": sum(a.values()),
@@ -231,6 +274,25 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
         "identical_table_text_multiset_members": shared_tables,
         "all_table_text_multisets_identical": original_tables == corrected_tables,
         "table_text_differences_are_not_financial_fact_differences": True,
+        "added_table_text_multiset_members": bounded_added,
+        "added_table_context_unclassified": ambiguous,
+        "added_table_context_classified": len(classified),
+        "added_table_operating_label_text_hints": sum(
+            x["operating_label_text_hint"] for x in classified
+        ),
+        "added_table_three_month_text_hints": sum(
+            x["three_month_text_hint"] for x in classified
+        ),
+        "added_table_both_years_text_hints": sum(
+            x["both_years_text_hint"] for x in classified
+        ),
+        "added_table_preceding_exact_cfs_title_hints": sum(
+            x["preceding_exact_cfs_title_hint"] for x in classified
+        ),
+        "added_table_preceding_notes_term_hints": sum(
+            x["preceding_notes_term_hint"] for x in classified
+        ),
+        "added_table_context_is_authoritative_financial_statement": False,
         "identical_numeric_peer_row_candidates_multiset": shared_numeric,
         "financial_semantic_differences_still_unverified": True,
         "published_financial_amounts_disclosed": False,
@@ -288,6 +350,8 @@ def run(session=None) -> dict:
             "FIXED_ISSUER_MAPPING_UNVERIFIED",
             "TABLE_SCAN_BUDGET_EXCEEDED", "TABLE_INPUT_BUDGET_EXCEEDED",
             "TABLE_TEXT_BUDGET_EXCEEDED", "TABLE_NESTING_UNVERIFIED",
+            "TABLE_CONTEXT_MULTIPLICITY_INVALID",
+            "ADDED_TABLE_ATTRIBUTION_INCOMPLETE",
         }
         why = str(exc) if type(exc) is RowShapeGap else ""
         result["source_status"] = "SOURCE_GAP_FAIL_CLOSED"

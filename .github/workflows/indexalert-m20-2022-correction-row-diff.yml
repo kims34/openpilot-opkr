@@ -52,6 +52,9 @@ jobs:
           assert x["source_status"] == "ORIGINAL_CORRECTION_EXACT_OPERATING_ROW_SHAPE_COMPARE_ONLY"
           assert x["fixed_cohort_slot"] == 5 and x["max_official_requests"] == 5
           assert x["financial_semantic_differences_still_unverified"] is True
+          assert x["added_table_context_is_authoritative_financial_statement"] is False
+          assert x["added_table_text_multiset_members"] == x["corrected_source_text_tables"] - x["identical_table_text_multiset_members"]
+          assert x["added_table_context_classified"] + x["added_table_context_unclassified"] == x["added_table_text_multiset_members"]
           assert x["raw_source_rows_values_or_identifiers_persisted"] is False
           assert x["ordering"] == "DISABLED"
           for k in ("original_cfs_q3_2022_2021_three_month_profit_verified",
