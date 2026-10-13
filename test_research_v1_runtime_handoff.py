@@ -1,5 +1,10 @@
 """Synthetic offline-only immutable fan-out handoff tests."""
 import copy
+import hashlib
+import os
+from unittest.mock import patch
+
+import research_v1_runtime_handoff as handoff
 from pathlib import Path
 import tempfile
 import unittest
@@ -72,6 +77,77 @@ class ReadOnlyHandoffTests(unittest.TestCase):
         (self.root / "shortcut").symlink_to(self.root / "cost_report.json")
         with self.assertRaises(UnsafeHandoff):
             self.create(filenames=["shortcut"])
+
+
+    def test_symlink_swapped_at_exact_open_is_rejected(self):
+        # Reject TOCTOU replacement at the kernel open boundary.
+        filename = self.root / "cost_report.json"
+        original_open = os.open
+        swapped = [False]
+
+        def swap_then_open(path, flags, *args, **kwargs):
+            if path == "cost_report.json" and not swapped[0]:
+                swapped[0] = True
+                filename.unlink()
+                filename.symlink_to(self.root / "sub" / "fixed_records.bin")
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch.object(handoff.os, "open", side_effect=swap_then_open):
+            with self.assertRaises(UnsafeHandoff):
+                self.create()
+        self.assertTrue(swapped[0])
+
+    def test_intermediate_directory_swap_at_open_is_rejected(self):
+        original_open = os.open
+        moved = [False]
+        directory = self.root / "sub"
+
+        def swap_dir(path, flags, *args, **kwargs):
+            if path == "sub" and not moved[0]:
+                moved[0] = True
+                directory.rename(self.root / "real_sub")
+                directory.symlink_to(self.root / "real_sub", target_is_directory=True)
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch.object(handoff.os, "open", side_effect=swap_dir):
+            with self.assertRaises(UnsafeHandoff):
+                self.create()
+        self.assertTrue(moved[0])
+
+    def test_mutated_open_file_detected_by_descriptor_identity(self):
+        original_digest = hashlib.sha256
+        target = self.root / "cost_report.json"
+        changed = [False]
+
+        class EditingHash:
+            def __init__(self):
+                self.inner = original_digest()
+
+            def update(self, data):
+                self.inner.update(data)
+                if not changed[0]:
+                    changed[0] = True
+                    target.write_bytes(b'{"changed": true, "extra": 1}')
+
+            def hexdigest(self):
+                return self.inner.hexdigest()
+
+        with patch.object(handoff.hashlib, "sha256", side_effect=EditingHash):
+            with self.assertRaises(UnsafeHandoff):
+                self.create()
+        self.assertTrue(changed[0])
+
+    def test_nonregular_fifo_rejected_without_waiting(self):
+        pipe = self.root / "pipe"
+        os.mkfifo(pipe)
+        with self.assertRaises(UnsafeHandoff):
+            self.create(filenames=["pipe"])
+
+    def test_wrong_type_in_filename_list_fails_closed(self):
+        with self.assertRaises(UnsafeHandoff):
+            self.create(filenames=["cost_report.json", 5])
+        with self.assertRaises(UnsafeHandoff):
+            self.create(filenames=[None])
 
     def test_signature_or_source_admission_cannot_be_inferred(self):
         receipt = self.create()
