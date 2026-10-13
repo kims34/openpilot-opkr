@@ -128,7 +128,7 @@ class _CandidateRows(HTMLParser):
         return self.full, self.numeric
 
 
-def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Counter]:
+def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Counter, str]:
     if hashlib.sha256(raw).hexdigest() != expected_digest:
         raise RowShapeGap("DOCUMENT_SHA256_CHANGED")
     official = inspect_official_original_document(raw)
@@ -140,18 +140,21 @@ def _diagnostic_rows(raw: bytes, *, expected_digest: str) -> tuple[Counter, Coun
         ) and not x.is_dir()]
         if len(markup) != 1 or markup[0].file_size > 32 * 1024 * 1024:
             raise RowShapeGap("DOCUMENT_MARKUP_CARDINALITY_UNVERIFIED")
-        decoded = _decode_disclosure_markup(archive.read(markup[0]))
+        member = archive.read(markup[0])
+        member_sha256 = hashlib.sha256(member).hexdigest()
+        decoded = _decode_disclosure_markup(member)
     if "<table" not in decoded.lower():
         raise RowShapeGap("DOCUMENT_TABLES_NOT_FOUND")
     parser = _CandidateRows()
     parser.feed(decoded)
     parser.close()
-    return parser.finish()
+    rows, numeric = parser.finish()
+    return rows, numeric, member_sha256
 
 
 def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
-    a, anum = _diagnostic_rows(raw_original, expected_digest=EXPECTED_ORIGINAL_DOCUMENT_SHA256)
-    b, bnum = _diagnostic_rows(raw_corrected, expected_digest=CORRECTED_ZIP_SHA256)
+    a, anum, first_markup_digest = _diagnostic_rows(raw_original, expected_digest=EXPECTED_ORIGINAL_DOCUMENT_SHA256)
+    b, bnum, amended_markup_digest = _diagnostic_rows(raw_corrected, expected_digest=CORRECTED_ZIP_SHA256)
     shared = sum((a & b).values())
     shared_numeric = sum((anum & bnum).values())
     return {
@@ -161,6 +164,7 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
         "identical_exact_label_row_candidates_multiset": shared,
         "exact_label_row_text_multisets_differ": a != b,
         "numeric_peer_shape_multisets_differ": anum != bnum,
+        "embedded_markup_bytes_differ": first_markup_digest != amended_markup_digest,
         "identical_numeric_peer_row_candidates_multiset": shared_numeric,
         "financial_semantic_differences_still_unverified": True,
         "published_financial_amounts_disclosed": False,
