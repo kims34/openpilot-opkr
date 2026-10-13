@@ -8,6 +8,9 @@ on:
       - 'test_kiwoom_real_type00_readonly_smoke.py'
       - 'kiwoom_readonly_route_compare.py'
       - 'test_kiwoom_readonly_route_compare.py'
+      - 'RUN_KIWOOM_READONLY_DIAG.cmd'
+      - 'kiwoom_readonly_pc_requirements.txt'
+      - 'KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md'
       - 'kiwoom_token_mode_probe.py'
       - 'test_kiwoom_token_mode_probe.py'
       - 'Dockerfile.kiwoom-real-readonly'
@@ -23,6 +26,9 @@ on:
       - 'test_kiwoom_real_type00_readonly_smoke.py'
       - 'kiwoom_readonly_route_compare.py'
       - 'test_kiwoom_readonly_route_compare.py'
+      - 'RUN_KIWOOM_READONLY_DIAG.cmd'
+      - 'kiwoom_readonly_pc_requirements.txt'
+      - 'KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md'
       - 'kiwoom_token_mode_probe.py'
       - 'test_kiwoom_token_mode_probe.py'
       - 'Dockerfile.kiwoom-real-readonly'
@@ -64,6 +70,33 @@ jobs:
           cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
           grep -Fx 'COPY smoke.py ./' kiwoom_real_readonly/Dockerfile
           grep -F 'CMD ["python","-B","smoke.py"]' kiwoom_real_readonly/Dockerfile
+
+      - name: Package verified Windows registered-PC readonly diagnostic
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          files = (
+              "kiwoom_real_type00_readonly_smoke.py",
+              "kiwoom_readonly_route_compare.py",
+              "RUN_KIWOOM_READONLY_DIAG.cmd",
+              "kiwoom_readonly_pc_requirements.txt",
+              "KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md",
+          )
+          for name in files:
+              if not Path(name).is_file():
+                  raise SystemExit("Missing required readonly diagnostic packaging file")
+          with ZipFile("kiwoom-readonly-pc-diagnostic.zip", "w", ZIP_DEFLATED) as package:
+              for name in files:
+                  package.write(name, arcname=name)
+          PY
+      - name: Upload strictly allowlisted readonly diagnostic ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic
+          path: kiwoom-readonly-pc-diagnostic.zip
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Assert token-mode probe has no order path
         run: |
