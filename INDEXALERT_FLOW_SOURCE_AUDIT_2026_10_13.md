@@ -81,3 +81,16 @@ The hourly continuation state and GitHub were rechecked. The isolated branch and
 **Admission remains unchanged:** no real authenticated `ka10059` data acquisition, no complete historical security-level/venue-specific official panel, no release-time/vintage record-level PIT, no new strategy preregistration or financial backtest. The previous GitHub bounded source check was `AUTH_NOT_CONFIGURED` in that Actions environment, while separately held Railway credentials were not migrated or modified. `ORDERING=false`; no live account actions; existing H5/M20, Champion and Holdout unchanged.
 
 **Next work item:** obtain authorized primary-source original-response *metadata* on the previously configured read-only environment without copying credentials, then verify broker vs KRX venue/unit/individual-investor category parity and the acquisition licence. Keep sampled-route reachability separate from retrospective source-admission and complete 2015–2026 PIT universe coverage.
+
+## 2026-10-13 23:33 KST — independent broker-source structural PIT guard
+
+An additional `research_v1_kiwoom_flow_pit_structural.py` module and `test_research_v1_kiwoom_flow_pit_structural.py` module were added to the **isolated branch only**, with no network, orders or real numerical market data.
+
+- Require explicit `published_at`, `available_at`, `ingested_at` and `decision_at` with timezone offsets; reject naive clocks, negative chronology, cross-day look-ahead and duplicated `(ISIN, venue, event_date)`.
+- Distinguish KRX, NXT and SOR instead of implicitly aggregating inconsistent venue totals; require a response digest only as *structural metadata*, never as proof of an authentic timestamped historical original.
+- **Do not copy the KRX final-investor 20:00 KST publication rule to Kiwoom**. Even a structurally legal Kiwoom timestamp before 20:00 must remain `broker_publication_time_contract_verified=false` until independently validated. No assertion from the input can enable `source_admitted`, `performance_testing_authorized`, Holdout or live trading.
+- Preserve required original historical issuer mapping/identity, complete source vintages, signed original publication proof, valid licences and actual whole-market PIT panel as **missing evidence**; never infer them from an API response.
+
+**Executed CI:** [GitHub Actions #38414194380](https://github.com/kims34/openpilot-opkr/actions/runs/38414194380), commit `a17de7dddc456bbb0724d1a9b6978c5a57c84cbb`: `SUCCESS`, `Ran 46 tests`, `OK`. These were entirely offline negative/synthetic tests, NOT profitability experiments or actual-data admissions. Follow-up malformed-venue guard has been added with regression coverage and is subject to the latest branch CI.
+
+**Research state unchanged**: `NEW_OFFICIAL_SOURCE_EVIDENCE_REQUIRED`. No authentic broker event publication vintages or full historical coverage exist in this isolated evidence. Do not preregister/execute flow-alpha performance study or promote a candidate.
