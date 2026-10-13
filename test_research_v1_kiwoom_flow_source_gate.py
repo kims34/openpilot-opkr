@@ -29,7 +29,9 @@ def example():
             },
         ],
         "duplicate_dates": 0,
-        "history_exhausted": True,
+        "pagination_exhausted": True,
+        "history_exhausted": False,
+        "historical_retention_verified": False,
     }
 
 
@@ -42,7 +44,8 @@ class KiwoomInvestorFlowGateTest(unittest.TestCase):
     def test_good_metadata_only_reachable_not_admitted(self):
         result = audit_kiwoom_probe(example())
         self.assertTrue(result["metadata_validation_pass"])
-        self.assertTrue(result["bounded_route_reachability"])
+        self.assertFalse(result["bounded_route_reachability"])
+        self.assertTrue(result["reported_bounded_response_shape_compatible"])
         for key in (
             "source_admitted", "new_strategy_preregistered",
             "full_universe_coverage_verified", "broker_historical_vintage_pit_verified",
@@ -89,7 +92,7 @@ class KiwoomInvestorFlowGateTest(unittest.TestCase):
     def test_reject_truncated_continuation(self):
         report = example()
         report["pages"][0]["more"] = True
-        report["history_exhausted"] = False
+        report["pagination_exhausted"] = False
         self.assertIn("pagination_not_exhausted", audit_kiwoom_probe(report)["metadata_failures"])
 
     def test_reject_page_overlap(self):
@@ -110,7 +113,7 @@ class KiwoomInvestorFlowGateTest(unittest.TestCase):
     def test_reject_false_exhaustion_with_live_next_key(self):
         report = example()
         report["pages"][0]["more"] = True
-        report["history_exhausted"] = True
+        report["pagination_exhausted"] = True
         self.assertIn("pagination_exhaustion_conflict", audit_kiwoom_probe(report)["metadata_failures"])
 
     def test_structural_pass_not_authenticated_proof(self):
@@ -125,6 +128,21 @@ class KiwoomInvestorFlowGateTest(unittest.TestCase):
         report = example()
         report["status"] = "SOURCE_REACHABLE_EMPTY"
         self.assertIn("empty_status_conflict", audit_kiwoom_probe(report)["metadata_failures"])
+
+    def test_unverified_complete_history_claim_is_rejected(self):
+        report = example()
+        report["history_exhausted"] = True
+        self.assertIn("unverified_history_misrepresented", audit_kiwoom_probe(report)["metadata_failures"])
+
+    def test_unverified_retention_claim_is_rejected(self):
+        report = example()
+        report["historical_retention_verified"] = True
+        self.assertIn("unverified_history_misrepresented", audit_kiwoom_probe(report)["metadata_failures"])
+
+    def test_nested_credential_key_in_page_is_rejected(self):
+        report = example()
+        report["pages"][0]["authorization"] = "synthetic-secret"
+        self.assertIn("sensitive_key_in_nested_metadata", audit_kiwoom_probe(report)["metadata_failures"])
 
     def test_reject_sensitive_metadata_fields(self):
         report = example()
