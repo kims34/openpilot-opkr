@@ -309,7 +309,7 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 with patch.dict(os.environ, dict(safe_env, KIWOOM_WS_PROXY_POLICY=policy),
                                 clear=True), \
                      patch("kiwoom_real_type00_readonly_smoke.websockets.connect",
-                           return_value=sock) as connect, \\
+                           return_value=sock) as connect, \
                      patch("kiwoom_real_type00_readonly_smoke.requests.post",
                            side_effect=AssertionError("real HTTP forbidden")) as rest:
                     with self.assertRaises(ReadOnlySmokeError) as denied:
