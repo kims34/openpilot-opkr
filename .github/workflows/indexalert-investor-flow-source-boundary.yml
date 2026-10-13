@@ -9,6 +9,8 @@ on:
       - test_research_v1_kiwoom_investor_flow_probe.py
       - research_v1_kiwoom_flow_source_gate.py
       - test_research_v1_kiwoom_flow_source_gate.py
+      - research_v1_kiwoom_flow_pit_structural.py
+      - test_research_v1_kiwoom_flow_pit_structural.py
       - .github/workflows/indexalert-investor-flow-source-boundary.yml
   pull_request:
     paths:
@@ -16,6 +18,8 @@ on:
       - test_research_v1_kiwoom_investor_flow_probe.py
       - research_v1_kiwoom_flow_source_gate.py
       - test_research_v1_kiwoom_flow_source_gate.py
+      - research_v1_kiwoom_flow_pit_structural.py
+      - test_research_v1_kiwoom_flow_pit_structural.py
       - .github/workflows/indexalert-investor-flow-source-boundary.yml
 
 permissions:
@@ -31,6 +35,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Parse isolated source admission code
-        run: python -m py_compile research_v1_kiwoom_investor_flow_probe.py test_research_v1_kiwoom_investor_flow_probe.py research_v1_kiwoom_flow_source_gate.py test_research_v1_kiwoom_flow_source_gate.py
+        run: python -m py_compile research_v1_kiwoom_investor_flow_probe.py test_research_v1_kiwoom_investor_flow_probe.py research_v1_kiwoom_flow_source_gate.py test_research_v1_kiwoom_flow_source_gate.py research_v1_kiwoom_flow_pit_structural.py test_research_v1_kiwoom_flow_pit_structural.py
       - name: Run offline synthetic metadata boundary tests
-        run: python -m unittest -v test_research_v1_kiwoom_flow_source_gate.py test_research_v1_kiwoom_investor_flow_probe.py
+        run: python -m unittest -v test_research_v1_kiwoom_flow_source_gate.py test_research_v1_kiwoom_investor_flow_probe.py test_research_v1_kiwoom_flow_pit_structural.py
