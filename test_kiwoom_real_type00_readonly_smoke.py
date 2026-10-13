@@ -14,6 +14,7 @@ from kiwoom_real_type00_readonly_smoke import (
     return_code,
     strict_json,
     _config,
+    _ws_proxy_options,
     _run_ws,
     main,
     _type00_observation,
@@ -258,6 +259,73 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
                 self.assertFalse(state.GENUINE_LIVE_PROVENANCE_VERIFIED)
                 self.assertNotIn("synthetic-account", json.dumps(state.__dict__))
+
+    def test_ws_proxy_routing_requires_explicit_opt_in(self):
+        # websockets 15 auto-selects proxies by default. The opt-in direct
+        # policy must be explicit, never inferred from broker 8050 alone.
+        safe_env = {
+            "KIWOOM_ENV": "REAL",
+            "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "synthetic-key",
+            "KIWOOM_APP_SECRET": "synthetic-secret",
+        }
+        with patch.dict(os.environ, safe_env, clear=True):
+            self.assertEqual(_ws_proxy_options(), {})
+            _config()
+        with patch.dict(os.environ,
+                        dict(safe_env, KIWOOM_WS_PROXY_POLICY="direct"),
+                        clear=True):
+            self.assertEqual(_ws_proxy_options(), {"proxy": None})
+            _config()
+        with patch.dict(os.environ,
+                        dict(safe_env, KIWOOM_WS_PROXY_POLICY="auto-fix-8050"),
+                        clear=True):
+            with self.assertRaises(ReadOnlySmokeError) as blocked:
+                _config()
+            self.assertEqual(blocked.exception.stage, "CONFIG")
+
+        class LoginDeniedSocket:
+            def __init__(self):
+                self.sent = []
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def send(self, payload):
+                self.sent.append(json.loads(payload))
+
+            async def recv(self):
+                return '{"trnm":"LOGIN","return_code":805004,"return_msg":"[8050: auth]"}'
+
+        for policy, expected_kwarg, expected_state in (
+            ("system", False, "SYSTEM"), ("direct", True, "DIRECT"),
+        ):
+            with self.subTest(policy=policy):
+                sock, state = LoginDeniedSocket(), SmokeState()
+                with patch.dict(os.environ, dict(safe_env, KIWOOM_WS_PROXY_POLICY=policy),
+                                clear=True), \
+                     patch("kiwoom_real_type00_readonly_smoke.websockets.connect",
+                           return_value=sock) as connect, \\
+                     patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                           side_effect=AssertionError("real HTTP forbidden")) as rest:
+                    with self.assertRaises(ReadOnlySmokeError) as denied:
+                        asyncio.run(_run_ws(
+                            "synthetic-token", "synthetic-account", time.monotonic(), state))
+                self.assertEqual(denied.exception.stage, "WS_LOGIN")
+                self.assertEqual(state.WS_PROXY_POLICY, expected_state)
+                self.assertEqual("proxy" in connect.call_args.kwargs, expected_kwarg)
+                if expected_kwarg:
+                    self.assertIsNone(connect.call_args.kwargs["proxy"])
+                self.assertEqual([m["trnm"] for m in sock.sent], ["LOGIN"])
+                rest.assert_not_called()
+                self.assertFalse(state.WS_LOGIN_OK)
+                self.assertFalse(state.TYPE00_REG_SENT)
+                self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
+                self.assertFalse(state.FUNDS_MOVEMENT_AUTHORIZED)
 
     def test_output_state_cannot_claim_authority(self):
         state = SmokeState()
