@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import io
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -156,6 +157,65 @@ LAYOUT_MAX_NODES = 500_000
 LAYOUT_MAX_TEXT_CHARS = 36 * 1024 * 1024
 
 
+
+class _BoundedDisclosureHTML(HTMLParser):
+    """HTML/SGML layout flags only. Never extract financial observations."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.chars = 0
+        self.nodes = 0
+        self.in_cell = 0
+        self.table_found = False
+        self.profit_cell = False
+
+    def handle_starttag(self, tag, attrs):
+        self.nodes += 1
+        if self.nodes > LAYOUT_MAX_NODES:
+            raise OriginalDocumentGap("DOCUMENT_LAYOUT_NODES_LIMIT")
+        if tag in ("table", "tr", "td", "th"):
+            self.table_found = True
+        if tag in ("td", "th"):
+            self.in_cell += 1
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag in ("td", "th"):
+            self.in_cell = max(0, self.in_cell - 1)
+
+    def handle_endtag(self, tag):
+        if tag in ("td", "th"):
+            self.in_cell = max(0, self.in_cell - 1)
+
+    def handle_data(self, data):
+        self.chars += len(data)
+        if self.chars > LAYOUT_MAX_TEXT_CHARS:
+            raise OriginalDocumentGap("DOCUMENT_LAYOUT_TEXT_LIMIT")
+        self.parts.append(data)
+        if self.in_cell and any(
+            token in unicodedata.normalize("NFKC", data).replace(" ", "")
+            for token in ("영업이익", "영업손실")
+        ):
+            self.profit_cell = True
+
+
+def _decode_disclosure_markup(raw: bytes) -> str:
+    """Decode bytes for a *layout-only* fallback; never substitute in factual data."""
+    header = raw[:2048].lower()
+    if b"<!entity" in header or re.search(rb"<!\s*entity\b", raw, re.I):
+        raise OriginalDocumentGap("DOCUMENT_LAYOUT_ENTITY_DECLARATION")
+    encodings = ("utf-8-sig", "cp949") if (
+        b"euc-kr" not in header and b"cp949" not in header
+    ) else ("cp949", "utf-8-sig")
+    for enc in encodings:
+        try:
+            return raw.decode(enc, errors="strict")
+        except UnicodeError:
+            pass
+    raise OriginalDocumentGap("DOCUMENT_LAYOUT_TEXT_ENCODING_INVALID")
+
+
 def inspect_original_document_layout(source: bytes) -> dict:
     """Coarse XML layout flags only, NOT a bindable Q3 CFS financial fact.
 
@@ -169,16 +229,42 @@ def inspect_original_document_layout(source: bytes) -> dict:
     nodes = 0
     table_tag = False
     profit_cell = False
+    non_xml_count = 0
     try:
         with zipfile.ZipFile(io.BytesIO(source)) as archive:
             for entry in archive.infolist():
                 if not entry.filename.lower().endswith((".xml", ".htm", ".html", ".xhtml")):
                     continue
+                raw = archive.read(entry)
                 try:
-                    root = fromstring(archive.read(entry), forbid_dtd=False,
+                    root = fromstring(raw, forbid_dtd=False,
                                       forbid_entities=True, forbid_external=True)
                 except (DefusedXmlException, ParseError, ValueError, UnicodeError):
-                    raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_UNSAFE") from None
+                    # DART document.xml ZIP entries may contain legacy SGML/
+                    # HTML, which is not well-formed XBRL/XML. This alternate
+                    # path is strictly a non-binding layout diagnostic.
+                    # Never interpret its text/cells as financial facts.
+                    text = _decode_disclosure_markup(raw)
+                    if not any(mark in text.lower() for mark in
+                               ("<document", "<html", "<table", "<body")):
+                        raise OriginalDocumentGap("DOCUMENT_LAYOUT_XML_UNSAFE")
+                    try:
+                        scanner = _BoundedDisclosureHTML()
+                        scanner.feed(text)
+                        scanner.close()
+                    except (ValueError, AssertionError, UnicodeError) as ex:
+                        if isinstance(ex, OriginalDocumentGap):
+                            raise
+                        raise OriginalDocumentGap("DOCUMENT_LAYOUT_HTML_UNSAFE") from None
+                    parsed += 1
+                    non_xml_count += 1
+                    nodes += scanner.nodes
+                    if nodes > LAYOUT_MAX_NODES:
+                        raise OriginalDocumentGap("DOCUMENT_LAYOUT_NODES_LIMIT")
+                    contents.extend(scanner.parts)
+                    table_tag |= scanner.table_found
+                    profit_cell |= scanner.profit_cell
+                    continue
                 parsed += 1
                 for node in root.iter():
                     nodes += 1
@@ -202,7 +288,9 @@ def inspect_original_document_layout(source: bytes) -> dict:
     text = re.sub(r"\s+", "", unicodedata.normalize("NFKC", "".join(contents)))
     return {
         **checked,
-        "safely_parsed_structured_xml_count": parsed,
+        "structured_markup_entries_inspected": parsed,
+        "non_xml_sgml_html_layout_entries": non_xml_count,
+        "safely_parsed_strict_xml_count": parsed - non_xml_count,
         "document_contains_table_tags": table_tag,
         "document_contains_consolidated_term": any(w in text for w in
             ("연결재무제표", "연결포괄손익계산서", "연결손익계산서")),
@@ -289,7 +377,9 @@ def run(session=None) -> dict:
         allowed = {
             "DOCUMENT_RESPONSE_BYTES_INVALID",
             "DOCUMENT_RESPONSE_NOT_VERIFIABLE_ZIP",
-            "DOCUMENT_LAYOUT_XML_UNSAFE", "DOCUMENT_LAYOUT_NODES_LIMIT",
+            "DOCUMENT_LAYOUT_XML_UNSAFE", "DOCUMENT_LAYOUT_HTML_UNSAFE",
+            "DOCUMENT_LAYOUT_ENTITY_DECLARATION", "DOCUMENT_LAYOUT_TEXT_ENCODING_INVALID",
+            "DOCUMENT_LAYOUT_NODES_LIMIT",
             "DOCUMENT_LAYOUT_ZIP_UNREADABLE", "DOCUMENT_LAYOUT_XML_ABSENT",
             "DOCUMENT_LAYOUT_TEXT_LIMIT",
             "DOCUMENT_ARCHIVE_FILE_COUNT_INVALID",

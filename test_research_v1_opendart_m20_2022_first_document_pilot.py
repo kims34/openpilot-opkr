@@ -72,6 +72,35 @@ class OriginalDocument2022Tests(unittest.TestCase):
         self.assertTrue(report["document_contains_consolidated_term"])
         self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
 
+
+    def test_dart_style_non_xml_html_layout_only_never_admits_earnings(self):
+        raw = valid_zip(payload=(
+            "<DOCUMENT><TITLE>연결 재무제표</TITLE>"
+            "<TABLE><TR><TD>영업이익&nbsp;<TD>987654321</TR>"
+            "<P>포괄손익계산서</DOCUMENT>"
+        ).encode("utf-8"))
+        report = inspect_original_document_layout(raw)
+        self.assertEqual(report["non_xml_sgml_html_layout_entries"], 1)
+        self.assertEqual(report["safely_parsed_strict_xml_count"], 0)
+        self.assertTrue(report["document_contains_operating_profit_term"])
+        self.assertTrue(report["document_contains_operating_profit_cell_text"])
+        self.assertTrue(report["document_contains_income_statement_term"])
+        self.assertFalse(report["original_q3_cfs_three_month_profit_bound"])
+        self.assertFalse(report["m20_feature_pit_admitted"])
+        self.assertFalse(report["real_orders_authorized"])
+        self.assertNotIn("987654321", json.dumps(report))
+
+    def test_legacy_cp949_markup_layout_only(self):
+        data = "<DOCUMENT><TABLE><TD>영업이익&nbsp;<TD>10</TABLE></DOCUMENT>".encode("cp949")
+        result = inspect_original_document_layout(valid_zip(payload=data))
+        self.assertTrue(result["document_contains_operating_profit_term"])
+        self.assertFalse(result["original_statement_binding_verified"])
+
+    def test_entity_declaration_blocks_even_html_fallback(self):
+        data = b'<!DOCTYPE DOCUMENT [<!ENTITY x SYSTEM "file:///etc/passwd">]><DOCUMENT><TABLE>&x;</TABLE></DOCUMENT>'
+        with self.assertRaisesRegex(OriginalDocumentGap, "DOCUMENT_LAYOUT_ENTITY_DECLARATION"):
+            inspect_original_document_layout(valid_zip(payload=data))
+
     def test_valid_crc_but_unsafe_xml_must_fail_closed(self):
         for payload in (
             b"<document><bad></document>",
