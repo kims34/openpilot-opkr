@@ -81,7 +81,9 @@ class KiwoomBoundedSourceProbeOfflineTest(unittest.TestCase):
         send, seen = fake_sender()
         result = run(ENV, send=send)
         self.assertEqual(result["status"], "SOURCE_REACHABLE_METADATA_ONLY")
-        self.assertTrue(result["history_exhausted"])
+        self.assertTrue(result["pagination_exhausted"])
+        self.assertFalse(result["history_exhausted"])
+        self.assertFalse(result["historical_retention_verified"])
         self.assertEqual(result["pages"][0]["rows"], 1)
         self.assertEqual(result["pages"][0]["negative_activity_rows"], 0)
         self.assertEqual(result["pages"][0]["nonmonotonic_date_pairs"], 0)
@@ -91,6 +93,7 @@ class KiwoomBoundedSourceProbeOfflineTest(unittest.TestCase):
             self.assertNotIn(sensitive, published)
         gate = audit_kiwoom_probe(result)
         self.assertTrue(gate["metadata_validation_pass"])
+        self.assertFalse(gate["bounded_route_reachability"])
         self.assertFalse(gate["source_admitted"])
         self.assertFalse(gate["performance_testing_authorized"])
 
