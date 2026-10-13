@@ -171,6 +171,7 @@ def reconcile_exact_date_sets(
 def audit_private_scope(
     *, private_root: Path, start: str, end: str,
     reference_closed_iso_days: list[str], expected_empty_count: int,
+    expected_original_audit_snapshot_sha256: str | None = None,
     existing_audit: Callable | None = None,
 ) -> dict:
     """Dedicated Railway private-volume execution only; no extra KRX requests.
