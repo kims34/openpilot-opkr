@@ -207,7 +207,7 @@ class OriginalDocument2022Tests(unittest.TestCase):
     def test_period_window_table_but_no_financial_fact_binding(self):
         markup = (
             "<DOCUMENT><TABLE><TR><TH>2022.07.01~2022.09.30</TH>"
-            "<TH>2021.07.01~2021.09.30</TH><TH>제3분기</TH></TR>"
+            "<TH>2021.07.01~2021.09.30</TH><TH>제3분기&nbsp;</TH></TR>"
             "<TR><TD>영업이익</TD><TD>500</TD><TD>300</TD></TR>"
             "</TABLE></DOCUMENT>"
         ).encode()
@@ -222,7 +222,7 @@ class OriginalDocument2022Tests(unittest.TestCase):
 
     def test_separate_ytd_cumulative_date_not_three_month_window(self):
         markup = (
-            "<DOCUMENT><TABLE><TR><TH>2022.01.01~2022.09.30</TH></TR>"
+            "<DOCUMENT><TABLE><TR><TH>2022.01.01~2022.09.30&nbsp;</TH></TR>"
             "<TR><TD>영업이익</TD><TD>500</TD></TR></TABLE></DOCUMENT>"
         ).encode()
         out = inspect_original_document_layout(valid_zip(payload=markup))
