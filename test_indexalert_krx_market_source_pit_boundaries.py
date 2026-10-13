@@ -65,7 +65,11 @@ class TestKRXSourcePITAdmissionBoundary(unittest.TestCase):
         self.assertEqual(p["dates"], ["20150105", "20260928", "20261001"])
         self.assertEqual(len(p["approved_services"]), 2)
         self.assertTrue(p["manual_dispatch_only"])
-        self.assertTrue(p["manual_toggle_required"])
+        self.assertTrue(p["manual_toggle_required_for_any_new_dispatch"])
+        self.assertEqual(p["verified_workflow_dispatch_run"], 38203814820)
+        self.assertEqual(p["verified_workflow_dispatch_conclusion"], "SUCCESS")
+        self.assertTrue(p["current_run_evidence_verified_in_this_audit"])
+        self.assertFalse(p["reexecution_needed"])
         self.assertFalse(p["status_source_approval_included"])
         self.assertTrue(p["no_implicit_repeat_or_expansion"])
 
