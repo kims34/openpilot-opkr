@@ -64,3 +64,12 @@ This sample proves a bounded official endpoint path and validation under the exi
 - Frozen result: **`STORAGE_INTEGRITY_VERIFIED; EXCHANGE_CALENDAR_NOT_ATTESTED; OFFICIAL_STATUS_NOT_ADMITTED; PIT_NOT_ADMITTED; 27_QUARANTINED; ORDERS_DISABLED`.**
 
 No raw provider rows, exact private security identifiers, credentials or API secret values are included.
+
+## 2026-10-13 continued execution: offline calendar discrepancy guard
+
+An independent metadata-only candidate classifier was committed on the same isolated branch:
+- [Calendar gap classifier](../../research_v1_krx_calendar_gap_boundary.py): inputs are date-scoped SHA-bound **existing** response receipts and separately supplied claimed KRX calendar metadata; no network, no private Railway access, no broker access or mutations.
+- [Synthetic-only regression suite](../../test_indexalert_krx_calendar_gap_boundary.py): handles empty-on-open (possible source gap), empty-on-closed (closure *candidate only*), nonempty-on-closed (contradiction), unsupported sources, missing dates, duplicate dates, impossible dates and weekend exclusion. All classes remain fail-closed to real PIT admission.
+- [Offline guard Actions workflow](../../.github/workflows/indexalert-krx-pit-handoff-offline-guard.yml) runs this alongside the existing 6 handoff tests.
+
+**Important data boundary:** the classifier has not ingested actual per-date private KRX receipts or an independently authenticated original KRX trading calendar. A string declaring `KRX_OFFICIAL_EXCHANGE_CALENDAR` and a SHA digest cannot authenticate a source document. The outputs are **provisional consistency categories**, not independently certified trading days, missing rows, PIT features or approval to run profitability analysis. The unresolved 184-day historical tally is unchanged and the 27 risky securities stay quarantined. An authorized and independently attested date-by-date source must be acquired and validated before updating the source-admission manifest. No new provider calls were executed by this continued audit.
