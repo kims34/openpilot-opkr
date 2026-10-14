@@ -260,6 +260,19 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
         result = verify_krx_2022_private_flow_triple(**item)
         self.assertFalse(result["provider_authenticity_independently_verified"])
 
+    def test_allow_yyyy_mm_dd_dotted_original_csv_date(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "2022.01.03")
+        result = verify_krx_2022_private_flow_triple(**item)
+        self.assertTrue(result["archived_csv_observed_dates_in_2022_task_window_checked"])
+        self.assertFalse(result["source_admitted"])
+
+    def test_reject_ambiguous_mixed_calendar_date_separators(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "2022/01-03")
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_DATE_FORMAT_DRIFT"):
+            verify_krx_2022_private_flow_triple(**item)
+
     def test_unverified_calendar_weekdays_are_not_promoted_to_market_open(self):
         item = fixture()
         # Source task 2022-01-03 -> 2022-12-30; Saturday Jan 08 is inside
