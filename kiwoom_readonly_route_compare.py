@@ -108,6 +108,20 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
             raise DiagnosticError("UNSAFE_OR_INCONSISTENT_LOCAL_SMOKE")
     if obj.get("ORDERING") != "DISABLED" or obj.get("WS_PROXY_POLICY") != policy.upper():
         raise DiagnosticError("UNSAFE_OR_INCONSISTENT_LOCAL_SMOKE")
+    # Never report a WS admission as connected if the prerequisite OAuth,
+    # read-only REST account lookup, or websocket connection is missing.
+    # This is diagnostic provenance validation, never trading authorization.
+    if obj["WS_LOGIN_OK"] and not all(
+        obj[name] is True for name in (
+            "TOKEN_OK", "ACCOUNT_ENDPOINT_OK",
+            "REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN", "WS_CONNECTED",
+        )
+    ):
+        raise DiagnosticError("WS_LOGIN_MISSING_AUTHENTICATED_PREREQUISITES")
+    if obj["TYPE00_REG_ACK_OK"] and not (
+        obj["WS_LOGIN_OK"] is True and obj["TYPE00_REG_SENT"] is True
+    ):
+        raise DiagnosticError("TYPE00_ACK_WITHOUT_AUTHENTICATED_REG")
     if returncode == 0 and (
         stage != "REAL_TYPE00_READ_ONLY_SMOKE"
         or not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK")
