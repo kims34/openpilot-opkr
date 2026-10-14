@@ -42,13 +42,13 @@ class Historic2017CalendarAsOfBoundary(unittest.TestCase):
         self.assertEqual(len(r["asof_source_calendar_closures_candidate"]),16)
         self.assertTrue(r["new_2017_10_02_status"].startswith("GOVERNMENT"))
 
-    def test_september18_exchange_news_has_unknown_intraday_release(self):
-        r=self.check_at("2017-09-18T23:59:59+09:00")
+    def test_september17_0800_still_precedes_independently_dated_exchange_news(self):
+        r=self.check_at("2017-09-17T08:00:59+09:00")
         self.assertEqual(r["status"],"NEW_GOVERNMENT_HOLIDAY_PENDING_EXCHANGE_CONFIRMATION")
         self.assertNotIn("2017-10-02",r["asof_source_calendar_closures_candidate"])
 
-    def test_september19_candidate_adds_exactly_october2(self):
-        r=self.check_at("2017-09-19T00:00:00+09:00")
+    def test_september17_0801_secondary_krx_report_adds_october2(self):
+        r=self.check_at("2017-09-17T08:01:00+09:00")
         self.assertEqual(r["status"],"2017_17_CANDIDATES_AGREE_WITH_PRIVATE_YEARLY_COUNT_ONLY")
         self.assertEqual(len(r["asof_source_calendar_closures_candidate"]),17)
         self.assertIn("2017-10-02",r["asof_source_calendar_closures_candidate"])
@@ -56,6 +56,25 @@ class Historic2017CalendarAsOfBoundary(unittest.TestCase):
         self.assertFalse(r["source_2017_private_receipt_dates_matched"])
         self.assertFalse(r["original_krx_2017_final_calendar_pit_admitted"])
         self.assertEqual(r["ordering"],"DISABLED")
+
+    def test_september18_public_secondary_article_already_available(self):
+        r=self.check_at("2017-09-18T13:21:00+09:00")
+        self.assertEqual(r["status"],"2017_17_CANDIDATES_AGREE_WITH_PRIVATE_YEARLY_COUNT_ONLY")
+        self.assertIn("2017-10-02",r["asof_source_calendar_closures_candidate"])
+        self.assertFalse(r["original_krx_2017_final_calendar_pit_admitted"])
+
+    def test_fake_yonhap_earlier_timestamp_and_source_url_fail(self):
+        m=deepcopy(self.manifest)
+        m["date_change"]["exchange_attributed_contemporaneous_report"]["reported_publication_instant_kst"]="2017-09-15T08:01:00+09:00"
+        self.assertTrue(self.check_at("2017-09-17T09:00:00+09:00",m)["status"].startswith("FAIL_CLOSED"))
+        m=deepcopy(self.manifest)
+        m["date_change"]["exchange_attributed_contemporaneous_report"]["report_url"]="https://example.com"
+        self.assertTrue(self.check_at("2017-09-17T09:00:00+09:00",m)["status"].startswith("FAIL_CLOSED"))
+
+    def test_earlier_secondary_report_does_not_authenticate_original_notice(self):
+        r=self.check_at("2017-09-17T08:01:00+09:00")
+        self.assertFalse(r["original_krx_holiday_export_byte_digest_verified"])
+        self.assertFalse(r["source_2017_private_receipt_dates_matched"])
 
     def test_secondary_17_dates_do_not_authorize_27_release_or_m20(self):
         r=self.check_at("2026-10-14T12:06:00+09:00")
