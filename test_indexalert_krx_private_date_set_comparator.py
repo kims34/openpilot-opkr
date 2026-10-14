@@ -2,10 +2,13 @@
 import hashlib
 import json
 import unittest
+import os
+from pathlib import Path
+from unittest.mock import patch
 from datetime import date, timedelta
 
 from research_v1_krx_private_date_set_comparator import (
-    reconcile_exact_date_sets as check, audit_private_scope,
+    reconcile_exact_date_sets as check, audit_private_scope, expected_private_source_root,
 )
 
 NONEMPTY="NONEMPTY_OFFICIAL_KOSPI_PAIR_NOT_PIT_ADMITTED"
@@ -130,6 +133,42 @@ class ExactPrivateDaySetBoundary(unittest.TestCase):
             reference_closed_iso_days=["2026-06-03"],expected_empty_count=1,
         )
         self.assertEqual(x["status"],"FAIL_CLOSED_NOT_AUTHORIZED_PRIVATE_AUDIT_ENV")
+
+
+    def test_worker_private_root_default_matches_original_auditor(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                expected_private_source_root(),
+                Path("/data/openapi_kospi_history_v1"))
+
+    def test_worker_private_root_explicit_subpath_consistent(self):
+        with patch.dict(os.environ, {"KRX_PRIVATE_RAW_DIR":"/data"}, clear=True):
+            self.assertEqual(
+                expected_private_source_root(),
+                Path("/data/openapi_kospi_history_v1"))
+
+    def test_off_mount_or_relative_or_traversing_root_rejected(self):
+        for bad in ("/tmp", ".", "relative/data", "/data/../../tmp", "/data/../tmp"):
+            with self.subTest(root=bad), patch.dict(
+                os.environ, {"KRX_PRIVATE_RAW_DIR":bad}, clear=True):
+                self.assertIsNone(expected_private_source_root())
+
+    def test_private_root_symlink_rejected(self):
+        with patch.dict(os.environ, {"KRX_PRIVATE_RAW_DIR":"/data"}, clear=True), patch(
+            "pathlib.Path.is_symlink", return_value=True):
+            self.assertIsNone(expected_private_source_root())
+
+    def test_unauthorized_user_cannot_run_default_mount_source(self):
+        with patch.dict(os.environ, {"KRX_PRIVATE_RAW_DIR":"/data",
+                                     "RAILWAY_SERVICE_NAME":"not-the-worker"},
+                        clear=True):
+            result=audit_private_scope(
+                private_root=Path("/data/openapi_kospi_history_v1"),
+                start=START,end=END,reference_closed_iso_days=["2026-06-03"],
+                expected_empty_count=1)
+            self.assertEqual(result["status"],"FAIL_CLOSED_NOT_AUTHORIZED_PRIVATE_AUDIT_ENV")
+            self.assertFalse(result["provider_requests_made"])
+            self.assertFalse(result["real_orders_authorized"])
 
 
 if __name__=="__main__":
