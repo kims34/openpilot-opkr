@@ -23,12 +23,15 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      INDEXALERT_BASE_HEAD_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
       # Default pull_request checkout is GitHub's PR synthetic merge ref.
       # Never override to PR head to bypass upstream implementation drift.
       - uses: actions/checkout@v4
+      - name: Bind checked-out synthetic merge first-parent SHA, not stale event SHA
+        shell: bash
+        run: |
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3
+          echo "INDEXALERT_BASE_HEAD_SHA=$(git rev-parse HEAD^1)" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
