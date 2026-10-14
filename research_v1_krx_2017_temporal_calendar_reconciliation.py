@@ -48,10 +48,19 @@ def reconcile_2017_public_sources(manifest:dict, worker_2017:dict, *,
         a=datetime.fromisoformat(july["published_local"])
         decision=datetime.fromisoformat(decision_at_kst)
         govt=datetime.fromisoformat(update["news_report_at_kst"])
+        article=update["exchange_attributed_contemporaneous_report"]
+        later=update["followup_2017_09_18_news"]
+        first_secondary=datetime.fromisoformat(article["reported_publication_instant_kst"])
+        later_secondary=datetime.fromisoformat(later["reported_published_at_kst"])
         if (a.utcoffset()!=timedelta(hours=9) or decision.utcoffset()!=timedelta(hours=9)
                 or govt.utcoffset()!=timedelta(hours=9)
+                or first_secondary.utcoffset()!=timedelta(hours=9)
+                or later_secondary.utcoffset()!=timedelta(hours=9)
                 or a.isoformat()!="2017-07-16T15:45:00+09:00"
-                or govt.isoformat()!="2017-09-05T09:31:00+09:00"):
+                or govt.isoformat()!="2017-09-05T09:31:00+09:00"
+                or first_secondary.isoformat()!="2017-09-17T08:01:00+09:00"
+                or later_secondary.isoformat()!="2017-09-18T13:21:00+09:00"
+                or not (govt<first_secondary<later_secondary)):
             return result
         if (july["article_url"]!="https://financedata.github.io/posts/pandas-market-days-krx.html"
                 or july["original_export_xls_bytes_downloaded_and_SHA_authenticated"] is not False
@@ -62,6 +71,11 @@ def reconcile_2017_public_sources(manifest:dict, worker_2017:dict, *,
                 or update["government_vote_date"]!="2017-09-05"
                 or update["exchange_notice_reported_listing_date"]!="2017-09-18"
                 or update["original_KRX_notice_bytes_or_first_publication_instant_authenticated"] is not False
+                or article.get("report_url")!="https://www.yna.co.kr/view/AKR20170915179300008"
+                or article.get("reported_KRX_market_holiday")!=HOLIDAY
+                or article.get("proves_original_KRX_press_notice_published_at_this_exact_instant") is not False
+                or later.get("article_url")!="https://www.etnews.com/20170918000164"
+                or later.get("not_earliest_article_seen") is not True
                 or after["closure_count"]!=17
                 or after["weekday_closures"]!=sorted([*BASE,HOLIDAY])
                 or after["original_Railway_2017_empty_response_dates_examined"] is not False
@@ -94,10 +108,11 @@ def reconcile_2017_public_sources(manifest:dict, worker_2017:dict, *,
         if decision>=govt:
             result["new_2017_10_02_status"]="GOVERNMENT_HOLIDAY_ANNOUNCED_NOT_KRX_SOURCE_ATTESTED"
             result["status"]="NEW_GOVERNMENT_HOLIDAY_PENDING_EXCHANGE_CONFIRMATION"
-        # KRX notice has only a reported DATE, no original first instant.
-        # Conservatively require next midnight local after 09/18; do not
-        # claim precise official original notice as-of even then.
-        if decision.date()>date(2017,9,18):
+        # Sept 17 08:01 Yonhap article already attributed the planned
+        # stock market closure to KRX, before a separately reported Sept 18
+        # exchange notice listing. This bounds only *secondary news*, NOT
+        # the first instant of the original exchange-published notice.
+        if decision>=first_secondary:
             result["asof_source_calendar_closures_candidate"]=sorted([*BASE,HOLIDAY])
             result["new_2017_10_02_status"]="EXCHANGE_CLOSURE_REPORTED_SECONDARY_NOT_PRIMARY_KRX_ORIGINAL"
             result["status"]="2017_17_CANDIDATES_AGREE_WITH_PRIVATE_YEARLY_COUNT_ONLY"
