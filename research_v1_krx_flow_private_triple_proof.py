@@ -16,7 +16,7 @@ from typing import Any, Mapping
 
 SHA = re.compile(r"^[0-9a-f]{64}$")
 DAY = re.compile(r"^[0-9]{8}$")
-SOURCE_DAY = re.compile(r"^(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}/[0-9]{2}/[0-9]{2}|[0-9]{4}\\.[0-9]{2}\\.[0-9]{2})$")
+SOURCE_DAY = re.compile(r"^(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}/[0-9]{2}/[0-9]{2}|[0-9]{4}[.][0-9]{2}[.][0-9]{2})$")
 ORIGINAL_CLIENT_REVISION = "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 FROZEN_BLD = "dbms/MDC/STAT/standard/MDCSTAT02303"
 ORIGINAL_RECEIPT_CLIENT_REVISION = "krx-data-api@" + ORIGINAL_CLIENT_REVISION
