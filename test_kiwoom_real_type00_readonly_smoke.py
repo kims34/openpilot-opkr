@@ -216,9 +216,11 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
         connect.assert_called_once()
         rest.assert_not_called()
 
-    def test_8050_is_token_or_login_auth(self):
-        self.assertEqual(classify_detail("[8050: login auth]"), (8050, "TOKEN_OR_LOGIN_AUTH"))
+    def test_8050_is_device_auth_as_in_official_sdk(self):
+        self.assertEqual(classify_detail("[8050: login auth]"), (8050, "DEVICE_AUTH"))
         self.assertEqual(classify_detail("CODE=8010: device"), (8010, "DEVICE_AUTH"))
+        self.assertEqual(classify_detail("CODE=8050: device"), (8050, "DEVICE_AUTH"))
+        self.assertEqual(classify_detail("[8050: device]"), (8050, "DEVICE_AUTH"))
 
     def test_config_requires_real_disabled_ordering(self):
         good = {
@@ -293,7 +295,7 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
         # broker replies.  No real socket, REST request, REG or order is allowed.
         cases = (
             ('8050', '{"trnm":"LOGIN","return_code":805004,"return_msg":"[8050: auth]"}',
-             "WS_LOGIN", 8050, "TOKEN_OR_LOGIN_AUTH"),
+             "WS_LOGIN", 8050, "DEVICE_AUTH"),
             ('duplicate', '{"trnm":"LOGIN","return_code":0,"RETURN_CODE":0}',
              "WS_LOGIN_PROTOCOL", None, None),
             ('wrong_trnm', '{"trnm":"REG","return_code":0}',
@@ -392,7 +394,7 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 self.assertEqual(outcome["STAGE"], stage)
                 self.assertEqual(outcome["RETURN_CODE"], code)
                 self.assertEqual(outcome["DETAIL_CODE"], 8050)
-                self.assertEqual(outcome["ERROR_CLASS"], "TOKEN_OR_LOGIN_AUTH")
+                self.assertEqual(outcome["ERROR_CLASS"], "DEVICE_AUTH")
                 self.assertEqual(outcome["TOKEN_OK"], token_ok)
                 self.assertFalse(outcome["ACCOUNT_ENDPOINT_OK"])
                 self.assertFalse(outcome["WS_CONNECTED"])
