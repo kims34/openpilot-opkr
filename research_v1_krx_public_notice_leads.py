@@ -25,6 +25,7 @@ HOSTS={
     "REPUBLICATION_OF_EXCHANGE_MARKET_NOTICE":{"stock.mk.co.kr"},
 }
 PRECISION={"DATE_ONLY","URL_PUBLICATION_DATE_PATH_ONLY","UNKNOWN"}
+OBSERVATION_BY_YEAR={2019:"DIRECT_PAGE_TEXT_READ_RETROSPECTIVE",2021:"DATED_INDEX_LISTING_ONLY",2022:"DIRECT_PAGE_TEXT_READ_BROKER",2023:"DETAIL_PAGE_UNAVAILABLE",2024:"DIRECT_PAGE_TEXT_READ_KRX_HOSTED",2025:"DIRECT_PAGE_TEXT_READ_REPUBLICATION"}
 LOCKS={
     "original_krx_source_document_verified":False,
     "original_notice_first_publication_instant_verified":False,
@@ -52,6 +53,10 @@ def _date(s):
 
 def review_public_year_end_sources(manifest:dict)->dict:
     output={"status":"FAIL_CLOSED_INVALID_PUBLIC_LEADS","recognized_sources":0,
+            "declared_detail_page_text_read_years":[],
+            "declared_index_listing_only_years":[],
+            "declared_detail_unavailable_years":[],
+            "public_web_observations_independently_verified_by_this_function":False,
             "krx_kind_hosted_years":[],"retrospective_or_undated_years":[],
             "recorded_holiday_date_candidates":[],"reported_after_2026_10_14":[],
             **LOCKS}
@@ -72,6 +77,7 @@ def review_public_year_end_sources(manifest:dict)->dict:
         if type(entries) is not list or len(entries)!=6:
             return output
         seen_year=set(); seen_link=set(); dates=[]; primary=[]; retrospective=[]
+        text_reads=[]; indexed_only=[]; inaccessible=[]
         for row in entries:
             if type(row) is not dict or type(row.get("year")) is not int:
                 return output
@@ -79,6 +85,18 @@ def review_public_year_end_sources(manifest:dict)->dict:
             if year in seen_year or not (2015<=year<=2025):
                 return output
             seen_year.add(year)
+            observation=row.get("public_page_observation_status")
+            if (row.get("public_web_observation_at_kst")!="2026-10-14"
+                    or observation != OBSERVATION_BY_YEAR.get(year)
+                    or row.get("original_krx_notice_exact_first_publication_attested") is not False
+                    or row.get("actual_private_krx_receipt_day_matched") is not False):
+                return output
+            if observation.startswith("DIRECT_PAGE_TEXT_READ_"):
+                text_reads.append(year)
+            elif observation=="DATED_INDEX_LISTING_ONLY":
+                indexed_only.append(year)
+            elif observation=="DETAIL_PAGE_UNAVAILABLE":
+                inaccessible.append(year)
             closure=_date(row.get("closure_date"))
             last=_date(row.get("last_reported_cash_equity_session"))
             if (closure.year!=year or last.year!=year or closure.weekday()>=5
@@ -119,6 +137,9 @@ def review_public_year_end_sources(manifest:dict)->dict:
         output.update({
             "status":"DATED_PUBLIC_NOTICE_LEADS_ONLY_NO_OFFICIAL_SESSION_PIT",
             "recognized_sources":len(entries),
+            "declared_detail_page_text_read_years":sorted(text_reads),
+            "declared_index_listing_only_years":sorted(indexed_only),
+            "declared_detail_unavailable_years":sorted(inaccessible),
             "krx_kind_hosted_years":sorted(primary),
             "retrospective_or_undated_years":sorted(retrospective),
             "recorded_holiday_date_candidates":sorted(dates),
