@@ -5,7 +5,8 @@ import copy
 import unittest
 
 from research_v1_krx_flow_existing_private_checkpoint_inventory import (
-    KRXExistingFlowInventoryError, _sha, summarise_existing_flow_checkpoints,
+    KRXExistingFlowInventoryError, _sha, _verify_original_execution_prefix,
+    summarise_existing_flow_checkpoints,
     summarise_frozen_2026_10_03_checkpoint_set,
 )
 
@@ -85,6 +86,59 @@ def audit(manifest, state, fp):
 
 
 class KRXPrivateFlowInventoryTest(unittest.TestCase):
+    def test_original_sequential_prefix_proves_all_flow_in_synthetic_order(self):
+        m, s, _ = sample()
+        m["tasks"].sort(key=lambda t: t["source_family"])
+        first_three = m["tasks"][:3]
+        s["completed"] = {t["task_id"]: receipt(t) for t in first_three}
+        s["completed_task_count"] = 3
+        proof = _verify_original_execution_prefix(
+            m, s, expected_flow_count=3,
+        )
+        self.assertTrue(proof["original_flow_first_task_order_verified"])
+        self.assertTrue(proof["original_execution_completion_prefix_verified"])
+        self.assertEqual(proof["flow_completed_by_verified_prefix"], 3)
+        self.assertEqual(proof["flow_remaining_by_verified_prefix"], 0)
+        self.assertFalse(proof["original_source_data_bytes_independently_verified"])
+        self.assertFalse(proof["original_2022_flow_vintage_verified"])
+
+    def test_old_completion_count_cannot_mask_out_of_order_hole(self):
+        m, s, _ = sample()
+        m["tasks"].sort(key=lambda t: t["source_family"])
+        # Keep exactly 3 completed, but skip the second flow task and
+        # spuriously include one later halt task.
+        s["completed"] = {
+            t["task_id"]: receipt(t)
+            for t in (m["tasks"][0], m["tasks"][2], m["tasks"][3])
+        }
+        s["completed_task_count"] = 3
+        with self.assertRaisesRegex(
+            KRXExistingFlowInventoryError,
+            "NONCONTIGUOUS_ORIGINAL_EXECUTION_PREFIX",
+        ):
+            _verify_original_execution_prefix(m, s, expected_flow_count=3)
+
+    def test_sorted_manifest_required_before_prefix_claim(self):
+        m, s, _ = sample()
+        # Original synthetic fixture interleaves status and flow.
+        with self.assertRaisesRegex(
+            KRXExistingFlowInventoryError,
+            "ORIGINAL_FLOW_FIRST_TASK_ORDER_DRIFT",
+        ):
+            _verify_original_execution_prefix(m, s, expected_flow_count=3)
+
+    def test_exact_prefix_partial_flow_completion_is_not_full(self):
+        m, s, _ = sample()
+        m["tasks"].sort(key=lambda t: t["source_family"])
+        first_two = m["tasks"][:2]
+        s["completed"] = {t["task_id"]: receipt(t) for t in first_two}
+        s["completed_task_count"] = 2
+        proof = _verify_original_execution_prefix(
+            m, s, expected_flow_count=3,
+        )
+        self.assertEqual(proof["flow_completed_by_verified_prefix"], 2)
+        self.assertEqual(proof["flow_remaining_by_verified_prefix"], 1)
+
     def test_counts_2022_existing_receipts_without_confusing_with_pit(self):
         manifest, state, fp = sample()
         out = audit(manifest, state, fp)
