@@ -133,6 +133,7 @@ class CandidateRowsTests(unittest.TestCase):
         nested = [item for item in items if item["nested"]]
         self.assertEqual(len(nested), 1)
         self.assertTrue(nested[0]["q3_2022_full_window_text_hint"])
+        self.assertTrue(any(x["contains_nested_table"] for x in items))
         self.assertFalse(nested[0]["preceding_exact_cfs_title_hint"])
 
     def test_nested_table_context_is_unclassified(self):
@@ -145,6 +146,68 @@ class CandidateRowsTests(unittest.TestCase):
             sum(any(x["nested"] for x in group) for group in scanner.contexts.values()),
             1,
         )
+
+
+    def test_parent_with_child_is_never_classified_as_independent_cfs_table(self):
+        # Both the nested child and its enclosing parent contain child text.
+        # The parent's nearby CFS heading cannot validate the child/parent.
+        original_html = "<table><td>baseline</td></table>"
+        corrected_html = (
+            original_html + "<p>연결손익계산서</p>"
+            "<table><tr><td>outer"
+            "<table><td>2022.07.01 ~ 2022.09.30</td></table>"
+            "</td></tr></table>"
+        )
+        first = target._TableTextFingerprints()
+        first.feed(original_html)
+        first.close()
+        orig = first.finish()
+        second = target._TableTextFingerprints()
+        second.feed(corrected_html)
+        second.close()
+        amended = second.finish()
+        self.assertEqual(sum((amended - orig).values()), 2)
+        contexts = [x for group in second.contexts.values() for x in group]
+        self.assertEqual(sum(x["nested"] for x in contexts), 1)
+        self.assertEqual(sum(x["contains_nested_table"] for x in contexts), 1)
+        row = Counter({("영업이익", "1"): 1})
+        numeric = Counter({("영업이익", ("1",)): 1})
+        with patch.object(target, "_diagnostic_rows", side_effect=[
+            (row, numeric, "a" * 64, orig, first.contexts),
+            (row, numeric, "b" * 64, amended, second.contexts),
+        ]):
+            result = target.compare(b"original", b"corrected")
+        self.assertEqual(result["added_table_text_multiset_members"], 2)
+        self.assertEqual(result["added_table_context_classified"], 0)
+        self.assertEqual(result["added_table_context_unclassified"], 2)
+        self.assertEqual(result["added_table_nested_unclassified_count"], 2)
+        self.assertEqual(result["added_table_preceding_exact_cfs_title_hints"], 0)
+        self.assertEqual(result["added_table_q3_2022_full_window_text_hints"], 0)
+        self.assertFalse(result["added_table_context_is_authoritative_financial_statement"])
+
+    def test_standalone_added_table_still_classified_as_source_only(self):
+        original_html = "<table><td>baseline</td></table>"
+        corrected_html = original_html + "<p>주석</p><table><td>extra</td></table>"
+        first = target._TableTextFingerprints()
+        first.feed(original_html)
+        first.close()
+        orig = first.finish()
+        second = target._TableTextFingerprints()
+        second.feed(corrected_html)
+        second.close()
+        amended = second.finish()
+        row = Counter({("영업이익", "1"): 1})
+        numeric = Counter({("영업이익", ("1",)): 1})
+        with patch.object(target, "_diagnostic_rows", side_effect=[
+            (row, numeric, "a" * 64, orig, first.contexts),
+            (row, numeric, "b" * 64, amended, second.contexts),
+        ]):
+            result = target.compare(b"original", b"corrected")
+        self.assertEqual(result["added_table_context_classified"], 1)
+        self.assertEqual(result["added_table_context_unclassified"], 0)
+        self.assertEqual(result["added_table_nested_unclassified_count"], 0)
+        self.assertTrue(result["added_table_period_text_proximity_is_not_financial_pit"])
+        self.assertFalse(result["m20_feature_pit_admitted"]) if "m20_feature_pit_admitted" in result else None
 
     def test_unbalanced_table_and_budget_fail_closed(self):
         scanner = target._TableTextFingerprints()

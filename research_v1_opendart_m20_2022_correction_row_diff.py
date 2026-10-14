@@ -156,10 +156,16 @@ class _TableTextFingerprints(HTMLParser):
         if tag == "table":
             if len(self.stack) >= 50 or self.total_tables + len(self.stack) >= MAX_TABLE_COUNT:
                 raise RowShapeGap("TABLE_SCAN_BUDGET_EXCEEDED")
+            # A parent enclosing another table is also structurally ambiguous.
+            # Its normalized text includes the descendant; never attribute it
+            # as an independent first-edition financial statement.
+            for ancestor in self.stack:
+                ancestor["contains_nested_table"] = True
             self.stack.append({
                 "parts": [],
                 "prefix": _norm(self.outside_prefix[-400:]),
                 "nested": bool(self.stack),
+                "contains_nested_table": False,
             })
 
     def handle_data(self, value):
@@ -186,6 +192,7 @@ class _TableTextFingerprints(HTMLParser):
         prefix = frame["prefix"]
         self.contexts.setdefault(digest, []).append({
             "nested": frame["nested"],
+            "contains_nested_table": frame["contains_nested_table"],
             "operating_label_text_hint": any(x in normal for x in OPERATING_ROW_LABELS),
             "three_month_text_hint": "3개월" in normal,
             "both_years_text_hint": "2022" in normal and "2021" in normal,
@@ -258,7 +265,7 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
             if len(metadata) != corrected_tables[digest]:
                 raise RowShapeGap("TABLE_CONTEXT_MULTIPLICITY_INVALID")
             for item in metadata:
-                if item["nested"]:
+                if item["nested"] or item["contains_nested_table"]:
                     ambiguous += 1
                     nested_unclassified.append(item)
                 else:
