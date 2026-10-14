@@ -22,16 +22,16 @@ import research_v1_runtime_archived_source_gate as original
 APPROVED_SCOPE_BASE_REF = "index-alert-backtest-runtime-opt-v1-20261013"
 APPROVED_SCOPE_HEAD_REF = "index-alert-backtest-single-runner-opt-v1-20261013"
 # Explicit candidate comparison target, NOT a frozen-strategy promotion.
-EXACT_UPSTREAM_HEAD = "421802db4d8d89a5508f5f158671a6e4b3465568"
+EXACT_UPSTREAM_HEAD = "396d195d6ad31fcdf8dcab02e87d11eee9db5017"
 
 # Only code change allowed relative to the archived direct implementations:
 # original research_v1_runtime_manifest.py
 # 108f66714602a1bd3ae42c34dcca7c16e38f460b
-# becomes e428789e... after no-follow/TOCTOU safeguards in #413.
+# becomes 47a9f6... after no-follow/TOCTOU safeguards and an explicit\n# false-only holdout/live receipt flag check in independently green #413.
 EXACT_UPSTREAM_CHANGED_BLOBS = {
-    "research_v1_runtime_manifest.py": "e428789e2e97ca7be3a4482e0df23b483a1ad69d",
+    "research_v1_runtime_manifest.py": "47a9f6a894dcf402841b282488476da5291f4a24",
     "research_v1_runtime_one_runner.py": "0c792b66daa46bdc7725fdcfde17ced975fb2c55",
-    "test_research_v1_runtime_ci_integrity.py": "b95be23953799efa95094d3443d608171ba72b5d",
+    "test_research_v1_runtime_ci_integrity.py": "b1d17690627bcdb11dff0163d2a161379a6da7a2",
 }
 EXPECTED_CURRENT_ARCHIVED_MANIFEST = "108f66714602a1bd3ae42c34dcca7c16e38f460b"
 
