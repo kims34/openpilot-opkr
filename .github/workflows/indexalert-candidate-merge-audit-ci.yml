@@ -27,6 +27,8 @@ jobs:
       # Default pull_request checkout is GitHub's PR synthetic merge ref.
       # Never override to PR head to bypass upstream implementation drift.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # include merge parents; checkout default 1 is shallow
       - name: Bind checked-out synthetic merge first-parent SHA, not stale event SHA
         shell: bash
         run: |
