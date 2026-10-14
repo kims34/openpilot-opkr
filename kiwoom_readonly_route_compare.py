@@ -6,18 +6,20 @@ Usage on the *already registered-IP* Windows PC, with local environment keys:
 Do not run on GitHub Actions or Railway. No real orders, positions, trading
 authority, public-IP probing, credential/key printing, or provider response
 body logging. Calls Kiwoom's token, account identity and WS Type00 endpoints
-through the established fail-closed smoke. At most two sequential runs; the
-direct comparison is skipped unless the system route hits a WS blocker.
+through the established fail-closed smoke. One OAuth token and REST account
+lookup are reused in memory; at most two sequential WebSocket connections,
+with the direct comparison skipped unless the system route hits a WS blocker.
 """
 from __future__ import annotations
 
+import asyncio
+from dataclasses import asdict
 import json
 import os
 from pathlib import Path
-import re
-import subprocess
-import sys
 from typing import Any, Mapping
+
+import kiwoom_real_type00_readonly_smoke as smoke
 
 SMOKE_FILE = Path(__file__).resolve().with_name("kiwoom_real_type00_readonly_smoke.py")
 _ALLOWED_STAGES = frozenset({
@@ -112,25 +114,77 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
     return {key: obj[key] for key in _SUMMARY_FIELDS}
 
 
-def _run_once(policy: str, env: Mapping[str, str]) -> dict[str, Any]:
-    child_env = dict(env)
-    child_env["KIWOOM_WS_PROXY_POLICY"] = policy
-    # Suppress stderr entirely and never forward raw stdout: providers, proxies
-    # or local tracebacks may otherwise leak network/credential detail.
+_REST_PROOF_FIELDS = (
+    "TOKEN_OK", "ACCOUNT_ENDPOINT_OK", "REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN",
+    "TOKEN_CANONICAL_NO_EDGE_WHITESPACE", "TOKEN_EXPIRY_FIELD_PRESENT",
+    "TOKEN_TYPE_FIELD_PRESENT", "REST_CONFIGURED_PROXY_PRESENT",
+    "WS_SYSTEM_CONFIGURED_PROXY_PRESENT", "REST_WS_CONFIGURED_PROXY_URLS_EQUAL",
+)
+
+
+def _attempt(policy: str, prepared: tuple | None = None) -> tuple[dict[str, Any], tuple | None]:
+    """Use one OAuth token and one REST account lookup across both WS routes.
+
+    All token/account information stays in process memory; only validated,
+    redacted state is returned to the report.  No subprocess, stderr, or
+    credentials file is used.
+    """
+    state = smoke.SmokeState()
+    state.WS_PROXY_POLICY = policy.upper()
+    old_policy = os.environ.get("KIWOOM_WS_PROXY_POLICY")
+    os.environ["KIWOOM_WS_PROXY_POLICY"] = policy
     try:
-        done = subprocess.run(
-            [sys.executable, "-B", str(SMOKE_FILE)],
-            cwd=str(SMOKE_FILE.parent),
-            env=child_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=100,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        raise DiagnosticError("LOCAL_SMOKE_EXECUTION_FAILED") from None
-    return _safe_summary(done.stdout, done.returncode, policy)
+        if prepared is None:
+            token, account, issued = smoke._token_and_account(state)
+            # Reuse this exact issued token for the alternate WebSocket
+            # route, rather than reissuing a new OAuth token and confounding
+            # the network-path comparison.
+            proof = {name: getattr(state, name) for name in _REST_PROOF_FIELDS}
+            prepared = (token, account, issued, proof)
+        else:
+            token, account, issued, proof = prepared
+            for name in _REST_PROOF_FIELDS:
+                setattr(state, name, proof[name])
+        asyncio.run(smoke._run_ws(token, account, issued, state))
+        if not (
+            state.TOKEN_OK
+            and state.ACCOUNT_ENDPOINT_OK
+            and state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN
+            and state.WS_LOGIN_OK
+            and state.TYPE00_REG_SENT
+            and state.TYPE00_REG_ACK_OK
+        ):
+            raise smoke.ReadOnlySmokeError("TYPE00_ADMISSION_INCOMPLETE", 0)
+        if state.TYPE00_EVENT_COUNT == 0:
+            state.STAGE = "TYPE00_ACK_ONLY_NO_EVENTS"
+            state.RETURN_CODE = 0
+            exit_code = 3
+        else:
+            state.STAGE = "REAL_TYPE00_READ_ONLY_SMOKE"
+            state.RETURN_CODE = 0
+            exit_code = 0
+    except smoke.ReadOnlySmokeError as exc:
+        state.STAGE = exc.stage
+        state.RETURN_CODE = exc.return_code
+        state.DETAIL_CODE = exc.detail_code
+        state.ERROR_CLASS = exc.error_class
+        exit_code = 2
+    except Exception:
+        # Never emit untrusted errors or tracebacks; they can include
+        # credentials, proxy details and original broker response bodies.
+        state.STAGE = "LOCAL_COMPATIBILITY_OR_NETWORK"
+        state.RETURN_CODE = -1
+        exit_code = 2
+    finally:
+        if old_policy is None:
+            os.environ.pop("KIWOOM_WS_PROXY_POLICY", None)
+        else:
+            os.environ["KIWOOM_WS_PROXY_POLICY"] = old_policy
+
+    # Prevent accidentally promoting malformed provenance or true-order
+    # authority. Fail-closed local state never passes the safe report parser.
+    summary = _safe_summary(json.dumps(asdict(state)), exit_code, policy)
+    return summary, prepared
 
 
 def _interpret(base: Mapping[str, Any], direct: Mapping[str, Any] | None) -> str:
@@ -163,8 +217,8 @@ def main() -> None:
     try:
         env = dict(os.environ)
         _preflight(env)
-        base = _run_once("system", env)
-        direct = _run_once("direct", env) if _eligible_for_direct(base) else None
+        base, prepared = _attempt("system")
+        direct, _ = _attempt("direct", prepared) if _eligible_for_direct(base) else (None, None)
         print(json.dumps({
             "classification": "KIWOOM_REGISTERED_PC_READONLY_WS_ROUTE_COMPARISON",
             "system": base, "direct": direct,
