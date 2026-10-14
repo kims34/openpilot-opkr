@@ -52,14 +52,28 @@ jobs:
           assert x["credential_present"] is True
           assert x["fixed_cohort_slot"] == 5
           assert x["max_official_requests"] == 5
-          assert x["source_status"] == "OFFICIAL_SOURCE_TABLE_ORDER_DIAGNOSTIC_ONLY"
-          assert x["original_order_preserved_as_subsequence"] is True
+          assert x["source_status"] in (
+            "OFFICIAL_SOURCE_TABLE_ORDER_DIAGNOSTIC_ONLY",
+            "OFFICIAL_SOURCE_TABLE_ORDER_NON_SUBSEQUENCE_DIAGNOSTIC_ONLY"
+          )
           assert x["original_ordered_table_count"] == 1570
           assert x["corrected_ordered_table_count"] == 1576
-          assert x["minimum_insertions_if_subsequence"] == 6
-          assert 0 <= x["forced_new_table_positions"] <= 6
-          assert x["forced_new_table_positions"] + x["insertions_not_position_uniquely_attributable"] == 6
-          assert x["forced_new_table_is_authoritative_cfs_earnings"] is False
+          assert 0 <= x["order_lcs_shared_table_members"] <= 1570
+          assert x["minimum_table_removals_for_sequence_alignment"] == 1570-x["order_lcs_shared_table_members"]
+          assert x["minimum_table_insertions_for_sequence_alignment"] == 1576-x["order_lcs_shared_table_members"]
+          assert x["source_edition_table_positions_semantically_linked"] is False
+          if x["original_order_preserved_as_subsequence"]:
+            assert x["order_lcs_shared_table_members"] == 1570
+            assert x["minimum_insertions_if_subsequence"] == 6
+            assert 0 <= x["forced_new_table_positions"] <= 6
+            assert x["forced_new_table_positions"] + x["insertions_not_position_uniquely_attributable"] == 6
+            assert x["forced_new_table_is_authoritative_cfs_earnings"] is False
+          else:
+            assert x["source_status"] == "OFFICIAL_SOURCE_TABLE_ORDER_NON_SUBSEQUENCE_DIAGNOSTIC_ONLY"
+            assert x["order_lcs_shared_table_members"] < 1570
+            assert x["additional_table_multiset_members_not_uniquely_positioned"] == 6
+            assert x["source_only_order_change_unresolved"] is True
+            assert x["correction_financial_cell_changes_verified"] is False
           assert x["period_statement_and_financial_cells_unverified"] is True
           assert x["ordering"] == "DISABLED"
           for k in ("original_q3_cfs_three_month_earnings_verified",

@@ -48,9 +48,27 @@ class TableOrderTests(unittest.TestCase):
         self.assertEqual(a["forced_new_operating_income_mentions"], 1)
         self.assertFalse(a["unclassified_insertions_remain_source_gap"] is False)
 
-    def test_rearranged_table_order_fails_closed_even_same_multiset(self):
-        with self.assertRaisesRegex(p.OrderGap, "ORIGINAL_TABLE_ORDER_NOT_SUBSEQUENCE"):
-            p.assess_order(["a", "b", "c"], ["b", "c", "a", "x"], [flags()]*4)
+    def test_reordered_table_order_returns_blocked_lcs_evidence(self):
+        result = p.assess_order(["a", "b", "c"], ["b", "c", "a", "x"], [flags()]*4)
+        self.assertFalse(result["original_order_preserved_as_subsequence"])
+        self.assertEqual(result["order_lcs_shared_table_members"], 2)
+        self.assertEqual(result["minimum_table_removals_for_sequence_alignment"], 1)
+        self.assertEqual(result["minimum_table_insertions_for_sequence_alignment"], 2)
+        self.assertFalse(result["correction_financial_cell_changes_verified"])
+
+    def test_lcs_duplicate_source_values(self):
+        old = ["a", "b", "a"]
+        new = ["a", "a", "b", "x", "a"]
+        self.assertEqual(p._lcs_length_bounded(old, new), 3)
+        self.assertTrue(p.assess_order(old, new, [flags()]*len(new))[
+            "original_order_preserved_as_subsequence"
+        ])
+
+    def test_lcs_computation_bounded(self):
+        with patch.object(p, "_lcs_length_bounded",
+                          side_effect=p.OrderGap("TABLE_ORDER_LCS_BUDGET_EXCEEDED")):
+            with self.assertRaisesRegex(p.OrderGap, "TABLE_ORDER_LCS_BUDGET_EXCEEDED"):
+                p.assess_order(["a", "b"], ["b", "a", "x"], [flags()]*3)
 
     def test_mismatched_contexts_fail_closed(self):
         with self.assertRaisesRegex(p.OrderGap, "ORDER_INPUT_CARDINALITY_INVALID"):

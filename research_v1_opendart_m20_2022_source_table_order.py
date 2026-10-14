@@ -116,6 +116,42 @@ class _OrderedTableScanner(HTMLParser):
         return self.digests, self.contexts
 
 
+def _lcs_length_bounded(original: list[str], corrected: list[str]) -> int:
+    """Source-only order similarity: bounded dynamic programming, no values."""
+    if len(original) * len(corrected) > 3000000:
+        raise OrderGap("TABLE_ORDER_LCS_BUDGET_EXCEEDED")
+    dp = [0] * (len(corrected) + 1)
+    for old in original:
+        diagonal = 0
+        for index, value in enumerate(corrected, 1):
+            old_cell = dp[index]
+            if old == value:
+                dp[index] = diagonal + 1
+            elif dp[index-1] > dp[index]:
+                dp[index] = dp[index-1]
+            diagonal = old_cell
+    return dp[-1]
+
+
+def _non_subsequence_diagnostic(original: list[str], corrected: list[str]) -> dict:
+    n, m = len(original), len(corrected)
+    lcs = _lcs_length_bounded(original, corrected)
+    if lcs >= n:
+        raise OrderGap("ORDER_DIAGNOSTIC_INVARIANT_INVALID")
+    return {
+        "original_order_preserved_as_subsequence": False,
+        "original_ordered_table_count": n,
+        "corrected_ordered_table_count": m,
+        "order_lcs_shared_table_members": lcs,
+        "minimum_table_removals_for_sequence_alignment": n-lcs,
+        "minimum_table_insertions_for_sequence_alignment": m-lcs,
+        "additional_table_multiset_members_not_uniquely_positioned": m-n,
+        "source_edition_table_positions_semantically_linked": False,
+        "correction_financial_cell_changes_verified": False,
+        "source_only_order_change_unresolved": True,
+    }
+
+
 def assess_order(original: list[str], corrected: list[str], contexts: list[dict]) -> dict:
     """An updated position is forced-new iff it cannot match ANY embedding.
 
@@ -138,7 +174,7 @@ def assess_order(original: list[str], corrected: list[str], contexts: list[dict]
             match += 1
     prefix[m] = match
     if match != n:
-        raise OrderGap("ORIGINAL_TABLE_ORDER_NOT_SUBSEQUENCE")
+        return _non_subsequence_diagnostic(original, corrected)
     match = 0
     for index in range(m - 1, -1, -1):
         value = corrected[index]
@@ -146,7 +182,7 @@ def assess_order(original: list[str], corrected: list[str], contexts: list[dict]
             match += 1
         suffix[index] = match
     if match != n:
-        raise OrderGap("ORIGINAL_TABLE_ORDER_NOT_SUBSEQUENCE")
+        raise OrderGap("ORIGINAL_TABLE_REVERSE_MATCH_INCONSISTENT")
     forced = []
     possible = []
     for index, value in enumerate(corrected):
@@ -162,6 +198,10 @@ def assess_order(original: list[str], corrected: list[str], contexts: list[dict]
     unique_contexts = [contexts[i] for i in forced]
     return {
         "original_order_preserved_as_subsequence": True,
+        "order_lcs_shared_table_members": n,
+        "minimum_table_removals_for_sequence_alignment": 0,
+        "minimum_table_insertions_for_sequence_alignment": m-n,
+        "source_edition_table_positions_semantically_linked": False,
         "original_ordered_table_count": n,
         "corrected_ordered_table_count": m,
         "minimum_insertions_if_subsequence": insertion_count,
@@ -203,8 +243,14 @@ def compare_source_archives(first: bytes, amended: bytes) -> dict:
             or sum((Counter(original) & Counter(corrected)).values()) != EXPECTED_SHARED_TABLES):
         raise OrderGap("OFFICIAL_SOURCE_TABLE_COUNTS_DRIFTED")
     return {
-        "source_status": "OFFICIAL_SOURCE_TABLE_ORDER_DIAGNOSTIC_ONLY",
-        **assess_order(original, corrected, contexts),
+        **(lambda audit: {
+            "source_status": (
+                "OFFICIAL_SOURCE_TABLE_ORDER_DIAGNOSTIC_ONLY"
+                if audit["original_order_preserved_as_subsequence"]
+                else "OFFICIAL_SOURCE_TABLE_ORDER_NON_SUBSEQUENCE_DIAGNOSTIC_ONLY"
+            ),
+            **audit,
+        })(assess_order(original, corrected, contexts)),
         "period_statement_and_financial_cells_unverified": True,
     }
 
@@ -254,7 +300,9 @@ def run(session=None) -> dict:
             "HTML_NODES_BUDGET_EXCEEDED", "TABLE_SCAN_BUDGET_EXCEEDED",
             "TABLE_INPUT_BUDGET_EXCEEDED", "TABLE_TEXT_BUDGET_EXCEEDED",
             "TABLE_NESTING_UNVERIFIED", "ORDER_INPUT_CARDINALITY_INVALID",
-            "ORIGINAL_TABLE_ORDER_NOT_SUBSEQUENCE",
+            "ORIGINAL_TABLE_REVERSE_MATCH_INCONSISTENT",
+            "TABLE_ORDER_LCS_BUDGET_EXCEEDED",
+            "ORDER_DIAGNOSTIC_INVARIANT_INVALID",
             "UNIQUE_INSERTION_COUNTER_INCONSISTENT",
             "OFFICIAL_DOCUMENT_SHA_DRIFT", "OFFICIAL_DOCUMENT_ZIP_UNVERIFIED",
             "OFFICIAL_DOCUMENT_MEMBER_UNVERIFIED",
