@@ -1,0 +1,48 @@
+name: IndexAlert Kiwoom REST Redirect Guard (offline only)
+
+on:
+  push:
+    branches: [indexalert-kiwoom-rest-redirect-guard-20261014]
+    paths:
+      - 'kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_real_readonly/smoke.py'
+      - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'test_kiwoom_rest_redirect_guard.py'
+      - '.github/workflows/kiwoom-rest-redirect-guard-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline test dependencies
+        run: python -m pip install requests==2.32.3 websockets==15.0.1
+      - name: Syntax validation and mirrored-source parity
+        run: |
+          python -m py_compile kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py test_kiwoom_rest_redirect_guard.py
+          cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
+      - name: Execute broker-network-free safety regressions
+        run: |
+          python -m unittest -v test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard
+      - name: Enforce credential redirection and ordering fail-closed invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path("kiwoom_real_type00_readonly_smoke.py").read_text()
+          assert src.count("allow_redirects=False") == 2
+          assert src.count("_require_http_200(") == 3
+          assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
+          assert 'ORDERING: str = "DISABLED"' in src
+          for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
+              assert forbidden not in src
+          PY
