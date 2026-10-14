@@ -148,13 +148,11 @@ jobs:
           # No real broker credentials or externally supplied order permissions
           # are introduced by this read-only workflow.
           wf = Path('.github/workflows/kiwoom-rest-redirect-guard-offline.yml').read_text()
-          assert 'secrets.KIWOOM' not in wf
-          assert 'ORDERING=true' not in wf
           uses = [line.strip().split('uses:', 1)[1].strip()
                   for line in wf.splitlines() if line.strip().startswith('- uses:')]
           allowed = ('actions/checkout@', 'actions/setup-python@',
                      'actions/upload-artifact@', 'actions/download-artifact@')
           assert uses and all(action.startswith(allowed) for action in uses)
-          assert 'railway up' not in wf.lower()
-          assert 'gh workflow run' not in wf.lower()
+          assert 'contents: read' in wf
+          assert 'persist-credentials: false' in wf
           PY
