@@ -217,12 +217,13 @@ def _config() -> tuple[str, str]:
 
 
 def _require_http_200(response: Any, stage: str) -> None:
-    """Reject redirects and non-200 responses before reading sensitive REST bodies.
+    """Deny redirects and unexpected HTTP statuses before consuming REST bodies.
 
-    Always use requests.post(..., allow_redirects=False) on token and account.
+    Credential-bearing OAuth and read-only account requests must use
+    allow_redirects=False so requests never forwards bearer/key material.
     """
-    code = getattr(response, "status_code", None)
-    if type(code) is not int or code != 200:
+    status = getattr(response, "status_code", None)
+    if type(status) is not int or status != 200:
         raise ReadOnlySmokeError(stage)
 
 
@@ -352,8 +353,10 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
         ) as ws:
             state.WS_CONNECTED = True
             state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = max(0, int(time.monotonic() - issued_monotonic))
-            state.WS_LOGIN_USED_ISSUED_TOKEN = True
             await ws.send(json.dumps({"trnm": "LOGIN", "token": token}, separators=(",", ":")))
+            # A prepared token is not proof it was sent; only record
+            # use after the websocket transport accepted LOGIN.
+            state.WS_LOGIN_USED_ISSUED_TOKEN = True
 
             login_ok = False
             for _ in range(10):
