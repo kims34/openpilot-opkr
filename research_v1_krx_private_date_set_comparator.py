@@ -184,11 +184,17 @@ def audit_private_scope(
         # Fail before importing the production-only provider dependencies.
         # No GitHub CI runner, laptop or arbitrary root may pretend to be
         # the dedicated original KRX historical worker and mounted volume.
-        base=os.getenv("KRX_PRIVATE_RAW_DIR")
-        required=(Path(base) / "openapi_kospi_history_v1") if base else None
+        # Match the original integrity auditor's canonical fallback:
+        # Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data") / PRIVATE_SUBDIR.
+        # Do not allow other mounts or cwd-relative paths.
+        base=Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data")
+        required=base / "openapi_kospi_history_v1"
         actual=Path(private_root)
         if (os.getenv("RAILWAY_SERVICE_NAME")!="indexalert-krx-historical-worker"
-                or required is None or actual!=required
+                or not base.is_absolute()
+                or not base.is_relative_to(Path("/data"))
+                or base.is_symlink()
+                or actual!=required
                 or not actual.is_relative_to(Path("/data"))):
             return fail
         from research_v1_krx_openapi_private_integrity_audit import (
