@@ -14,7 +14,7 @@ On that PC, once the existing Python dependencies are available, execute from th
 python -B kiwoom_readonly_route_compare.py
 ```
 
-It issues a **single fresh OAuth token and one read-only REST account lookup**, then tries WebSocket LOGIN / Type00 REG on the **system-selected route**. Only when REST succeeded and a WebSocket login/connection blocker occurred does it try **one** additional direct WebSocket connection (`proxy=None`) using the **exact same in-memory token and account identity**, without a second OAuth issuance or account lookup. Thus the two WS paths can be compared without token reissue confounding. No tokens or account identifiers are written to files or displayed. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
+It issues a **single fresh OAuth token and one read-only REST account lookup**, then tries WebSocket LOGIN / Type00 REG on the **system-selected route**. Only when REST succeeded, a WebSocket login/connection blocker occurred, **and WebSocket system-proxy discovery confirmed a configured proxy** does it try **one** direct WebSocket comparison (`proxy=None`) with the same in-memory token and account identity. When no WebSocket proxy is configured, system mode already selects a direct route: the diagnostic avoids another identical LOGIN. When proxy discovery is unknown, it also skips the second call. Thus the two WS paths can be compared without token reissue confounding. No tokens or account identifiers are written to files or displayed. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
 
 Only stages, numeric error/detail codes, boolean proxy configuration indicators and an assessment are emitted. Secret keys, token, account number, IP addresses, proxy URLs, original provider messages and subprocess stderr are never printed. Do not share those secrets separately.
 
@@ -39,6 +39,8 @@ strategy profitability or Tiny Live readiness.
 ## Interpretation
 
 - `REST_PRECONDITION_NOT_MET`: Token or read-only account lookup failed; no direct comparison attempted.
+- `SYSTEM_WS_NO_PROXY_TO_BYPASS`: The selected WebSocket system route has no configured proxy; a direct retry would repeat the same route. This does not establish public egress/IP or explain 8050.
+- `WS_PROXY_DISCOVERY_UNVERIFIED`: Proxy discovery unavailable; no direct second attempt or network identity inference.
 - `8050_PERSISTS_IN_BOTH_WS_MODES`: Both routes reached WS LOGIN and got the same authentication failure; this does not establish the exact backend cause.
 - `ROUTE_DEPENDENT_OUTCOME_POSSIBLE`: The direct route reached WS login success when the system route could not. This suggests a routing difference without proving any particular source IP.
 - `WS_LOGIN_ALREADY_OK_NO_ROUTE_COMPARISON`: The system route already logged in successfully; direct mode was not attempted.
