@@ -14,7 +14,7 @@ def state(*, stage="WS_LOGIN", code=805004, detail=8050, token_ok=True,
         "STAGE": stage,
         "RETURN_CODE": code,
         "DETAIL_CODE": detail,
-        "ERROR_CLASS": "TOKEN_OR_LOGIN_AUTH" if detail == 8050 else None,
+        "ERROR_CLASS": "DEVICE_AUTH" if detail == 8050 else None,
         "WS_PROXY_POLICY": policy.upper(),
         "TOKEN_OK": token_ok,
         "ACCOUNT_ENDPOINT_OK": account_ok,
@@ -149,7 +149,7 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
             seen.append((policy, token, account_no, token_time))
             state.WS_CONNECTED = True
             if policy == "system":
-                raise ReadOnlySmokeError("WS_LOGIN", 805004, 8050, "TOKEN_OR_LOGIN_AUTH")
+                raise ReadOnlySmokeError("WS_LOGIN", 805004, 8050, "DEVICE_AUTH")
             if policy != "direct":
                 raise AssertionError("unexpected route")
             state.WS_LOGIN_OK = True
@@ -193,7 +193,7 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
             "KIWOOM_APP_KEY": "synthetic-key", "KIWOOM_APP_SECRET": "synthetic-secret",
         }
         def deny(_state):
-            raise ReadOnlySmokeError("TOKEN", 3, 8050, "TOKEN_OR_LOGIN_AUTH")
+            raise ReadOnlySmokeError("TOKEN", 3, 8050, "DEVICE_AUTH")
         with patch.dict(os.environ, env, clear=True), \
              patch("kiwoom_readonly_route_compare.smoke._token_and_account",
                    side_effect=deny) as rest, \
