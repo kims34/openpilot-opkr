@@ -14,7 +14,7 @@ On that PC, once the existing Python dependencies are available, execute from th
 python -B kiwoom_readonly_route_compare.py
 ```
 
-It issues a **single fresh OAuth token and one read-only REST account lookup**, then tries WebSocket LOGIN / Type00 REG on the **system-selected route**. Only when REST succeeded and a WebSocket login/connection blocker occurred does it try **one** additional direct WebSocket connection (`proxy=None`) using the **exact same in-memory token and account identity**, without a second OAuth issuance or account lookup. Thus the two WS paths can be compared without token reissue confounding. No tokens or account identifiers are written to files or displayed. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
+It issues a **single fresh OAuth token and one read-only REST account lookup**, then tries WebSocket LOGIN / Type00 REG on the **system-selected route**. Only when REST succeeded, a WebSocket login/connection blocker occurred, **and WebSocket system-proxy discovery confirmed a configured proxy** does it try **one** direct WebSocket comparison (`proxy=None`) with the same in-memory token and account identity. When no WebSocket proxy is configured, system mode already selects a direct route: the diagnostic avoids another identical LOGIN. When proxy discovery is unknown, it also skips the second call. Thus the two WS paths can be compared without token reissue confounding. No tokens or account identifiers are written to files or displayed. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
 
 Only stages, numeric error/detail codes, boolean proxy configuration indicators and an assessment are emitted. Secret keys, token, account number, IP addresses, proxy URLs, original provider messages and subprocess stderr are never printed. Do not share those secrets separately.
 
@@ -39,6 +39,8 @@ strategy profitability or Tiny Live readiness.
 ## Interpretation
 
 - `REST_PRECONDITION_NOT_MET`: Token or read-only account lookup failed; no direct comparison attempted.
+- `SYSTEM_WS_NO_PROXY_TO_BYPASS`: The selected WebSocket system route has no configured proxy; a direct retry would repeat the same route. This does not establish public egress/IP or explain 8050.
+- `WS_PROXY_DISCOVERY_UNVERIFIED`: Proxy discovery unavailable; no direct second attempt or network identity inference.
 - `8050_PERSISTS_IN_BOTH_WS_MODES`: Both routes reached WS LOGIN and got the same authentication failure; this does not establish the exact backend cause.
 - `ROUTE_DEPENDENT_OUTCOME_POSSIBLE`: The direct route reached WS login success when the system route could not. This suggests a routing difference without proving any particular source IP.
 - `WS_LOGIN_ALREADY_OK_NO_ROUTE_COMPARISON`: The system route already logged in successfully; direct mode was not attempted.
@@ -48,12 +50,6 @@ strategy profitability or Tiny Live readiness.
 **Important**: `broker_connected=true` is not proof of profitability, genuine fills or Tiny Live readiness. Type00 REG ACK with no events remains inconclusive. Automated and CI runs mock out the broker; no online test was performed by creating this tool.
 
 Only the final `assessment` and `system/direct.STAGE`, `RETURN_CODE`, and `DETAIL_CODE` are needed for an escalation. Do not retry indefinitely. Keep all ordering disabled. The owner must explicitly authorize real trading separately.
-
-## Combined security diagnostic on isolated hardening branch
-
-The isolated `indexalert-kiwoom-rest-redirect-guard-20261014` branch combines the newest PR #415 account-matched Type00 admission rule with explicit `allow_redirects=False` and HTTP-200-only REST handling for both OAuth/token and read-only account requests. It also guards REAL/DEMO token-mode diagnostics. The five-file artifact here is named `kiwoom-readonly-pc-diagnostic-redirect-guard`; only download it from a **successful** `IndexAlert Kiwoom REST Redirect Guard (offline only)` Actions run at the matching branch HEAD. CI verifies a one-extraction five-file layout and byte-for-byte equality with tested source.
-
-The existing PR #415 workflow artifact and its older files do not necessarily contain this separate REST redirect patch. Do not treat an older successful test artifact as proof that these fixes were applied there. This is still an isolated, not-yet-integrated research/diagnostic revision: it has not been merged to the Railway-linked development branch or deployed to Railway, and it cannot fix provider-side WS 8050 without a controlled genuine broker response. Run only once on the already registered-IP owner's Windows PC with disabled ordering and the existing approved local credential environment; share only allowlisted stage/code/assessment fields.
 
 ## Downloadable Windows ZIP (no credentials included)
 
@@ -72,3 +68,10 @@ py -3 -m pip install -r kiwoom_readonly_pc_requirements.txt
 ```
 
 The launch script does **not** create or retrieve API keys; if the current shell does not have credentials, it safely exits without broker requests. It does **not** turn on order submission or modify any permissions. Avoid double-clicking unless those same secret-bearing environment variables are already available in that session. Use only one controlled read-only run; repeated retries are not required. Never share full environment output, IPs, provider raw messages, tokens, or credentials.
+
+
+## Isolated REST credential redirect guard (Draft PR #419)
+
+PR #419 stacks the newest PR #415 fail-closed route comparison on top of explicit `allow_redirects=False` plus HTTP 200 checks for both broker OAuth and read-only account requests; the separate REAL/DEMO token-mode probe is similarly protected. Its exact-HEAD workflow uploads an independently byte-verified five-file artifact named `kiwoom-readonly-pc-diagnostic-redirect-guard`. Download the artifact only from a green run on the PR #419 branch. Earlier PR #415 artifacts do **not** prove the added REST redirect guard is present.
+
+The current comparison skips direct-route repetition when the system mode has no configured proxy or when discovery is unknown; only a verified configured proxy and an actual WS-stage failure permits one same-token direct WS attempt. This does not establish broker acceptance or override any 8050 failure. No code from either Draft PR has been deployed to the Railway-linked development branch. All orders, permission changes and fund movements remain prohibited.
