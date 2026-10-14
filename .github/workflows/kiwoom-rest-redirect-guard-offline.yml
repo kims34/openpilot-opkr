@@ -7,6 +7,8 @@ on:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'kiwoom_real_readonly/smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_token_mode_probe.py'
+      - 'test_kiwoom_token_mode_probe.py'
       - 'test_kiwoom_rest_redirect_guard.py'
       - '.github/workflows/kiwoom-rest-redirect-guard-offline.yml'
   workflow_dispatch:
@@ -41,6 +43,8 @@ jobs:
           src = Path("kiwoom_real_type00_readonly_smoke.py").read_text()
           assert src.count("allow_redirects=False") == 2
           assert src.count("_require_http_200(") == 3
+          token_probe = Path("kiwoom_token_mode_probe.py").read_text()
+          assert token_probe.count("allow_redirects=False") == 1
           assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
           assert 'ORDERING: str = "DISABLED"' in src
           for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
