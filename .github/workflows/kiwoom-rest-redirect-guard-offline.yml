@@ -171,7 +171,7 @@ jobs:
           allowed = ('actions/checkout@', 'actions/setup-python@',
                      'actions/upload-artifact@', 'actions/download-artifact@')
           assert uses and all(action.startswith(allowed) for action in uses)
-          assert wf.count('python tools/indexalert_kiwoom_offline_unittest.py ') == 3
+          assert sum(line.strip().startswith('python tools/indexalert_kiwoom_offline_unittest.py ') for line in wf.splitlines()) == 3
           runner = Path('tools/indexalert_kiwoom_offline_unittest.py').read_text()
           for guard in ('patch.object(socket.socket, "connect"', 'patch.object(socket.socket, "connect_ex"',
                         'patch.object(socket.socket, "sendto"', 'patch.object(socket, "getaddrinfo"'):
