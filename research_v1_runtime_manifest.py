@@ -49,8 +49,12 @@ def _check_receipt(receipt: Mapping) -> None:
         value = receipt.get(key)
         if type(value) is not str or not _HEX64.fullmatch(value):
             raise UnverifiedSourceError("missing pinned evidence SHA256: " + key)
-    if receipt.get("holdout_access_authorized") is True or receipt.get("live_orders_authorized") is True:
-        raise UnverifiedSourceError("cache preparation cannot authorize holdout or live orders")
+    # Fail closed on absent, ambiguous or non-boolean authorization flags.
+    # Testing only the literal True would mistakenly admit "true", 1, None,
+    # or a missing flag as safe cache metadata. This grants no privileges.
+    if (receipt.get("holdout_access_authorized") is not False
+            or receipt.get("live_orders_authorized") is not False):
+        raise UnverifiedSourceError("cache receipt must explicitly deny holdout and live orders")
 
 
 def _identity(info: os.stat_result) -> tuple[int, ...]:
