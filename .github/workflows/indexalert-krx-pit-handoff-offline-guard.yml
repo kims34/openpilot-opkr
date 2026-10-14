@@ -33,6 +33,9 @@ on:
       - 'test_indexalert_krx_public_notice_leads.py'
       - 'research_v1_krx_2017_temporal_calendar_reconciliation.py'
       - 'test_indexalert_krx_2017_temporal_calendar_reconciliation.py'
+      - 'research_v1_krx_official_2017_notice_crosscheck.py'
+      - 'test_indexalert_krx_official_2017_notice_crosscheck.py'
+      - 'evidence/krx/2026-10-14-krx-official-2017-year-end-market-pdf-source.json'
       - 'evidence/krx/2026-10-14-krx-2017-holiday-temporal-source-reconciliation.json'
       - 'evidence/krx/2026-10-14-krx-calendar-count-candidates.json'
       - '.github/workflows/indexalert-krx-pit-handoff-offline-guard.yml'
@@ -53,4 +56,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Verify sanitized KRX handoff and synthetic calendar gap boundaries; no external calls or secrets
-        run: python -m unittest -v test_indexalert_krx_market_source_pit_boundaries.py test_indexalert_krx_calendar_gap_boundary.py test_indexalert_krx_calendar_receipt_adapter.py test_indexalert_krx_historical_status_pit_gate.py test_indexalert_krx_calendar_count_triage.py test_indexalert_krx_private_date_set_comparator.py test_indexalert_krx_official_calendar_input_preflight.py test_indexalert_krx_private_calendar_year_runner.py test_indexalert_krx_calendar_csv_source_validator.py test_indexalert_krx_calendar_xlsx_source_validator.py test_indexalert_krx_2026_notice_asof_boundary.py test_indexalert_krx_public_notice_leads.py test_indexalert_krx_2017_temporal_calendar_reconciliation.py
+        run: python -m unittest -v test_indexalert_krx_market_source_pit_boundaries.py test_indexalert_krx_calendar_gap_boundary.py test_indexalert_krx_calendar_receipt_adapter.py test_indexalert_krx_historical_status_pit_gate.py test_indexalert_krx_calendar_count_triage.py test_indexalert_krx_private_date_set_comparator.py test_indexalert_krx_official_calendar_input_preflight.py test_indexalert_krx_private_calendar_year_runner.py test_indexalert_krx_calendar_csv_source_validator.py test_indexalert_krx_calendar_xlsx_source_validator.py test_indexalert_krx_2026_notice_asof_boundary.py test_indexalert_krx_public_notice_leads.py test_indexalert_krx_2017_temporal_calendar_reconciliation.py test_indexalert_krx_official_2017_notice_crosscheck.py
