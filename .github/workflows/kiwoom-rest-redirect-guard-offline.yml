@@ -98,3 +98,57 @@ jobs:
           for filename in expected:
               assert (folder / filename).read_bytes() == Path(filename).read_bytes(), filename
           PY
+
+  offline-order-resilience:
+    # Separate non-network test lane. No broker credentials, ordering or deployment.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile safety components (no broker invocation)
+        run: |
+          python -m py_compile order_intent_journal.py kiwoom_execution_inbox.py kiwoom_order_journal_bridge.py order_snapshot_reconciliation.py kiwoom_protected_execution_intake.py shadow_capital_allocator.py
+      - name: Execute duplicate-order, kill, partial-fill, restart and settlement recovery regressions
+        run: |
+          python -m unittest -v \
+            test_order_intent_journal \
+            test_shadow_safety_control \
+            test_order_snapshot_reconciliation \
+            test_kiwoom_order_journal_bridge \
+            test_kiwoom_execution_inbox \
+            test_kiwoom_protected_execution_intake \
+            test_shadow_late_fill_capital \
+            test_shadow_principal_release \
+            test_kiwoom_order_request_contract \
+            test_kiwoom_realtime_order_fill_subscription_contract
+      - name: Assert source-only ordering boundary in CI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          test_files = (
+              'test_order_intent_journal.py',
+              'test_shadow_safety_control.py',
+              'test_order_snapshot_reconciliation.py',
+              'test_kiwoom_order_journal_bridge.py',
+              'test_kiwoom_execution_inbox.py',
+              'test_kiwoom_protected_execution_intake.py',
+              'test_shadow_late_fill_capital.py',
+              'test_shadow_principal_release.py',
+              'test_kiwoom_order_request_contract.py',
+              'test_kiwoom_realtime_order_fill_subscription_contract.py',
+          )
+          assert all(Path(name).is_file() for name in test_files)
+          # No real broker credentials or externally supplied order permissions
+          # are introduced by this read-only workflow.
+          wf = Path('.github/workflows/kiwoom-rest-redirect-guard-offline.yml').read_text()
+          assert 'secrets.KIWOOM' not in wf
+          assert 'ORDERING=true' not in wf
+          assert 'deploy' not in wf.lower().replace('deployment', '')
+          PY
