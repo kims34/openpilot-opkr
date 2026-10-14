@@ -127,7 +127,19 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
 
     def test_only_retry_ws_specific_blocker_never_token_or_rest_or_success(self):
         blocked = state()
+        # First-stage WebSocket must demonstrably use a system proxy.
+        # Otherwise "system" and "direct" select the same route.
+        blocked["WS_SYSTEM_CONFIGURED_PROXY_PRESENT"] = True
         self.assertTrue(probe._eligible_for_direct(blocked))
+        for discovered in (False, None):
+            with self.subTest(proxy_discovery=discovered):
+                candidate = dict(blocked, WS_SYSTEM_CONFIGURED_PROXY_PRESENT=discovered)
+                self.assertFalse(probe._eligible_for_direct(candidate))
+                self.assertEqual(
+                    probe._interpret(candidate, None),
+                    "SYSTEM_WS_NO_PROXY_TO_BYPASS" if discovered is False
+                    else "WS_PROXY_DISCOVERY_UNVERIFIED",
+                )
         self.assertFalse(probe._eligible_for_direct(
             state(stage="TOKEN", token_ok=False, account_ok=False)))
         self.assertFalse(probe._eligible_for_direct(
@@ -158,6 +170,7 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
             state.TOKEN_OK = True
             state.ACCOUNT_ENDPOINT_OK = True
             state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN = True
+            state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT = True
             return "synthetic-secret-token", "synthetic-account", issued
 
         async def ws(token, account_no, token_time, state):
