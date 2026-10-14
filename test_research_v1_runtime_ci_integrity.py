@@ -329,5 +329,33 @@ class CacheManifestNoFollowTest(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertFalse(m.cache_matches(stored, **inputs))
 
+
+    def test_alias_elevated_receipt_permissions_rejected(self):
+        """A contradictory real-order/holdout/funds flag cannot slip through
+        because its name differs from the local receipt guard."""
+        import research_v1_runtime_manifest as m
+        clean = m.cache_manifest(**self.args)
+        self.assertFalse(clean["live_orders_authorized"])
+        for flag in m.FORBIDDEN_ELEVATED_RECEIPT_FLAGS:
+            for value in (True, 1, "true", "false", None, [], {}):
+                with self.subTest(flag=flag, value=repr(value)):
+                    inputs = copy.deepcopy(self.args)
+                    inputs["receipt"][flag] = value
+                    with self.assertRaises(m.UnverifiedSourceError):
+                        m.cache_manifest(**inputs)
+                    self.assertFalse(m.cache_matches(clean, **inputs))
+
+    def test_explicit_false_receipt_alias_does_not_grant_authority(self):
+        import research_v1_runtime_manifest as m
+        inputs = copy.deepcopy(self.args)
+        for flag in m.FORBIDDEN_ELEVATED_RECEIPT_FLAGS:
+            inputs["receipt"][flag] = False
+        record = m.cache_manifest(**inputs)
+        for key in ("evaluation_authorized", "holdout_authorized", "live_orders_authorized"):
+            self.assertIs(record[key], False)
+        self.assertTrue(m.cache_matches(record, **inputs))
+        # Absence is allowed: these source-specific aliases are optional,
+        # unlike local holdout and order rights which require explicit false.
+
 if __name__ == "__main__":
     unittest.main()
