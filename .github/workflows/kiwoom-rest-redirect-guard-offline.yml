@@ -150,5 +150,11 @@ jobs:
           wf = Path('.github/workflows/kiwoom-rest-redirect-guard-offline.yml').read_text()
           assert 'secrets.KIWOOM' not in wf
           assert 'ORDERING=true' not in wf
-          assert 'deploy' not in wf.lower().replace('deployment', '')
+          uses = [line.strip().split('uses:', 1)[1].strip()
+                  for line in wf.splitlines() if line.strip().startswith('- uses:')]
+          allowed = ('actions/checkout@', 'actions/setup-python@',
+                     'actions/upload-artifact@', 'actions/download-artifact@')
+          assert uses and all(action.startswith(allowed) for action in uses)
+          assert 'railway up' not in wf.lower()
+          assert 'gh workflow run' not in wf.lower()
           PY
