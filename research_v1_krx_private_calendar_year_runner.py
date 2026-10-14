@@ -159,6 +159,17 @@ def run_year(
                     or out.get("verified_original_pairs") != expected_weekdays
                     or out.get("original_empty_day_count") != expected_empties
                     or out.get("reference_closed_day_count") != len(reference)
+                    or type(out.get("empty_on_reference_closed")) is not int
+                    or type(out.get("empty_on_reference_open")) is not int
+                    or type(out.get("nonempty_on_reference_closed")) is not int
+                    or out["empty_on_reference_closed"] + out["empty_on_reference_open"] != expected_empties
+                    or out["empty_on_reference_closed"] + out["nonempty_on_reference_closed"] != len(reference)
+                    or (out["status"] == "EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT"
+                        and (out["empty_on_reference_open"] != 0
+                             or out["nonempty_on_reference_closed"] != 0))
+                    or (out["status"] == "EXACT_DATE_SET_MISMATCH_SOURCE_ADMISSION_BLOCKED"
+                        and out["empty_on_reference_open"] == 0
+                        and out["nonempty_on_reference_closed"] == 0)
                     or out.get("original_audit_compatible_snapshot_sha256") != expected_snapshot
                     or out.get("original_official_calendar_attested") is not False
                     or out.get("source_contract_gates_C_D_open") is not False
