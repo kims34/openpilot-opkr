@@ -207,6 +207,10 @@ def _interpret(base: Mapping[str, Any], direct: Mapping[str, Any] | None) -> str
     if base["WS_LOGIN_OK"]:
         return "WS_LOGIN_ALREADY_OK_NO_ROUTE_COMPARISON"
     if direct is None:
+        if base["WS_SYSTEM_CONFIGURED_PROXY_PRESENT"] is False:
+            return "SYSTEM_WS_NO_PROXY_TO_BYPASS"
+        if base["WS_SYSTEM_CONFIGURED_PROXY_PRESENT"] is None:
+            return "WS_PROXY_DISCOVERY_UNVERIFIED"
         return "WS_BLOCKER_NOT_ROUTE_COMPARABLE"
     if direct["WS_LOGIN_OK"] and not base["WS_LOGIN_OK"]:
         return "ROUTE_DEPENDENT_OUTCOME_POSSIBLE"
@@ -220,6 +224,11 @@ def _eligible_for_direct(base: Mapping[str, Any]) -> bool:
     return bool(
         base["TOKEN_OK"] and base["ACCOUNT_ENDPOINT_OK"]
         and not base["WS_LOGIN_OK"]
+        # WebSocket system mode already uses a direct connection if proxy
+        # discovery returned False; another direct attempt only adds a
+        # redundant broker LOGIN and cannot isolate a proxy hypothesis.
+        # Unknown proxy discovery is not permission to assume a route.
+        and base["WS_SYSTEM_CONFIGURED_PROXY_PRESENT"] is True
         and base["STAGE"] in {
             "WS_LOGIN", "WS_LOGIN_TIMEOUT",
             "WS_TIMEOUT", "LOCAL_COMPATIBILITY_OR_NETWORK",
