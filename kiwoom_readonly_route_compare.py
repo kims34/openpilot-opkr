@@ -46,7 +46,8 @@ _BOOLEAN_FIELDS = (
 )
 _SUMMARY_FIELDS = (
     "STAGE", "RETURN_CODE", "DETAIL_CODE", "ERROR_CLASS",
-    "WS_PROXY_POLICY", *_BOOLEAN_FIELDS,
+    "WS_PROXY_POLICY", "WS_LOGIN_USED_ISSUED_TOKEN",
+    "TOKEN_AGE_SECONDS_AT_WS_LOGIN", *_BOOLEAN_FIELDS,
 )
 _FALSE_VALUES = frozenset({"0", "false", "off", "no"})
 
@@ -88,6 +89,14 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
     for key in _SUMMARY_FIELDS:
         if key not in obj:
             raise DiagnosticError("MISSING_LOCAL_SMOKE_FIELD")
+    used = obj.get("WS_LOGIN_USED_ISSUED_TOKEN")
+    age = obj.get("TOKEN_AGE_SECONDS_AT_WS_LOGIN")
+    if type(used) is not bool:
+        raise DiagnosticError("INVALID_LOGIN_TOKEN_SENT_MARKER")
+    if age is not None and (type(age) is not int or not 0 <= age <= 3600):
+        raise DiagnosticError("INVALID_WS_LOGIN_TOKEN_AGE")
+    if used and (not obj.get("WS_CONNECTED") or age is None):
+        raise DiagnosticError("INCONSISTENT_WS_LOGIN_TOKEN_PROVENANCE")
     count = obj.get("TYPE00_EVENT_COUNT")
     matched = obj.get("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT")
     if (type(count) is not int or count < 0
@@ -111,7 +120,7 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
     if returncode == 0 and (
         stage != "REAL_TYPE00_READ_ONLY_SMOKE"
         or not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK")
-        or matched <= 0
+        or not used or matched <= 0
     ):
         raise DiagnosticError("UNSAFE_OR_INCONSISTENT_LOCAL_SMOKE")
     if returncode == 3:
