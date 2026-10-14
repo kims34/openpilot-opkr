@@ -17,6 +17,8 @@ on:
       - 'test_kiwoom_rest_redirect_guard.py'
       - 'kiwoom_real_quote_readonly_contract.py'
       - 'test_kiwoom_real_quote_readonly_contract.py'
+      - 'kiwoom_real_quote_local_probe.py'
+      - 'test_kiwoom_real_quote_local_probe.py'
       - '.github/workflows/kiwoom-rest-redirect-guard-offline.yml'
   workflow_dispatch:
 
@@ -38,11 +40,11 @@ jobs:
         run: python -m pip install requests==2.32.3 websockets==15.0.1
       - name: Syntax validation and mirrored-source parity
         run: |
-          python -m py_compile kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py test_kiwoom_rest_redirect_guard.py kiwoom_real_quote_readonly_contract.py test_kiwoom_real_quote_readonly_contract.py
+          python -m py_compile kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py test_kiwoom_rest_redirect_guard.py kiwoom_real_quote_readonly_contract.py test_kiwoom_real_quote_readonly_contract.py kiwoom_real_quote_local_probe.py test_kiwoom_real_quote_local_probe.py
           cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
       - name: Execute broker-network-free safety regressions
         run: |
-          python -m unittest -v test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard test_kiwoom_real_quote_readonly_contract
+          python -m unittest -v test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard test_kiwoom_real_quote_readonly_contract test_kiwoom_real_quote_local_probe
       - name: Existing order journal and settlement fail-closed regression
         run: |
           python -m unittest -v test_account_settlement_binding test_journal_settlement_binding test_account_cashflow_reconciliation test_kiwoom_settlement_history test_native_cashflow_binding test_native_settlement_readiness test_native_cashflow_review_manifest test_native_settlement_review_cli test_early_live_admission_gate test_kiwoom_account_settlement_evidence
@@ -58,6 +60,14 @@ jobs:
           assert '"ka10001"' in quote_contract
           for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
               assert forbidden not in quote_contract
+          quote_probe = Path("kiwoom_real_quote_local_probe.py").read_text()
+          assert 'KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC' in quote_probe
+          assert '"YES"' in quote_probe
+          assert 'allow_redirects=False' in quote_probe
+          assert 'real_orders_authorized": False' in quote_probe
+          assert 'permission_change_authorized": False' in quote_probe
+          assert 'funds_movement_authorized": False' in quote_probe
+          assert '/api/dostk/ordr' not in quote_probe
           token_probe = Path("kiwoom_token_mode_probe.py").read_text()
           assert token_probe.count("allow_redirects=False") == 1
           # Distinct account-matched Type00 admission is required as well as REG ACK.
