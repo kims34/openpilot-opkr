@@ -12,7 +12,12 @@
       "reference_url": "https://www.kofia.or.kr/voc/m_113/view.do?answer_seq=737&page=9&srchTp=&srchWord=&voc_id=1645",
       "source_date_kst": "2020-01-14",
       "source_time_precision": "DATE_ONLY",
-      "description": "KOFIA reply attributes 2019 year-end shutdown schedule to KRX document; answer is retrospective"
+      "description": "KOFIA reply attributes 2019 year-end shutdown schedule to KRX document; answer is retrospective",
+      "public_web_observation_at_kst": "2026-10-14",
+      "public_page_observation_status": "DIRECT_PAGE_TEXT_READ_RETROSPECTIVE",
+      "public_page_observation_note": "Written KOFIA answer publicly visible, created after 2019 closure",
+      "original_krx_notice_exact_first_publication_attested": false,
+      "actual_private_krx_receipt_day_matched": false
     },
     {
       "year": 2021,
@@ -22,7 +27,12 @@
       "reference_url": "https://m.hygood.co.kr/board/customerNotice/detail/1360",
       "source_date_kst": "2021-12-30",
       "source_time_precision": "DATE_ONLY",
-      "description": "Hanyang Securities client notice published 2021-12-30 about 2021 close"
+      "description": "Hanyang Securities client notice published 2021-12-30 about 2021 close",
+      "public_web_observation_at_kst": "2026-10-14",
+      "public_page_observation_status": "DATED_INDEX_LISTING_ONLY",
+      "public_page_observation_note": "Hanyang 2021-12-30 client notice title appears in indexed broker list, original detail page unavailable",
+      "original_krx_notice_exact_first_publication_attested": false,
+      "actual_private_krx_receipt_day_matched": false
     },
     {
       "year": 2022,
@@ -32,7 +42,12 @@
       "reference_url": "https://m.eugenefn.com/no20r.do?msgId=426947&pageNo=1&topFlag=0",
       "source_date_kst": "2022-12-22",
       "source_time_precision": "DATE_ONLY",
-      "description": "Eugene Investment securities 2022-12-22 holiday market notice"
+      "description": "Eugene Investment securities 2022-12-22 holiday market notice",
+      "public_web_observation_at_kst": "2026-10-14",
+      "public_page_observation_status": "DIRECT_PAGE_TEXT_READ_BROKER",
+      "public_page_observation_note": "Eugene Securities 2022-12-22 client notice text visible",
+      "original_krx_notice_exact_first_publication_attested": false,
+      "actual_private_krx_receipt_day_matched": false
     },
     {
       "year": 2023,
@@ -42,7 +57,12 @@
       "reference_url": "https://www.samsungpop.com/ux/kor/customer/notice/notice/noticeViewContent.do?MenuSeqNo=20474",
       "source_date_kst": null,
       "source_time_precision": "UNKNOWN",
-      "description": "Samsung Securities year-end market schedule, dated source publication not independently confirmed"
+      "description": "Samsung Securities year-end market schedule, dated source publication not independently confirmed",
+      "public_web_observation_at_kst": "2026-10-14",
+      "public_page_observation_status": "DETAIL_PAGE_UNAVAILABLE",
+      "public_page_observation_note": "Samsung broker notice detail failed to load; date/body not authenticated in this check",
+      "original_krx_notice_exact_first_publication_attested": false,
+      "actual_private_krx_receipt_day_matched": false
     },
     {
       "year": 2024,
@@ -52,7 +72,12 @@
       "reference_url": "https://kind.krx.co.kr/external/2024/12/17/000106/20241217000237/99303.htm",
       "source_date_kst": "2024-12-17",
       "source_time_precision": "URL_PUBLICATION_DATE_PATH_ONLY",
-      "description": "KRX-hosted KIND public market notice, dated path 2024/12/17, cash equities 2024-12-31 market holiday and Jan 2 2025 10 am opening"
+      "description": "KRX-hosted KIND public market notice, dated path 2024/12/17, cash equities 2024-12-31 market holiday and Jan 2 2025 10 am opening",
+      "public_web_observation_at_kst": "2026-10-14",
+      "public_page_observation_status": "DIRECT_PAGE_TEXT_READ_KRX_HOSTED",
+      "public_page_observation_note": "KIND KOSPI notice explicitly names 2024-12-31 closure and 2025-01-02 10:00 opening",
+      "original_krx_notice_exact_first_publication_attested": false,
+      "actual_private_krx_receipt_day_matched": false
     },
     {
       "year": 2025,
@@ -62,7 +87,12 @@
       "reference_url": "https://stock.mk.co.kr/news/disclosure/template/840009",
       "source_date_kst": null,
       "source_time_precision": "UNKNOWN",
-      "description": "Exchange-style market notice republished on Maeil Business stock disclosures without original issue-time attestation"
+      "description": "Exchange-style market notice republished on Maeil Business stock disclosures without original issue-time attestation",
+      "public_web_observation_at_kst": "2026-10-14",
+      "public_page_observation_status": "DIRECT_PAGE_TEXT_READ_REPUBLICATION",
+      "public_page_observation_note": "Maeil Business exchange-style republication explicitly names 2025-12-31 closure, but original exchange timestamp remains unproven",
+      "original_krx_notice_exact_first_publication_attested": false,
+      "actual_private_krx_receipt_day_matched": false
     }
   ],
   "source_original_binary_document_bytes_downloaded": false,
@@ -75,5 +105,5 @@
   "actual_profitability_backtest_authorized": false,
   "independent_holdout_authorized": false,
   "ordering": false,
-  "notes": "These are selected year-end event *candidates*, not a complete trading calendar. An archive URL date/path or retrospective notice is not an independently authenticated historical original KRX publication instant. Do not convert such dates to an admitted PIT calendar or infer source-empty day responses correspond to them."
+  "notes": "These are selected year-end event *candidates*, not a complete trading calendar. An archive URL date/path or retrospective notice is not an independently authenticated historical original KRX publication instant. Do not convert such dates to an admitted PIT calendar or infer source-empty day responses correspond to them. At 2026-10-14 verification: four detail pages directly readable (2019 retrospective, 2022 broker, 2024 KIND, 2025 republication); 2021 broker indexed title and date visible but detail inaccessible; 2023 broker detail failed to load. These statuses are web-observation classifications, not historical original PIT."
 }
