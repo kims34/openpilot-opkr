@@ -19,14 +19,16 @@ def feed(fragment):
 
 class FirstSGMLTagAncestryTests(unittest.TestCase):
     def test_explicit_section_cfs_title_is_only_a_hint(self):
+        # Keep the exact immutable 1570-table / 15-operating-row census.
+        other = "<table><tr><td>매출액</td></tr></table>"
         raw = ("<document><section><title>연결손익계산서</title>"
-               + earns()*15 + "</section></document>")
+               + earns()*15 + other*1555 + "</section></document>")
         result = feed(raw)
         self.assertEqual(result["operating_candidate_explicit_section_or_subsection_count"], 15)
         self.assertEqual(result["operating_candidate_explicit_scoped_cfs_title_count"], 15)
         self.assertEqual(result["explicit_title_category_exact_cfs_income_count"], 1)
-        self.assertFalse(result["first_original_cfs_statement_ancestry_verified"] if
-                         "first_original_cfs_statement_ancestry_verified" in result else False)
+        self.assertEqual(result["source_status"],
+                         "FIRST_ORIGINAL_SGML_EXPLICIT_TAG_STRUCTURE_ONLY")
         self.assertTrue(result["explicit_scope_tag_presence_does_not_establish_financial_values"])
 
     def test_scope_unlabeled_is_not_accounting_identity(self):
