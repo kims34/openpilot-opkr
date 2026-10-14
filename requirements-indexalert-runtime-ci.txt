@@ -1,0 +1,7 @@
+# Offline regression environment only; no broker/market-data credentials.
+pytest==9.1.1
+numpy==2.5.3
+pandas==2.3.3
+requests==2.32.3
+pyarrow==21.0.0
+scikit-learn==1.7.2
