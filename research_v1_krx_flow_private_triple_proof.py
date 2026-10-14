@@ -7,7 +7,9 @@ numeric data. Matching a 2026-retrieved 2022 response is NOT 2022-vintage PIT.
 from __future__ import annotations
 
 from datetime import datetime
+import csv
 import hashlib
+import io
 import json
 import re
 from typing import Any, Mapping
@@ -16,6 +18,15 @@ SHA = re.compile(r"^[0-9a-f]{64}$")
 DAY = re.compile(r"^[0-9]{8}$")
 ORIGINAL_CLIENT_REVISION = "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 FROZEN_BLD = "dbms/MDC/STAT/standard/MDCSTAT02303"
+ORIGINAL_RECEIPT_CLIENT_REVISION = "krx-data-api@" + ORIGINAL_CLIENT_REVISION
+# Original pinned third-party endpoint defaults, not user-adjustable mode knobs.
+PINNED_PARAMS = {
+    "inqTpCd": "2", "trdVolVal": "2", "askBid": "3",
+    "detailView": "1", "tboxisuCd_finder_stkisu0_0": "",
+    "isuCd2": "", "codeNmisuCd_finder_stkisu0_0": "",
+    "param1isuCd_finder_stkisu0_0": "ALL",
+    "money": "1", "csvxls_isNo": "false",
+}
 RECEIPT_BODY = (
     "receipt_version", "source_family", "intended_use_scope",
     "access_route", "dataset_identifier",
@@ -122,6 +133,10 @@ def verify_krx_2022_private_flow_triple(
     _require(all(params.get(k) == task_params[k]
                  for k in ("isuCd", "strtDd", "endDd")),
              "REQUEST_TO_FROZEN_TASK_DRIFT")
+    expected_params = {**PINNED_PARAMS, **dict(task_params)}
+    _require(set(params) == set(expected_params)
+             and all(params[k] == v for k, v in expected_params.items()),
+             "SOURCE_RESOLVED_PARAMS_DRIFT")
 
     r = acquisition_receipt
     _require(all(k in r for k in RECEIPT_BODY)
@@ -135,6 +150,8 @@ def verify_krx_2022_private_flow_triple(
                  == "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION"
              and r.get("dataset_identifier") == "MDCSTAT02303",
              "RECEIPT_SOURCE_ROUTE_DRIFT")
+    _require(r.get("client_revision") == ORIGINAL_RECEIPT_CLIENT_REVISION,
+             "ORIGINAL_RECEIPT_CLIENT_REVISION_DRIFT")
     _require(_sha(dict(canonical_request)) == r["request_metadata_sha256"],
              "RECEIPT_TO_ACTUAL_REQUEST_DRIFT")
     _require(type(r.get("response_rows")) is int
@@ -172,6 +189,31 @@ def verify_krx_2022_private_flow_triple(
     _require(completion.get("response_rows") == r["response_rows"],
              "RECEIPT_COMPLETION_ROW_COUNT_DRIFT")
 
+    # The historical KRX worker used pandas.read_csv(..., encoding="EUC-KR").
+    # First cross-check the immutable original raw CSV against the declared
+    # receipt shape with standard-library parsing. This is deliberately NOT
+    # a replacement for the pandas-content payload SHA (dtype semantics can
+    # differ) and does not establish units or the provider's publication time.
+    try:
+        decoded = original_raw_bytes.decode("euc_kr", errors="strict")
+        stream = csv.reader(io.StringIO(decoded, newline=""), strict=True)
+        columns = next(stream)
+        _require(bool(columns) and all(bool(v) for v in columns)
+                 and len(columns) == len(set(columns)),
+                 "ORIGINAL_CSV_HEADER_INVALID")
+        _require(columns == r["response_columns"],
+                 "ORIGINAL_CSV_HEADER_RECEIPT_DRIFT")
+        csv_rows = 0
+        for row in stream:
+            if not row:  # Match pandas.read_csv(skip_blank_lines=True).
+                continue
+            _require(len(row) == len(columns), "ORIGINAL_CSV_ROW_WIDTH_DRIFT")
+            csv_rows += 1
+        _require(csv_rows == r["response_rows"],
+                 "ORIGINAL_CSV_ROW_COUNT_RECEIPT_DRIFT")
+    except (UnicodeDecodeError, csv.Error, StopIteration):
+        raise KRXPrivateFlowTripleError("ORIGINAL_EUCKR_CSV_INVALID") from None
+
     return {
         "checked_type": "KRX_INVESTOR_FLOW_2022_PRIVATE_ORIGINAL_TRIPLE",
         "exact_raw_object_bytes_match_checkpoint_sha": True,
@@ -180,6 +222,7 @@ def verify_krx_2022_private_flow_triple(
         "frozen_task_id_and_window_match_request": True,
         "checked_2022_historical_year": True,
         "has_nonempty_source_response": r["response_rows"] > 0,
+        "archived_csv_header_and_row_count_cross_checked": True,
         "source_numeric_rows_or_identifiers_emitted": False,
         "parsed_payload_digest_independently_recomputed": False,
         "provider_authenticity_independently_verified": False,
