@@ -36,12 +36,15 @@ jobs:
       - name: Execute broker-network-free safety regressions
         run: |
           python -m unittest -v test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard
+      - name: Existing order journal and settlement fail-closed regression
+        run: |
+          python -m unittest -v test_account_settlement_binding test_journal_settlement_binding test_account_cashflow_reconciliation test_kiwoom_settlement_history test_native_cashflow_binding test_native_settlement_readiness test_native_cashflow_review_manifest test_native_settlement_review_cli test_early_live_admission_gate test_kiwoom_account_settlement_evidence
       - name: Enforce credential redirection and ordering fail-closed invariants
         run: |
           python - <<'PY'
           from pathlib import Path
           src = Path("kiwoom_real_type00_readonly_smoke.py").read_text()
-          assert src.count("allow_redirects=False") == 2
+          assert src.count("            allow_redirects=False,") == 2
           assert src.count("_require_http_200(") == 3
           token_probe = Path("kiwoom_token_mode_probe.py").read_text()
           assert token_probe.count("allow_redirects=False") == 1
