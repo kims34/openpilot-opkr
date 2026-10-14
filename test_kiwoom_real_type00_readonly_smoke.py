@@ -258,7 +258,7 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
         }
         with patch.dict(os.environ, env, clear=True), \
              patch("kiwoom_real_type00_readonly_smoke.requests.post",
-                   side_effect=[SimpleNamespace(content=b'{"return_code":3,"return_msg":"[8050: auth]"}')]) as post, \
+                   side_effect=[SimpleNamespace(status_code=200, content=b'{"return_code":3,"return_msg":"[8050: auth]"}')]) as post, \
              patch("kiwoom_real_type00_readonly_smoke._run_ws",
                    side_effect=AssertionError("WS must not start")) as ws, \
              patch("sys.stdout", new_callable=io.StringIO) as output:
@@ -380,7 +380,7 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
             with self.subTest(case=name):
                 with patch.dict(os.environ, safe_env, clear=True), \
                      patch("kiwoom_real_type00_readonly_smoke.requests.post",
-                           side_effect=[SimpleNamespace(content=item) for item in replies]) as post, \
+                           side_effect=[SimpleNamespace(status_code=200, content=item) for item in replies]) as post, \
                      patch("kiwoom_real_type00_readonly_smoke._run_ws",
                            side_effect=AssertionError("WebSocket must never start")) as ws, \
                      patch("sys.stdout", new_callable=io.StringIO) as capture:
