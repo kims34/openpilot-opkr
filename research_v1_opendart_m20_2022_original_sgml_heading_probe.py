@@ -124,7 +124,7 @@ class Neighborhood(HTMLParser):
                 raise SGMLGap("TABLE_COUNT_BUDGET")
             self.frames.append({
                 "prefix": normalized(self.outside[-MAX_PREFIX:]),
-                "parts": [], "operating": 0,
+                "parts": [], "nchars": 0, "operating": 0,
                 "two": False, "four": False, "five_cells": False,
             })
         elif tag == "tr" and self.frames:
@@ -190,7 +190,8 @@ class Neighborhood(HTMLParser):
             raise SGMLGap("HTML_TEXT_BUDGET")
         if self.frames:
             for frame in self.frames:
-                if sum(map(len, frame["parts"])) + len(data) > MAX_TABLE_TEXT:
+                frame["nchars"] += len(data)
+                if frame["nchars"] > MAX_TABLE_TEXT:
                     raise SGMLGap("TABLE_TEXT_BUDGET")
                 frame["parts"].append(data)
         else:
