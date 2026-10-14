@@ -1,0 +1,115 @@
+"""Independent evidence gate for a *new* PR-merged offline candidate lineage.
+
+Archived regression identity remains immutable and independently checked by
+research_v1_runtime_archived_source_gate.py. The archived source gate still
+intentionally FAILS on the changed upstream manifest; DO NOT reinterpret this
+candidate-mode proof as the old archived code replay or as merge authorization.
+
+This gate binds to exact reviewed upstream #413 HEAD and precisely three
+changed implementation/control blobs, all fetched from GitHub. It rejects
+any other changes to archived test definitions / direct implementations.
+No PIT market data, official OpenDART, holdout, profitability, or trades.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import stat
+
+import research_v1_runtime_ci as ci
+import research_v1_runtime_archived_source_gate as original
+
+APPROVED_SCOPE_BASE_REF = "index-alert-backtest-runtime-opt-v1-20261013"
+APPROVED_SCOPE_HEAD_REF = "index-alert-backtest-single-runner-opt-v1-20261013"
+# Explicit candidate comparison target, NOT a frozen-strategy promotion.
+EXACT_UPSTREAM_HEAD = "421802db4d8d89a5508f5f158671a6e4b3465568"
+
+# Only code change allowed relative to the archived direct implementations:
+# original research_v1_runtime_manifest.py
+# 108f66714602a1bd3ae42c34dcca7c16e38f460b
+# becomes e428789e... after no-follow/TOCTOU safeguards in #413.
+EXACT_UPSTREAM_CHANGED_BLOBS = {
+    "research_v1_runtime_manifest.py": "e428789e2e97ca7be3a4482e0df23b483a1ad69d",
+    "research_v1_runtime_one_runner.py": "0c792b66daa46bdc7725fdcfde17ced975fb2c55",
+    "test_research_v1_runtime_ci_integrity.py": "b95be23953799efa95094d3443d608171ba72b5d",
+}
+EXPECTED_CURRENT_ARCHIVED_MANIFEST = "108f66714602a1bd3ae42c34dcca7c16e38f460b"
+
+
+class CandidateLineageError(ValueError):
+    """No silent re-pin, changed merge-base or unexpected code mutation."""
+
+
+def strict_candidate_files() -> dict[str, str]:
+    if (original.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS.get(
+            "research_v1_runtime_manifest.py") != EXPECTED_CURRENT_ARCHIVED_MANIFEST):
+        raise CandidateLineageError("archived manifest baseline changed")
+    if ci.SUITES != original.ARCHIVED_SUITES or ci.PINNED_CASES != original.ARCHIVED_PINNED_CASES:
+        raise CandidateLineageError("frozen case/suite baseline altered")
+    base = dict(original.ARCHIVED_GIT_BLOBS)
+    base.update({
+        k: v for k, v in original.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS.items()
+        if k != "research_v1_runtime_manifest.py"
+    })
+    if set(base).intersection(EXACT_UPSTREAM_CHANGED_BLOBS):
+        raise CandidateLineageError("candidate blobs collide with immutable originals")
+    return {**base, **EXACT_UPSTREAM_CHANGED_BLOBS}
+
+
+def check_candidate(root: Path, *, base_ref: str, head_ref: str,
+                    base_head_sha: str, event_name: str) -> dict:
+    if (base_ref != APPROVED_SCOPE_BASE_REF
+            or head_ref != APPROVED_SCOPE_HEAD_REF
+            or base_head_sha != EXACT_UPSTREAM_HEAD
+            or event_name != "pull_request"):
+        raise CandidateLineageError("not the exact reviewed PR synthetic merge scope")
+    root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise CandidateLineageError("candidate checkout root missing or symlinked")
+    files = strict_candidate_files()
+    if len(files) != 20:
+        raise CandidateLineageError("candidate checked source set altered")
+    for filename, expected in sorted(files.items()):
+        path = root / filename
+        if (path.is_symlink() or not path.is_file()
+                or not stat.S_ISREG(path.stat().st_mode)):
+            raise CandidateLineageError("candidate source missing/unsafe: " + filename)
+        digest = original.git_blob_sha1(path.read_bytes())
+        if digest != expected:
+            raise CandidateLineageError(
+                "candidate merge source drift: " + filename
+            )
+    return {
+        "schema": "indexalert-isolated-candidate-merge-source-v1",
+        "checked_files": len(files),
+        "original_eight_test_blobs_kept": True,
+        "original_eight_other_direct_implementation_blobs_kept": True,
+        "exact_three_reviewed_upstream_code_blobs_verified": True,
+        "exact_upstream_head": EXACT_UPSTREAM_HEAD,
+        "original_archived_manifest_replayed_without_change": False,
+        "archived_case_sha256": original.ARCHIVED_CASE_DIGEST,
+        "candidate_source_lineage_consistent": True,
+        "candidate_approved_for_merge": False,
+        "all_transitive_imports_pinned": False,
+        "official_pit_admitted": False,
+        "actual_backtest_performance_measured": False,
+        "profitability_evaluated": False,
+        "holdout_accessed": False,
+        "ordering": False,
+    }
+
+
+def main() -> None:
+    import os
+    report = check_candidate(
+        Path("."),
+        base_ref=os.environ.get("GITHUB_BASE_REF", ""),
+        head_ref=os.environ.get("GITHUB_HEAD_REF", ""),
+        base_head_sha=os.environ.get("INDEXALERT_BASE_HEAD_SHA", ""),
+        event_name=os.environ.get("GITHUB_EVENT_NAME", ""),
+    )
+    print("CANDIDATE_MERGED_SOURCE_PROOF=" + json.dumps(report, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
