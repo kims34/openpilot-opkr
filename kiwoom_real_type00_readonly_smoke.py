@@ -217,13 +217,12 @@ def _config() -> tuple[str, str]:
 
 
 def _require_http_200(response: Any, stage: str) -> None:
-    """Fail closed on redirects and unexpected HTTP status, even with a valid-looking JSON body.
+    """Reject redirects and non-200 responses before reading sensitive REST bodies.
 
-    Requests never follows redirects on credential-bearing OAuth / REST calls.
-    The original provider response body is neither logged nor trusted on HTTP failure.
+    Always use requests.post(..., allow_redirects=False) on token and account.
     """
-    status = getattr(response, "status_code", None)
-    if type(status) is not int or status != 200:
+    code = getattr(response, "status_code", None)
+    if type(code) is not int or code != 200:
         raise ReadOnlySmokeError(stage)
 
 
@@ -468,10 +467,14 @@ def main() -> None:
         ):
             raise ReadOnlySmokeError("TYPE00_ADMISSION_INCOMPLETE", 0)
         if state.TYPE00_EVENT_COUNT <= 0:
-            # REG ACK is authenticated subscription evidence, not proof
-            # that any actual broker-native event/execution was observed.
-            # Exit 3 signals inconclusive rather than a false green.
+            # REG ACK alone is not actual event evidence.
             state.STAGE = "TYPE00_ACK_ONLY_NO_EVENTS"
+            state.RETURN_CODE = 0
+            _emit(state, exit_code=3)
+        if state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT <= 0:
+            # A Type00 event for another account cannot qualify as
+            # evidence for the authenticated account under test.
+            state.STAGE = "TYPE00_EVENTS_UNMATCHED_ACCOUNT"
             state.RETURN_CODE = 0
             _emit(state, exit_code=3)
         state.STAGE = "REAL_TYPE00_READ_ONLY_SMOKE"
