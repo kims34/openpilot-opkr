@@ -252,3 +252,51 @@ The previously recorded authenticated 3-day KRX 2026 source-feasibility probe re
 **Next independent protected-source proof:** within the existing *KRX owner's* authorized and private Data Marketplace scope, obtain one 2022 one-issuer response whose private, immutable provider bytes are SHA256-bound to the receipt, plus captured retrieval clock, request parameters, original date/session and 2022 category/unit definition. A currently retrieved 2022 value alone cannot establish the as-published 2022 original; independently archived contemporaneous vintage or a verified and sufficiently precise original KRX historical revision/publication policy would be needed for PIT admission. Check historical issuer/delisting/halts and entire source coverage before any statistical performance experiment. No new authenticated request or consent-gated Railway/GitHub runtime execution occurred in this continuation.
 
 **Authority:** only isolated branch source-check code/tests and evidence changed. `INDEXALERT_MASTER_SPEC`, Frozen H5/M20, Champion, sealed Holdout, `ORDERING=false`, genuine orders, production deployments and secrets are unchanged. Draft PR #416 remains unmerged.
+
+## 2026-10-14 11:02 KST — critical existing 2015–2026 **KRX investor flow private checkpoint** discovery
+
+Cross-checked **the existing KRX historical acquisition source, not just the public tiny probe**:
+
+- Frozen `INDEXALERT_KRX_PER_SECURITY_HISTORY_PREPARATION_EVIDENCE.json` breaks the **14,296 exact private requests** down into **9,485 `investor_trading_individual_daily`** (KRX `MDCSTAT02303`, yearly issuer windows) and **4,811 `trading_halt`** tasks. Preparation's manifest-set SHA256 is `fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38`; manifest metadata SHA256 `0d98f45168cedeecc013e95c71abe661ca1fac9df0403ba477d2f5653572c116`. The original frozen per-security job builds *both* kinds in `research_v1_krx_historical_batch_orchestrator.py`.
+- Frozen `INDEXALERT_KRX_PER_SECURITY_HISTORY_INTERRUPTION_EVIDENCE.json` records **11,750 completed, 2,546 remaining, 0 failed** private checkpoint **tasks** as of 2026-10-03. It does **NOT** disclose completion counts per source kind or by 2022 issuer/year. Since there are only 4,811 halt tasks, elementary bounds imply **at least 6,939 and at most 9,485 completed investor-flow tasks**, **assuming** those frozen manifest and status records accurately describe the same underlying task set. This is a bound on completed archived requests/receipts, **not raw daily rows, PIT-usable observations, signal history or independently re-verified private originals**.
+- `research_v1_krx_historical_worker_core.py` on the research snapshot writes full protected raw objects by SHA256 and source receipts; `research_v1_krx_historical_batch_state.py` stores `completed` entries keyed by preregistered task SHA (row counts and original raw/receipt hashes). This private archive likely includes historical investor-flow responses, but *whether an actual 2022 issuer-window checkpoint is present* and whether its raw source bytes still re-hash correctly is **not yet verified**. Do not waste requests by blindly re-fetching until exact private inventory is checked.
+- The research worktree uses pinned KRX client `beaten-by-the-market/krx-data-api` commit `e6ebac9b71482db127348d8a08ebc6743aa3b50e`. Its original pinned `krx_data_api/endpoints.py` `investor_trading_individual_daily` defaults are `bld=MDCSTAT02303`, `inqTpCd=2`, `askBid=3` (**net buy**), `trdVolVal=2` (**value**), `money=1` (scale not independently verified), CSV. The original `research_v1_krx_historical_fetchers.resolve_pinned_endpoint_request` merges these defaults with task request parameters. Thus **previously acquired KRX flow tasks target net-buy trading-value mode** as defined by the pinned client; independent final KRW numeric scaling/source schema still needs private original verification. The third-party catalog is the **pinned client contract**, not contemporaneous official 2022 publication proof.
+- The currently deployed Railway `indexalert-krx-historical-worker` is bound to source `1e6367d2863a86c3470da13d81a955d277eba485`, start `python -B research_v1_krx_openapi_missing_2017_2022_integrity_audit.py --audit`; the bounded runtime log inspection found no literal `MDCSTAT02303`/investor source report in its recent entries. Its ongoing work is primarily KOSPI daily trading OHLC integrity; **that does not erase the separately captured historical per-security task archive on the protected volume**. There was NO runtime mutation, redeployment, key exposure or broker/order operation here.
+- Prior per-security acquisition network authority is explicitly **consumed** (`INDEXALERT_KRX_PER_SECURITY_HISTORY_CONSENT_CONTRACT.json`); **2,546-task continuation cannot be implicitly resumed** and requires fresh exact per-stage/bulk/resume authority. A *network-free audit of existing private checkpoints* is the first priority, not a new authenticated download.
+
+**New code ready for the KRX data owner to run ONLY in its already authorised private volume:**
+`research_v1_krx_flow_existing_private_checkpoint_inventory.py` provides
+`summarise_frozen_2026_10_03_checkpoint_set(manifest, phase_state)`. It:
+1. Receives existing private `task_manifests/per-security-history-v3.json` and `batch_state/PER_SECURITY_HISTORY.json` **in memory**, from the trusted KRX private worker. The module itself makes zero network, file reads, writes or order calls.
+2. Enforces exact original task-set ID SHA256, original per-kind task counts, per-task pinned SHA, receipt digest shapes, bounded issuer-year request metadata, completion membership/row-count integrity and no failed task states. It reports **only aggregate** total/complete/remaining foreign+institution source requests and **2022 investor-flow task counts** (including empty vs nonempty response checkpoints).
+3. It **never** returns security identifiers, task IDs, source raw data or source digests, and never claims the protected raw bytes were independently re-verified. All as-of publication/vintage, 2022 original PIT, issuer/full-universe eligibility, performance, Holdout and trading flags remain false.
+
+Example **read-only integration only for the KRX source owner after independently reviewing the audit code in the same private worker context** (not performed in this session; the isolated PR branch is not deployed):
+```python
+from pathlib import Path
+import os
+from research_v1_krx_private_store import read_private_json
+from research_v1_krx_flow_existing_private_checkpoint_inventory import (
+    summarise_frozen_2026_10_03_checkpoint_set,
+)
+root = os.environ["KRX_PRIVATE_RAW_DIR"]
+worktree = str(Path.cwd().resolve())
+manifest = read_private_json(
+    root, "task_manifests/per-security-history-v3.json",
+    git_worktree=worktree,
+)["value"]
+phase_state = read_private_json(
+    root, "batch_state/PER_SECURITY_HISTORY.json",
+    git_worktree=worktree,
+)["value"]
+summary = summarise_frozen_2026_10_03_checkpoint_set(manifest, phase_state)
+# Only publicly safe counts and nonadmission markers; never print manifest/state
+print(summary)
+```
+Before any verification of original 2022 source, KRX source owner must compare
+the exact private 2022 task's stored raw-object bytes and receipt to their
+SHA256 records, its actual response columns/scaling/issuer episode, and its
+original-as-published/available-at release lineage. The function above checks
+**metadata only**; it does not replace this raw-source step.
+
+**CI evidence:** [Actions #38498924464](https://github.com/kims34/openpilot-opkr/actions/runs/38498924464), commit `9ff21013e5084b9b266b29d44a94801916f6f0ff`, **128/128 network-free synthetic tests passed** (15 additional inventory cases). These are not private Railway data or profitability tests. No new authenticated KRX query, consent use, raw file read or workflow dispatch occurred.
