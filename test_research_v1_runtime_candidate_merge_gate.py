@@ -59,7 +59,7 @@ class CandidateMergeLineageTest(unittest.TestCase):
 
     def test_specific_reviewed_candidate_proof_not_trading_or_merge_authority(self):
         out = self.check()
-        self.assertEqual(out["checked_files"], 20)
+        self.assertEqual(out["checked_files"], 21)
         self.assertFalse(out["candidate_approved_for_merge"])
         self.assertFalse(out["original_archived_manifest_replayed_without_change"])
         self.assertFalse(out["profitability_evaluated"])
@@ -98,6 +98,13 @@ class CandidateMergeLineageTest(unittest.TestCase):
         with self.assertRaises(candidate.CandidateLineageError):
             self.check()
         f.symlink_to(self.root / "test_research_v1_core.py")
+        with self.assertRaises(candidate.CandidateLineageError):
+            self.check()
+
+    def test_mutated_case_digest_checker_fails_even_with_unchanged_test_names(self):
+        checker = self.root / "research_v1_runtime_ci.py"
+        previous = checker.read_bytes()
+        checker.write_bytes(previous + b"\n# skip digest comparison")
         with self.assertRaises(candidate.CandidateLineageError):
             self.check()
 
