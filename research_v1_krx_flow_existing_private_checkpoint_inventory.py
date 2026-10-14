@@ -229,11 +229,52 @@ def summarise_existing_flow_checkpoints(
     }
 
 
+
+def _verify_original_execution_prefix(
+    manifest: Mapping[str, Any],
+    phase_state: Mapping[str, Any],
+    *,
+    expected_flow_count: int,
+) -> dict[str, Any]:
+    """Verify the actual original sequential execution prefix, in memory.
+
+    Pinned 2026-10-03 planner sorts KRX_INVESTOR_FLOW before
+    KRX_SECURITY_STATUS. Its one-shot entrypoint iterates tasks in order
+    and records completion immediately after each successful request.
+    A count alone can never prove this property; the PRIVATE completion
+    ID set must equal the first N IDs from the pinned ordered manifest.
+    """
+    tasks = manifest["tasks"]
+    _require(type(expected_flow_count) is int
+             and 0 <= expected_flow_count <= len(tasks),
+             "INVALID_EXPECTED_FLOW_PREFIX")
+    _require(all(
+        task["source_family"] == (
+            "KRX_INVESTOR_FLOW" if index < expected_flow_count
+            else "KRX_SECURITY_STATUS"
+        ) for index, task in enumerate(tasks)
+    ), "ORIGINAL_FLOW_FIRST_TASK_ORDER_DRIFT")
+    completed = phase_state["completed"]
+    actual_ids = set(completed)
+    prefix_ids = {task["task_id"] for task in tasks[:len(completed)]}
+    _require(actual_ids == prefix_ids, "NONCONTIGUOUS_ORIGINAL_EXECUTION_PREFIX")
+    return {
+        "original_flow_first_task_order_verified": True,
+        "original_execution_completion_prefix_verified": True,
+        "flow_completed_by_verified_prefix": min(len(completed), expected_flow_count),
+        "flow_remaining_by_verified_prefix": (
+            expected_flow_count - min(len(completed), expected_flow_count)
+        ),
+        "original_source_data_bytes_independently_verified": False,
+        "original_2022_flow_vintage_verified": False,
+    }
+
+
 def summarise_frozen_2026_10_03_checkpoint_set(
     manifest: Mapping[str, Any], phase_state: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Demand exact previously frozen task list; never trust self-claimed count."""
-    return summarise_existing_flow_checkpoints(
+    result = summarise_existing_flow_checkpoints(
         manifest, phase_state,
         expected_by_kind={
             "investor_trading_individual_daily": FROZEN_FLOW_COUNT,
@@ -241,3 +282,11 @@ def summarise_frozen_2026_10_03_checkpoint_set(
         },
         expected_task_fingerprint_sha256=FROZEN_TASK_SET_SHA256,
     )
+    order = _verify_original_execution_prefix(
+        manifest, phase_state, expected_flow_count=FROZEN_FLOW_COUNT,
+    )
+    _require(result["investor_flow_completed_checkpoints"]
+             == order["flow_completed_by_verified_prefix"],
+             "FLOW_PREFIX_COMPLETION_MISMATCH")
+    result.update(order)
+    return result
