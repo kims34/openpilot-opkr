@@ -57,12 +57,14 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 state.WS_LOGIN_OK = True
                 state.TYPE00_REG_SENT = True
                 state.TYPE00_REG_ACK_OK = kind != "no_ack"
-                state.TYPE00_EVENT_COUNT = 1 if kind == "event" else 0
+                state.TYPE00_EVENT_COUNT = 1 if kind in ("event", "unmatched") else 0
+                state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT = 1 if kind == "event" else 0
             return run
 
         for kind, exit_code, stage in (
             ("no_ack", 2, "TYPE00_ADMISSION_INCOMPLETE"),
             ("ack_only", 3, "TYPE00_ACK_ONLY_NO_EVENTS"),
+            ("unmatched", 3, "TYPE00_EVENTS_UNMATCHED_ACCOUNT"),
             ("event", 0, "REAL_TYPE00_READ_ONLY_SMOKE"),
         ):
             with self.subTest(kind=kind):
@@ -83,7 +85,8 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
                 self.assertFalse(state["FUNDS_MOVEMENT_AUTHORIZED"])
                 self.assertFalse(state["PERMISSION_CHANGE_AUTHORIZED"])
                 self.assertFalse(state["GENUINE_LIVE_PROVENANCE_VERIFIED"])
-                self.assertEqual(state["TYPE00_EVENT_COUNT"], 1 if kind == "event" else 0)
+                self.assertEqual(state["TYPE00_EVENT_COUNT"], 1 if kind in ("event", "unmatched") else 0)
+                self.assertEqual(state["ACCOUNT_MATCHED_TYPE00_EVENT_COUNT"], 1 if kind == "event" else 0)
                 self.assertEqual(state["TYPE00_REG_ACK_OK"], kind != "no_ack")
                 self.assertNotIn("synthetic-token", output.getvalue())
                 self.assertNotIn("synthetic-account", output.getvalue())
