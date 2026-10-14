@@ -49,6 +49,12 @@ strategy profitability or Tiny Live readiness.
 
 Only the final `assessment` and `system/direct.STAGE`, `RETURN_CODE`, and `DETAIL_CODE` are needed for an escalation. Do not retry indefinitely. Keep all ordering disabled. The owner must explicitly authorize real trading separately.
 
+## Combined security diagnostic on isolated hardening branch
+
+The isolated `indexalert-kiwoom-rest-redirect-guard-20261014` branch combines the newest PR #415 account-matched Type00 admission rule with explicit `allow_redirects=False` and HTTP-200-only REST handling for both OAuth/token and read-only account requests. It also guards REAL/DEMO token-mode diagnostics. The five-file artifact here is named `kiwoom-readonly-pc-diagnostic-redirect-guard`; only download it from a **successful** `IndexAlert Kiwoom REST Redirect Guard (offline only)` Actions run at the matching branch HEAD. CI verifies a one-extraction five-file layout and byte-for-byte equality with tested source.
+
+The existing PR #415 workflow artifact and its older files do not necessarily contain this separate REST redirect patch. Do not treat an older successful test artifact as proof that these fixes were applied there. This is still an isolated, not-yet-integrated research/diagnostic revision: it has not been merged to the Railway-linked development branch or deployed to Railway, and it cannot fix provider-side WS 8050 without a controlled genuine broker response. Run only once on the already registered-IP owner's Windows PC with disabled ordering and the existing approved local credential environment; share only allowlisted stage/code/assessment fields.
+
 ## Downloadable Windows ZIP (no credentials included)
 
 GitHub Actions workflow **Kiwoom REAL Type00 Python Readonly** uploads **five allowlisted source files directly** into artifact `kiwoom-readonly-pc-diagnostic` after offline validation. Download it from the latest **successful** workflow run on Draft PR #415, then unzip **once** on the already registered Windows PC: `RUN_KIWOOM_READONLY_DIAG.cmd` must be visible directly in the extracted folder, alongside the two Python scripts. CI downloads the uploaded artifact again and checks the exact five-file layout and byte-for-byte source integrity. No scripts run automatically on download/unzip.
