@@ -27,6 +27,7 @@ def state(*, stage="WS_LOGIN", code=805004, detail=8050, token_ok=True,
         "WS_SYSTEM_CONFIGURED_PROXY_PRESENT": False,
         "REST_WS_CONFIGURED_PROXY_URLS_EQUAL": True,
         "TYPE00_EVENT_COUNT": events,
+        "ACCOUNT_MATCHED_TYPE00_EVENT_COUNT": events if account_ok and ack_ok else 0,
         "ORDERING": "DISABLED",
         "REAL_ORDERS_AUTHORIZED": False,
         "FUNDS_MOVEMENT_AUTHORIZED": False,
@@ -73,6 +74,9 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
             ("STAGE", []),
             ("ERROR_CLASS", []),
             ("TYPE00_EVENT_COUNT", True),
+            ("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT", True),
+            ("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT", -1),
+            ("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT", 2),
             ("ORDERING", "ENABLED"),
             ("REAL_ORDERS_AUTHORIZED", True),
             ("FUNDS_MOVEMENT_AUTHORIZED", True),
@@ -92,6 +96,7 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                          "REAL_TYPE00_READ_ONLY_SMOKE")
         for mutation in [
             dict(valid, TYPE00_EVENT_COUNT=0),
+            dict(valid, ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=0),
             dict(valid, WS_LOGIN_OK=False),
             dict(valid, TYPE00_REG_ACK_OK=False),
         ]:
@@ -100,6 +105,17 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                     probe._safe_summary(json.dumps(mutation), 0, "system")
         with self.assertRaises(probe.DiagnosticError):
             probe._safe_summary(json.dumps(state()), 0, "system")
+        foreign_event = state(
+            stage="TYPE00_EVENTS_UNMATCHED_ACCOUNT", code=0, detail=None,
+            login_ok=True, ack_ok=True, events=1,
+        )
+        foreign_event["ACCOUNT_MATCHED_TYPE00_EVENT_COUNT"] = 0
+        self.assertEqual(
+            probe._safe_summary(json.dumps(foreign_event), 3, "system")["STAGE"],
+            "TYPE00_EVENTS_UNMATCHED_ACCOUNT",
+        )
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(foreign_event), 0, "system")
         incomplete = state()
         incomplete.pop("WS_LOGIN_OK")
         with self.assertRaises(probe.DiagnosticError):
