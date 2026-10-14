@@ -1,0 +1,82 @@
+name: IndexAlert M20 2022 Original SGML Explicit Structural Ancestry
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py'
+      - 'test_research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py'
+      - '.github/workflows/indexalert-m20-original-sgml-tag-ancestry.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-2022-original-sgml-tag-ancestry
+  cancel-in-progress: false
+jobs:
+  offline-structural-ancestry-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Validate explicit-section tags and safety checks without provider credentials
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py test_research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_original_sgml_tag_ancestry
+      - name: Static read-only and trade protection
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py
+  official-first-original-structural-ancestry:
+    needs: offline-structural-ancestry-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Audit source-only tag and structural hierarchy of first submitted SGML
+        run: |
+          python research_v1_opendart_m20_2022_original_sgml_tag_ancestry.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_original_tag_ancestry/counts.json").read_text())
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_official_requests"] == 3
+          assert x["source_status"] == "FIRST_ORIGINAL_SGML_EXPLICIT_TAG_STRUCTURE_ONLY", x.get("failure_code","UNVERIFIED")
+          assert x["first_original_table_tags_seen"] == 1570
+          assert x["first_original_exact_operating_row_candidates"] == 15
+          assert x["explicit_scope_tag_presence_does_not_establish_financial_values"] is True
+          assert x["ordering"] == "DISABLED"
+          for k in ("first_original_cfs_statement_ancestry_verified",
+                    "2022_and_2021_q3_three_month_cfs_operating_profit_verified",
+                    "sgml_section_title_is_authoritative_accounting_statement",
+                    "xbrl_2022_first_report_available_verified",
+                    "historical_filing_publication_instant_verified",
+                    "historical_corp_security_mapping_pit_verified",
+                    "historical_correction_cell_lineage_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_source_amounts_identifiers_headings_or_credentials_saved"):
+            assert x[k] is False, k
+          for k,v in x.items():
+            if k.startswith(("tag_", "explicit_title_category_", "operating_candidate_")):
+              assert type(v) is int and v>=0, k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-original-2022-sgml-structural-tags-counts-only
+          path: research_results/opendart_m20_original_tag_ancestry/counts.json
+          retention-days: 7
+          if-no-files-found: warn
