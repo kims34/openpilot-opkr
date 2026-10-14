@@ -19,6 +19,7 @@ on:
       - 'test_kiwoom_real_quote_readonly_contract.py'
       - 'kiwoom_real_quote_local_probe.py'
       - 'test_kiwoom_real_quote_local_probe.py'
+      - 'tools/indexalert_kiwoom_offline_unittest.py'
       - '.github/workflows/kiwoom-rest-redirect-guard-offline.yml'
   workflow_dispatch:
 
@@ -40,14 +41,14 @@ jobs:
         run: python -m pip install requests==2.32.3 websockets==15.0.1
       - name: Syntax validation and mirrored-source parity
         run: |
-          python -m py_compile kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py test_kiwoom_rest_redirect_guard.py kiwoom_real_quote_readonly_contract.py test_kiwoom_real_quote_readonly_contract.py kiwoom_real_quote_local_probe.py test_kiwoom_real_quote_local_probe.py
+          python -m py_compile tools/indexalert_kiwoom_offline_unittest.py kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py test_kiwoom_rest_redirect_guard.py kiwoom_real_quote_readonly_contract.py test_kiwoom_real_quote_readonly_contract.py kiwoom_real_quote_local_probe.py test_kiwoom_real_quote_local_probe.py
           cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
       - name: Execute broker-network-free safety regressions
         run: |
-          python -m unittest -v test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard test_kiwoom_real_quote_readonly_contract test_kiwoom_real_quote_local_probe
+          python tools/indexalert_kiwoom_offline_unittest.py test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard test_kiwoom_real_quote_readonly_contract test_kiwoom_real_quote_local_probe
       - name: Existing order journal and settlement fail-closed regression
         run: |
-          python -m unittest -v test_account_settlement_binding test_journal_settlement_binding test_account_cashflow_reconciliation test_kiwoom_settlement_history test_native_cashflow_binding test_native_settlement_readiness test_native_cashflow_review_manifest test_native_settlement_review_cli test_early_live_admission_gate test_kiwoom_account_settlement_evidence
+          python tools/indexalert_kiwoom_offline_unittest.py test_account_settlement_binding test_journal_settlement_binding test_account_cashflow_reconciliation test_kiwoom_settlement_history test_native_cashflow_binding test_native_settlement_readiness test_native_cashflow_review_manifest test_native_settlement_review_cli test_early_live_admission_gate test_kiwoom_account_settlement_evidence
       - name: Enforce credential redirection and ordering fail-closed invariants
         run: |
           python - <<'PY'
@@ -134,7 +135,7 @@ jobs:
           python -m py_compile order_intent_journal.py kiwoom_execution_inbox.py kiwoom_order_journal_bridge.py order_snapshot_reconciliation.py kiwoom_protected_execution_intake.py shadow_capital_allocator.py
       - name: Execute duplicate-order, kill, partial-fill, restart and settlement recovery regressions
         run: |
-          python -m unittest -v \
+          python tools/indexalert_kiwoom_offline_unittest.py \
             test_order_intent_journal \
             test_shadow_safety_control \
             test_order_snapshot_reconciliation \
@@ -170,6 +171,11 @@ jobs:
           allowed = ('actions/checkout@', 'actions/setup-python@',
                      'actions/upload-artifact@', 'actions/download-artifact@')
           assert uses and all(action.startswith(allowed) for action in uses)
+          assert wf.count('python tools/indexalert_kiwoom_offline_unittest.py ') == 3
+          runner = Path('tools/indexalert_kiwoom_offline_unittest.py').read_text()
+          for guard in ('patch.object(socket.socket, "connect"', 'patch.object(socket.socket, "connect_ex"',
+                        'patch.object(socket.socket, "sendto"', 'patch.object(socket, "getaddrinfo"'):
+              assert guard in runner
           assert 'contents: read' in wf
           assert 'persist-credentials: false' in wf
           PY
