@@ -304,5 +304,30 @@ class CacheManifestNoFollowTest(unittest.TestCase):
         with self.assertRaises(m.UnverifiedSourceError):
             m.cache_manifest(**args)
 
+
+    def test_cache_receipt_permission_flags_must_be_literal_false(self):
+        import research_v1_runtime_manifest as m
+        for key in ("holdout_access_authorized", "live_orders_authorized"):
+            for bad in (True, 1, "true", "false", None, [], {}):
+                with self.subTest(key=key, bad=repr(bad)):
+                    inputs = copy.deepcopy(self.args)
+                    inputs["receipt"][key] = bad
+                    with self.assertRaises(m.UnverifiedSourceError):
+                        m.cache_manifest(**inputs)
+            with self.subTest(key=key, bad="missing"):
+                inputs = copy.deepcopy(self.args)
+                del inputs["receipt"][key]
+                with self.assertRaises(m.UnverifiedSourceError):
+                    m.cache_manifest(**inputs)
+
+    def test_ambiguous_receipt_cannot_match_cached_manifest(self):
+        import research_v1_runtime_manifest as m
+        stored = m.cache_manifest(**self.args)
+        for key in ("holdout_access_authorized", "live_orders_authorized"):
+            inputs = copy.deepcopy(self.args)
+            inputs["receipt"][key] = "false"
+            with self.subTest(key=key):
+                self.assertFalse(m.cache_matches(stored, **inputs))
+
 if __name__ == "__main__":
     unittest.main()
