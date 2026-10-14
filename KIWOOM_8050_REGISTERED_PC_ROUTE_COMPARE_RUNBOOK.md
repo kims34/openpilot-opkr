@@ -18,6 +18,10 @@ It issues a **single fresh OAuth token and one read-only REST account lookup**, 
 
 Only stages, numeric error/detail codes, boolean proxy configuration indicators and an assessment are emitted. Secret keys, token, account number, IP addresses, proxy URLs, original provider messages and subprocess stderr are never printed. Do not share those secrets separately.
 
+## Error-code classification
+
+The [official Kiwoom Python SDK error taxonomy](https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/kiwoom/core/errors.py) categorizes embedded code `8050` as `DEVICE_AUTH`, including when top-level WS `return_code` is `805004`. Earlier isolated diagnostics used the misleading class `TOKEN_OR_LOGIN_AUTH`; this was corrected to `DEVICE_AUTH` without changing order permissions, token handling, connection URLs or retry logic. **The category does not prove a specific IP, device, network or account entitlement caused the denial**, especially when broker support reports normal registration.
+
 ## Interpretation
 
 - `REST_PRECONDITION_NOT_MET`: Token or read-only account lookup failed; no direct comparison attempted.
