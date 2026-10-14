@@ -21,6 +21,22 @@ class PublicHolidayYearEndNoticeLeads(unittest.TestCase):
         self.assertEqual(len(x["recorded_holiday_date_candidates"]),6)
         self.assertEqual(x["retrospective_or_undated_years"],[2019,2023,2025])
 
+    def test_source_text_read_is_not_six_verified_primary_sources(self):
+        x=check(self.m)
+        self.assertEqual(x["declared_detail_page_text_read_years"],[2019,2022,2024,2025])
+        self.assertEqual(x["declared_index_listing_only_years"],[2021])
+        self.assertEqual(x["declared_detail_unavailable_years"],[2023])
+        self.assertFalse(x["public_web_observations_independently_verified_by_this_function"])
+        self.assertFalse(x["original_krx_source_document_verified"])
+
+    def test_unreadable_detail_cannot_be_relabelled_as_read(self):
+        m=deepcopy(self.m)
+        m["reported_year_end_market_closure_candidates"][3]["public_page_observation_status"]="DIRECT_PAGE_TEXT_READ_BROKER"
+        self.assertTrue(check(m)["status"].startswith("FAIL_CLOSED"))
+        m=deepcopy(self.m)
+        m["reported_year_end_market_closure_candidates"][4]["original_krx_notice_exact_first_publication_attested"]=True
+        self.assertTrue(check(m)["status"].startswith("FAIL_CLOSED"))
+
     def test_2024_krx_notice_holiday_cannot_admit_market_receipts(self):
         x=check(self.m)
         self.assertIn("2024-12-31",x["recorded_holiday_date_candidates"])
