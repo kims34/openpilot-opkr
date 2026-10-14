@@ -5,8 +5,8 @@ research_v1_runtime_archived_source_gate.py. The archived source gate still
 intentionally FAILS on the changed upstream manifest; DO NOT reinterpret this
 candidate-mode proof as the old archived code replay or as merge authorization.
 
-This gate binds to exact reviewed upstream #413 HEAD and precisely three
-changed implementation/control blobs, all fetched from GitHub. It rejects
+This gate binds to exact reviewed upstream #413 HEAD and precisely four
+reviewed changed-from-archive implementation/control blobs, all fetched from GitHub. It rejects
 any other changes to archived test definitions / direct implementations.
 No PIT market data, official OpenDART, holdout, profitability, or trades.
 """
@@ -22,16 +22,17 @@ import research_v1_runtime_archived_source_gate as original
 APPROVED_SCOPE_BASE_REF = "index-alert-backtest-runtime-opt-v1-20261013"
 APPROVED_SCOPE_HEAD_REF = "index-alert-backtest-single-runner-opt-v1-20261013"
 # Explicit candidate comparison target, NOT a frozen-strategy promotion.
-EXACT_UPSTREAM_HEAD = "396d195d6ad31fcdf8dcab02e87d11eee9db5017"
+EXACT_UPSTREAM_HEAD = "f003ef6247e16fcc71bd3b1b20cd4904c4d984c0"
 
 # Only code change allowed relative to the archived direct implementations:
 # original research_v1_runtime_manifest.py
 # 108f66714602a1bd3ae42c34dcca7c16e38f460b
-# becomes 47a9f6... after no-follow/TOCTOU safeguards and an explicit\n# false-only holdout/live receipt flag check in independently green #413.
+# becomes e0055c66... after no-follow/TOCTOU, literal-false holdout/live\n# permission and six auxiliary privilege-alias guards in green #413.
 EXACT_UPSTREAM_CHANGED_BLOBS = {
-    "research_v1_runtime_manifest.py": "47a9f6a894dcf402841b282488476da5291f4a24",
+    "research_v1_runtime_manifest.py": "e0055c66c59398fd4a1158077446d886b54c4e37",
     "research_v1_runtime_one_runner.py": "0c792b66daa46bdc7725fdcfde17ced975fb2c55",
-    "test_research_v1_runtime_ci_integrity.py": "b1d17690627bcdb11dff0163d2a161379a6da7a2",
+    "research_v1_runtime_ci.py": "7306e4f57e0056960452f1991b5c95ba7413f11e",
+    "test_research_v1_runtime_ci_integrity.py": "bb2e5d8f81d9052a16005d1b5642598268dd17d8",
 }
 EXPECTED_CURRENT_ARCHIVED_MANIFEST = "108f66714602a1bd3ae42c34dcca7c16e38f460b"
 
@@ -67,7 +68,7 @@ def check_candidate(root: Path, *, base_ref: str, head_ref: str,
     if root.is_symlink() or not root.is_dir():
         raise CandidateLineageError("candidate checkout root missing or symlinked")
     files = strict_candidate_files()
-    if len(files) != 20:
+    if len(files) != 21:
         raise CandidateLineageError("candidate checked source set altered")
     for filename, expected in sorted(files.items()):
         path = root / filename
@@ -84,7 +85,7 @@ def check_candidate(root: Path, *, base_ref: str, head_ref: str,
         "checked_files": len(files),
         "original_eight_test_blobs_kept": True,
         "original_eight_other_direct_implementation_blobs_kept": True,
-        "exact_three_reviewed_upstream_code_blobs_verified": True,
+        "exact_four_reviewed_candidate_code_blobs_verified": True,
         "exact_upstream_head": EXACT_UPSTREAM_HEAD,
         "original_archived_manifest_replayed_without_change": False,
         "archived_case_sha256": original.ARCHIVED_CASE_DIGEST,
