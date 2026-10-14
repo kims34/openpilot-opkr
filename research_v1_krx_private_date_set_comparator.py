@@ -46,6 +46,19 @@ BLOCK = {
 }
 
 
+def expected_private_source_root() -> Path | None:
+    """Exactly the original worker's /data fallback; no off-mount paths.
+
+    This only computes a candidate root. In production _trusted_private_root
+    subsequently resolves it and authenticates the dedicated private store.
+    """
+    base = Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data")
+    if (not base.is_absolute() or not base.is_relative_to(Path("/data"))
+            or ".." in base.parts or base.is_symlink()):
+        return None
+    return base / "openapi_kospi_history_v1"
+
+
 def _parse_day(value: object) -> date:
     if type(value) is not str or not DAY.fullmatch(value):
         raise ValueError("INVALID_ISO_DAY")
@@ -184,17 +197,12 @@ def audit_private_scope(
         # Fail before importing the production-only provider dependencies.
         # No GitHub CI runner, laptop or arbitrary root may pretend to be
         # the dedicated original KRX historical worker and mounted volume.
-        # Match the original integrity auditor's canonical fallback:
-        # Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data") / PRIVATE_SUBDIR.
-        # Do not allow other mounts or cwd-relative paths.
-        base=Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data")
-        required=base / "openapi_kospi_history_v1"
+        # Share the exact /data fallback and scope check with the one-year
+        # runner, then defer to the deployed original store's path verifier.
+        required=expected_private_source_root()
         actual=Path(private_root)
         if (os.getenv("RAILWAY_SERVICE_NAME")!="indexalert-krx-historical-worker"
-                or not base.is_absolute()
-                or not base.is_relative_to(Path("/data"))
-                or base.is_symlink()
-                or actual!=required
+                or required is None or actual!=required
                 or not actual.is_relative_to(Path("/data"))):
             return fail
         from research_v1_krx_openapi_private_integrity_audit import (
