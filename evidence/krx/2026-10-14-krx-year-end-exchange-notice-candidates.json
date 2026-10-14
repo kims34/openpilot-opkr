@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "observed_at_kst": "2026-10-14",
+  "purpose": "PUBLIC_YEAR_END_MARKET_CLOSURE_EVIDENCE_SOURCE_TIER_TRIAGE_NOT_ORIGINAL_SOURCE_PIT_ADMISSION",
+  "market": "KOSPI_CASH_EQUITIES",
+  "reported_year_end_market_closure_candidates": [
+    {
+      "year": 2019,
+      "closure_date": "2019-12-31",
+      "last_reported_cash_equity_session": "2019-12-30",
+      "source_tier": "INSTITUTION_REPLY_RETROSPECTIVE",
+      "reference_url": "https://www.kofia.or.kr/voc/m_113/view.do?answer_seq=737&page=9&srchTp=&srchWord=&voc_id=1645",
+      "source_date_kst": "2020-01-14",
+      "source_time_precision": "DATE_ONLY",
+      "description": "KOFIA reply attributes 2019 year-end shutdown schedule to KRX document; answer is retrospective"
+    },
+    {
+      "year": 2021,
+      "closure_date": "2021-12-31",
+      "last_reported_cash_equity_session": "2021-12-30",
+      "source_tier": "BROKER_NOTICE_REPORTED",
+      "reference_url": "https://m.hygood.co.kr/board/customerNotice/detail/1360",
+      "source_date_kst": "2021-12-30",
+      "source_time_precision": "DATE_ONLY",
+      "description": "Hanyang Securities client notice published 2021-12-30 about 2021 close"
+    },
+    {
+      "year": 2022,
+      "closure_date": "2022-12-30",
+      "last_reported_cash_equity_session": "2022-12-29",
+      "source_tier": "BROKER_NOTICE_REPORTED",
+      "reference_url": "https://m.eugenefn.com/no20r.do?msgId=426947&pageNo=1&topFlag=0",
+      "source_date_kst": "2022-12-22",
+      "source_time_precision": "DATE_ONLY",
+      "description": "Eugene Investment securities 2022-12-22 holiday market notice"
+    },
+    {
+      "year": 2023,
+      "closure_date": "2023-12-29",
+      "last_reported_cash_equity_session": "2023-12-28",
+      "source_tier": "BROKER_NOTICE_REPORTED",
+      "reference_url": "https://www.samsungpop.com/ux/kor/customer/notice/notice/noticeViewContent.do?MenuSeqNo=20474",
+      "source_date_kst": null,
+      "source_time_precision": "UNKNOWN",
+      "description": "Samsung Securities year-end market schedule, dated source publication not independently confirmed"
+    },
+    {
+      "year": 2024,
+      "closure_date": "2024-12-31",
+      "last_reported_cash_equity_session": "2024-12-30",
+      "source_tier": "KRX_KIND_HOSTED_MARKET_NOTICE",
+      "reference_url": "https://kind.krx.co.kr/external/2024/12/17/000106/20241217000237/99303.htm",
+      "source_date_kst": "2024-12-17",
+      "source_time_precision": "URL_PUBLICATION_DATE_PATH_ONLY",
+      "description": "KRX-hosted KIND public market notice, dated path 2024/12/17, cash equities 2024-12-31 market holiday and Jan 2 2025 10 am opening"
+    },
+    {
+      "year": 2025,
+      "closure_date": "2025-12-31",
+      "last_reported_cash_equity_session": "2025-12-30",
+      "source_tier": "REPUBLICATION_OF_EXCHANGE_MARKET_NOTICE",
+      "reference_url": "https://stock.mk.co.kr/news/disclosure/template/840009",
+      "source_date_kst": null,
+      "source_time_precision": "UNKNOWN",
+      "description": "Exchange-style market notice republished on Maeil Business stock disclosures without original issue-time attestation"
+    }
+  ],
+  "source_original_binary_document_bytes_downloaded": false,
+  "krx_original_notice_initial_publication_times_attested": false,
+  "underlying_krx_official_full_year_daily_calendar_verified": false,
+  "private_krx_source_receipts_date_level_compared": false,
+  "observed_184_ambiguous_days_still_unresolved": 184,
+  "problem_27_securities_still_quarantined": true,
+  "source_gate_C_D": "BLOCKED",
+  "actual_profitability_backtest_authorized": false,
+  "independent_holdout_authorized": false,
+  "ordering": false,
+  "notes": "These are selected year-end event *candidates*, not a complete trading calendar. An archive URL date/path or retrospective notice is not an independently authenticated historical original KRX publication instant. Do not convert such dates to an admitted PIT calendar or infer source-empty day responses correspond to them."
+}
