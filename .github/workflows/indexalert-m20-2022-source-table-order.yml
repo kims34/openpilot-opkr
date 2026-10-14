@@ -1,0 +1,85 @@
+name: IndexAlert M20 2022 Q3 Original-Amended Table Order Proof
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_source_table_order.py'
+      - 'test_research_v1_opendart_m20_2022_source_table_order.py'
+      - '.github/workflows/indexalert-m20-2022-source-table-order.yml'
+permissions:
+  contents: read
+concurrency:
+  group: indexalert-m20-2022-source-table-order
+  cancel-in-progress: false
+jobs:
+  offline-order-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Verify ordered-table exact-uniqueness and PIT fail-closed checks
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_source_table_order.py test_research_v1_opendart_m20_2022_source_table_order.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_source_table_order
+      - name: Verify no broker/market requests in source audit
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_source_table_order.py
+          grep -F 'm20_performance_run_authorized' research_v1_opendart_m20_2022_source_table_order.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_source_table_order.py
+  official-bounded-table-order:
+    needs: offline-order-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Compare pinned original and corrected SGML table sequence (source only)
+        run: |
+          python research_v1_opendart_m20_2022_source_table_order.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_2022_order_census/summary.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_official_requests"] == 5
+          assert x["source_status"] == "OFFICIAL_SOURCE_TABLE_ORDER_DIAGNOSTIC_ONLY"
+          assert x["original_order_preserved_as_subsequence"] is True
+          assert x["original_ordered_table_count"] == 1570
+          assert x["corrected_ordered_table_count"] == 1576
+          assert x["minimum_insertions_if_subsequence"] == 6
+          assert 0 <= x["forced_new_table_positions"] <= 6
+          assert x["forced_new_table_positions"] + x["insertions_not_position_uniquely_attributable"] == 6
+          assert x["forced_new_table_is_authoritative_cfs_earnings"] is False
+          assert x["period_statement_and_financial_cells_unverified"] is True
+          assert x["ordering"] == "DISABLED"
+          for k in ("original_q3_cfs_three_month_earnings_verified",
+                    "amended_q3_cfs_three_month_earnings_verified",
+                    "original_cfs_2021_q3_comparator_verified",
+                    "financial_cell_editions_semantically_bound",
+                    "complete_historical_correction_lineage_verified",
+                    "historical_publication_instant_pit_verified",
+                    "historical_issuer_security_pit_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_source_tables_hashes_positions_or_values_persisted"):
+            assert x[k] is False, k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-2022-source-only-table-order-counts
+          path: research_results/opendart_m20_2022_order_census/summary.json
+          retention-days: 7
+          if-no-files-found: warn
