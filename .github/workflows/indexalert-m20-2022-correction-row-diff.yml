@@ -55,6 +55,14 @@ jobs:
           assert x["added_table_context_is_authoritative_financial_statement"] is False
           assert x["added_table_text_multiset_members"] == x["corrected_source_text_tables"] - x["identical_table_text_multiset_members"]
           assert x["added_table_context_classified"] + x["added_table_context_unclassified"] == x["added_table_text_multiset_members"]
+          assert x["added_table_period_text_proximity_is_not_financial_pit"] is True
+          assert x["added_table_nested_unclassified_count"] <= x["added_table_context_unclassified"]
+          for k in ("added_table_q3_2022_full_window_text_hints",
+                    "added_table_q3_2021_full_window_text_hints",
+                    "added_table_both_q3_full_windows_text_hints",
+                    "added_table_nested_q3_2022_full_window_text_hints",
+                    "added_table_nested_q3_2021_full_window_text_hints"):
+            assert type(x[k]) is int and 0 <= x[k] <= x["added_table_text_multiset_members"], k
           assert x["raw_source_rows_values_or_identifiers_persisted"] is False
           assert x["ordering"] == "DISABLED"
           for k in ("original_cfs_q3_2022_2021_three_month_profit_verified",

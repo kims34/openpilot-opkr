@@ -104,6 +104,37 @@ class CandidateRowsTests(unittest.TestCase):
         self.assertTrue(flags["three_month_text_hint"])
         self.assertFalse(flags["operating_label_text_hint"])
 
+    def test_year_mentions_are_not_quarter_period_boundaries(self):
+        scanner = target._TableTextFingerprints()
+        scanner.feed("<table><td>비교표 2022년 2021년</td></table>")
+        scanner.close()
+        only = next(iter(scanner.contexts.values()))[0]
+        self.assertTrue(only["both_years_text_hint"])
+        self.assertFalse(only["q3_2022_full_window_text_hint"])
+        self.assertFalse(only["q3_2021_full_window_text_hint"])
+
+    def test_exact_three_month_date_windows_are_shape_hints_only(self):
+        scanner = target._TableTextFingerprints()
+        scanner.feed("<table><td>2022.07.01 ~ 2022.09.30</td>"
+                     "<td>2021.07.01 ~ 2021.09.30</td></table>")
+        scanner.close()
+        only = next(iter(scanner.contexts.values()))[0]
+        self.assertTrue(only["q3_2022_full_window_text_hint"])
+        self.assertTrue(only["q3_2021_full_window_text_hint"])
+        self.assertFalse(only["operating_label_text_hint"])
+
+    def test_nested_supplementary_window_does_not_prove_cfs_identity(self):
+        scanner = target._TableTextFingerprints()
+        scanner.feed("<table><td><table>"
+                     "<td>2022-07-01 ~ 2022-09-30</td>"
+                     "</table></td></table>")
+        scanner.close()
+        items = [item for group in scanner.contexts.values() for item in group]
+        nested = [item for item in items if item["nested"]]
+        self.assertEqual(len(nested), 1)
+        self.assertTrue(nested[0]["q3_2022_full_window_text_hint"])
+        self.assertFalse(nested[0]["preceding_exact_cfs_title_hint"])
+
     def test_nested_table_context_is_unclassified(self):
         scanner = target._TableTextFingerprints()
         scanner.feed("<p>연결손익계산서</p><table><tr><td>"

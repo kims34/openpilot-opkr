@@ -24,7 +24,7 @@ from research_v1_opendart_m20_2022_later_edition_census import LATER_BEGIN, AS_O
 from research_v1_opendart_m20_2022_source_proof import EXPECTED_ORIGINAL_DOCUMENT_SHA256
 from research_v1_opendart_m20_2022_first_document_pilot import (
     _fetch_first_document, inspect_official_original_document,
-    _decode_disclosure_markup, OPERATING_ROW_LABELS,
+    _decode_disclosure_markup, OPERATING_ROW_LABELS, _has_q3_period_window,
 )
 import hashlib
 
@@ -189,6 +189,9 @@ class _TableTextFingerprints(HTMLParser):
             "operating_label_text_hint": any(x in normal for x in OPERATING_ROW_LABELS),
             "three_month_text_hint": "3개월" in normal,
             "both_years_text_hint": "2022" in normal and "2021" in normal,
+            # These are only text-range hints, NOT Q3 period/statement fact bonds.
+            "q3_2022_full_window_text_hint": _has_q3_period_window(normal, 2022),
+            "q3_2021_full_window_text_hint": _has_q3_period_window(normal, 2021),
             "preceding_exact_cfs_title_hint": any(
                 x in prefix for x in ("연결포괄손익계산서", "연결손익계산서")
             ),
@@ -245,6 +248,7 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
     added = corrected_tables - original_tables
     bounded_added = sum(added.values())
     ambiguous = 0
+    nested_unclassified = []
     classified = []
     for digest, count in added.items():
         if original_tables[digest] > 0:
@@ -256,6 +260,7 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
             for item in metadata:
                 if item["nested"]:
                     ambiguous += 1
+                    nested_unclassified.append(item)
                 else:
                     classified.append(item)
     if len(classified) + ambiguous != bounded_added:
@@ -286,6 +291,24 @@ def compare(raw_original: bytes, raw_corrected: bytes) -> dict:
         "added_table_both_years_text_hints": sum(
             x["both_years_text_hint"] for x in classified
         ),
+        "added_table_q3_2022_full_window_text_hints": sum(
+            x.get("q3_2022_full_window_text_hint", False) for x in classified
+        ),
+        "added_table_q3_2021_full_window_text_hints": sum(
+            x.get("q3_2021_full_window_text_hint", False) for x in classified
+        ),
+        "added_table_both_q3_full_windows_text_hints": sum(
+            x.get("q3_2022_full_window_text_hint", False)
+            and x.get("q3_2021_full_window_text_hint", False) for x in classified
+        ),
+        "added_table_nested_unclassified_count": len(nested_unclassified),
+        "added_table_nested_q3_2022_full_window_text_hints": sum(
+            x.get("q3_2022_full_window_text_hint", False) for x in nested_unclassified
+        ),
+        "added_table_nested_q3_2021_full_window_text_hints": sum(
+            x.get("q3_2021_full_window_text_hint", False) for x in nested_unclassified
+        ),
+        "added_table_period_text_proximity_is_not_financial_pit": True,
         "added_table_preceding_exact_cfs_title_hints": sum(
             x["preceding_exact_cfs_title_hint"] for x in classified
         ),
