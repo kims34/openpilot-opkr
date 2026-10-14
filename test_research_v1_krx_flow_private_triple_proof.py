@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import date, timedelta
 import hashlib
 import io
 import unittest
@@ -81,10 +82,16 @@ def fixture():
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer)
     writer.writerow(receipt["response_columns"])
-    writer.writerows([
-        ["2022-10-04"] + [str(i)] * (len(receipt["response_columns"]) - 1)
-        for i in range(250)
-    ])
+    # Each daily response observation is one distinct 2022 session candidate.
+    # Do not claim these synthetic weekday dates are independently KRX-open.
+    day = date(2022, 1, 3)
+    rows = []
+    while len(rows) < 250:
+        if day.weekday() < 5:
+            rows.append([day.isoformat()] + [str(len(rows))] *
+                        (len(receipt["response_columns"]) - 1))
+        day += timedelta(days=1)
+    writer.writerows(rows)
     raw = buffer.getvalue().encode("euc_kr")
     completion = {
         "task_id": task["task_id"],
@@ -111,6 +118,17 @@ def retarget_original_bytes(item, data):
     item["completion"]["raw_bytes_size"] = len(data)
 
 
+def replace_date_in_first_csv_row(item, value):
+    original = item["original_raw_bytes"].decode("euc_kr")
+    lines = original.splitlines(keepends=True)
+    fields = next(csv.reader([lines[1]]))
+    fields[0] = value
+    buf = io.StringIO(newline="")
+    csv.writer(buf).writerow(fields)
+    lines[1] = buf.getvalue()
+    retarget_original_bytes(item, "".join(lines).encode("euc_kr"))
+
+
 class PurePrivateOriginalTripleTest(unittest.TestCase):
     def test_synthetic_triple_hashes_match_without_any_pit_claim(self):
         r = verify_krx_2022_private_flow_triple(**fixture())
@@ -119,6 +137,8 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
         self.assertTrue(r["exact_original_resolved_request_hash_matches_receipt"])
         self.assertTrue(r["has_nonempty_source_response"])
         self.assertTrue(r["archived_csv_header_and_row_count_cross_checked"])
+        self.assertTrue(r["archived_csv_observed_dates_in_2022_task_window_checked"])
+        self.assertTrue(r["archived_csv_duplicate_day_rejected"])
         for flag in (
             "provider_authenticity_independently_verified",
             "original_2022_as_published_vintage_verified",
@@ -185,6 +205,69 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
         retarget_original_bytes(item, bytes([0xff, 0xfe, 0xfd, 0]))
         with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_EUCKR_CSV_INVALID"):
             verify_krx_2022_private_flow_triple(**item)
+
+    def test_exact_row_count_and_byte_hash_do_not_allow_duplicate_observation_day(self):
+        item = fixture()
+        raw = item["original_raw_bytes"].decode("euc_kr")
+        lines = raw.splitlines(keepends=True)
+        # Keep 250 rows and all archived SHA fields internally consistent.
+        lines[2] = lines[1]
+        retarget_original_bytes(item, "".join(lines).encode("euc_kr"))
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_CSV_DUPLICATE_OBSERVATION_DATE"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_mismatched_historical_year_not_disguised_by_header_and_row_count(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "2026-10-04")
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_CSV_DATE_OUTSIDE_2022_TASK_WINDOW"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_day_outside_frozen_window_but_inside_2022_is_rejected(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "2022-01-01")
+        # 2022-01-01 is outside this synthetic task's Jan-03 -> Dec-30 span.
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_CSV_DATE_OUTSIDE_2022_TASK_WINDOW"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_unparseable_original_csv_date_rejected(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "Oct. 04, 2022")
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_DATE_FORMAT_DRIFT"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_nonexistent_2022_calendar_date_rejected(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "2022-02-30")
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_DATE_INVALID"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_accept_yyyy_mm_dd_slash_date_spelling_without_pit_promotion(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "2022/01/03")
+        result = verify_krx_2022_private_flow_triple(**item)
+        self.assertTrue(result["archived_csv_observed_dates_in_2022_task_window_checked"])
+        self.assertFalse(result["source_admitted"])
+
+    def test_accept_yyyymmdd_date_spelling_without_pit_promotion(self):
+        item = fixture()
+        replace_date_in_first_csv_row(item, "20220103")
+        result = verify_krx_2022_private_flow_triple(**item)
+        self.assertFalse(result["provider_authenticity_independently_verified"])
+
+    def test_unverified_calendar_weekdays_are_not_promoted_to_market_open(self):
+        item = fixture()
+        # Source task 2022-01-03 -> 2022-12-30; Saturday Jan 08 is inside
+        # this date interval but needs independent official market calendar.
+        replace_date_in_first_csv_row(item, "2022-01-08")
+        result = verify_krx_2022_private_flow_triple(**item)
+        self.assertFalse(result["full_historical_universe_verified"])
+        self.assertFalse(result["original_2022_as_published_vintage_verified"])
 
     def test_modifying_original_byte_rejects_old_checkpoint_hash(self):
         item = fixture()
