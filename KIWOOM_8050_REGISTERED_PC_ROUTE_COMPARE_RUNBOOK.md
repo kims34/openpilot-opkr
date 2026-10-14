@@ -14,7 +14,7 @@ On that PC, once the existing Python dependencies are available, execute from th
 python -B kiwoom_readonly_route_compare.py
 ```
 
-It performs a read-only OAuth token / account identity / WebSocket LOGIN / Type00 REG check on the **system-selected route**. Only when REST succeeded and a WebSocket login/connection blocker occurred does it run **one** additional read-only comparison using `proxy=None` for WebSocket. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
+It issues a **single fresh OAuth token and one read-only REST account lookup**, then tries WebSocket LOGIN / Type00 REG on the **system-selected route**. Only when REST succeeded and a WebSocket login/connection blocker occurred does it try **one** additional direct WebSocket connection (`proxy=None`) using the **exact same in-memory token and account identity**, without a second OAuth issuance or account lookup. Thus the two WS paths can be compared without token reissue confounding. No tokens or account identifiers are written to files or displayed. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
 
 Only stages, numeric error/detail codes, boolean proxy configuration indicators and an assessment are emitted. Secret keys, token, account number, IP addresses, proxy URLs, original provider messages and subprocess stderr are never printed. Do not share those secrets separately.
 
