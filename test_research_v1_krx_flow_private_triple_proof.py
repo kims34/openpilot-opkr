@@ -1,7 +1,9 @@
 """Network-free adversarial tests of KRX raw/receipt/request/triple binding."""
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import unittest
 
 from research_v1_krx_flow_private_triple_proof import (
@@ -56,7 +58,7 @@ def fixture():
         "dataset_identifier": "MDCSTAT02303",
         "authorization_evidence_reference": "SYNTHETIC_ONLY",
         "authorization_evidence_fingerprint_sha256": "f"*64,
-        "client_revision": ORIGINAL_CLIENT_REVISION,
+        "client_revision": "krx-data-api@" + ORIGINAL_CLIENT_REVISION,
         "retrieved_at": "2026-10-03T12:30:00+09:00",
         "request_metadata_sha256": _sha(request),
         "response_schema_sha256": "b"*64,
@@ -76,7 +78,14 @@ def fixture():
     receipt["receipt_fingerprint_sha256"] = _sha(
         {k: receipt[k] for k in RECEIPT_BODY}
     )
-    raw = b"synthetic-private-krx-csv-byte-fixture"
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(receipt["response_columns"])
+    writer.writerows([
+        ["2022-10-04"] + [str(i)] * (len(receipt["response_columns"]) - 1)
+        for i in range(250)
+    ])
+    raw = buffer.getvalue().encode("euc_kr")
     completion = {
         "task_id": task["task_id"],
         "request_metadata_sha256": receipt["request_metadata_sha256"],
@@ -96,6 +105,12 @@ def fixture():
     }
 
 
+def retarget_original_bytes(item, data):
+    item["original_raw_bytes"] = data
+    item["completion"]["raw_object_sha256"] = hashlib.sha256(data).hexdigest()
+    item["completion"]["raw_bytes_size"] = len(data)
+
+
 class PurePrivateOriginalTripleTest(unittest.TestCase):
     def test_synthetic_triple_hashes_match_without_any_pit_claim(self):
         r = verify_krx_2022_private_flow_triple(**fixture())
@@ -103,6 +118,7 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
         self.assertTrue(r["exact_receipt_fingerprint_matches_body"])
         self.assertTrue(r["exact_original_resolved_request_hash_matches_receipt"])
         self.assertTrue(r["has_nonempty_source_response"])
+        self.assertTrue(r["archived_csv_header_and_row_count_cross_checked"])
         for flag in (
             "provider_authenticity_independently_verified",
             "original_2022_as_published_vintage_verified",
@@ -117,6 +133,58 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
             self.assertIs(r[flag], False, flag)
         self.assertNotIn("KR7005930003", str(r))
         self.assertNotIn("SYNTHETIC_ONLY", str(r))
+
+    def test_self_consistent_raw_sha_does_not_admit_non_csv_bytes(self):
+        item = fixture()
+        retarget_original_bytes(item, b"these-are-not-even-CSV-fields")
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_HEADER"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_raw_header_cannot_invent_a_different_source_schema(self):
+        item = fixture()
+        old = item["original_raw_bytes"].decode("euc_kr")
+        changed = old.replace("일자,", "항목,", 1).encode("euc_kr")
+        retarget_original_bytes(item, changed)
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_HEADER_RECEIPT_DRIFT"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_raw_source_can_not_hide_missing_rows(self):
+        item = fixture()
+        old = item["original_raw_bytes"].decode("euc_kr")
+        parts = old.splitlines(keepends=True)
+        retarget_original_bytes(item, "".join(parts[:-1]).encode("euc_kr"))
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_ROW_COUNT"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_raw_with_extra_csv_column_rejected(self):
+        item = fixture()
+        old = item["original_raw_bytes"].decode("euc_kr")
+        parts = old.splitlines(keepends=True)
+        parts[1] = parts[1].rstrip("\\r\\n") + ",999\\r\\n"
+        retarget_original_bytes(item, "".join(parts).encode("euc_kr"))
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_CSV_ROW_WIDTH_DRIFT"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_wrong_2022_source_receipt_client_revision_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["client_revision"] = ORIGINAL_CLIENT_REVISION  # Missing original prefix
+        r["receipt_fingerprint_sha256"] = _sha({k: r[k] for k in RECEIPT_BODY})
+        item["completion"]["receipt_fingerprint_sha256"] = r["receipt_fingerprint_sha256"]
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "CLIENT_REVISION_DRIFT"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_unpinned_extra_payer_or_source_param_rejected(self):
+        item = fixture()
+        item["canonical_request"]["params"]["unapproved_investor_mode"] = "all"
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "SOURCE_RESOLVED_PARAMS_DRIFT"):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_invalid_euc_kr_bytes_rejected_even_if_sha_matches(self):
+        item = fixture()
+        retarget_original_bytes(item, b"\\xff\\xfe\\xfd\\x00")
+        with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_EUCKR_CSV_INVALID"):
+            verify_krx_2022_private_flow_triple(**item)
 
     def test_modifying_original_byte_rejects_old_checkpoint_hash(self):
         item = fixture()
@@ -172,6 +240,9 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
         )
         item["completion"]["response_rows"] = 0
         item["completion"]["receipt_fingerprint_sha256"] = item["acquisition_receipt"]["receipt_fingerprint_sha256"]
+        header_only = io.StringIO(newline="")
+        csv.writer(header_only).writerow(item["acquisition_receipt"]["response_columns"])
+        retarget_original_bytes(item, header_only.getvalue().encode("euc_kr"))
         r = verify_krx_2022_private_flow_triple(**item)
         self.assertFalse(r["has_nonempty_source_response"])
         self.assertFalse(r["source_admitted"])
