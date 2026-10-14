@@ -182,7 +182,7 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
 
     def test_invalid_euc_kr_bytes_rejected_even_if_sha_matches(self):
         item = fixture()
-        retarget_original_bytes(item, b"\\xff\\xfe\\xfd\\x00")
+        retarget_original_bytes(item, bytes([0xff, 0xfe, 0xfd, 0]))
         with self.assertRaisesRegex(KRXPrivateFlowTripleError, "ORIGINAL_EUCKR_CSV_INVALID"):
             verify_krx_2022_private_flow_triple(**item)
 
