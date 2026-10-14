@@ -36,7 +36,7 @@ class CandidateRowsTests(unittest.TestCase):
         anum = Counter({("영업이익", ("10", "9")): 1})
         b = Counter({("영업이익", "11", "9"): 1})
         bnum = Counter({("영업이익", ("11", "9")): 1})
-        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64, Counter({"ta": 1}), {"ta": [{"nested": False, "operating_label_text_hint": True, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": False}]}), (b, bnum, "y" * 64, Counter({"tb": 1}), {"tb": [{"nested": False, "operating_label_text_hint": True, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": False}]})]):
+        with patch.object(target, "_diagnostic_rows", side_effect=[(a, anum, "x" * 64, Counter({"ta": 1}), {"ta": [{"nested": False, "contains_nested_table": False, "operating_label_text_hint": True, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": False}]}), (b, bnum, "y" * 64, Counter({"tb": 1}), {"tb": [{"nested": False, "contains_nested_table": False, "operating_label_text_hint": True, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": False}]})]):
             result = target.compare(b"fake-original", b"fake-amended")
         self.assertTrue(result["exact_label_row_text_multisets_differ"])
         self.assertTrue(result["numeric_peer_shape_multisets_differ"])
@@ -62,7 +62,7 @@ class CandidateRowsTests(unittest.TestCase):
         a = Counter({("영업이익", "10", "9"): 1})
         n = Counter({("영업이익", ("10", "9")): 1})
         with patch.object(target, "_diagnostic_rows", side_effect=[
-            (a, n, "a" * 64, Counter({"t": 1}), {}), (a, n, "b" * 64, Counter({"u": 1}), {"u": [{"nested": False, "operating_label_text_hint": False, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": True}]}),
+            (a, n, "a" * 64, Counter({"t": 1}), {}), (a, n, "b" * 64, Counter({"u": 1}), {"u": [{"nested": False, "contains_nested_table": False, "operating_label_text_hint": False, "three_month_text_hint": False, "both_years_text_hint": False, "preceding_exact_cfs_title_hint": False, "preceding_notes_term_hint": True}]}),
         ]):
             result = target.compare(b"original", b"amendment")
         self.assertFalse(result["exact_label_row_text_multisets_differ"])
