@@ -30,8 +30,9 @@ class CandidateMergeLineageTest(unittest.TestCase):
                     payload += b"no-follow new candidate"
                 target[name] = archived.git_blob_sha1(payload)
                 (self.root / name).write_bytes(payload)
-        baseline_manifest = archived.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS[
-            "research_v1_runtime_manifest.py"]
+        # Synthetic source manifest must refer to the synthetic archived
+        # body, not the real immutable Git blob from production evidence.
+        baseline_manifest = self.impl["research_v1_runtime_manifest.py"]
         self.staged = []
         for obj, replacements in (
             (archived.ARCHIVED_GIT_BLOBS, self.orig),
