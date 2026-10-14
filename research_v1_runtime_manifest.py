@@ -25,6 +25,19 @@ REQUIRED_GATES = (
 )
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
+# Other services use distinct names for capabilities which this cache must not
+# grant. A present field must deny authority explicitly, not contain a string
+# or integer whose truthiness could be interpreted inconsistently downstream.
+FORBIDDEN_ELEVATED_RECEIPT_FLAGS = (
+    "independent_holdout_authorized",
+    "real_orders_authorized",
+    "funds_movement_authorized",
+    "permissions_change_authorized",
+    "champion_change_authorized",
+    "m20_performance_run_authorized",
+)
+
+
 
 class UnverifiedSourceError(ValueError):
     """Missing, stale or unaudited source; never reuse this cache."""
@@ -55,6 +68,10 @@ def _check_receipt(receipt: Mapping) -> None:
     if (receipt.get("holdout_access_authorized") is not False
             or receipt.get("live_orders_authorized") is not False):
         raise UnverifiedSourceError("cache receipt must explicitly deny holdout and live orders")
+    for flag in FORBIDDEN_ELEVATED_RECEIPT_FLAGS:
+        if flag in receipt and receipt[flag] is not False:
+            raise UnverifiedSourceError("cache receipt contains elevated authority: " + flag)
+
 
 
 def _identity(info: os.stat_result) -> tuple[int, ...]:
