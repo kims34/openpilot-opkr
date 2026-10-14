@@ -27,6 +27,7 @@ class Historic2017CalendarAsOfBoundary(unittest.TestCase):
         r=self.check_at("2017-07-16T15:44:59+09:00")
         self.assertEqual(r["status"],"JULY_EXPORT_MIRROR_NOT_YET_AVAILABLE")
         self.assertEqual(r["asof_source_calendar_closures_candidate"],[])
+        self.assertIsNone(r["candidate_open_weekdays_based_on_source_leads"])
 
     def test_july_source_snapshot_16_does_not_infer_october2(self):
         r=self.check_at("2017-07-17T09:00:00+09:00")
@@ -35,6 +36,7 @@ class Historic2017CalendarAsOfBoundary(unittest.TestCase):
         self.assertNotIn("2017-10-02",r["asof_source_calendar_closures_candidate"])
         self.assertEqual(r["private_worker_reported_empty_count"],17)
         self.assertFalse(r["candidate_count_matches_worker_aggregate"])
+        self.assertEqual(r["candidate_open_weekdays_based_on_source_leads"],244)
 
     def test_september5_government_notice_is_not_exchange_original(self):
         r=self.check_at("2017-09-06T09:00:00+09:00")
@@ -53,6 +55,7 @@ class Historic2017CalendarAsOfBoundary(unittest.TestCase):
         self.assertEqual(len(r["asof_source_calendar_closures_candidate"]),17)
         self.assertIn("2017-10-02",r["asof_source_calendar_closures_candidate"])
         self.assertTrue(r["candidate_count_matches_worker_aggregate"])
+        self.assertEqual(r["candidate_open_weekdays_based_on_source_leads"],243)
         self.assertFalse(r["source_2017_private_receipt_dates_matched"])
         self.assertFalse(r["original_krx_2017_final_calendar_pit_admitted"])
         self.assertEqual(r["ordering"],"DISABLED")
