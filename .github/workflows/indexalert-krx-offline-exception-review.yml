@@ -1,0 +1,39 @@
+name: IndexAlert KRX Offline Exceptional Session Review (No PIT)
+on:
+  push:
+    branches: [indexalert-krx-session-gap-review-v1-20261015]
+    paths:
+      - 'research_v1_krx_offline_exception_review.py'
+      - 'test_research_v1_krx_offline_exception_review.py'
+      - '.github/workflows/indexalert-krx-offline-exception-review.yml'
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+    paths:
+      - 'research_v1_krx_offline_exception_review.py'
+      - 'test_research_v1_krx_offline_exception_review.py'
+      - '.github/workflows/indexalert-krx-offline-exception-review.yml'
+permissions:
+  contents: read
+concurrency:
+  group: indexalert-krx-offline-exception-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  synthetic-no-provider-no-order:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline syntax and synthetic fail-closed tests
+        run: |
+          python -m py_compile research_v1_krx_offline_exception_review.py test_research_v1_krx_offline_exception_review.py
+          python -m unittest -v test_research_v1_krx_offline_exception_review
+      - name: Ensure no external source APIs, secrets, broker orders or PIT admissions
+        run: |
+          ! grep -En '(import requests|import urllib|api\.kiwoom|openapi\.krx|data\.krx|OPENDART_API_KEY|ORDERING=true)' research_v1_krx_offline_exception_review.py
+          grep -F '"official_network_requests_made": False' research_v1_krx_offline_exception_review.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_krx_offline_exception_review.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_offline_exception_review.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_offline_exception_review.py
