@@ -20,7 +20,7 @@ binary legacy XLS/HTML and unsupported spreadsheets are always rejected.
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, timedelta
 import hashlib
 import json
 import os
@@ -83,10 +83,14 @@ def run_year(
         return report
     if os.getenv("RAILWAY_SERVICE_NAME") != EXPECTED_WORKER:
         return report
-    base = os.getenv("KRX_PRIVATE_RAW_DIR")
-    if not base or not Path(base).is_relative_to("/data"):
+    # Mirrors the already deployed integrity audit's default /data mount.
+    # A missing variable must not incorrectly refuse a valid existing
+    # Railway mount; relative, symlinked or off-volume bases still fail.
+    base = Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data")
+    if (not base.is_absolute() or not base.is_relative_to("/data")
+            or base.is_symlink()):
         return report
-    root = Path(base) / STORE
+    root = base / STORE
     if (not _in_private_mount(Path(document))
             or not _in_private_mount(Path(claim))
             or not root.exists() or root.is_symlink()):
@@ -117,15 +121,50 @@ def run_year(
         record = matches[0]
         begin = f"{year}-01-01"
         end = f"{year}-12-31" if year < 2026 else "2026-10-08"
+        lo, hi = date.fromisoformat(begin), date.fromisoformat(end)
+        expected_weekdays = sum(
+            (lo + timedelta(days=i)).weekday() < 5
+            for i in range((hi-lo).days + 1)
+        )
+        # Pin exact annual metadata shape, coverage and the SHA derived by
+        # the original worker's official private-source integrity auditor.
+        # A malformed or stale manifest must never drive a volume read.
+        expected_empties = record.get("unverified_exchange_calendar_or_source_gap_days")
+        expected_snapshot = record.get("reported_metadata_snapshot_sha256")
+        if (type(record.get("year")) is not int or record["year"] != year
+                or record.get("integrity_class") != "STORAGE_ONLY_NOT_PIT"
+                or type(record.get("verified_weekday_pairs")) is not int
+                or record["verified_weekday_pairs"] != expected_weekdays
+                or type(expected_empties) is not int or not (0 <= expected_empties <= expected_weekdays)
+                or type(expected_snapshot) is not str or not SHA.fullmatch(expected_snapshot)):
+            report["status"] = "FAIL_CLOSED_UNPINNED_YEAR_SOURCE_MANIFEST"
+            return report
         reference = [d for d in ref["dates"] if begin <= d <= end]
         if not reference:
             return report
         out = audit_private_scope(
             private_root=root, start=begin, end=end,
             reference_closed_iso_days=reference,
-            expected_empty_count=record["unverified_exchange_calendar_or_source_gap_days"],
-            expected_original_audit_snapshot_sha256=record["reported_metadata_snapshot_sha256"],
+            expected_empty_count=expected_empties,
+            expected_original_audit_snapshot_sha256=expected_snapshot,
         )
+        # Matching SHA + exact original annual scope is a prerequisite for
+        # treating even the *comparison* result as credible. Older mocked or
+        # incomplete payloads must fail closed, not surface 'exact match'.
+        if out.get("status") in (
+            "EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT",
+            "EXACT_DATE_SET_MISMATCH_SOURCE_ADMISSION_BLOCKED",
+        ):
+            if (out.get("weekday_scope_count") != expected_weekdays
+                    or out.get("verified_original_pairs") != expected_weekdays
+                    or out.get("original_empty_day_count") != expected_empties
+                    or out.get("reference_closed_day_count") != len(reference)
+                    or out.get("original_audit_compatible_snapshot_sha256") != expected_snapshot
+                    or out.get("original_official_calendar_attested") is not False
+                    or out.get("source_contract_gates_C_D_open") is not False
+                    or out.get("real_orders_authorized") is not False):
+                report["status"] = "FAIL_CLOSED_INCOMPLETE_PRIVATE_SOURCE_COMPARISON_RECEIPT"
+                return report
         report.update({
             "status": out["status"],
             "yearly_expected_weekday_pairs": record["verified_weekday_pairs"],
@@ -164,10 +203,9 @@ def main() -> None:
     print("INDEXALERT_KRX_PRIVATE_CALENDAR_YEAR_RECONCILIATION=" + json.dumps(
         result, sort_keys=True, separators=(",", ":")
     ), flush=True)
-    if args.audit and result["status"] not in (
-        "EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT",
-        "EXACT_DATE_SET_MISMATCH_SOURCE_ADMISSION_BLOCKED",
-    ):
+    # A mismatch is diagnostic evidence, NOT a successful audit run.
+    # Exit nonzero so cron/CI cannot inadvertently treat a mismatch as pass.
+    if args.audit and result["status"] != "EXACT_DATE_SET_AGREES_REFERENCE_ONLY_NOT_PIT":
         raise SystemExit(1)
 
 
