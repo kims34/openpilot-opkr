@@ -22,6 +22,20 @@ Only stages, numeric error/detail codes, boolean proxy configuration indicators 
 
 The [official Kiwoom Python SDK error taxonomy](https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/kiwoom/core/errors.py) categorizes embedded code `8050` as `DEVICE_AUTH`, including when top-level WS `return_code` is `805004`. Earlier isolated diagnostics used the misleading class `TOKEN_OR_LOGIN_AUTH`; this was corrected to `DEVICE_AUTH` without changing order permissions, token handling, connection URLs or retry logic. **The category does not prove a specific IP, device, network or account entitlement caused the denial**, especially when broker support reports normal registration.
 
+## Account-matched event admission (fail-closed)
+
+The registered account number is used **only inside the running process** to
+match type00 field `9201`; neither the account value nor token/order identity is
+written to disk or emitted. A successful `REG` ACK proves subscription
+acceptance but not a subsequent event. If one or more post-ACK Type00 events
+arrive but **none matches the read-only REST account identity**, the program now
+returns `TYPE00_EVENTS_UNMATCHED_ACCOUNT` with inconclusive exit code **3**,
+not a success. A successful `REAL_TYPE00_READ_ONLY_SMOKE` stage requires
+at least one post-ACK account-matched Type00 event, in addition to token,
+account, WebSocket LOGIN and REG ACK success. Even then this is a
+read-only transport/data event result, **not** broker execution proof,
+strategy profitability or Tiny Live readiness.
+
 ## Interpretation
 
 - `REST_PRECONDITION_NOT_MET`: Token or read-only account lookup failed; no direct comparison attempted.
@@ -29,6 +43,7 @@ The [official Kiwoom Python SDK error taxonomy](https://github.com/Kiwoom-Securi
 - `ROUTE_DEPENDENT_OUTCOME_POSSIBLE`: The direct route reached WS login success when the system route could not. This suggests a routing difference without proving any particular source IP.
 - `WS_LOGIN_ALREADY_OK_NO_ROUTE_COMPARISON`: The system route already logged in successfully; direct mode was not attempted.
 - `DIFFERENCE_INCONCLUSIVE`: Compare the two non-sensitive stage/error summaries before concluding.
+- `TYPE00_EVENTS_UNMATCHED_ACCOUNT`: WebSocket received Type00 frames but none matched the authenticated REST account. Keep the result inconclusive.
 
 **Important**: `broker_connected=true` is not proof of profitability, genuine fills or Tiny Live readiness. Type00 REG ACK with no events remains inconclusive. Automated and CI runs mock out the broker; no online test was performed by creating this tool.
 
