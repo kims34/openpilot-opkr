@@ -42,16 +42,15 @@ class FirstSGMLTagAncestryTests(unittest.TestCase):
                + earns()*8 + "</section>"
                "<section><title>주석</title>" + earns()*7 +
                "</section></document>")
-        with patch.object(p, "SectionStructure.finish", autospec=True) as original_finish:
-            # Only verify scanner internals while bypassing the fixed real-data 1570 table count.
-            scanner = p.SectionStructure()
-            scanner.feed(raw)
-            scanner.close()
-            self.assertEqual(scanner.operating_rows, 15)
-            self.assertEqual(scanner.earnings_structures["explicit_scoped_generic_financial_title"], 8)
-            self.assertEqual(scanner.earnings_structures["explicit_scoped_notes_title"], 7)
-            self.assertEqual(scanner.heading_kind_counts["notes"], 1)
-        original_finish.assert_not_called()
+        # Inspect parser internals without invoking the real-document-only
+        # strict 1,570-table finish() cardinality requirement.
+        scanner = p.SectionStructure()
+        scanner.feed(raw)
+        scanner.close()
+        self.assertEqual(scanner.operating_rows, 15)
+        self.assertEqual(scanner.earnings_structures["explicit_scoped_generic_financial_title"], 8)
+        self.assertEqual(scanner.earnings_structures["explicit_scoped_notes_title"], 7)
+        self.assertEqual(scanner.heading_kind_counts["notes"], 1)
 
     def test_table_outside_scope_is_unclassified(self):
         scanner = p.SectionStructure()
