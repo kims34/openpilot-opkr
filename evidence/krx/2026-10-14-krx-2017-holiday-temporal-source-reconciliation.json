@@ -38,7 +38,22 @@
     "exchange_notice_republication": "https://gostock66.blogspot.com/2017/09/2017-10-2.html",
     "exchange_notice_reported_listing_date": "2017-09-18",
     "exchange_market_decision_corroboration": "https://www.yna.co.kr/view/AKR20170915179300008",
-    "original_KRX_notice_bytes_or_first_publication_instant_authenticated": false
+    "original_KRX_notice_bytes_or_first_publication_instant_authenticated": false,
+    "exchange_attributed_contemporaneous_report": {
+      "source_name": "Yonhap",
+      "report_url": "https://www.yna.co.kr/view/AKR20170915179300008",
+      "reported_publication_instant_kst": "2017-09-17T08:01:00+09:00",
+      "reported_KRX_market_holiday": "2017-10-02",
+      "observation_scope": "SECONDARY_REPORT_EXPLICITLY_QUOTING_KRX_2017_09_30_TO_2017_10_09_MARKET_CLOSURE",
+      "proves_original_KRX_press_notice_published_at_this_exact_instant": false
+    },
+    "followup_2017_09_18_news": {
+      "source_name": "Electronic Times",
+      "article_url": "https://www.etnews.com/20170918000164",
+      "reported_published_at_kst": "2017-09-18T13:21:00+09:00",
+      "article_claim": "KRX cash-equity market closure on 2017-10-02",
+      "not_earliest_article_seen": true
+    }
   },
   "after_change_candidate": {
     "closure_count": 17,
@@ -73,5 +88,5 @@
   "profitability_test_authorized": false,
   "real_orders_authorized": false,
   "ordering": false,
-  "warning": "16+1 candidate date-set equality versus a secondary XKRX calendar is not equality versus the private 2017 source-empty dates; keep 17 unresolved. The 2017 July file is a third-party mirror of a then-current KRX export and its original binary SHA could not be fetched/verified. The September 2017 government designation is primary government evidence, not a complete exchange-original archive."
+  "warning": "16+1 candidate date-set equality versus a secondary XKRX calendar is not equality versus the private 2017 source-empty dates; keep 17 unresolved. The 2017 July file is a third-party mirror of a then-current KRX export and its original binary SHA could not be fetched/verified. The September 2017 government designation is primary government evidence, not a complete exchange-original archive. Updated contemporaneous 2017-09-17 08:01 KST Yonhap KRX-attributed news proves closure discussion before alleged original 2017-09-18 notice listing, so a secondary *news-as-of* closure candidate can be used only from 2017-09-17 08:01, not delayed to Sept 19. Primary KRX first-published-at remains unknown."
 }
