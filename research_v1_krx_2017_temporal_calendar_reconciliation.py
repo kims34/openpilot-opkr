@@ -34,6 +34,7 @@ def reconcile_2017_public_sources(manifest:dict, worker_2017:dict, *,
                                   decision_at_kst:str)->dict:
     result={"status":"FAIL_CLOSED_INVALID_OR_UNATTESTED_SOURCE_LEADS",
             "published_july_snapshot_count":0,
+            "candidate_open_weekdays_based_on_source_leads":None,
             "asof_source_calendar_closures_candidate":[],
             "new_2017_10_02_status":"NOT_YET_REPORTED",
             "private_worker_reported_empty_count":None,
@@ -104,6 +105,8 @@ def reconcile_2017_public_sources(manifest:dict, worker_2017:dict, *,
             result["status"]="JULY_EXPORT_MIRROR_NOT_YET_AVAILABLE"
             return result
         result["asof_source_calendar_closures_candidate"]=list(BASE)
+        # Pure calendar arithmetic; NOT verified trading sessions.
+        result["candidate_open_weekdays_based_on_source_leads"]=260-len(BASE)
         result["status"]="JULY_16_SECONDARY_SNAPSHOT_ONLY"
         if decision>=govt:
             result["new_2017_10_02_status"]="GOVERNMENT_HOLIDAY_ANNOUNCED_NOT_KRX_SOURCE_ATTESTED"
@@ -114,6 +117,7 @@ def reconcile_2017_public_sources(manifest:dict, worker_2017:dict, *,
         # the first instant of the original exchange-published notice.
         if decision>=first_secondary:
             result["asof_source_calendar_closures_candidate"]=sorted([*BASE,HOLIDAY])
+            result["candidate_open_weekdays_based_on_source_leads"]=260-len(BASE)-1
             result["new_2017_10_02_status"]="EXCHANGE_CLOSURE_REPORTED_SECONDARY_NOT_PRIMARY_KRX_ORIGINAL"
             result["status"]="2017_17_CANDIDATES_AGREE_WITH_PRIVATE_YEARLY_COUNT_ONLY"
             result["candidate_count_matches_worker_aggregate"]=True
