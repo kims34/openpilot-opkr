@@ -1,0 +1,3 @@
+# M20 REGISTRY diagnostic boundary
+
+The historical REGISTRY failure is masked and its root cause is not established. Subsequent successful official reads do not retrospectively identify that cause. A fixed exception-type classifier can be tested offline before any integration, without new provider requests. The original 2022 Q3 and 2021 Q3 standalone consolidated operating-profit cells, exact public release instant, original XBRL source and historical issuer-security PIT mapping remain unverified. No performance, holdout, Champion, orders or account permissions are authorised. ORDERING stays disabled. This note is not financial-source evidence.
