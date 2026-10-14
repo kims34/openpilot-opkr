@@ -16,7 +16,7 @@ from typing import Any, Mapping
 
 SHA = re.compile(r"^[0-9a-f]{64}$")
 DAY = re.compile(r"^[0-9]{8}$")
-SOURCE_DAY = re.compile(r"^([0-9]{4})([-/.]?)([0-9]{2})\\2([0-9]{2})$")
+SOURCE_DAY = re.compile(r"^(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}/[0-9]{2}/[0-9]{2}|[0-9]{4}\\.[0-9]{2}\\.[0-9]{2})$")
 ORIGINAL_CLIENT_REVISION = "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 FROZEN_BLD = "dbms/MDC/STAT/standard/MDCSTAT02303"
 ORIGINAL_RECEIPT_CLIENT_REVISION = "krx-data-api@" + ORIGINAL_CLIENT_REVISION
@@ -80,11 +80,12 @@ def _source_csv_day(text: Any) -> datetime:
     vintage, official trading calendar or a guarantee of first-available time.
     """
     _require(type(text) is str, "ORIGINAL_CSV_DATE_TYPE_DRIFT")
-    matched = SOURCE_DAY.fullmatch(text.strip())
-    _require(matched is not None, "ORIGINAL_CSV_DATE_FORMAT_DRIFT")
-    year, _, month, day = matched.groups()
+    normalized = text.strip()
+    _require(SOURCE_DAY.fullmatch(normalized) is not None,
+             "ORIGINAL_CSV_DATE_FORMAT_DRIFT")
+    digits = normalized.replace("-", "").replace("/", "").replace(".", "")
     try:
-        return datetime(int(year), int(month), int(day))
+        return datetime(int(digits[:4]), int(digits[4:6]), int(digits[6:8]))
     except ValueError:
         raise KRXPrivateFlowTripleError("ORIGINAL_CSV_DATE_INVALID") from None
 
