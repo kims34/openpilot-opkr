@@ -169,9 +169,9 @@ def classify_detail(message: Any) -> tuple[int | None, str | None]:
         kind = "INVALID_TOKEN"
     elif code in {8030,8031}:
         kind = "MODE_MISMATCH"
-    elif code == 8050:
-        kind = "TOKEN_OR_LOGIN_AUTH"
-    elif code in {8010,8040,8103}:
+    elif code in {8010, 8040, 8050, 8103}:
+        # Kiwoom's official SDK categorizes 8050 under DEVICE_AUTH.
+        # Classification alone cannot establish the exact IP/host cause.
         kind = "DEVICE_AUTH"
     else:
         kind = "UNCLASSIFIED"
