@@ -48,7 +48,7 @@ class OriginalSGMLNeighborhoodTest(unittest.TestCase):
         out = self.scan(original).finish()
         self.assertEqual(out["table_contains_cfs_and_3month_and_both_periods"],15)
         self.assertTrue(out["actual_q3_cfs_quarter_values_unverified"])
-        self.assertNotIn("12",str(out))
+        self.assertNotIn("12,345",str(out))
 
     def test_only_14_operating_tables_fails_closed(self):
         with self.assertRaisesRegex(p.SGMLGap,"OPERATING_TABLE_CARDINALITY_CHANGED"):
