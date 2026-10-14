@@ -1,0 +1,49 @@
+{
+  "schema_version": "1",
+  "observed_on_kst": "2026-10-14",
+  "purpose": "KRX_FIRST_PARTY_DOMAIN_YEAR_END_2017_MARKET_NOTICE_SEARCH_INDEX_SOURCE_EVIDENCE_NOT_DATE_COMPLETE_PIT",
+  "source_url": "https://www.krx.co.kr/res/pc/banner/2017marketinfo_en.pdf",
+  "source_host": "www.krx.co.kr",
+  "source_media_type": "application/pdf",
+  "source_page_title": "Market Schedule in December 2017 and Trading Hours on January 2, 2018",
+  "source_access_state": "KRX_HOST_SEARCH_INDEX_TEXT_FOUND_ORIGINAL_PDF_BYTES_NOT_DOWNLOADED",
+  "original_pdf_binary_sha256_attested": false,
+  "original_pdf_initial_publication_instant_attested": false,
+  "original_notice_revision_lineage_complete": false,
+  "listed_cash_market_events": [
+    {
+      "date": "2017-12-28",
+      "market": "KOSPI_CASH_EQUITIES",
+      "event": "FINAL_2017_TRADING_DAY",
+      "regular_market_open_kst": null
+    },
+    {
+      "date": "2017-12-29",
+      "market": "KOSPI_CASH_EQUITIES",
+      "event": "YEAR_END_CLOSED",
+      "regular_market_open_kst": null
+    },
+    {
+      "date": "2018-01-02",
+      "market": "KOSPI_CASH_EQUITIES",
+      "event": "TRADING_OPEN_DELAYED",
+      "regular_market_open_kst": "10:00"
+    }
+  ],
+  "excluded_note": "KRX OTC CCP has no year-end holiday; this exception must not change KOSPI cash equities closure classification.",
+  "second_public_source_july_2017_blog": "https://financedata.github.io/posts/pandas-market-days-krx.html",
+  "july_2017_secondary_calendar_contains_2017_12_29": true,
+  "july_2017_secondary_calendar_contains_2017_10_02": false,
+  "krx_original_2017_10_02_first_published_at_verified": false,
+  "original_2017_private_source_empty_day_receipts_read": false,
+  "provider_2017_empty_day_count_unchanged": 17,
+  "private_source_184_ambiguous_days_unresolved": 184,
+  "securities_27_quarantined": true,
+  "market_calendar_2015_2026_pit_verified": false,
+  "source_C_D_gates": "BLOCKED",
+  "performance_run_authorized": false,
+  "sealed_holdout_authorized": false,
+  "real_orders_authorized": false,
+  "ordering": false,
+  "caution": "This KRX-hosted file's search-indexed text directly supports one year-end closure and a next-year late opening only; original PDF raw bytes, first published timestamp and 2017 private empty source dates were NOT independently examined. No backtest date-level PIT admission."
+}
