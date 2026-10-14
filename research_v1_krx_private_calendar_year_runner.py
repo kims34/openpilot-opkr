@@ -29,7 +29,7 @@ import re
 
 from research_v1_krx_calendar_csv_source_validator import extract_and_reconcile_csv
 from research_v1_krx_calendar_xlsx_source_validator import read_holiday_source_xlsx
-from research_v1_krx_private_date_set_comparator import audit_private_scope
+from research_v1_krx_private_date_set_comparator import audit_private_scope, expected_private_source_root
 
 SHA = re.compile(r"^[a-f0-9]{64}$")
 MANIFEST = Path(__file__).resolve().parent / "evidence/krx/2026-10-13-krx-market-source-pit-boundaries.json"
@@ -83,15 +83,9 @@ def run_year(
         return report
     if os.getenv("RAILWAY_SERVICE_NAME") != EXPECTED_WORKER:
         return report
-    # Mirrors the already deployed integrity audit's default /data mount.
-    # A missing variable must not incorrectly refuse a valid existing
-    # Railway mount; relative, symlinked or off-volume bases still fail.
-    base = Path(os.getenv("KRX_PRIVATE_RAW_DIR") or "/data")
-    if (not base.is_absolute() or not base.is_relative_to("/data")
-            or base.is_symlink()):
-        return report
-    root = base / STORE
-    if (not _in_private_mount(Path(document))
+    # Exactly the same path admission as the private source comparator.
+    root = expected_private_source_root()
+    if (root is None or not _in_private_mount(Path(document))
             or not _in_private_mount(Path(claim))
             or not root.exists() or root.is_symlink()):
         return report
