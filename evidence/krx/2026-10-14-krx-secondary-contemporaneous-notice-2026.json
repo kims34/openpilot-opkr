@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "observed_at_kst": "2026-10-14T10:55:00+09:00",
+  "purpose": "SECONDARY_CONTEMPORANEOUS_REPORT_OF_KRX_2026_EXCEPTIONAL_CLOSURES_NOT_OFFICIAL_ORIGINAL_SOURCE",
+  "covered_market": "KOSPI_CASH_EQUITIES",
+  "krx_own_original_notice_document_retrieved": false,
+  "private_volume_date_receipts_examined": false,
+  "first_seen_at_krx_verified": false,
+  "original_publication_pit_verified": false,
+  "contemporaneous_report_source": {
+    "publisher": "뉴스핌 NewsPim",
+    "article_url": "https://www.newspim.com/news/view/20260520000433",
+    "article_published_at_kst": "2026-05-20T10:58:00+09:00",
+    "article_last_updated_at_kst": "2026-05-20T10:58:00+09:00",
+    "claim_type": "NEWS_REPORT_ATTRIBUTING_ANNOUNCEMENT_TO_KRX_NOT_PRIMARY_KRX_RELEASE"
+  },
+  "independent_secondary_reporting": {
+    "publisher": "MBC",
+    "article_url": "https://imnews.imbc.com/news/2026/econo/article/6823907_36932.html",
+    "article_publication_date_kst": "2026-05-20",
+    "timestamp_precision": "DATE_ONLY",
+    "supports": "2026-06-03 and 2026-07-17 cash stock market closures reportedly announced by KRX"
+  },
+  "reported_cash_stock_market_closed_dates": [
+    "2026-06-03",
+    "2026-07-17"
+  ],
+  "date_count_only_compared_to_secondary_xkrx_gap": 2,
+  "effective_2026_original_cash_market_holidays_verified": false,
+  "provider_source_receipt_day_set_equality_verified": false,
+  "quarantine_27_released": false,
+  "aggregate_184_unresolved_dates_remaining": 184,
+  "source_pit_admitted": false,
+  "m20_profitability_authorized": false,
+  "funds_movement_authorized": false,
+  "ordering": false,
+  "explanation": "A secondary newspaper publication timestamp can bound when the newspaper article became public, not when KRX first distributed its original notice. It cannot certify any provider empty response occurred on these two dates or attest an as-of historical source for 2015-2026."
+}
