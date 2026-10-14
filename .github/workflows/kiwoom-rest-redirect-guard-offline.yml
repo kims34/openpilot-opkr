@@ -7,6 +7,11 @@ on:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'kiwoom_real_readonly/smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_readonly_route_compare.py'
+      - 'test_kiwoom_readonly_route_compare.py'
+      - 'RUN_KIWOOM_READONLY_DIAG.cmd'
+      - 'kiwoom_readonly_pc_requirements.txt'
+      - 'KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md'
       - 'kiwoom_token_mode_probe.py'
       - 'test_kiwoom_token_mode_probe.py'
       - 'test_kiwoom_rest_redirect_guard.py'
@@ -48,6 +53,11 @@ jobs:
           assert src.count("_require_http_200(") == 3
           token_probe = Path("kiwoom_token_mode_probe.py").read_text()
           assert token_probe.count("allow_redirects=False") == 1
+          # Distinct account-matched Type00 admission is required as well as REG ACK.
+          assert 'TYPE00_EVENTS_UNMATCHED_ACCOUNT' in src
+          comparator = Path('kiwoom_readonly_route_compare.py').read_text()
+          assert 'TYPE00_EVENTS_UNMATCHED_ACCOUNT' in comparator
+          assert 'matched <= 0' in comparator
           assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
           assert 'ORDERING: str = "DISABLED"' in src
           for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
