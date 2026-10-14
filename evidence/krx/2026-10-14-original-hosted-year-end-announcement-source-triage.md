@@ -33,3 +33,11 @@ The existing original KRX private worker has **3,071 SHA-backed weekday source-p
 To advance beyond candidate leads, obtain a permitted, date-complete historical KOSPI market-session source with provenance/version/publication as-of metadata, then run existing read-only per-day SHA private comparator. This year's **one KIND-hosted notice** can be used to test 2024-12-31 privately *only when the original 2024-12-31 KRX checkpoint actually is read and verified*. Until then, do not subtract even one from 184.
 
 **Final guard state:** source gates C/D blocked; official historical full date set unverified; H5/Frozen, Champion and sealed Holdout unchanged; M20 NetEV/profitability run not authorized; `ORDERING=false`, no trade or money movement.
+
+## 2026-10-14 source URL direct-read recheck
+
+A follow-up public-page check succeeded for the 2024 KRX KIND-hosted market notice, the financial-industry association's retrospective 2019 reply, the 2022 Eugene Securities client notice, and the 2025 exchange-style market notice republished on Maeil Business. The 2025 republication explicitly reports **2025-12-30 last trading day**, **2025-12-31 closure**, and **2026-01-02 10:00 opening**. Its original KRX publication instant is not independently established by the republication. The Hanyang Securities 2021 notice URL and Samsung Securities 2023 notice URL were not retrievable in this check; treat them as **unverified URL leads**, not source-text-verified original notices.
+
+The same KRX KIND notice for 2024 includes three distinct market claims: 2024-12-30 final cash stock session, 2024-12-31 cash-equity closure, and 2025-01-02 10:00 delayed cash-equity opening. A calendar should not classify the 10:00 opening as a closed session, and must not infer an original first-publication time from the URL path. This public-page review did not obtain and pin exact raw HTML bytes, did not check the actual private 184 dates, and does not authorize source PIT admission.
+
+References: [KRX hosted 2024](https://kind.krx.co.kr/external/2024/12/17/000106/20241217000237/99303.htm); [2025 republication](https://stock.mk.co.kr/news/disclosure/template/840009); [2022 broker notice](https://m.eugenefn.com/no20r.do?msgId=426947&pageNo=1&topFlag=0); [2019 association reply](https://www.kofia.or.kr/voc/m_113/view.do?answer_seq=737&page=9&srchTp=&srchWord=&voc_id=1645).
