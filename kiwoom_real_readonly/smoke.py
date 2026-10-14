@@ -338,8 +338,10 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
         ) as ws:
             state.WS_CONNECTED = True
             state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = max(0, int(time.monotonic() - issued_monotonic))
-            state.WS_LOGIN_USED_ISSUED_TOKEN = True
             await ws.send(json.dumps({"trnm": "LOGIN", "token": token}, separators=(",", ":")))
+            # A prepared token is not proof it was sent; only record
+            # use after the websocket transport accepted LOGIN.
+            state.WS_LOGIN_USED_ISSUED_TOKEN = True
 
             login_ok = False
             for _ in range(10):
