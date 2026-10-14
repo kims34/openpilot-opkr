@@ -57,12 +57,12 @@ def main() -> int:
         else:
             raise RuntimeError("OFFLINE_DNS_GUARD_MISSING")
 
-        # When invoked as tools/runner.py, Python starts sys.path at tools/,
-    # so explicitly allow imports of repository-root test modules only.
-    root = str(Path(__file__).resolve().parent.parent)
-    if root not in sys.path:
-        sys.path.insert(0, root)
-    suite = unittest.defaultTestLoader.loadTestsFromNames(tests)
+        # Invoking tools/runner.py makes tools/ the initial import root.
+        # Import repository-root test modules without changing network policy.
+        root = str(Path(__file__).resolve().parent.parent)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        suite = unittest.defaultTestLoader.loadTestsFromNames(tests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
     return 0 if result.wasSuccessful() else 1
 
