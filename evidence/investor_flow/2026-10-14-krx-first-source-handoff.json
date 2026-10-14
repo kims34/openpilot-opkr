@@ -47,7 +47,15 @@
         "original_workflow_execution_authority_consumed": true,
         "per_security_network_resume_currently_authorized": false,
         "frozen_task_set_sha256": "fb5b883c6fe0e9c15e88aea9bdf874ddd7a11ae8a009c2ddf91c4e4249a8ba38",
-        "exact_next_step": "Run pre-existing private-volume manifest/state network-free per-kind and 2022 inventory after KRX-owner review; verify any relevant original raw bytes under the existing protected volume without new provider query"
+        "exact_next_step": "Run pre-existing private-volume manifest/state network-free per-kind and 2022 inventory after KRX-owner review; verify any relevant original raw bytes under the existing protected volume without new provider query",
+        "original_execution_revision": "9009c48a00394063c813d29219507ee2190ce09e",
+        "original_plan_flow_first_task_order_code_verified": true,
+        "original_worker_serial_prefix_completion_code_verified": true,
+        "original_alphanumeric_short_code_crash_occurs_in_halt_kind": true,
+        "conditional_completed_flow_requests_if_original_prefix_intact": 9485,
+        "conditional_completed_halt_requests_if_original_prefix_intact": 2265,
+        "exact_private_completed_id_set_is_original_prefix_verified": false,
+        "conditional_calculation_does_not_prove_2022_nonempty_original_market_rows": true
       }
     },
     "krx_daily_market_not_investor_flow": {
@@ -84,10 +92,10 @@
     "assume_single_security_three_day_probe_proves_full_history": false
   },
   "immediate_next_source_path": [
-    "First audit existing 11750 original private per-security task checkpoints by kind and by 2022 issuer-year; at least 6939 checkpoints must be KRX investor-flow based on the frozen source counts, but exact 2022 coverage is unknown",
-    "Re-verify 2022 original provider bytes and request receipt SHA in dedicated private KRX volume, without new authenticated KRX network query, and independently validate 2022 vintage/PIT, categories, units, issuer status and release policy",
-    "Only if relevant private historical checkpoints are absent and the exact source user permission and execution-specific consent are valid, consider bounded supplemental KRX acquisition",
-    "After complete original-source PIT/universe/rights admission, preregister new independent post-cost/post-tax Alpha test without consuming prior holdout"
+    "Original 2026-10-03 code at 9009c48 confirms initial 9485 KRX flow requests sorted before 4811 status/halts and sequential completion. Under exactly contiguous original 11750 completed task prefix, all 9485 flow requests have completed (plus 2265 halts); verify actual private completed task-ID set equals this prefix before declaring confirmed.",
+    "Network-free KRX owner in-volume private manifest/state SHA + prefix verification using summarise_frozen_2026_10_03_checkpoint_set; report 2022 per-issuer/year successful/nonempty counts with no identifier or value output",
+    "Re-verify completed 2022 provider raw bytes and acquisition receipt SHA in approved private volume; check independently original as-published vintage and corrections, scaling, investor buckets, issuer episodes and full universe",
+    "No new KRX request or 2546-task per-security network resume without fresh exact stage consent; no profitability/holdout/trade authorization until full PIT original-source proof"
   ],
   "gates": {
     "source_admitted": false,
@@ -102,7 +110,9 @@
     "user_action_required_now": false,
     "existing_private_flow_checkpoint_mixed_archive_observed": true,
     "exact_2022_flow_completed_private_receipts_verified": false,
-    "network_resume_authorized": false
+    "network_resume_authorized": false,
+    "exact_frozen_original_flow_first_source_code_verified": true,
+    "private_completed_task_prefix_reverified": false
   },
   "source_links": [
     "https://github.com/kims34/openpilot-opkr/actions/runs/36976873119",
@@ -110,5 +120,6 @@
     "https://github.com/kims34/openpilot-opkr/actions/runs/38466312612",
     "https://github.com/kims34/openpilot-opkr/pull/416"
   ],
-  "updated_on": "2026-10-14 11:02 KST"
+  "updated_on": "2026-10-14 11:02 KST",
+  "recommended_next_immutable_proof": "evidence/investor_flow/2026-10-14-original-krx-flow-first-prefix.json"
 }
