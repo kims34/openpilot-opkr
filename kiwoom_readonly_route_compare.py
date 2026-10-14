@@ -30,7 +30,8 @@ _ALLOWED_STAGES = frozenset({
     "TYPE00_JSON_PROTOCOL", "TYPE00_REG_PROTOCOL", "TYPE00_REG",
     "TYPE00_FRAME_PROTOCOL", "TYPE00_FRAME_BEFORE_REG_ACK",
     "TYPE00_SUBSCRIPTION_UNOBSERVED", "TYPE00_ADMISSION_INCOMPLETE",
-    "TYPE00_ACK_ONLY_NO_EVENTS", "REAL_TYPE00_READ_ONLY_SMOKE",
+    "TYPE00_ACK_ONLY_NO_EVENTS", "TYPE00_EVENTS_UNMATCHED_ACCOUNT",
+    "REAL_TYPE00_READ_ONLY_SMOKE",
 })
 _ALLOWED_ERRORS = frozenset({
     "INVALID_CREDENTIALS", "INVALID_TOKEN", "MODE_MISMATCH",
@@ -88,7 +89,9 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
         if key not in obj:
             raise DiagnosticError("MISSING_LOCAL_SMOKE_FIELD")
     count = obj.get("TYPE00_EVENT_COUNT")
-    if type(count) is not int or count < 0:
+    matched = obj.get("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT")
+    if (type(count) is not int or count < 0
+            or type(matched) is not int or not 0 <= matched <= count):
         raise DiagnosticError("INVALID_LOCAL_SMOKE_EVENT_COUNT")
     for key in ("RETURN_CODE", "DETAIL_CODE"):
         value = obj.get(key)
@@ -105,12 +108,21 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
             raise DiagnosticError("UNSAFE_OR_INCONSISTENT_LOCAL_SMOKE")
     if obj.get("ORDERING") != "DISABLED" or obj.get("WS_PROXY_POLICY") != policy.upper():
         raise DiagnosticError("UNSAFE_OR_INCONSISTENT_LOCAL_SMOKE")
-    if returncode == 0 and (stage != "REAL_TYPE00_READ_ONLY_SMOKE" or not obj.get("WS_LOGIN_OK")
-                            or not obj.get("TYPE00_REG_ACK_OK")
-                            or not obj.get("TYPE00_EVENT_COUNT", 0) > 0):
+    if returncode == 0 and (
+        stage != "REAL_TYPE00_READ_ONLY_SMOKE"
+        or not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK")
+        or matched <= 0
+    ):
         raise DiagnosticError("UNSAFE_OR_INCONSISTENT_LOCAL_SMOKE")
-    if returncode == 3 and stage != "TYPE00_ACK_ONLY_NO_EVENTS":
-        raise DiagnosticError("INVALID_INCONCLUSIVE_LOCAL_SMOKE")
+    if returncode == 3:
+        if not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK"):
+            raise DiagnosticError("INVALID_INCONCLUSIVE_LOCAL_SMOKE")
+        if stage == "TYPE00_ACK_ONLY_NO_EVENTS" and count == 0 and matched == 0:
+            pass
+        elif stage == "TYPE00_EVENTS_UNMATCHED_ACCOUNT" and count > 0 and matched == 0:
+            pass
+        else:
+            raise DiagnosticError("INVALID_INCONCLUSIVE_LOCAL_SMOKE")
     return {key: obj[key] for key in _SUMMARY_FIELDS}
 
 
@@ -157,12 +169,14 @@ def _attempt(policy: str, prepared: tuple | None = None) -> tuple[dict[str, Any]
             raise smoke.ReadOnlySmokeError("TYPE00_ADMISSION_INCOMPLETE", 0)
         if state.TYPE00_EVENT_COUNT == 0:
             state.STAGE = "TYPE00_ACK_ONLY_NO_EVENTS"
-            state.RETURN_CODE = 0
+            exit_code = 3
+        elif state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT == 0:
+            state.STAGE = "TYPE00_EVENTS_UNMATCHED_ACCOUNT"
             exit_code = 3
         else:
             state.STAGE = "REAL_TYPE00_READ_ONLY_SMOKE"
-            state.RETURN_CODE = 0
             exit_code = 0
+        state.RETURN_CODE = 0
     except smoke.ReadOnlySmokeError as exc:
         state.STAGE = exc.stage
         state.RETURN_CODE = exc.return_code
