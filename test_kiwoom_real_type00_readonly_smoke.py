@@ -293,6 +293,41 @@ class KiwoomRealType00PythonSmokeTests(unittest.TestCase):
         }
         self.assertEqual(_type00_observation(obj, "private-account"), (1, 1, True))
 
+    def test_login_send_failure_never_claims_token_was_sent(self):
+        # Untrusted transport failure cannot be reported as an issued
+        # OAuth token actually sent to the broker, even if WS connected.
+        class SendFailureSocket:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def send(self, _payload):
+                raise RuntimeError("synthetic failed websocket write")
+
+            async def recv(self):
+                raise AssertionError("must not read after failed send")
+
+        state = SmokeState()
+        with patch("kiwoom_real_type00_readonly_smoke.websockets.connect",
+                   return_value=SendFailureSocket()) as connect, \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=AssertionError("REST should not run")) as rest:
+            with self.assertRaises(ReadOnlySmokeError) as err:
+                asyncio.run(_run_ws(
+                    "synthetic-token", "synthetic-account", time.monotonic(), state))
+        self.assertEqual(err.exception.stage, "LOCAL_COMPATIBILITY_OR_NETWORK")
+        self.assertTrue(state.WS_CONNECTED)
+        self.assertFalse(state.WS_LOGIN_USED_ISSUED_TOKEN)
+        self.assertFalse(state.WS_LOGIN_OK)
+        self.assertFalse(state.TYPE00_REG_SENT)
+        self.assertFalse(state.REAL_ORDERS_AUTHORIZED)
+        self.assertIsInstance(state.TOKEN_AGE_SECONDS_AT_WS_LOGIN, int)
+        connect.assert_called_once()
+        rest.assert_not_called()
+        self.assertNotIn("synthetic-token", json.dumps(state.__dict__))
+
     def test_login_rejection_never_subscribes_or_activates_orders(self):
         # Offline replay of the observed 805004/8050, malformed and out-of-order
         # broker replies.  No real socket, REST request, REG or order is allowed.
