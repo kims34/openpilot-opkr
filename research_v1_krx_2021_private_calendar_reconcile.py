@@ -91,7 +91,7 @@ def review_private_2021(*, execute: bool = False, environment=None) -> dict:
         return out
     raw_root = env.get("KRX_PRIVATE_RAW_DIR")
     if (type(raw_root) is not str or
-            not raw_root.startswith("/data/")):
+            not Path(raw_root).is_relative_to(Path("/data"))):
         out["status"] = "FAIL_CLOSED_PRIVATE_VOLUME_NOT_MOUNTED"
         return out
     root = Path(raw_root) / PRIVATE_SUBDIR
