@@ -76,6 +76,10 @@ jobs:
           comparator = Path('kiwoom_readonly_route_compare.py').read_text()
           assert 'TYPE00_EVENTS_UNMATCHED_ACCOUNT' in comparator
           assert 'matched <= 0' in comparator
+          # A post-ACK result must not claim authenticated WS if token,
+          # account REST, WS socket or REG send prerequisites are absent.
+          assert 'WS_LOGIN_MISSING_AUTHENTICATED_PREREQUISITES' in comparator
+          assert 'TYPE00_ACK_WITHOUT_AUTHENTICATED_REG' in comparator
           assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
           assert 'ORDERING: str = "DISABLED"' in src
           for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
