@@ -150,6 +150,35 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                 dict(reg_failed, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False)
             ), 2, "system")
 
+    def test_failed_ws_login_never_claims_connected_or_subscribed(self):
+        # A 805004 / 8050 LOGIN denial is not a successful authenticated WS.
+        denied = state(stage="WS_LOGIN", code=805004, detail=8050)
+        self.assertFalse(probe._safe_summary(json.dumps(denied), 2, "system")["WS_LOGIN_OK"])
+        for inconsistent in (
+            dict(denied, WS_LOGIN_OK=True),
+            dict(denied, TYPE00_REG_SENT=True),
+            dict(denied, TYPE00_REG_ACK_OK=True),
+            dict(denied, WS_LOGIN_OK=None),
+        ):
+            with self.subTest(inconsistent=inconsistent):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(inconsistent), 2, "system")
+        for failure_stage in ("WS_LOGIN_PROTOCOL", "WS_LOGIN_TIMEOUT"):
+            with self.subTest(stage=failure_stage):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(
+                        json.dumps(dict(denied, STAGE=failure_stage, WS_LOGIN_OK=True)),
+                        2, "system",
+                    )
+        # A REG packet cannot be recorded as sent before LOGIN is accepted,
+        # even when no REG acknowledgment was received.
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(
+                json.dumps(dict(denied, STAGE="TYPE00_REG_PROTOCOL",
+                                TYPE00_REG_SENT=True)),
+                2, "system",
+            )
+
     def test_only_retry_ws_specific_blocker_never_token_or_rest_or_success(self):
         blocked = state()
         # First-stage WebSocket must demonstrably use a system proxy.
