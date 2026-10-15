@@ -1,0 +1,31 @@
+name: IndexAlert First Original DART Viewer TOC Offline Safety Only
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_viewer_toc.py'
+      - 'test_research_v1_opendart_m20_2022_first_viewer_toc.py'
+      - '.github/workflows/indexalert-m20-first-viewer-toc-safety-only.yml'
+permissions:
+  contents: read
+jobs:
+  toc-js-identity-no-network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile strict DART viewer TOC parsing
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_first_viewer_toc.py test_research_v1_opendart_m20_2022_first_viewer_toc.py
+      - name: No-network synthetic parser and leakage/authority tests
+        run: |
+          python -m unittest -v test_research_v1_opendart_m20_2022_first_viewer_toc
+      - name: Keep immutable no-PIT no-order flags
+        run: |
+          grep -F '"m20_feature_pit_admitted": False' research_v1_opendart_m20_2022_first_viewer_toc.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_first_viewer_toc.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_first_viewer_toc.py
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_first_viewer_toc.py
