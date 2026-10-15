@@ -2,6 +2,8 @@ name: IndexAlert First Original DART Viewer TOC Offline Safety Only
 on:
   push:
     branches: [indexalert-m20-opendart-original-proof-20261013]
+  pull_request:
+    branches: [index-alert-research-v1]
     paths:
       - 'research_v1_opendart_m20_2022_first_viewer_toc.py'
       - 'test_research_v1_opendart_m20_2022_first_viewer_toc.py'
