@@ -170,19 +170,34 @@ jobs:
               cwd=folder, text=True, capture_output=True, input="\n", timeout=35,
               errors="replace",
           )
-          payloads = []
-          for line in proc.stdout.splitlines():
-              if line.startswith("{"):
-                  payloads.append(json.loads(line))
-          if len(payloads) != 1:
-              raise SystemExit("Windows CMD did not emit one safe diagnostic")
-          report = payloads[0]
-          if report.get("assessment") != "LOCAL_CREDENTIALS_NOT_FOUND":
-              raise SystemExit("Windows CMD did not fail closed without credentials")
-          for name in ("broker_connected", "real_orders_authorized",
-                       "funds_movement_authorized", "trading_readiness_proven"):
-              if report.get(name) is not False:
-                  raise SystemExit("Unsafe Windows diagnostic report")
-          # Do not print the complete captured output; only a stable status.
+          def check_safe_result(run, expected_assessment):
+              payloads = []
+              for line in run.stdout.splitlines():
+                  if line.startswith("{"):
+                      payloads.append(json.loads(line))
+              if len(payloads) != 1:
+                  raise SystemExit("Windows CMD did not emit one safe diagnostic")
+              report = payloads[0]
+              if report.get("assessment") != expected_assessment:
+                  raise SystemExit("Windows CMD did not fail closed as required")
+              for name in ("broker_connected", "real_orders_authorized",
+                           "funds_movement_authorized", "trading_readiness_proven"):
+                  if report.get(name) is not False:
+                      raise SystemExit("Unsafe Windows diagnostic report")
+
+          check_safe_result(proc, "LOCAL_CREDENTIALS_NOT_FOUND")
+          # An ordering-enabled local shell must reject the unsafe toggle
+          # *before* checking whether REAL API credentials exist.
+          # This re-executes the ZIP's CMD entrypoint on actual Windows.
+          env_unsafe = dict(os.environ, KIWOOM_ORDERING_ENABLED="true")
+          proc_unsafe = subprocess.run(
+              ["cmd.exe", "/d", "/c", "RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder, text=True, capture_output=True, input="\n",
+              timeout=35, errors="replace", env=env_unsafe,
+          )
+          check_safe_result(proc_unsafe, "ORDERING_MUST_BE_DISABLED")
+          # No REAL credentials were ever present in either case; no broker
+          # transport is permitted. Print only the stable attestation.
           print("WINDOWS_PACKAGED_CMD_NO_CREDENTIALS_FAIL_CLOSED=PASS")
+          print("WINDOWS_PACKAGED_CMD_ORDERING_ENABLED_FAIL_CLOSED=PASS")
           '@ | python -
