@@ -274,5 +274,42 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         self.assertFalse(y["m20_performance_run_authorized"])
 
 
+    def test_historical_zero_row_day_cannot_have_ohlc_anomaly(self):
+        x = sample()
+        x["price_anomalies"][0]["date"] = D1
+        x["independent_security_days"][0]["date"] = D1
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+    def test_anomaly_count_cannot_exceed_captured_historical_rows(self):
+        x = sample()
+        x["private_raw_days"][1]["daily_row_count"] = 1
+        x["price_anomalies"].append({
+            "date": D2, "security_token_sha256": SHA_C,
+            "row_sha256": SHA_A, "nonpositive_ohlc": True,
+        })
+        # This is two different stock/day anomalies but only one raw source
+        # security row. The second anomaly cannot be sourced from that day.
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+    def test_anomaly_count_equal_to_captured_rows_still_not_pit(self):
+        x = sample()
+        x["private_raw_days"][1]["daily_row_count"] = 1
+        y = review_exceptions(**x)
+        self.assertEqual(y["historical_nonpositive_ohlc_rows_quarantined"], 1)
+        self.assertFalse(y["individual_tradability_verified"])
+        self.assertFalse(y["full_universe_source_admitted"])
+        self.assertFalse(y["m20_performance_run_authorized"])
+
+    def test_missing_calendar_cannot_explain_impossible_historical_anomaly(self):
+        x = sample()
+        x["independent_calendar"] = []
+        x["price_anomalies"][0]["date"] = D1
+        x["independent_security_days"] = []
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+
 if __name__ == "__main__":
     unittest.main()
