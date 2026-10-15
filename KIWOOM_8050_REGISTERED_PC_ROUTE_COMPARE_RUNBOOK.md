@@ -72,3 +72,10 @@ If `python` is unavailable and the launcher uses `py -3`, use `py -3 -m pip inst
 In GitHub Actions the actual five-file ZIP is now unpacked and its `RUN_KIWOOM_READONLY_DIAG.cmd` launcher exercised on **Windows** after installing pinned dependencies. This Windows check runs with intentionally **empty** REAL App Key/Secret and confirms `LOCAL_CREDENTIALS_NOT_FOUND` and all trading/readiness flags false, **without calling the broker**. Linux contract tests and byte-for-byte artifact verification are separate. Neither check proves a real Kiwoom LOGIN.
 
 The launch script does **not** create or retrieve API keys; if the current shell does not have credentials, it safely exits without broker requests. It does **not** turn on order submission or modify any permissions. Avoid double-clicking unless those same secret-bearing environment variables are already available in that session. Use only one controlled read-only run; repeated retries are not required. Never share full environment output, IPs, provider raw messages, tokens, or credentials.
+
+
+## Isolated REST credential redirect guard (Draft PR #419)
+
+PR #419 stacks the newest PR #415 fail-closed route comparison on top of explicit `allow_redirects=False` plus HTTP 200 checks for both broker OAuth and read-only account requests; the separate REAL/DEMO token-mode probe is similarly protected. Its exact-HEAD workflow uploads an independently byte-verified five-file artifact named `kiwoom-readonly-pc-diagnostic-redirect-guard`. Download the artifact only from a green run on the PR #419 branch. Earlier PR #415 artifacts do **not** prove the added REST redirect guard is present.
+
+The current comparison skips direct-route repetition when the system mode has no configured proxy or when discovery is unknown; only a verified configured proxy and an actual WS-stage failure permits one same-token direct WS attempt. This does not establish broker acceptance or override any 8050 failure. No code from either Draft PR has been deployed to the Railway-linked development branch. All orders, permission changes and fund movements remain prohibited.

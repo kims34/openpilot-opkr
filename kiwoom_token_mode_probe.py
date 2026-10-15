@@ -41,7 +41,20 @@ def attempt(base: str, app_key: str, app_secret: str) -> dict[str, Any]:
                 "secretkey":app_secret,
             },
             timeout=15,
+            allow_redirects=False,
         )
+        # Never accept a redirect or HTTP denial as an OAuth success,
+        # even if an intermediate response contains success-looking JSON.
+        status = response.status_code
+        if type(status) is not int or status != 200:
+            return {
+                "http_status": status if type(status) is int and 100 <= status <= 599 else None,
+                "return_code": None,
+                "detail_code": None,
+                "token_present": False,
+                "expiry_present": False,
+                "token_type_present": False,
+            }
         obj = _strict_object(response.json())
         code = obj.get("return_code")
         code = code if type(code) is int else None
