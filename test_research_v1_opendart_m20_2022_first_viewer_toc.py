@@ -128,5 +128,41 @@ class FirstViewerTocTests(unittest.TestCase):
         self.assertFalse(result["real_orders_authorized"])
 
 
+    def test_mixed_node_variables_cannot_fabricate_cfs_heading(self):
+        # The old loose regex accepted node2['text'] + node1['id'...],
+        # falsely linking the title to another JS record's receipt.
+        mixed = node("연결손익계산서").replace(
+            "node1['text']", "node2['text']")
+        html = "<html><script>" + mixed + "</script></html>"
+        with self.assertRaisesRegex(p.ViewerGap, "VIEWER_TOC_NOT_STRUCTURED"):
+            p._safe_counts(html, FIRST)
+
+    def test_interrupted_incomplete_cfs_title_not_joined_to_later_node(self):
+        partial = 'node1[\'text\'] = "연결손익계산서";\n'
+        html = "<html><script>" + partial + node("주석") + "</script></html>"
+        result = p._safe_counts(html, FIRST)
+        self.assertEqual(result["matched_first_receipt_toc_entries"], 1)
+        self.assertEqual(result["toc_exact_cfs_income_heading_entries"], 0)
+        self.assertEqual(result["toc_notes_heading_entries"], 1)
+        self.assertFalse(result["m20_feature_pit_admitted"] if
+                         "m20_feature_pit_admitted" in result else
+                         result["toc_structured_first_original_cfs_section_proven"])
+
+    def test_unparsed_revised_receipt_assignment_cannot_hide(self):
+        fake = ("<html><script>" + node("재무제표") +
+                "node2['rcpNo'] = '" + OTHER + "';</script></html>")
+        with self.assertRaisesRegex(p.ViewerGap, "VIEWER_MULTIPLE_RECEIPT_EDITIONS"):
+            p._safe_counts(fake, FIRST)
+
+    def test_two_well_formed_distinct_nodes_remain_countable_but_not_pit(self):
+        second = node("주석").replace("node1[", "node2[")
+        html = "<html><script>" + node("재무제표") + second + "</script></html>"
+        result = p._safe_counts(html, FIRST)
+        self.assertEqual(result["matched_first_receipt_toc_entries"], 2)
+        self.assertEqual(result["toc_generic_financial_statement_heading_entries"], 1)
+        self.assertEqual(result["toc_notes_heading_entries"], 1)
+        self.assertFalse(result["toc_structured_first_original_cfs_section_proven"])
+
+
 if __name__=="__main__":
     unittest.main()
