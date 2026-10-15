@@ -264,7 +264,9 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
              patch("kiwoom_readonly_route_compare.smoke.requests.post",
                    side_effect=AssertionError("no real REST")) as network, \
              patch("sys.stdout", new_callable=io.StringIO) as capture:
-            probe.main()
+            with self.assertRaises(SystemExit) as stopped:
+                probe.main()
+            self.assertEqual(stopped.exception.code, 3)
             self.assertEqual(os.environ["KIWOOM_WS_PROXY_POLICY"], "owner-original-setting")
         self.assertEqual(rest.call_count, 1)
         self.assertEqual(stream.call_count, 2)
@@ -284,6 +286,63 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
         self.assertNotIn("synthetic-secret-token", capture.getvalue())
         self.assertNotIn("synthetic-account", capture.getvalue())
 
+    def test_exit_code_for_real_ws_8050_denial_and_matched_readonly_event(self):
+        # Synthetic IO; no API key, user account or broker traffic is used.
+        from kiwoom_real_type00_readonly_smoke import ReadOnlySmokeError
+        env = {
+            "KIWOOM_ENV": "REAL", "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "offline-key",
+            "KIWOOM_APP_SECRET": "offline-secret",
+        }
+        for case, expected_exit in (("8050", 2), ("event", 0)):
+            with self.subTest(case=case):
+                def account(state):
+                    state.TOKEN_OK = True
+                    state.ACCOUNT_ENDPOINT_OK = True
+                    state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN = True
+                    state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT = False
+                    return "offline-token", "offline-account", 123.0
+
+                async def ws(token, number, issued, state):
+                    self.assertEqual((token, number, issued),
+                                     ("offline-token", "offline-account", 123.0))
+                    state.WS_CONNECTED = True
+                    state.WS_LOGIN_USED_ISSUED_TOKEN = True
+                    state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = 0
+                    if case == "8050":
+                        raise ReadOnlySmokeError("WS_LOGIN", 805004, 8050, "DEVICE_AUTH")
+                    state.WS_LOGIN_OK = True
+                    state.TYPE00_REG_SENT = True
+                    state.TYPE00_REG_ACK_OK = True
+                    state.TYPE00_EVENT_COUNT = 1
+                    state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT = 1
+
+                with patch.dict(os.environ, env, clear=True), \
+                     patch("kiwoom_readonly_route_compare.smoke._token_and_account",
+                           side_effect=account) as rest, \
+                     patch("kiwoom_readonly_route_compare.smoke._run_ws",
+                           side_effect=ws) as stream, \
+                     patch("kiwoom_readonly_route_compare.smoke.requests.post",
+                           side_effect=AssertionError("No external network")) as net, \
+                     patch("sys.stdout", new_callable=io.StringIO) as capture:
+                    with self.assertRaises(SystemExit) as stopped:
+                        probe.main()
+                self.assertEqual(stopped.exception.code, expected_exit)
+                rest.assert_called_once()
+                stream.assert_called_once()
+                net.assert_not_called()
+                result = json.loads(capture.getvalue())
+                self.assertIsNone(result["direct"])
+                self.assertEqual(result["system"]["STAGE"],
+                                 "WS_LOGIN" if case == "8050" else "REAL_TYPE00_READ_ONLY_SMOKE")
+                self.assertEqual(result["broker_connected"], case == "event")
+                self.assertFalse(result["real_orders_authorized"])
+                self.assertFalse(result["funds_movement_authorized"])
+                self.assertFalse(result["trading_readiness_proven"])
+                for secret in ("offline-token", "offline-account", "offline-secret"):
+                    self.assertNotIn(secret, capture.getvalue())
+
     def test_token_error_never_attempts_any_websocket(self):
         from kiwoom_real_type00_readonly_smoke import ReadOnlySmokeError
         env = {
@@ -301,7 +360,9 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
              patch("kiwoom_readonly_route_compare.smoke.requests.post",
                    side_effect=AssertionError("real REST forbidden")) as network, \
              patch("sys.stdout", new_callable=io.StringIO) as capture:
-            probe.main()
+            with self.assertRaises(SystemExit) as stopped:
+                probe.main()
+        self.assertEqual(stopped.exception.code, 2)
         rest.assert_called_once()
         stream.assert_not_called()
         network.assert_not_called()
@@ -322,7 +383,9 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
              patch("kiwoom_readonly_route_compare.smoke._token_and_account",
                    side_effect=sensitive_error), \
              patch("sys.stdout", new_callable=io.StringIO) as capture:
-            probe.main()
+            with self.assertRaises(SystemExit) as stopped:
+                probe.main()
+        self.assertEqual(stopped.exception.code, 2)
         report = json.loads(capture.getvalue())
         self.assertEqual(report["system"]["STAGE"], "LOCAL_COMPATIBILITY_OR_NETWORK")
         self.assertEqual(report["assessment"], "REST_PRECONDITION_NOT_MET")
