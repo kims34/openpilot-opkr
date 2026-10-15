@@ -1,0 +1,323 @@
+name: IndexAlert Kiwoom REST Redirect Guard (offline only)
+
+on:
+  push:
+    branches: [indexalert-kiwoom-guard-reconcile-20261015]
+    paths:
+      - 'kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_real_readonly/smoke.py'
+      - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_readonly_route_compare.py'
+      - 'test_kiwoom_readonly_route_compare.py'
+      - 'RUN_KIWOOM_READONLY_DIAG.cmd'
+      - 'kiwoom_readonly_pc_requirements.txt'
+      - 'KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md'
+      - 'kiwoom_token_mode_probe.py'
+      - 'test_kiwoom_token_mode_probe.py'
+      - 'test_kiwoom_rest_redirect_guard.py'
+      - 'kiwoom_real_quote_readonly_contract.py'
+      - 'test_kiwoom_real_quote_readonly_contract.py'
+      - 'kiwoom_real_quote_local_probe.py'
+      - 'test_kiwoom_real_quote_local_probe.py'
+      - 'tools/indexalert_kiwoom_offline_unittest.py'
+      - '.github/workflows/kiwoom-rest-redirect-guard-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline test dependencies
+        run: python -m pip install requests==2.32.3 websockets==15.0.1
+      - name: Syntax validation and mirrored-source parity
+        run: |
+          python -m py_compile tools/indexalert_kiwoom_offline_unittest.py kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py test_kiwoom_rest_redirect_guard.py kiwoom_real_quote_readonly_contract.py test_kiwoom_real_quote_readonly_contract.py kiwoom_real_quote_local_probe.py test_kiwoom_real_quote_local_probe.py
+          cmp -s kiwoom_real_type00_readonly_smoke.py kiwoom_real_readonly/smoke.py
+      - name: Execute broker-network-free safety regressions
+        run: |
+          python tools/indexalert_kiwoom_offline_unittest.py test_kiwoom_real_type00_readonly_smoke test_kiwoom_token_mode_probe test_kiwoom_readonly_route_compare test_kiwoom_rest_redirect_guard test_kiwoom_real_quote_readonly_contract test_kiwoom_real_quote_local_probe
+      - name: Existing order journal and settlement fail-closed regression
+        run: |
+          python tools/indexalert_kiwoom_offline_unittest.py test_account_settlement_binding test_journal_settlement_binding test_account_cashflow_reconciliation test_kiwoom_settlement_history test_native_cashflow_binding test_native_settlement_readiness test_native_cashflow_review_manifest test_native_settlement_review_cli test_early_live_admission_gate test_kiwoom_account_settlement_evidence
+      - name: Enforce credential redirection and ordering fail-closed invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path("kiwoom_real_type00_readonly_smoke.py").read_text()
+          assert src.count("            allow_redirects=False,") == 2
+          assert src.count("_require_http_200(") == 3
+          quote_contract = Path("kiwoom_real_quote_readonly_contract.py").read_text()
+          assert '"/api/dostk/stkinfo"' in quote_contract
+          assert '"ka10001"' in quote_contract
+          for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
+              assert forbidden not in quote_contract
+          quote_probe = Path("kiwoom_real_quote_local_probe.py").read_text()
+          assert 'KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC' in quote_probe
+          assert '"YES"' in quote_probe
+          assert 'allow_redirects=False' in quote_probe
+          assert 'real_orders_authorized": False' in quote_probe
+          assert 'permission_change_authorized": False' in quote_probe
+          assert 'funds_movement_authorized": False' in quote_probe
+          assert '/api/dostk/ordr' not in quote_probe
+          token_probe = Path("kiwoom_token_mode_probe.py").read_text()
+          assert token_probe.count("allow_redirects=False") == 1
+          # Distinct account-matched Type00 admission is required as well as REG ACK.
+          assert 'TYPE00_EVENTS_UNMATCHED_ACCOUNT' in src
+          comparator = Path('kiwoom_readonly_route_compare.py').read_text()
+          assert 'TYPE00_EVENTS_UNMATCHED_ACCOUNT' in comparator
+          assert 'matched <= 0' in comparator
+          # A post-ACK result must not claim authenticated WS if token,
+          # account REST, WS socket or REG send prerequisites are absent.
+          assert 'WS_LOGIN_MISSING_AUTHENTICATED_PREREQUISITES' in comparator
+          assert 'TYPE00_ACK_WITHOUT_AUTHENTICATED_REG' in comparator
+          assert 'WS_LOGIN_FAILURE_MISLABELED_AS_CONNECTED' in comparator
+          assert 'TYPE00_REG_SENT_BEFORE_AUTHENTICATED_LOGIN' in comparator
+          assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
+          assert 'ORDERING: str = "DISABLED"' in src
+          for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
+              assert forbidden not in src
+          PY
+
+      - name: Pack validated Windows diagnostic (read-only; no secrets)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic-redirect-guard
+          path: |
+            kiwoom_real_type00_readonly_smoke.py
+            kiwoom_readonly_route_compare.py
+            RUN_KIWOOM_READONLY_DIAG.cmd
+            kiwoom_readonly_pc_requirements.txt
+            KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md
+          if-no-files-found: error
+          retention-days: 7
+      - name: Re-download exactly the archived diagnostic files
+        uses: actions/download-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic-redirect-guard
+          path: verify-redirect-guard-artifact
+      - name: Check one-extraction layout and byte-for-byte source agreement
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          folder = Path("verify-redirect-guard-artifact")
+          expected = {
+              "kiwoom_real_type00_readonly_smoke.py",
+              "kiwoom_readonly_route_compare.py",
+              "RUN_KIWOOM_READONLY_DIAG.cmd",
+              "kiwoom_readonly_pc_requirements.txt",
+              "KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md",
+          }
+          actual = {str(p.relative_to(folder)).replace("\\", "/") for p in folder.rglob("*") if p.is_file()}
+          assert actual == expected, (actual, expected)
+          for filename in expected:
+              assert (folder / filename).read_bytes() == Path(filename).read_bytes(), filename
+          PY
+
+  offline-order-resilience:
+    # Separate non-network test lane. No broker credentials, ordering or deployment.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile safety components (no broker invocation)
+        run: |
+          python -m py_compile order_intent_journal.py kiwoom_execution_inbox.py kiwoom_order_journal_bridge.py order_snapshot_reconciliation.py kiwoom_protected_execution_intake.py shadow_capital_allocator.py
+      - name: Execute duplicate-order, kill, partial-fill, restart and settlement recovery regressions
+        run: |
+          python tools/indexalert_kiwoom_offline_unittest.py \
+            test_order_intent_journal \
+            test_shadow_safety_control \
+            test_order_snapshot_reconciliation \
+            test_kiwoom_order_journal_bridge \
+            test_kiwoom_execution_inbox \
+            test_kiwoom_protected_execution_intake \
+            test_shadow_late_fill_capital \
+            test_shadow_principal_release \
+            test_kiwoom_order_request_contract \
+            test_kiwoom_realtime_order_fill_subscription_contract
+      - name: Assert source-only ordering boundary in CI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          test_files = (
+              'test_order_intent_journal.py',
+              'test_shadow_safety_control.py',
+              'test_order_snapshot_reconciliation.py',
+              'test_kiwoom_order_journal_bridge.py',
+              'test_kiwoom_execution_inbox.py',
+              'test_kiwoom_protected_execution_intake.py',
+              'test_shadow_late_fill_capital.py',
+              'test_shadow_principal_release.py',
+              'test_kiwoom_order_request_contract.py',
+              'test_kiwoom_realtime_order_fill_subscription_contract.py',
+          )
+          assert all(Path(name).is_file() for name in test_files)
+          # No real broker credentials or externally supplied order permissions
+          # are introduced by this read-only workflow.
+          wf = Path('.github/workflows/kiwoom-rest-redirect-guard-offline.yml').read_text()
+          uses = [line.strip().split('uses:', 1)[1].strip()
+                  for line in wf.splitlines() if line.strip().startswith('- uses:')]
+          allowed = ('actions/checkout@', 'actions/setup-python@',
+                     'actions/upload-artifact@', 'actions/download-artifact@')
+          assert uses and all(action.startswith(allowed) for action in uses)
+          assert sum(line.strip().startswith('python tools/indexalert_kiwoom_offline_unittest.py ') for line in wf.splitlines()) == 3
+          runner = Path('tools/indexalert_kiwoom_offline_unittest.py').read_text()
+          for guard in ('patch.object(socket.socket, "connect"', 'patch.object(socket.socket, "connect_ex"',
+                        'patch.object(socket.socket, "sendto"', 'patch.object(socket, "getaddrinfo"'):
+              assert guard in runner
+          assert 'contents: read' in wf
+          assert 'persist-credentials: false' in wf
+          PY
+
+  windows-packaged-cmd-failclosed:
+    # Test the actual distributed Windows launcher, not a Linux imitation.
+    # CI has no broker secrets, so preflight must stop before any REST or WS.
+    needs: offline-guard
+    runs-on: windows-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - name: Download only the Linux-verified diagnostic artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic-redirect-guard
+          path: windows-readonly
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned local interpreter dependencies
+        shell: pwsh
+        run: python -m pip install -r windows-readonly/kiwoom_readonly_pc_requirements.txt
+      - name: Exercise packaged CMD without credentials and with ordering disabled
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: ''
+          KIWOOM_APP_SECRET: ''
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import json, os, subprocess
+          from pathlib import Path
+          folder=Path("windows-readonly").resolve()
+          assert (folder/"RUN_KIWOOM_READONLY_DIAG.cmd").is_file()
+          assert not os.environ.get("KIWOOM_APP_KEY")
+          assert not os.environ.get("KIWOOM_APP_SECRET")
+          result=subprocess.run(["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder,text=True,input="\n",capture_output=True,timeout=45,errors="replace")
+          lines=[json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+          assert len(lines)==1, "ONE_SANITIZED_DIAGNOSTIC_REQUIRED"
+          data=lines[0]
+          assert result.returncode == 2, "NONZERO_DIAGNOSTIC_EXIT_REQUIRED"
+          assert data.get("assessment")=="LOCAL_CREDENTIALS_NOT_FOUND", "ABSENT_KEYS_FAIL_CLOSED"
+          for flag in ("broker_connected","real_orders_authorized","funds_movement_authorized","trading_readiness_proven"):
+              assert data.get(flag) is False, flag
+          assert "Traceback" not in result.stdout
+          assert "Traceback" not in result.stderr
+          print("WINDOWS_DISTRIBUTED_CMD_NO_KEYS_FAIL_CLOSED=PASS")
+          '@ | python -
+      - name: Exercise packaged CMD with synthetic keys but ORDERING enabled
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'true'
+          KIWOOM_APP_KEY: synthetic-windows-fixture
+          KIWOOM_APP_SECRET: synthetic-windows-fixture
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import json, subprocess
+          from pathlib import Path
+          folder=Path("windows-readonly").resolve()
+          result=subprocess.run(["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder,text=True,input="\n",capture_output=True,timeout=45,errors="replace")
+          lines=[json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+          assert len(lines)==1, "ONE_SANITIZED_DIAGNOSTIC_REQUIRED"
+          data=lines[0]
+          assert result.returncode == 2, "ORDERING_FAIL_EXIT_REQUIRED"
+          assert data.get("assessment")=="ORDERING_MUST_BE_DISABLED", "ORDERING_FAIL_CLOSED"
+          for flag in ("broker_connected","real_orders_authorized","funds_movement_authorized","trading_readiness_proven"):
+              assert data.get(flag) is False, flag
+          for secret in ("synthetic-windows-fixture","Bearer ", "Traceback"):
+              assert secret not in result.stdout+result.stderr, "NO_PRIVATE_OUTPUT"
+          print("WINDOWS_DISTRIBUTED_CMD_ORDERING_ENABLED_FAIL_CLOSED=PASS")
+          '@ | python -
+
+      - name: Exercise packaged CMD across misconfigured REAL preflight matrix
+        # All credentials are synthetic, and each case is rejected BEFORE
+        # token, REST account, quote or WS connection. No live Kiwoom traffic.
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: synthetic-windows-fixture-key
+          KIWOOM_APP_SECRET: synthetic-windows-fixture-secret
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import json, os, subprocess
+          from pathlib import Path
+          folder=Path("windows-readonly").resolve()
+          safe_flags=("broker_connected","real_orders_authorized",
+                      "funds_movement_authorized","trading_readiness_proven")
+          base={key:os.environ[key] for key in
+              ("KIWOOM_ENV","KIWOOM_BASE_URL","KIWOOM_ORDERING_ENABLED",
+               "KIWOOM_APP_KEY","KIWOOM_APP_SECRET")}
+          scenarios=[
+              ({"KIWOOM_ENV":"DEMO"}, "CONFIG_REAL_REQUIRED"),
+              ({"KIWOOM_ENV":"REAL "}, "CONFIG_REAL_REQUIRED"),
+              ({"KIWOOM_BASE_URL":"https://mockapi.kiwoom.com"},
+               "CONFIG_REAL_HOST_REQUIRED"),
+              ({"KIWOOM_BASE_URL":"https://evil.invalid"},
+               "CONFIG_REAL_HOST_REQUIRED"),
+              ({"KIWOOM_ORDERING_ENABLED":"1"}, "ORDERING_MUST_BE_DISABLED"),
+              ({"KIWOOM_ORDERING_ENABLED":""}, "ORDERING_MUST_BE_DISABLED"),
+              ({"KIWOOM_ORDERING_ENABLED":"unverified"},
+               "ORDERING_MUST_BE_DISABLED"),
+              ({"KIWOOM_APP_KEY":""}, "LOCAL_CREDENTIALS_NOT_FOUND"),
+              ({"KIWOOM_APP_SECRET":""}, "LOCAL_CREDENTIALS_NOT_FOUND"),
+          ]
+          for edits, expected in scenarios:
+              env={**os.environ, **base, **edits}
+              proc=subprocess.run(
+                  ["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
+                  cwd=folder,input="\n",text=True,capture_output=True,
+                  timeout=40,errors="replace",env=env,
+              )
+              lines=[json.loads(line) for line in proc.stdout.splitlines()
+                     if line.startswith("{")]
+              assert len(lines)==1, "ONE_SANITIZED_DIAGNOSTIC_REQUIRED"
+              summary=lines[0]
+              assert proc.returncode == 2, "PREFLIGHT_FAIL_EXIT_REQUIRED"
+              assert summary.get("assessment")==expected, "UNSAFE_PREFLIGHT_ACCEPTANCE"
+              assert all(summary.get(name) is False for name in safe_flags), \
+                  "UNSAFE_AUTHORIZATION_FLAG"
+              assert not any(secret in proc.stdout+proc.stderr for secret in (
+                  "synthetic-windows-fixture-key",
+                  "synthetic-windows-fixture-secret",
+                  "Bearer ", "Traceback", "evil.invalid"
+              )), "PRIVATE_DIAGNOSTIC_OUTPUT"
+          print("WINDOWS_DISTRIBUTED_CMD_PREFLIGHT_MATRIX=PASS")
+          '@ | python -
