@@ -104,8 +104,11 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
     Every unknown/halt/delist case is quarantined regardless of status claims.
     Current provider snapshots cannot substitute original availability evidence.
     """
-    if type(exception_dates) is not list or not 0 < len(exception_dates) <= MAX_DAYS:
-        raise EvidenceNotAdmitted("explicit bounded exception-date scope required")
+    # Either time horizon may be reviewed alone. Requiring a fake historical
+    # receipt to quarantine the observed 2026 source-failure day would make
+    # prospective-only evidence impossible to submit safely.
+    if type(exception_dates) is not list or len(exception_dates) > MAX_DAYS:
+        raise EvidenceNotAdmitted("bounded historical exception-date scope required")
     dates = [_day(x) for x in exception_dates]
     if dates != sorted(set(dates)):
         raise EvidenceNotAdmitted("duplicate or unsorted exception days")
@@ -118,6 +121,8 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
         raise EvidenceNotAdmitted("raw source day or calendar scope mismatch")
     if not set(states).issubset(set(bad)):
         raise EvidenceNotAdmitted("unmatched security state claim")
+    if not dates and not any(day == PROSPECTIVE_FAILURE_DAY for day, _ in bad):
+        raise EvidenceNotAdmitted("no historical or prospective source-failure evidence")
     # Historical anomalies require an exact captured-day SHA in this review.
     # The pinned 2026 prospective failure-day quarantine is a separate source
     # horizon and MUST NOT be inferred from the 2017-2022 90-date calendar.
