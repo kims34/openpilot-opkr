@@ -164,5 +164,58 @@ class OfflineExceptionReviewTest(unittest.TestCase):
             review_exceptions(**x)
 
 
+    def test_fixed_2026_prospective_failure_separate_from_90_day_history(self):
+        x = sample()
+        x["price_anomalies"][0]["date"] = "2026-09-28"
+        x["independent_security_days"][0]["date"] = "2026-09-28"
+        y = review_exceptions(**x)
+        self.assertEqual(y["prospective_source_failure_session"], "2026-09-28")
+        self.assertEqual(y["prospective_nonpositive_ohlc_rows_quarantined"], 1)
+        self.assertEqual(y["historical_nonpositive_ohlc_rows_quarantined"], 0)
+        self.assertEqual(y["exception_weekdays_checked"], 2)
+        self.assertIs(y["prospective_input_source_pit_authenticated"], False)
+        self.assertIs(y["retrospective_claims_independently_authenticated"], False)
+        self.assertIs(y["live_orders_authorized"], False)
+
+    def test_2026_prospective_price_row_without_stock_claim_stays_unresolved(self):
+        x = sample()
+        x["price_anomalies"][0]["date"] = "2026-09-28"
+        x["independent_security_days"] = []
+        y = review_exceptions(**x)
+        self.assertEqual(y["stock_states_unresolved"], 1)
+        self.assertEqual(y["prospective_nonpositive_ohlc_rows_quarantined"], 1)
+
+    def test_only_actual_observed_prospective_failure_session_is_accepted(self):
+        for day in ("2026-09-29", "2026-10-14", "2027-09-28",
+                    "2026-09-27", "2023-09-28"):
+            x = sample()
+            x["price_anomalies"][0]["date"] = day
+            x["independent_security_days"][0]["date"] = day
+            with self.subTest(day=day), self.assertRaises(EvidenceNotAdmitted):
+                review_exceptions(**x)
+
+    def test_prospective_day_not_interpreted_as_historical_exchange_holiday(self):
+        x = sample()
+        x["independent_calendar"].append(
+            {"date": "2026-09-28", "session": "CLOSED",
+             "evidence_sha256": SHA_A,
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"})
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+    def test_other_historical_stock_day_without_raw_pair_is_rejected(self):
+        x = sample()
+        x["price_anomalies"][0]["date"] = "2019-03-04"
+        x["independent_security_days"][0]["date"] = "2019-03-04"
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+    def test_2026_security_claim_cannot_match_historical_anomaly(self):
+        x = sample()
+        x["independent_security_days"][0]["date"] = "2026-09-28"
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+
 if __name__ == "__main__":
     unittest.main()
