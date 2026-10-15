@@ -16,10 +16,12 @@ class CandidateMergeLineageTest(unittest.TestCase):
         self.orig = {}
         self.impl = {}
         self.changed = {}
+        self.env_source = {}
         for group, target in (
             (archived.ARCHIVED_GIT_BLOBS, self.orig),
             (archived.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS, self.impl),
             (candidate.EXACT_UPSTREAM_CHANGED_BLOBS, self.changed),
+            (candidate.EXACT_LOCAL_ENV_GUARD_BLOBS, self.env_source),
         ):
             for name in group:
                 if name in target:
@@ -38,6 +40,7 @@ class CandidateMergeLineageTest(unittest.TestCase):
             (archived.ARCHIVED_GIT_BLOBS, self.orig),
             (archived.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS, self.impl),
             (candidate.EXACT_UPSTREAM_CHANGED_BLOBS, self.changed),
+            (candidate.EXACT_LOCAL_ENV_GUARD_BLOBS, self.env_source),
         ):
             p = patch.dict(obj, replacements, clear=True)
             p.start()
@@ -59,7 +62,7 @@ class CandidateMergeLineageTest(unittest.TestCase):
 
     def test_specific_reviewed_candidate_proof_not_trading_or_merge_authority(self):
         out = self.check()
-        self.assertEqual(out["checked_files"], 21)
+        self.assertEqual(out["checked_files"], 22)
         self.assertFalse(out["candidate_approved_for_merge"])
         self.assertFalse(out["original_archived_manifest_replayed_without_change"])
         self.assertFalse(out["profitability_evaluated"])
@@ -105,6 +108,13 @@ class CandidateMergeLineageTest(unittest.TestCase):
         checker = self.root / "research_v1_runtime_ci.py"
         previous = checker.read_bytes()
         checker.write_bytes(previous + b"\n# skip digest comparison")
+        with self.assertRaises(candidate.CandidateLineageError):
+            self.check()
+
+    def test_changed_archived_environment_attestor_fails(self):
+        f = self.root / "research_v1_runtime_archived_env_gate.py"
+        previous = f.read_bytes()
+        f.write_bytes(previous + b"\n# silently accept a newer pluggy version")
         with self.assertRaises(candidate.CandidateLineageError):
             self.check()
 
