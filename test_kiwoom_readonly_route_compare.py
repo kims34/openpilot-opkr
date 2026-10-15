@@ -99,6 +99,11 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
             dict(valid, ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=0),
             dict(valid, WS_LOGIN_OK=False),
             dict(valid, TYPE00_REG_ACK_OK=False),
+            dict(valid, TOKEN_OK=False),
+            dict(valid, ACCOUNT_ENDPOINT_OK=False),
+            dict(valid, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False),
+            dict(valid, WS_CONNECTED=False),
+            dict(valid, TYPE00_REG_SENT=False),
         ]:
             with self.subTest(mutation=mutation):
                 with self.assertRaises(probe.DiagnosticError):
@@ -124,6 +129,26 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                     login_ok=True, ack_ok=True)
         self.assertEqual(probe._safe_summary(json.dumps(ack), 3, "system")["STAGE"],
                          "TYPE00_ACK_ONLY_NO_EVENTS")
+        for broken in (
+            dict(ack, TOKEN_OK=False),
+            dict(ack, ACCOUNT_ENDPOINT_OK=False),
+            dict(ack, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False),
+            dict(ack, WS_CONNECTED=False),
+            dict(ack, TYPE00_REG_SENT=False),
+        ):
+            with self.subTest(inconclusive_prereq=broken):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(broken), 3, "system")
+        # Even an unsuccessful REG result may not claim WS login success
+        # without the prerequisite authenticated REST and websocket steps.
+        reg_failed = state(stage="TYPE00_REG", code=805004, detail=8050,
+                           login_ok=True, ack_ok=False)
+        self.assertEqual(probe._safe_summary(json.dumps(reg_failed), 2, "system")["STAGE"],
+                         "TYPE00_REG")
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(
+                dict(reg_failed, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False)
+            ), 2, "system")
 
     def test_only_retry_ws_specific_blocker_never_token_or_rest_or_success(self):
         blocked = state()
