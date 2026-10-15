@@ -34,10 +34,32 @@ class ReportedKRXClosureAsOf(unittest.TestCase):
         self.assertTrue(self.raw["securities_27_quarantined"] if "securities_27_quarantined" in self.raw else
                         not self.raw["quarantine_27_released"])
 
-    def test_news_cannot_be_used_before_newspaper_publication(self):
-        out=check(self.raw,decision_at_kst="2026-05-20T10:57:59+09:00")
+    def test_news_cannot_be_used_before_earliest_yonhap_article(self):
+        out=check(self.raw,decision_at_kst="2026-05-20T10:33:59+09:00")
         self.assertEqual(out["status"],"SECONDARY_REPORT_NOT_AVAILABLE_AS_OF_DECISION")
         self.assertEqual(out["secondary_news_asof_candidate_dates"],[])
+
+    def test_yonhap_article_makes_secondary_candidates_public_at_1034(self):
+        out=check(self.raw,decision_at_kst="2026-05-20T10:34:00+09:00")
+        self.assertEqual(out["status"],"CONTEMPORANEOUS_SECONDARY_REPORT_ONLY_NO_KRX_PIT_ADMISSION")
+        self.assertEqual(out["secondary_news_asof_candidate_dates"],["2026-06-03","2026-07-17"])
+        self.assertEqual(out["earliest_secondary_article_asof_kst"],"2026-05-20T10:34:00+09:00")
+        self.assertTrue(out["original_KRX_notice_asof_not_attested"])
+        self.assertFalse(out["original_krx_notice_authenticated"])
+        self.assertFalse(out["private_receipt_day_level_matched"])
+
+    def test_KRX_KIND_KONEX_primary_must_not_be_misclassified_as_KOSPI(self):
+        row=deepcopy(self.raw)
+        row["krx_hosted_different_market_correspondence"]["source_market"]="KOSPI_CASH_EQUITIES"
+        self.assertTrue(check(row,decision_at_kst="2026-06-01T09:00:00+09:00")["status"].startswith("FAIL_CLOSED"))
+        row=deepcopy(self.raw)
+        row["krx_hosted_different_market_correspondence"]["direct_cash_equity_KOSPI_original_notice_authenticated"]=True
+        self.assertTrue(check(row,decision_at_kst="2026-06-01T09:00:00+09:00")["status"].startswith("FAIL_CLOSED"))
+
+    def test_earlier_yonhap_news_time_cannot_be_falsified(self):
+        row=deepcopy(self.raw)
+        row["earliest_independently_timestamped_secondary"]["article_published_at_kst"]="2026-05-20T10:00:00+09:00"
+        self.assertTrue(check(row,decision_at_kst="2026-05-20T10:35:00+09:00")["status"].startswith("FAIL_CLOSED"))
 
     def test_original_notice_claim_forgery_fails_closed(self):
         for k in ("original_publication_pit_verified","private_volume_date_receipts_examined",
