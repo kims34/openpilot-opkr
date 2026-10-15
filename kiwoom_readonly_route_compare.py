@@ -122,6 +122,17 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
         obj["WS_LOGIN_OK"] is True and obj["TYPE00_REG_SENT"] is True
     ):
         raise DiagnosticError("TYPE00_ACK_WITHOUT_AUTHENTICATED_REG")
+    # Reject impossible stage/provenance combinations even on an error exit.
+    # A WS LOGIN denial is not authenticated connectivity; an outbound REG
+    # requires login acknowledgement. No broker requests are added here.
+    if stage in {"WS_LOGIN", "WS_LOGIN_TIMEOUT", "WS_LOGIN_PROTOCOL"} and (
+        obj["WS_LOGIN_OK"] is not False
+        or obj["TYPE00_REG_SENT"] is not False
+        or obj["TYPE00_REG_ACK_OK"] is not False
+    ):
+        raise DiagnosticError("WS_LOGIN_FAILURE_MISLABELED_AS_CONNECTED")
+    if obj["TYPE00_REG_SENT"] is True and obj["WS_LOGIN_OK"] is not True:
+        raise DiagnosticError("TYPE00_REG_SENT_BEFORE_AUTHENTICATED_LOGIN")
     if returncode == 0 and (
         stage != "REAL_TYPE00_READ_ONLY_SMOKE"
         or not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK")
