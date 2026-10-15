@@ -188,6 +188,23 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
             styles=(date_style_indices(parse_xml(book.read("xl/styles.xml")))
                     if "xl/styles.xml" in names else set())
             root=parse_xml(book.read("xl/worksheets/sheet1.xml"))
+            # Do not count dates in spreadsheet rows that an operator
+            # cannot see. Filters, hidden rows/columns, and zero-height
+            # defaults can make a human-visible KRX calendar differ from
+            # the XML rows. Reject such documents rather than pretending
+            # all parsed dates were visibly exported.
+            fmt=root.find(SS+"sheetFormatPr")
+            if (fmt is not None
+                    and fmt.attrib.get("zeroHeight", "0").lower() in ("1","true")):
+                return error
+            if (root.find(SS+"autoFilter") is not None
+                    or root.find(SS+"mergeCells") is not None):
+                return error
+            cols=root.find(SS+"cols")
+            if cols is not None:
+                for col in cols.findall(SS+"col"):
+                    if col.attrib.get("hidden", "0").lower() in ("1","true"):
+                        return error
             data=root.find(SS+"sheetData")
             if data is None:
                 return error
@@ -197,7 +214,9 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
             dates=[]
             seen=set()
             for i,row in enumerate(lines,start=1):
-                if row.attrib.get("r",str(i))!=str(i):
+                if (row.attrib.get("hidden","0").lower() in ("1","true")
+                        or row.attrib.get("ht") in ("0","0.0")
+                        or row.attrib.get("r",str(i))!=str(i)):
                     return error
                 cells={}
                 for c in row.findall(SS+"c"):
