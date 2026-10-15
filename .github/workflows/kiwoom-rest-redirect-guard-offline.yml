@@ -296,7 +296,7 @@ jobs:
               ({"KIWOOM_APP_SECRET":""}, "LOCAL_CREDENTIALS_NOT_FOUND"),
           ]
           for edits, expected in scenarios:
-              env=dict(os.environ,**base,**edits)
+              env={**os.environ, **base, **edits}
               proc=subprocess.run(
                   ["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
                   cwd=folder,input="\n",text=True,capture_output=True,
