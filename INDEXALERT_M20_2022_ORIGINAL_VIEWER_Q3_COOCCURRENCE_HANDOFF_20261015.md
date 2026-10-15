@@ -19,3 +19,25 @@ New isolated code `research_v1_opendart_m20_2022_first_viewer_cooccurrence.py`, 
 Exact **first-original** 2022 Q3 consolidated standalone three-month operating income and 2021 Q3 three-month comparator, monetary unit, row/statement period identity, full corrected filing vintage lineage, historical public release instant and issuer/security survivorship-safe mapping are **not verified**. A DART viewer is a rendering and may be altered; the first receipt number alone does not independently prove immutable historical availability. Do not backfill revised values. Maintain all frozen H5/M20 definitions, champion, taxes/costs, PIT, Walk-Forward/CPCV, independent Holdout and real trading limits. `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `champion_change_authorized=false`, `real_orders_authorized=false`, `funds_movement_authorized=false`, `permissions_change_authorized=false`, `ORDERING=DISABLED`.
 
 Research Draft PR #412 must stay unmerged while authoritative source/PIT data remain missing.
+
+
+## 2026-10-15 official conclusion — source-only cooccurrence SUCCESS, original PIT still NO-GO
+
+[Actual official run #38708786002](https://github.com/kims34/openpilot-opkr/actions/runs/38708786002) completed with **both offline and official jobs SUCCESS**. It ran the bounded exact-first-receipt fixed slot-5 2022-Q3 DART viewer source, selecting the four generic financial TOC subsections. Every count below is a **same-rendered-viewer-subdocument text hint** and does not identify a precise accounting table, cell, currency, or historical public availability:
+
+| Pre-registered source diagnostic | Official count |
+| --- | ---: |
+| First-original finance viewer subsections | 4 |
+| Exact operating-profit row text candidates in those subsections | 2 |
+| Subsections with operating-profit row + exact CFS income statement wording | **1** |
+| Subsections with operating-profit row + literal three-month wording | **1** |
+| Subsections with operating-profit row + complete 2022 July 1–September 30 date window | **0** |
+| Subsections with operating-profit row + complete 2021 July 1–September 30 date window | **0** |
+| Subsections with operating-profit row + both full period windows | **0** |
+| Subsections matching operating-profit, CFS wording, three months and both full windows together | **0** |
+
+The two counts of one do **not** certify they are the same specific source subsection; no account/currency/fact or edition tie is established. This narrows subsequent manual original-document provenance work to at least one lexical consolidated earnings subsection, but **2022/2021 Q3 quarterly CFS operating-income values remain unverified**. No PIT vintage is admitted. The current normalized 2022 Q3 CFS API previously returned an unavailable class `013/014`; the independent 2022 first-report XBRL route returned `014`.
+
+Official immutable status-only artifact `11958909398`, digest `sha256:d615ae2888883df0fe1cb7ce093cc4ed4faa84ef8b8ebca39785ef74b83f8aa3`, 7-day retention. Source+test+workflow code SHA `8703a83d5430b064b3e67d2091c912d034c6c60e`. The independently added offline TOC safety CI initially failed because `requests` was not installed; subsequent revised offline-only runs completed SUCCESS, which cannot be confused with first-receipt official source verification.
+
+**Decision: preserve frozen M20 and research holdout exactly as before.** `original_2022_2021_three_month_cfs_profit_values_verified=false`, `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `champion_change_authorized=false`, `real_orders_authorized=false`, `funds_movement_authorized=false`, `permissions_change_authorized=false`, and `ORDERING=DISABLED`. Draft PR #412 must remain unmerged.
