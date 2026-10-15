@@ -118,6 +118,21 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
         )
     ):
         raise DiagnosticError("WS_LOGIN_MISSING_AUTHENTICATED_PREREQUISITES")
+    # A broker login acknowledgement only counts for this exact issued OAuth
+    # token after the WebSocket send actually completed. Validate the two
+    # internal flags, but never copy the token or token-age to the report.
+    token_sent = obj.get("WS_LOGIN_USED_ISSUED_TOKEN")
+    token_age = obj.get("TOKEN_AGE_SECONDS_AT_WS_LOGIN")
+    if type(token_sent) is not bool:
+        raise DiagnosticError("INVALID_WS_TOKEN_SENT_PROVENANCE")
+    if token_age is not None and (
+        type(token_age) is not int or not 0 <= token_age <= 3600
+    ):
+        raise DiagnosticError("INVALID_WS_LOGIN_TOKEN_AGE")
+    if token_sent and (obj["WS_CONNECTED"] is not True or token_age is None):
+        raise DiagnosticError("WS_TOKEN_SENT_WITHOUT_TRANSPORT_PROOF")
+    if obj["WS_LOGIN_OK"] and token_sent is not True:
+        raise DiagnosticError("WS_LOGIN_WITHOUT_ISSUED_TOKEN_SEND")
     if obj["TYPE00_REG_ACK_OK"] and not (
         obj["WS_LOGIN_OK"] is True and obj["TYPE00_REG_SENT"] is True
     ):
