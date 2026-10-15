@@ -216,6 +216,17 @@ def _config() -> tuple[str, str]:
     return app_key, app_secret
 
 
+def _require_http_200(response: Any, stage: str) -> None:
+    """Deny redirects and unexpected HTTP statuses before consuming REST bodies.
+
+    Credential-bearing OAuth and read-only account requests must use
+    allow_redirects=False so requests never forwards bearer/key material.
+    """
+    status = getattr(response, "status_code", None)
+    if type(status) is not int or status != 200:
+        raise ReadOnlySmokeError(stage)
+
+
 def _token_and_account(state: SmokeState) -> tuple[str, str, float]:
     app_key, app_secret = _config()
     # Record which WS routing policy was requested even if token/account
@@ -236,7 +247,9 @@ def _token_and_account(state: SmokeState) -> tuple[str, str, float]:
                 "secretkey": app_secret,
             },
             timeout=15,
+            allow_redirects=False,
         )
+        _require_http_200(token_response, "TOKEN_PROTOCOL")
         token_obj = strict_json(token_response.content)
         token_code = return_code(token_obj)
     except ReadOnlySmokeError:
@@ -268,7 +281,9 @@ def _token_and_account(state: SmokeState) -> tuple[str, str, float]:
             },
             data=b"{}",
             timeout=15,
+            allow_redirects=False,
         )
+        _require_http_200(account_response, "ACCOUNT_PROTOCOL")
         account_obj = strict_json(account_response.content)
         account_code = return_code(account_obj)
     except Exception:
