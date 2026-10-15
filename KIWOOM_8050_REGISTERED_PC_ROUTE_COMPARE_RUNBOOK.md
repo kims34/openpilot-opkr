@@ -51,6 +51,27 @@ strategy profitability or Tiny Live readiness.
 
 Only the final `assessment` and `system/direct.STAGE`, `RETURN_CODE`, and `DETAIL_CODE` are needed for an escalation. Do not retry indefinitely. Keep all ordering disabled. The owner must explicitly authorize real trading separately.
 
+## Windows process exit status (different from the broker return code)
+
+The actual packaged Windows `.cmd` launcher now returns its Python diagnostic
+exit code to the calling terminal, even after informational echoes and `pause`.
+The paired comparator reports the **same redacted JSON object** as before.
+
+- **2 = failure / blocker**, including a real REST/WS LOGIN `805004/8050`,
+  no local credentials, or `KIWOOM_ORDERING_ENABLED=true`. Never infer that a
+  JSON report means authentication succeeded.
+- **3 = inconclusive**: LOGIN and Type00 REG ACK passed but no Type00 event
+  matching the authenticated REST account was observed during the one-shot
+  window. This does not imply trading readiness.
+- **0 = read-only observation only**: one or more post-ACK Type00 events
+  matched the authenticated account. **This is not a REAL-order execution
+  authorization, a proved signed fill, or approval of a profitable strategy.**
+
+The *process exit code* above is not the broker's `RETURN_CODE` or embedded
+`DETAIL_CODE`; check the latter fields and `assessment` for the actual
+authentication blocker. One local observation is sufficient for escalation;
+do not retry login indefinitely or publish full logs.
+
 ## Downloadable Windows ZIP (no credentials included)
 
 GitHub Actions workflow **Kiwoom REAL Type00 Python Readonly** uploads **five allowlisted source files directly** into artifact `kiwoom-readonly-pc-diagnostic` after offline validation. Download it from the latest **successful** workflow run on Draft PR #415, then unzip **once** on the already registered Windows PC: `RUN_KIWOOM_READONLY_DIAG.cmd` must be visible directly in the extracted folder, alongside the two Python scripts. CI downloads the uploaded artifact again and checks the exact five-file layout and byte-for-byte source integrity. No scripts run automatically on download/unzip.
