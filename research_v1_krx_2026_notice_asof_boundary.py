@@ -52,6 +52,20 @@ def validate_report_asof(raw:dict, *, decision_at_kst:str) -> dict:
             return out
         e=raw["contemporaneous_report_source"]
         another=raw["independent_secondary_reporting"]
+        earlier=raw["earliest_independently_timestamped_secondary"]
+        konex=raw["krx_hosted_different_market_correspondence"]
+        if (earlier.get("publisher")!="연합뉴스 Yonhap"
+                or earlier.get("article_url")!="https://www.yna.co.kr/amp/view/AKR20260520064200008"
+                or earlier.get("article_claim_type")!=SOURCE_KIND
+                or earlier.get("krx_original_first_release_instant_proven") is not False
+                or earlier.get("source_market_scope")!="KOSPI_CASH_EQUITIES_REPORTED_SECONDARY_ONLY"
+                or konex.get("document_url")!="https://kind.krx.co.kr/common/disclsviewer.do?acptNo=20260520000110&docno=&method=searchInitInfo"
+                or konex.get("source_market")!="KONEX_NOT_KOSPI"
+                or konex.get("notice_date_kst")!="2026-05-20"
+                or konex.get("notice_timestamp_precision")!="DATE_ONLY"
+                or konex.get("underlying_cited_closed_dates")!=["2026-06-03","2026-07-17"]
+                or konex.get("direct_cash_equity_KOSPI_original_notice_authenticated") is not False):
+            return out
         if (e.get("claim_type")!=SOURCE_KIND
                 or e.get("article_url")!="https://www.newspim.com/news/view/20260520000433"
                 or another.get("article_url")!="https://imnews.imbc.com/news/2026/econo/article/6823907_36932.html"
@@ -59,10 +73,14 @@ def validate_report_asof(raw:dict, *, decision_at_kst:str) -> dict:
             return out
         published=datetime.fromisoformat(e["article_published_at_kst"])
         updated=datetime.fromisoformat(e["article_last_updated_at_kst"])
+        earliest=datetime.fromisoformat(earlier["article_published_at_kst"])
         decision=datetime.fromisoformat(decision_at_kst)
         offset=timedelta(hours=9)
         if (published.utcoffset()!=offset or updated.utcoffset()!=offset
-                or decision.utcoffset()!=offset or published>updated
+                or earliest.utcoffset()!=offset or decision.utcoffset()!=offset
+                or earliest.isoformat()!="2026-05-20T10:34:00+09:00"
+                or published.isoformat()!="2026-05-20T10:58:00+09:00"
+                or not (earliest<published<=updated)
                 or updated.date()>date(2026,10,14)):
             return out
         report_day=date.fromisoformat(another["article_publication_date_kst"])
@@ -71,9 +89,9 @@ def validate_report_asof(raw:dict, *, decision_at_kst:str) -> dict:
         days=raw["reported_cash_stock_market_closed_dates"]
         if (type(days) is not list or len(days)!=2 or
                 days!=["2026-06-03","2026-07-17"] or len(days)!=len(set(days))
-                or any(date.fromisoformat(d)<=published.date() for d in days)):
+                or any(date.fromisoformat(d)<=earliest.date() for d in days)):
             return out
-        if decision<published:
+        if decision<earliest:
             out["status"]="SECONDARY_REPORT_NOT_AVAILABLE_AS_OF_DECISION"
             return out
         out.update({
@@ -81,6 +99,8 @@ def validate_report_asof(raw:dict, *, decision_at_kst:str) -> dict:
             "secondary_news_asof_candidate_dates":list(days),
             "secondary_reporting_published_before_event_count":len(days),
             "news_published_before_decision":True,
+            "earliest_secondary_article_asof_kst":earliest.isoformat(),
+            "original_KRX_notice_asof_not_attested":True,
         })
         return out
     except (KeyError,TypeError,ValueError,AttributeError,OverflowError):
