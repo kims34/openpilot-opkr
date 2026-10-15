@@ -183,3 +183,79 @@ jobs:
           assert 'contents: read' in wf
           assert 'persist-credentials: false' in wf
           PY
+
+  windows-packaged-cmd-failclosed:
+    # Test the actual distributed Windows launcher, not a Linux imitation.
+    # CI has no broker secrets, so preflight must stop before any REST or WS.
+    needs: offline-guard
+    runs-on: windows-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - name: Download only the Linux-verified diagnostic artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic-redirect-guard
+          path: windows-readonly
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned local interpreter dependencies
+        shell: pwsh
+        run: python -m pip install -r windows-readonly/kiwoom_readonly_pc_requirements.txt
+      - name: Exercise packaged CMD without credentials and with ordering disabled
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: ''
+          KIWOOM_APP_SECRET: ''
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import json, os, subprocess
+          from pathlib import Path
+          folder=Path("windows-readonly").resolve()
+          assert (folder/"RUN_KIWOOM_READONLY_DIAG.cmd").is_file()
+          assert not os.environ.get("KIWOOM_APP_KEY")
+          assert not os.environ.get("KIWOOM_APP_SECRET")
+          result=subprocess.run(["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder,text=True,input="\n",capture_output=True,timeout=45,errors="replace")
+          lines=[json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+          assert len(lines)==1, "ONE_SANITIZED_DIAGNOSTIC_REQUIRED"
+          data=lines[0]
+          assert data.get("assessment")=="LOCAL_CREDENTIALS_NOT_FOUND", "ABSENT_KEYS_FAIL_CLOSED"
+          for flag in ("broker_connected","real_orders_authorized","funds_movement_authorized","trading_readiness_proven"):
+              assert data.get(flag) is False, flag
+          assert "Traceback" not in result.stdout
+          assert "Traceback" not in result.stderr
+          print("WINDOWS_DISTRIBUTED_CMD_NO_KEYS_FAIL_CLOSED=PASS")
+          '@ | python -
+      - name: Exercise packaged CMD with synthetic keys but ORDERING enabled
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'true'
+          KIWOOM_APP_KEY: synthetic-windows-fixture
+          KIWOOM_APP_SECRET: synthetic-windows-fixture
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import json, subprocess
+          from pathlib import Path
+          folder=Path("windows-readonly").resolve()
+          result=subprocess.run(["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder,text=True,input="\n",capture_output=True,timeout=45,errors="replace")
+          lines=[json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+          assert len(lines)==1, "ONE_SANITIZED_DIAGNOSTIC_REQUIRED"
+          data=lines[0]
+          assert data.get("assessment")=="ORDERING_MUST_BE_DISABLED", "ORDERING_FAIL_CLOSED"
+          for flag in ("broker_connected","real_orders_authorized","funds_movement_authorized","trading_readiness_proven"):
+              assert data.get(flag) is False, flag
+          for secret in ("synthetic-windows-fixture","Bearer ", "Traceback"):
+              assert secret not in result.stdout+result.stderr, "NO_PRIVATE_OUTPUT"
+          print("WINDOWS_DISTRIBUTED_CMD_ORDERING_ENABLED_FAIL_CLOSED=PASS")
+          '@ | python -
