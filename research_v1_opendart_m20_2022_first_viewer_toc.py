@@ -30,16 +30,23 @@ RECEIPT = re.compile(r"[0-9]{14}\Z")
 # Multidocument TOC records in existing DART viewer JavaScript, as observed
 # in public client examples. Only fixed metadata categories are retained.
 NODE = re.compile(
-    r"""node[12]\['text'\]\s*=\s*["'](?P<title>[^"'<>]{0,300})["']\s*;"""
-    r""".{0,1000}?node[12]\['id'\]\s*=\s*["'](?P<id>[0-9]{1,12})["']\s*;"""
-    r""".{0,1000}?node[12]\['rcpNo'\]\s*=\s*["'](?P<receipt>[0-9]{14})["']\s*;"""
-    r""".{0,1000}?node[12]\['dcmNo'\]\s*=\s*["'](?P<document>[0-9]{1,12})["']\s*;"""
-    r""".{0,1000}?node[12]\['eleId'\]\s*=\s*["'](?P<element>[0-9]{1,12})["']\s*;"""
-    r""".{0,1000}?node[12]\['offset'\]\s*=\s*["'](?P<offset>[0-9]{1,12})["']\s*;"""
-    r""".{0,1000}?node[12]\['length'\]\s*=\s*["'](?P<length>[0-9]{1,12})["']\s*;"""
-    r""".{0,1000}?node[12]\['dtd'\]\s*=\s*["'](?P<dtd>[A-Za-z0-9._-]{1,30})["']\s*;""",
+    r"""(?P<node>node[12])\['text'\]\s*=\s*["'](?P<title>[^"'<>]{0,300})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['id'\]\s*=\s*["'](?P<id>[0-9]{1,12})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['rcpNo'\]\s*=\s*["'](?P<receipt>[0-9]{14})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['dcmNo'\]\s*=\s*["'](?P<document>[0-9]{1,12})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['eleId'\]\s*=\s*["'](?P<element>[0-9]{1,12})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['offset'\]\s*=\s*["'](?P<offset>[0-9]{1,12})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['length'\]\s*=\s*["'](?P<length>[0-9]{1,12})["']\s*;"""
+    r"""(?:(?!node[12]\['text'\]).){0,1000}?(?P=node)\['dtd'\]\s*=\s*["'](?P<dtd>[A-Za-z0-9._-]{1,30})["']\s*;""",
     re.DOTALL,
 )
+# Independent receipt assignments must not be hidden by a malformed JS node.
+# They are metadata evidence only; rejecting ambiguous editions never admits PIT.
+RECEIPT_ASSIGN = re.compile(
+    r"""node[12]\['rcpNo'\]\s*=\s*["'](?P<receipt>[0-9]{14})["']"""
+)
+
+
 SINGLE = re.compile(
     r"""viewDoc\(\s*["'](?P<receipt>[0-9]{14})["']\s*,\s*"""
     r"""["'](?P<document>[0-9]{1,12})["']\s*,\s*"""
@@ -77,6 +84,11 @@ def _safe_counts(html: str, first_receipt: str) -> dict:
         raise ViewerGap("VIEWER_INPUT_INVALID")
     if "<html" not in html.lower() and "<!doctype" not in html.lower():
         raise ViewerGap("VIEWER_NOT_HTML")
+    raw_receipt_assignments = {
+        match.group("receipt") for match in RECEIPT_ASSIGN.finditer(html)
+    }
+    if raw_receipt_assignments - {first_receipt}:
+        raise ViewerGap("VIEWER_MULTIPLE_RECEIPT_EDITIONS")
     nodes = list(NODE.finditer(html))
     if len(nodes) > MAX_ITEMS:
         raise ViewerGap("VIEWER_TOC_ITEMS_BUDGET")
