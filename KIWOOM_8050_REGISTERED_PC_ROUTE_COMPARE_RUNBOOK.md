@@ -61,10 +61,14 @@ From an existing terminal session in which your REAL credentials are already sec
 RUN_KIWOOM_READONLY_DIAG.cmd
 ```
 
-If Python cannot import dependencies, install the exact pinned versions first (once) using your existing trusted Python environment:
+The Windows launcher first selects the `python` executable active in your trusted terminal (including its virtual environment); if it is unavailable, it falls back to `py -3`. Install pinned dependencies using the **same interpreter** that will run the script:
 
 ```cmd
-py -3 -m pip install -r kiwoom_readonly_pc_requirements.txt
+python -m pip install -r kiwoom_readonly_pc_requirements.txt
 ```
+
+If `python` is unavailable and the launcher uses `py -3`, use `py -3 -m pip install -r kiwoom_readonly_pc_requirements.txt` instead.
+
+In GitHub Actions the actual five-file ZIP is now unpacked and its `RUN_KIWOOM_READONLY_DIAG.cmd` launcher exercised on **Windows** after installing pinned dependencies. This Windows check runs with intentionally **empty** REAL App Key/Secret and confirms `LOCAL_CREDENTIALS_NOT_FOUND` and all trading/readiness flags false, **without calling the broker**. Linux contract tests and byte-for-byte artifact verification are separate. Neither check proves a real Kiwoom LOGIN.
 
 The launch script does **not** create or retrieve API keys; if the current shell does not have credentials, it safely exits without broker requests. It does **not** turn on order submission or modify any permissions. Avoid double-clicking unless those same secret-bearing environment variables are already available in that session. Use only one controlled read-only run; repeated retries are not required. Never share full environment output, IPs, provider raw messages, tokens, or credentials.
