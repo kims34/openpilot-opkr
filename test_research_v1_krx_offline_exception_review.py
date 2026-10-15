@@ -217,5 +217,62 @@ class OfflineExceptionReviewTest(unittest.TestCase):
             review_exceptions(**x)
 
 
+    def test_prospective_only_2026_quarantine_without_fake_historical_receipts(self):
+        x = sample()
+        x["exception_dates"] = []
+        x["private_raw_days"] = []
+        x["independent_calendar"] = []
+        x["price_anomalies"][0]["date"] = "2026-09-28"
+        x["independent_security_days"][0]["date"] = "2026-09-28"
+        y = review_exceptions(**x)
+        self.assertEqual(y["exception_weekdays_checked"], 0)
+        self.assertEqual(y["raw_source_day_hash_shape_checked"], 0)
+        self.assertEqual(y["calendar_unresolved"], 0)
+        self.assertEqual(y["prospective_nonpositive_ohlc_rows_quarantined"], 1)
+        self.assertEqual(y["historical_nonpositive_ohlc_rows_quarantined"], 0)
+        self.assertFalse(y["prospective_input_source_pit_authenticated"])
+        self.assertFalse(y["individual_tradability_verified"])
+        self.assertFalse(y["live_orders_authorized"])
+        self.assertEqual(y["ordering"], "DISABLED")
+
+    def test_prospective_only_without_security_status_remains_quarantined(self):
+        x = sample()
+        x["exception_dates"] = []
+        x["private_raw_days"] = []
+        x["independent_calendar"] = []
+        x["price_anomalies"][0]["date"] = "2026-09-28"
+        x["independent_security_days"] = []
+        y = review_exceptions(**x)
+        self.assertEqual(y["prospective_nonpositive_ohlc_rows_quarantined"], 1)
+        self.assertEqual(y["stock_states_unresolved"], 1)
+        self.assertFalse(y["full_universe_source_admitted"])
+
+    def test_blank_historical_and_prospective_inputs_fail_closed(self):
+        x = sample()
+        for key in ("exception_dates", "private_raw_days",
+                    "independent_calendar", "price_anomalies",
+                    "independent_security_days"):
+            x[key] = []
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+    def test_unscoped_historical_anomaly_cannot_bypass_prospective_only_gate(self):
+        x = sample()
+        x["exception_dates"] = []
+        x["private_raw_days"] = []
+        x["independent_calendar"] = []
+        with self.assertRaises(EvidenceNotAdmitted):
+            review_exceptions(**x)
+
+    def test_historical_only_calendar_without_price_anomalies_still_allowed(self):
+        x = sample()
+        x["price_anomalies"] = []
+        x["independent_security_days"] = []
+        y = review_exceptions(**x)
+        self.assertEqual(y["exception_weekdays_checked"], 2)
+        self.assertEqual(y["prospective_nonpositive_ohlc_rows_quarantined"], 0)
+        self.assertFalse(y["m20_performance_run_authorized"])
+
+
 if __name__ == "__main__":
     unittest.main()
