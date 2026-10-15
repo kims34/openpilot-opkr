@@ -171,5 +171,48 @@ class ExactPrivateDaySetBoundary(unittest.TestCase):
             self.assertFalse(result["real_orders_authorized"])
 
 
+    def test_real_private_railway_audit_refuses_missing_or_bad_source_sha_before_read(self):
+        from unittest.mock import patch
+        with patch.dict(
+            os.environ, {"RAILWAY_SERVICE_NAME":"indexalert-krx-historical-worker",
+                         "KRX_PRIVATE_RAW_DIR":"/data"}, clear=True
+        ), patch(
+            "research_v1_krx_openapi_private_integrity_audit._check_one",
+        ) as prohibited:
+            for invalid in (None, "", "bad", "1" * 63):
+                with self.subTest(sha=invalid):
+                    x=audit_private_scope(
+                        private_root=Path("/data/openapi_kospi_history_v1"),
+                        start=START,end=END,
+                        reference_closed_iso_days=["2026-06-03"],
+                        expected_empty_count=1,
+                        expected_original_audit_snapshot_sha256=invalid)
+                    self.assertEqual(x["status"],
+                                     "FAIL_CLOSED_UNPINNED_PRIVATE_ORIGINAL_RECEIPTS")
+                    self.assertFalse(x["source_contract_gates_C_D_open"])
+            prohibited.assert_not_called()
+
+    def test_no_unpinned_private_audit_even_if_some_calendar_days_present(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {
+            "RAILWAY_SERVICE_NAME":"indexalert-krx-historical-worker",
+            "KRX_PRIVATE_RAW_DIR":"/data",
+        }, clear=True):
+            for count, holidays in ((None,["2026-06-03"]),
+                                    (1,[]),
+                                    (True,["2026-06-03"])):
+                with self.subTest(count=count,holidays=holidays):
+                    x=audit_private_scope(
+                        private_root=Path("/data/openapi_kospi_history_v1"),
+                        start=START,end=END,
+                        reference_closed_iso_days=holidays,
+                        expected_empty_count=count,
+                        expected_original_audit_snapshot_sha256="a"*64)
+                    self.assertEqual(x["status"],
+                                     "FAIL_CLOSED_UNPINNED_PRIVATE_ORIGINAL_RECEIPTS")
+                    self.assertFalse(x["performance_run_authorized"])
+
+
+
 if __name__=="__main__":
     unittest.main()
