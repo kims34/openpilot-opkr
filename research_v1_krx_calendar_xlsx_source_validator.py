@@ -33,7 +33,17 @@ ALLOWED = {
     "xl/_rels/workbook.xml.rels", "xl/styles.xml",
     "xl/sharedStrings.xml", "xl/worksheets/sheet1.xml",
 }
-BUILTIN_DATE_FORMAT_IDS = {14, 15, 16, 17, 22}
+# Microsoft Open XML builtin 16 = d-mmm (no year), 17 = mmm-yy (no day).
+# Korean builtin 55 is a full yyyy-mm-dd or yyyy/mm/dd date format.
+# 14/15/22 also show the complete day, month and year.
+BUILTIN_DATE_FORMAT_IDS = frozenset({14, 15, 22, 55})
+# Do not infer full-date visibility by merely finding token substrings:
+# e.g. 0"yyyy-mm-dd" is a *number with quoted literal text*, not a date.
+FULL_DATE_FORMAT_CODES = frozenset({
+    "yyyy-mm-dd", "yyyy/mm/dd", "yyyy.mm.dd",
+    "mm/dd/yyyy", "dd/mm/yyyy", "dd-mm-yyyy",
+    "yyyy-m-d", "yyyy/m/d",
+})
 
 
 def refuse():
@@ -82,12 +92,11 @@ def date_style_indices(root):
     for i, xf in enumerate(xfs.findall(SS+"xf")):
         idx=int(xf.attrib.get("numFmtId","0"))
         fmt=fmts.get(idx,"")
-        # A custom format must specifically spell out year/day and month,
-        # rather than merely containing a time token.
-        if idx in BUILTIN_DATE_FORMAT_IDS or (
-            "yyyy" in fmt and "mm" in fmt and "dd" in fmt
-            and "[" not in fmt
-        ):
+        # Only a complete and unambiguous displayed calendar date may
+        # establish that a human could read this numeric serial as the
+        # exact YYYY-MM-DD day. Arbitrary/quoted/conditional custom formats
+        # must never be accepted based on substrings of a format string.
+        if idx in BUILTIN_DATE_FORMAT_IDS or fmt in FULL_DATE_FORMAT_CODES:
             good.add(i)
     return good
 
