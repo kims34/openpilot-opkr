@@ -291,6 +291,19 @@ def main() -> None:
             "funds_movement_authorized": False,
             "trading_readiness_proven": False,
         }, sort_keys=True, separators=(",", ":")))
+        # A JSON report is not a successful shell process. Propagate the
+        # strongest *read-only* outcome to the registered-PC Windows launcher:
+        #   0 = account-matched post-ACK Type00 event observed (NOT trade ready)
+        #   3 = subscribed but no account-matched events (inconclusive)
+        #   2 = REST, login, network or REG failure, including 8050.
+        routes = (base,) if direct is None else (base, direct)
+        if any(item["STAGE"] == "REAL_TYPE00_READ_ONLY_SMOKE" for item in routes):
+            raise SystemExit(0)
+        if any(item["STAGE"] in {
+            "TYPE00_ACK_ONLY_NO_EVENTS", "TYPE00_EVENTS_UNMATCHED_ACCOUNT",
+        } for item in routes):
+            raise SystemExit(3)
+        raise SystemExit(2)
     except DiagnosticError as exc:
         print(json.dumps({
             "classification": "KIWOOM_REGISTERED_PC_READONLY_WS_ROUTE_COMPARISON",
