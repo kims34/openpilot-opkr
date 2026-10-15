@@ -259,3 +259,60 @@ jobs:
               assert secret not in result.stdout+result.stderr, "NO_PRIVATE_OUTPUT"
           print("WINDOWS_DISTRIBUTED_CMD_ORDERING_ENABLED_FAIL_CLOSED=PASS")
           '@ | python -
+
+      - name: Exercise packaged CMD across misconfigured REAL preflight matrix
+        # All credentials are synthetic, and each case is rejected BEFORE
+        # token, REST account, quote or WS connection. No live Kiwoom traffic.
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: synthetic-windows-fixture-key
+          KIWOOM_APP_SECRET: synthetic-windows-fixture-secret
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import json, os, subprocess
+          from pathlib import Path
+          folder=Path("windows-readonly").resolve()
+          safe_flags=("broker_connected","real_orders_authorized",
+                      "funds_movement_authorized","trading_readiness_proven")
+          base={key:os.environ[key] for key in
+              ("KIWOOM_ENV","KIWOOM_BASE_URL","KIWOOM_ORDERING_ENABLED",
+               "KIWOOM_APP_KEY","KIWOOM_APP_SECRET")}
+          scenarios=[
+              ({"KIWOOM_ENV":"DEMO"}, "CONFIG_REAL_REQUIRED"),
+              ({"KIWOOM_ENV":"REAL "}, "CONFIG_REAL_REQUIRED"),
+              ({"KIWOOM_BASE_URL":"https://mockapi.kiwoom.com"},
+               "CONFIG_REAL_HOST_REQUIRED"),
+              ({"KIWOOM_BASE_URL":"https://evil.invalid"},
+               "CONFIG_REAL_HOST_REQUIRED"),
+              ({"KIWOOM_ORDERING_ENABLED":"1"}, "ORDERING_MUST_BE_DISABLED"),
+              ({"KIWOOM_ORDERING_ENABLED":""}, "ORDERING_MUST_BE_DISABLED"),
+              ({"KIWOOM_ORDERING_ENABLED":"unverified"},
+               "ORDERING_MUST_BE_DISABLED"),
+              ({"KIWOOM_APP_KEY":""}, "LOCAL_CREDENTIALS_NOT_FOUND"),
+              ({"KIWOOM_APP_SECRET":""}, "LOCAL_CREDENTIALS_NOT_FOUND"),
+          ]
+          for edits, expected in scenarios:
+              env=dict(os.environ,**base,**edits)
+              proc=subprocess.run(
+                  ["cmd.exe","/d","/c","RUN_KIWOOM_READONLY_DIAG.cmd"],
+                  cwd=folder,input="\n",text=True,capture_output=True,
+                  timeout=40,errors="replace",env=env,
+              )
+              lines=[json.loads(line) for line in proc.stdout.splitlines()
+                     if line.startswith("{")]
+              assert len(lines)==1, "ONE_SANITIZED_DIAGNOSTIC_REQUIRED"
+              summary=lines[0]
+              assert summary.get("assessment")==expected, "UNSAFE_PREFLIGHT_ACCEPTANCE"
+              assert all(summary.get(name) is False for name in safe_flags), \
+                  "UNSAFE_AUTHORIZATION_FLAG"
+              assert not any(secret in proc.stdout+proc.stderr for secret in (
+                  "synthetic-windows-fixture-key",
+                  "synthetic-windows-fixture-secret",
+                  "Bearer ", "Traceback", "evil.invalid"
+              )), "PRIVATE_DIAGNOSTIC_OUTPUT"
+          print("WINDOWS_DISTRIBUTED_CMD_PREFLIGHT_MATRIX=PASS")
+          '@ | python -
