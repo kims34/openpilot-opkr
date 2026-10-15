@@ -311,5 +311,81 @@ class OfflineExceptionReviewTest(unittest.TestCase):
             review_exceptions(**x)
 
 
+    def test_2021_added_exchange_closures_actual_dates_with_zero_rows_still_not_pit(self):
+        x = sample()
+        extra = ["2021-08-16", "2021-10-04", "2021-10-11"]
+        x["exception_dates"] = extra
+        x["private_raw_days"] = [
+            {"date": d, "pair_sha256": SHA_A, "daily_row_count": 0}
+            for d in extra
+        ]
+        x["independent_calendar"] = [
+            {"date": d, "session": "CLOSED", "evidence_sha256": SHA_B,
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"}
+            for d in extra
+        ]
+        x["price_anomalies"] = []
+        x["independent_security_days"] = []
+        result = review_exceptions(**x)
+        self.assertEqual(result["krx_2021_later_added_closure_notice_date"], "2021-08-04")
+        self.assertEqual(result["krx_2021_later_added_closure_dates_in_source_scope"], 3)
+        self.assertEqual(result["krx_2021_later_added_closure_dates_missing_from_source_scope"], 0)
+        self.assertFalse(result["historical_2021_official_calendar_fully_reconciled"])
+        self.assertFalse(result["calendar_original_publication_pit_verified"])
+        self.assertFalse(result["full_universe_source_admitted"])
+        self.assertEqual(result["ordering"], "DISABLED")
+
+    def test_2021_added_closure_with_trade_rows_is_invalid(self):
+        x = sample()
+        x["exception_dates"] = ["2021-08-16"]
+        x["private_raw_days"] = [
+            {"date": "2021-08-16", "pair_sha256": SHA_A, "daily_row_count": 1}
+        ]
+        x["independent_calendar"] = []
+        x["price_anomalies"] = []
+        x["independent_security_days"] = []
+        with self.assertRaisesRegex(EvidenceNotAdmitted, "2021 KRX added market closure"):
+            review_exceptions(**x)
+
+    def test_2021_added_closure_cannot_be_claimed_as_open(self):
+        x = sample()
+        x["exception_dates"] = ["2021-10-04"]
+        x["private_raw_days"] = [
+            {"date": "2021-10-04", "pair_sha256": SHA_A, "daily_row_count": 0}
+        ]
+        x["independent_calendar"] = [
+            {"date": "2021-10-04", "session": "OPEN", "evidence_sha256": SHA_C,
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"}
+        ]
+        x["price_anomalies"] = []
+        x["independent_security_days"] = []
+        with self.assertRaisesRegex(EvidenceNotAdmitted, "2021 added exchange closure"):
+            review_exceptions(**x)
+
+    def test_2021_late_closure_absent_from_small_scope_is_not_claimed_as_verified(self):
+        x = sample()
+        result = review_exceptions(**x)
+        self.assertEqual(result["krx_2021_later_added_closure_dates_in_source_scope"], 0)
+        self.assertEqual(result["krx_2021_later_added_closure_dates_missing_from_source_scope"], 3)
+        self.assertFalse(result["historical_2021_official_calendar_fully_reconciled"])
+
+    def test_2021_announcement_date_is_not_a_market_holiday(self):
+        x = sample()
+        x["exception_dates"] = ["2021-08-04"]
+        x["private_raw_days"] = [
+            {"date": "2021-08-04", "pair_sha256": SHA_A, "daily_row_count": 10}
+        ]
+        x["independent_calendar"] = [
+            {"date": "2021-08-04", "session": "OPEN", "evidence_sha256": SHA_C,
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"}
+        ]
+        x["price_anomalies"] = []
+        x["independent_security_days"] = []
+        y = review_exceptions(**x)
+        self.assertEqual(y["krx_2021_later_added_closure_dates_in_source_scope"], 0)
+        self.assertEqual(y["calendar_claimed_open"], 1)
+        self.assertFalse(y["historical_2021_official_calendar_fully_reconciled"])
+
+
 if __name__ == "__main__":
     unittest.main()
