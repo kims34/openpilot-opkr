@@ -11,6 +11,9 @@ import re
 
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 DATE = re.compile(r"20(?:17|18|19|20|21|22)-\d{2}-\d{2}\Z")
+# Independently observed KRX prospective H5 FAIL_CLOSED source-failure session.
+# Deliberately NOT a historical 2017-2022 market-calendar exception day.
+PROSPECTIVE_FAILURE_DAY = "2026-09-28"
 MARKET = frozenset(("OPEN", "CLOSED"))
 STOCK = frozenset(("SUSPENDED", "DELISTED", "LISTED", "UNKNOWN"))
 MAX_DAYS = 1565
@@ -26,9 +29,11 @@ def _sha(value: object) -> None:
         raise EvidenceNotAdmitted("missing or malformed fixed source SHA256")
 
 
-def _day(value: object) -> str:
-    if type(value) is not str or not DATE.fullmatch(value):
-        raise EvidenceNotAdmitted("invalid fixed historical day")
+def _day(value: object, *, allow_prospective: bool = False) -> str:
+    if (type(value) is not str or
+            not (DATE.fullmatch(value) or
+                 (allow_prospective and value == PROSPECTIVE_FAILURE_DAY))):
+        raise EvidenceNotAdmitted("day outside fixed historical or prospective evidence scope")
     try:
         parsed = date.fromisoformat(value)
     except ValueError as exc:
@@ -45,7 +50,8 @@ def _records(items: object, *, kind: str, maximum: int) -> dict:
     for row in items:
         if type(row) is not dict:
             raise EvidenceNotAdmitted("malformed " + kind + " record")
-        day = _day(row.get("date"))
+        day = _day(row.get("date"),
+                   allow_prospective=kind in ("anomaly", "security_status"))
         if kind == "raw_day":
             if set(row) != {"date", "pair_sha256", "daily_row_count"}:
                 raise EvidenceNotAdmitted("unsupported raw day fields")
@@ -112,6 +118,12 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
         raise EvidenceNotAdmitted("raw source day or calendar scope mismatch")
     if not set(states).issubset(set(bad)):
         raise EvidenceNotAdmitted("unmatched security state claim")
+    # Historical anomalies require an exact captured-day SHA in this review.
+    # The pinned 2026 prospective failure-day quarantine is a separate source
+    # horizon and MUST NOT be inferred from the 2017-2022 90-date calendar.
+    for day, token in bad:
+        if day != PROSPECTIVE_FAILURE_DAY and day not in scope:
+            raise EvidenceNotAdmitted("historical anomaly missing raw day scope")
     for d, row in cal.items():
         n = raw[d]["daily_row_count"]
         if row["session"] == "CLOSED" and n > 0:
@@ -129,6 +141,13 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
         "calendar_claimed_closed": sum(x["session"] == "CLOSED" for x in cal.values()),
         "calendar_unresolved": len(dates) - len(cal),
         "nonpositive_ohlc_rows_quarantined": len(bad),
+        "prospective_source_failure_session": PROSPECTIVE_FAILURE_DAY,
+        "prospective_nonpositive_ohlc_rows_quarantined": sum(
+            day == PROSPECTIVE_FAILURE_DAY for day, token in bad),
+        "historical_nonpositive_ohlc_rows_quarantined": sum(
+            day != PROSPECTIVE_FAILURE_DAY for day, token in bad),
+        "prospective_input_source_pit_authenticated": False,
+        "retrospective_claims_independently_authenticated": False,
         "stock_states_corroborated_retrospectively": len(states),
         "stock_states_unresolved": len(bad) - len(states),
         "calendar_original_publication_pit_verified": False,
