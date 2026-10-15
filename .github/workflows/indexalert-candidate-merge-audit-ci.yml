@@ -39,8 +39,15 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements-indexalert-runtime-ci.txt
+      - name: Reproduce exact 22 archived package versions without changing original requirements
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/indexalert-archived-constraints.txt"
+          from research_v1_runtime_archived_env_gate import ARCHIVED_PACKAGES
+          for name, version in sorted(ARCHIVED_PACKAGES.items()):
+              print(f"{name}=={version}")
+          PY
       - name: Install existing pinned offline regression dependencies
-        run: python -m pip install -r requirements-indexalert-runtime-ci.txt
+        run: python -m pip install -r requirements-indexalert-runtime-ci.txt -c "$RUNNER_TEMP/indexalert-archived-constraints.txt"
       - name: Verify unchanged archived dependency versions
         run: python research_v1_runtime_archived_env_gate.py
       - name: Verify reviewed upstream candidate merge source lineage
