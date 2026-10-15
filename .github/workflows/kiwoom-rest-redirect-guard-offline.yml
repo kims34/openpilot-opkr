@@ -80,6 +80,8 @@ jobs:
           # account REST, WS socket or REG send prerequisites are absent.
           assert 'WS_LOGIN_MISSING_AUTHENTICATED_PREREQUISITES' in comparator
           assert 'TYPE00_ACK_WITHOUT_AUTHENTICATED_REG' in comparator
+          assert 'WS_LOGIN_FAILURE_MISLABELED_AS_CONNECTED' in comparator
+          assert 'TYPE00_REG_SENT_BEFORE_AUTHENTICATED_LOGIN' in comparator
           assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
           assert 'ORDERING: str = "DISABLED"' in src
           for forbidden in ('/api/dostk/ordr', 'kt10000', 'kt10001', 'kt10002', 'kt10003'):
