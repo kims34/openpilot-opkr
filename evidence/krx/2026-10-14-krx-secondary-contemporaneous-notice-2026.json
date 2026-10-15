@@ -34,5 +34,25 @@
   "m20_profitability_authorized": false,
   "funds_movement_authorized": false,
   "ordering": false,
-  "explanation": "A secondary newspaper publication timestamp can bound when the newspaper article became public, not when KRX first distributed its original notice. It cannot certify any provider empty response occurred on these two dates or attest an as-of historical source for 2015-2026."
+  "explanation": "A secondary newspaper publication timestamp can bound when the newspaper article became public, not when KRX first distributed its original notice. It cannot certify any provider empty response occurred on these two dates or attest an as-of historical source for 2015-2026. Earliest identified independently timestamped secondary Yonhap news was 2026-05-20T10:34+09:00 (24 min before NewsPim). This is a PUBLIC NEWS observation only, distinct from first-issued KRX original document. KRX KIND KONEX announcement is primary-domain but different market.",
+  "earliest_independently_timestamped_secondary": {
+    "publisher": "연합뉴스 Yonhap",
+    "article_url": "https://www.yna.co.kr/amp/view/AKR20260520064200008",
+    "article_published_at_kst": "2026-05-20T10:34:00+09:00",
+    "article_claim_type": "NEWS_REPORT_ATTRIBUTING_ANNOUNCEMENT_TO_KRX_NOT_PRIMARY_KRX_RELEASE",
+    "krx_original_first_release_instant_proven": false,
+    "source_market_scope": "KOSPI_CASH_EQUITIES_REPORTED_SECONDARY_ONLY"
+  },
+  "krx_hosted_different_market_correspondence": {
+    "document_url": "https://kind.krx.co.kr/common/disclsviewer.do?acptNo=20260520000110&docno=&method=searchInitInfo",
+    "source_market": "KONEX_NOT_KOSPI",
+    "notice_date_kst": "2026-05-20",
+    "underlying_cited_closed_dates": [
+      "2026-06-03",
+      "2026-07-17"
+    ],
+    "direct_cash_equity_KOSPI_original_notice_authenticated": false,
+    "notice_timestamp_precision": "DATE_ONLY",
+    "note": "KRX first-party KONEX notice is different trading venue; do not substitute for original KOSPI market proof or infer original exact first publication instant."
+  }
 }
