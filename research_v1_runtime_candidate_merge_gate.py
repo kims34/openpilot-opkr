@@ -34,6 +34,11 @@ EXACT_UPSTREAM_CHANGED_BLOBS = {
     "research_v1_runtime_ci.py": "7306e4f57e0056960452f1991b5c95ba7413f11e",
     "test_research_v1_runtime_ci_integrity.py": "bb2e5d8f81d9052a16005d1b5642598268dd17d8",
 }
+# The independent environment-version attestor is now also bound, so a
+# modified attestor cannot silently declare a different dependency baseline.
+EXACT_LOCAL_ENV_GUARD_BLOBS = {
+    "research_v1_runtime_archived_env_gate.py": "9a7af4ec2f3742448962f76ab4e8fadf8521c9ff",
+}
 EXPECTED_CURRENT_ARCHIVED_MANIFEST = "108f66714602a1bd3ae42c34dcca7c16e38f460b"
 
 
@@ -52,9 +57,12 @@ def strict_candidate_files() -> dict[str, str]:
         k: v for k, v in original.ARCHIVED_DIRECT_IMPLEMENTATION_BLOBS.items()
         if k != "research_v1_runtime_manifest.py"
     })
+    if (set(base).intersection(EXACT_LOCAL_ENV_GUARD_BLOBS)
+            or set(EXACT_UPSTREAM_CHANGED_BLOBS).intersection(EXACT_LOCAL_ENV_GUARD_BLOBS)):
+        raise CandidateLineageError("local archived environment attestor collides with originals")
     if set(base).intersection(EXACT_UPSTREAM_CHANGED_BLOBS):
         raise CandidateLineageError("candidate blobs collide with immutable originals")
-    return {**base, **EXACT_UPSTREAM_CHANGED_BLOBS}
+    return {**base, **EXACT_UPSTREAM_CHANGED_BLOBS, **EXACT_LOCAL_ENV_GUARD_BLOBS}
 
 
 def check_candidate(root: Path, *, base_ref: str, head_ref: str,
@@ -68,7 +76,7 @@ def check_candidate(root: Path, *, base_ref: str, head_ref: str,
     if root.is_symlink() or not root.is_dir():
         raise CandidateLineageError("candidate checkout root missing or symlinked")
     files = strict_candidate_files()
-    if len(files) != 21:
+    if len(files) != 22:
         raise CandidateLineageError("candidate checked source set altered")
     for filename, expected in sorted(files.items()):
         path = root / filename
