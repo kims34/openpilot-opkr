@@ -33,3 +33,33 @@ A formal TH/TD heading with `당분기`/`전분기`, even if discovered, does **
 Follow-up code+tests+workflow commit `bb61dc5da281c1a0388575de3e13e9cc30caa5a0` explicitly **classifies unsupported span attributes as UNVERIFIED**, records only their counts, and preserves strict false flags for `original_profit_numeric_column_assignment_verified`, source accounting/CFS/period PIT and all trading permissions. An unsupported span in a profit candidate table is separately counted; other tables cannot transfer their layout uncertainty to a selected operating-income row, yet the full accounting association remains unverified regardless. Synthetic tests include out-of-range `colspan` and `rowspan=0` with no raw attributes released.
 
 [Repaired official Actions #38822004271](https://github.com/kims34/openpilot-opkr/actions/runs/38822004271) has **offline tests PASSED** and official source query was **in progress when written**. Do not claim its source counts or success until the completed run and counts-only artifact can be verified.
+
+
+## 2026-10-16 finalized official source outcome — PASS, original PIT remains BLOCKED
+
+The first official [Actions #38821429470](https://github.com/kims34/openpilot-opkr/actions/runs/38821429470) passed offline tests but **failed its official read-only source test** with `HEADER_CELL_SPAN_INVALID`. This was a bounded parser incompatibility with one or more DART viewer rowspan/colspan source attributes; it was **not** a verified issuer accounting error.
+
+Guarded follow-up source/test/workflow commit `bb61dc5da281c1a0388575de3e13e9cc30caa5a0` reclassifies unsupported cell spans as COUNTED UNKNOWN LAYOUT without interpreting them as column assignments. [Official revised run #38822004271](https://github.com/kims34/openpilot-opkr/actions/runs/38822004271) **completed SUCCESS for both offline and actual original-receipt DART source jobs** (max 2 official registry/list calls and 5 source-only public viewer GETs).
+
+| Fixed first-edition, four-financial-section source-only metric | Official result |
+|---|---:|
+| Financial-viewer HTML tables | 329 |
+| Exact-label operating-income candidate tables / rows | 2 / 2 |
+| Candidate rows with four numeric-looking peer cells | 2 |
+| Candidate rows with at least one preceding `TH` header cell | 2 |
+| Candidate rows with any `당분기` or `전분기` wording in earlier rows | 2 |
+| Candidate rows with **both** `당분기` and `전분기` in earlier rows | **0** |
+| Candidate rows with both quarter terms within the **same** earlier row | 0 |
+| Candidates with earlier `3개월` literal | 0 |
+| Candidates with earlier `누적` literal | 0 |
+| Candidates with earlier `3분기` literal | 0 |
+| Candidates with earlier merged `TH`/`TD` cells | 2 |
+| Unsupported span attributes anywhere in the 329 tables | 2 |
+| Unsupported span attributes in candidate operating-income tables | **0** |
+| Candidate operating rows in nested tables | 0 |
+
+The earlier whole-table text test detected one profit table with both `당분기` and `전분기` **somewhere within its text**, but **none** of the exact profit candidates has both terms in rows *preceding* that profit row. This proves no numeric cell-to-three-month header grouping and cannot select a value. The two unsupported span attributes did not occur within the two profit candidate tables; exact raw span syntax, table location and financial amounts were intentionally not persisted.
+
+Counts-only official artifact `12013358036`, sha256 `9c6aa171cf30902a502b611096587389d5ba5d8d99aadec5300d92fba1ebef66` (7-day retention). No original source/issuer/receipt, row/cell text, amounts, exact coordinates or credentials stored.
+
+**NO-GO** for original 2022 and 2021 Q3 standalone three-month CFS operating-profit account/period/units/column facts and first-publication time; historical corporate/security PIT and original-to-correction cell lineage remain unverified. Earlier initial standardized XBRL was `014`; current normalized API separately unavailable (`013/014` class). `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `champion_change_authorized=false`, no real orders/funds/account changes and `ORDERING=DISABLED`. Frozen H5/M20 unchanged, Draft PR #412 unmerged. Next investigation must use independently versioned original structured accounting evidence rather than repeating weaker lexical proximity searches.
