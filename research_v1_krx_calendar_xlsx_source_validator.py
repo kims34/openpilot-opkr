@@ -84,6 +84,11 @@ def date_style_indices(root):
         for item in parent.findall(SS+"numFmt"):
             idx = int(item.attrib.get("numFmtId", "-1"))
             fmt = item.attrib.get("formatCode","").lower()
+            # OOXML custom formats must use IDs >=164. Overriding a
+            # built-in date number format is ambiguous: the display may
+            # not match the nominal built-in date ID.
+            if idx < 164 or idx in fmts:
+                raise ValueError("DUPLICATE_OR_RESERVED_CUSTOM_NUMFMT")
             fmts[idx] = fmt
     xfs = root.find(SS+"cellXfs")
     if xfs is None:
@@ -96,7 +101,11 @@ def date_style_indices(root):
         # establish that a human could read this numeric serial as the
         # exact YYYY-MM-DD day. Arbitrary/quoted/conditional custom formats
         # must never be accepted based on substrings of a format string.
-        if idx in BUILTIN_DATE_FORMAT_IDS or fmt in FULL_DATE_FORMAT_CODES:
+        # applyNumberFormat=0 explicitly disables use of the numFmtId
+        # for this cellXfs entry; date-like style metadata alone cannot
+        # establish that the date is visible in Excel.
+        if (xf.attrib.get("applyNumberFormat", "").lower() not in ("0","false")
+                and (idx in BUILTIN_DATE_FORMAT_IDS or fmt in FULL_DATE_FORMAT_CODES)):
             good.add(i)
     return good
 
