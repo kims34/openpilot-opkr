@@ -15,7 +15,8 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               bad_style=False,second_sheet=False,extra_path=None,external=False,
               hidden=False,mislinked=False,hidden_row=False,hidden_column=False,
               filtered=False,merged=False,zero_height=False,row_ht_zero=False,
-              serial_builtin_id=14,serial_custom_format=None):
+              serial_builtin_id=14,serial_custom_format=None,
+              date_style_applied=None,override_builtin_numfmt=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -37,12 +38,17 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
     state=' state="hidden"' if hidden else ""
     sheet2='<sheet name="Second" sheetId="2"/>' if second_sheet else ""
     w=f'<workbook xmlns="{S}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Holidays" sheetId="1" r:id="rId1"{state}/>{sheet2}</sheets></workbook>'
-    fmt=(f'<numFmts count="1"><numFmt numFmtId="164" '
-         f'formatCode="{escape(serial_custom_format, quote=True)}"/></numFmts>'
-         if serial_custom_format is not None else "")
+    override=("0" if override_builtin_numfmt else "164")
+    custom=(serial_custom_format if serial_custom_format is not None
+            else "0.00")
+    fmt=(f'<numFmts count="1"><numFmt numFmtId="{override}" '
+         f'formatCode="{escape(custom, quote=True)}"/></numFmts>'
+         if serial_custom_format is not None or override_builtin_numfmt else "")
     date_id=164 if serial_custom_format is not None else serial_builtin_id
+    apply_attr=(' applyNumberFormat="'+date_style_applied+'"'
+                if date_style_applied is not None else "")
     styles=(f'<styleSheet xmlns="{S}">{fmt}<cellXfs count="2">'
-            f'<xf numFmtId="0"/><xf numFmtId="{date_id}"/>'
+            f'<xf numFmtId="0"/><xf numFmtId="{date_id}"{apply_attr}/>'
             f'</cellXfs></styleSheet>')
     content_types='<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>'
     with BytesIO() as output:
@@ -178,6 +184,25 @@ class XlsxSourceRows(unittest.TestCase):
                 self.assertEqual(
                     check(raw,claim(raw),2026)["status"],
                     "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+
+    def test_numeric_date_style_explicitly_disabled_must_not_pass(self):
+        for applied in ("0","false","FALSE"):
+            with self.subTest(applied=applied):
+                raw=make_book(serial=True,date_style_applied=applied)
+                x=check(raw,claim(raw),2026)
+                self.assertEqual(x["status"],
+                    "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertFalse(x["exchange_session_source_admitted"])
+        raw=make_book(serial=True,date_style_applied="1")
+        self.assertEqual(check(raw,claim(raw),2026)["status"],
+                         "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+
+    def test_custom_format_may_not_shadow_reserved_excel_date_style(self):
+        raw=make_book(serial=True,override_builtin_numfmt=True)
+        x=check(raw,claim(raw),2026)
+        self.assertEqual(x["status"],
+                         "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+        self.assertFalse(x["original_krx_provider_authenticated"])
 
     def test_xlsx_wrong_year_or_opaque_xls_rejected(self):
         raw=make_book()
