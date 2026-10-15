@@ -20,6 +20,8 @@ def state(*, stage="WS_LOGIN", code=805004, detail=8050, token_ok=True,
         "ACCOUNT_ENDPOINT_OK": account_ok,
         "WS_CONNECTED": token_ok and account_ok,
         "WS_LOGIN_OK": login_ok,
+        "WS_LOGIN_USED_ISSUED_TOKEN": login_ok,
+        "TOKEN_AGE_SECONDS_AT_WS_LOGIN": 0 if login_ok else None,
         "TYPE00_REG_SENT": ack_ok,
         "TYPE00_REG_ACK_OK": ack_ok,
         "REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN": account_ok,
@@ -104,6 +106,12 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
             dict(valid, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False),
             dict(valid, WS_CONNECTED=False),
             dict(valid, TYPE00_REG_SENT=False),
+            dict(valid, WS_LOGIN_USED_ISSUED_TOKEN=False),
+            dict(valid, WS_LOGIN_USED_ISSUED_TOKEN=None),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=None),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=-1),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=True),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=3601),
         ]:
             with self.subTest(mutation=mutation):
                 with self.assertRaises(probe.DiagnosticError):
@@ -154,6 +162,12 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
         # A 805004 / 8050 LOGIN denial is not a successful authenticated WS.
         denied = state(stage="WS_LOGIN", code=805004, detail=8050)
         self.assertFalse(probe._safe_summary(json.dumps(denied), 2, "system")["WS_LOGIN_OK"])
+        for bad_age in (-1, True, 3601, "0"):
+            with self.subTest(bad_age=bad_age):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(dict(
+                        denied, TOKEN_AGE_SECONDS_AT_WS_LOGIN=bad_age
+                    )), 2, "system")
         for inconsistent in (
             dict(denied, WS_LOGIN_OK=True),
             dict(denied, TYPE00_REG_SENT=True),
@@ -235,6 +249,8 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                 raise ReadOnlySmokeError("WS_LOGIN", 805004, 8050, "DEVICE_AUTH")
             if policy != "direct":
                 raise AssertionError("unexpected route")
+            state.WS_LOGIN_USED_ISSUED_TOKEN = True
+            state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = 0
             state.WS_LOGIN_OK = True
             state.TYPE00_REG_SENT = True
             state.TYPE00_REG_ACK_OK = True
