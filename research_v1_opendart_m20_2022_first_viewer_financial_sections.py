@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 
 from research_v1_opendart_m20_2022_first_viewer_toc import (
-    NODE, RECEIPT, VIEWER_URL, _viewer_fetch, ViewerGap,
+    NODE, RECEIPT, VIEWER_URL, _viewer_fetch, _safe_counts, ViewerGap,
     MAX_ITEMS, MAX_BYTES,
 )
 from research_v1_opendart_lineage_pilot import _official_get
@@ -59,6 +59,13 @@ class SectionGap(ValueError):
 def _choose_first_edition_sections(html: str, first: str) -> list[dict]:
     if not RECEIPT.fullmatch(first) or len(html) > MAX_BYTES:
         raise SectionGap("ORIGINAL_VIEWER_INPUT_INVALID")
+    # Apply the upstream original-edition identity guard to the entire viewer
+    # before accepting a subset of its financial nodes. Otherwise an amended
+    # rcpNo assignment on a malformed nonfinancial record could be skipped.
+    try:
+        _safe_counts(html, first)
+    except ViewerGap:
+        raise SectionGap("VIEWER_RECEIPT_EDITION_MISMATCH") from None
     matches = list(NODE.finditer(html))
     if not 0 < len(matches) <= MAX_ITEMS:
         raise SectionGap("ORIGINAL_VIEWER_TOC_UNAVAILABLE")
