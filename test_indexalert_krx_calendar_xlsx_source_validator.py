@@ -1,6 +1,7 @@
 """Synthetic XLSX byte-level source binding with no third party deps/network."""
 import hashlib
 from io import BytesIO
+from html import escape
 import unittest
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -13,7 +14,8 @@ OTHER="2026-07-17"
 def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               bad_style=False,second_sheet=False,extra_path=None,external=False,
               hidden=False,mislinked=False,hidden_row=False,hidden_column=False,
-              filtered=False,merged=False,zero_height=False,row_ht_zero=False):
+              filtered=False,merged=False,zero_height=False,row_ht_zero=False,
+              serial_builtin_id=14,serial_custom_format=None):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -35,7 +37,13 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
     state=' state="hidden"' if hidden else ""
     sheet2='<sheet name="Second" sheetId="2"/>' if second_sheet else ""
     w=f'<workbook xmlns="{S}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Holidays" sheetId="1" r:id="rId1"{state}/>{sheet2}</sheets></workbook>'
-    styles=f'<styleSheet xmlns="{S}"><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>'
+    fmt=(f'<numFmts count="1"><numFmt numFmtId="164" '
+         f'formatCode="{escape(serial_custom_format, quote=True)}"/></numFmts>'
+         if serial_custom_format is not None else "")
+    date_id=164 if serial_custom_format is not None else serial_builtin_id
+    styles=(f'<styleSheet xmlns="{S}">{fmt}<cellXfs count="2">'
+            f'<xf numFmtId="0"/><xf numFmtId="{date_id}"/>'
+            f'</cellXfs></styleSheet>')
     content_types='<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>'
     with BytesIO() as output:
         with ZipFile(output,mode="w",compression=ZIP_DEFLATED) as z:
@@ -133,6 +141,43 @@ class XlsxSourceRows(unittest.TestCase):
         self.assertEqual(x["status"],"SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
         raw=make_book(serial=True,bad_style=True)
         self.assertTrue(check(raw,claim(raw),2026)["status"].startswith("FAIL_CLOSED"))
+
+    def test_partial_excel_date_styles_no_year_or_day_rejected(self):
+        # Microsoft Open XML builtin 16 = d-mmm; 17 = mmm-yy.
+        # Both display an incomplete calendar date even though the serial
+        # contains the hidden missing part.
+        for builtin in (16,17):
+            with self.subTest(builtin=builtin):
+                raw=make_book(serial=True,serial_builtin_id=builtin)
+                result=check(raw,claim(raw),2026)
+                self.assertEqual(
+                    result["status"],
+                    "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+
+    def test_custom_format_literal_injection_is_not_full_calendar_date(self):
+        for fmt in ('0"yyyy-mm-dd"', 'yyyy"some"mm-dd',
+                    '0"yyyy""mm""dd"', '[Red]yyyy-mm-dd',
+                    'yyyy-mm-dd;@', '"yyyy-mm-dd"'):
+            with self.subTest(fmt=fmt):
+                raw=make_book(serial=True,serial_custom_format=fmt)
+                self.assertTrue(
+                    check(raw,claim(raw),2026)["status"].startswith("FAIL_CLOSED"))
+
+    def test_complete_date_styles_still_valid(self):
+        # 14 and 15 show full dates in built-in formats; 55 is a Korean
+        # built-in yyyy-mm-dd / yyyy/mm/dd display.
+        for builtin in (14,15,22,55):
+            with self.subTest(builtin=builtin):
+                raw=make_book(serial=True,serial_builtin_id=builtin)
+                self.assertEqual(
+                    check(raw,claim(raw),2026)["status"],
+                    "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+        for fmt in ("yyyy-mm-dd","yyyy/mm/dd","yyyy.mm.dd","dd/mm/yyyy"):
+            with self.subTest(fmt=fmt):
+                raw=make_book(serial=True,serial_custom_format=fmt)
+                self.assertEqual(
+                    check(raw,claim(raw),2026)["status"],
+                    "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
 
     def test_xlsx_wrong_year_or_opaque_xls_rejected(self):
         raw=make_book()
