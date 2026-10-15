@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned parser import dependencies (offline test has no network calls)
+        run: pip install requests==2.32.3 defusedxml==0.7.1
       - name: Compile strict DART viewer TOC parsing
         run: |
           python -m py_compile research_v1_opendart_m20_2022_first_viewer_toc.py test_research_v1_opendart_m20_2022_first_viewer_toc.py
