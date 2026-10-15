@@ -186,6 +186,8 @@ jobs:
                       raise SystemExit("Unsafe Windows diagnostic report")
 
           check_safe_result(proc, "LOCAL_CREDENTIALS_NOT_FOUND")
+          if proc.returncode != 2:
+              raise SystemExit("CMD incorrectly reported successful exit after missing-key rejection")
           # An ordering-enabled local shell must reject the unsafe toggle
           # *before* checking whether REAL API credentials exist.
           # This re-executes the ZIP's CMD entrypoint on actual Windows.
@@ -196,6 +198,8 @@ jobs:
               timeout=35, errors="replace", env=env_unsafe,
           )
           check_safe_result(proc_unsafe, "ORDERING_MUST_BE_DISABLED")
+          if proc_unsafe.returncode != 2:
+              raise SystemExit("CMD incorrectly reported successful exit after ORDERING rejection")
           # No REAL credentials were ever present in either case; no broker
           # transport is permitted. Print only the stable attestation.
           print("WINDOWS_PACKAGED_CMD_NO_CREDENTIALS_FAIL_CLOSED=PASS")
