@@ -132,5 +132,31 @@ class ViewerFinancialSectionTests(unittest.TestCase):
         self.assertFalse(result["real_orders_authorized"])
 
 
+    def test_hidden_revised_receipt_behind_valid_financial_sections_rejected(self):
+        # A malformed/nonfinancial extra node must not smuggle a corrected
+        # edition receipt past the four otherwise valid first-original items.
+        altered = (sections()[:-16] +
+                   "node2['rcpNo'] = '20230401000001';</script></html>")
+        with self.assertRaisesRegex(p.SectionGap,
+                                    "VIEWER_RECEIPT_EDITION_MISMATCH"):
+            p._choose_first_edition_sections(altered, FIRST)
+
+    def test_cross_node_financial_title_not_bound_to_other_document_fields(self):
+        mixed = node("연결재무제표", 1).replace(
+            "node1['text']", "node2['text']")
+        with self.assertRaisesRegex(p.SectionGap,
+                                    "VIEWER_RECEIPT_EDITION_MISMATCH"):
+            p._choose_first_edition_sections(
+                "<html><script>" + mixed + "</script></html>", FIRST)
+
+    def test_genuine_four_original_financial_sections_no_pit_authorization(self):
+        result = p._choose_first_edition_sections(sections(), FIRST)
+        self.assertEqual(len(result), 4)
+        self.assertTrue(all(v["receipt"] == FIRST for v in result))
+        self.assertFalse(p.SAFE["m20_feature_pit_admitted"])
+        self.assertFalse(p.SAFE["original_2022_cfs_profit_three_month_verified"])
+        self.assertEqual(p.SAFE["ordering"], "DISABLED")
+
+
 if __name__ == "__main__":
     unittest.main()
