@@ -126,9 +126,19 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
     # Historical anomalies require an exact captured-day SHA in this review.
     # The pinned 2026 prospective failure-day quarantine is a separate source
     # horizon and MUST NOT be inferred from the 2017-2022 90-date calendar.
+    historical_anomaly_counts: dict[str, int] = {}
     for day, token in bad:
-        if day != PROSPECTIVE_FAILURE_DAY and day not in scope:
+        if day == PROSPECTIVE_FAILURE_DAY:
+            continue
+        if day not in scope:
             raise EvidenceNotAdmitted("historical anomaly missing raw day scope")
+        historical_anomaly_counts[day] = historical_anomaly_counts.get(day, 0) + 1
+        # A per-security OHLC anomaly is an actual source row, not a date-only
+        # metadata claim. A day with no raw rows cannot contain that anomaly,
+        # and distinct anomalous securities cannot outnumber captured rows.
+        if historical_anomaly_counts[day] > raw[day]["daily_row_count"]:
+            raise EvidenceNotAdmitted(
+                "historical price-anomaly evidence exceeds captured source rows")
     for d, row in cal.items():
         n = raw[d]["daily_row_count"]
         if row["session"] == "CLOSED" and n > 0:
