@@ -55,6 +55,7 @@ COUNT_KEYS = (
     "operating_with_direct_numeric_cells_and_four_peers",
     "operating_candidate_in_nested_table",
     "operating_candidate_table_has_nested_child",
+    "operating_candidate_tables_with_unsupported_span",
 )
 
 PIT_BLOCK = {
@@ -91,6 +92,7 @@ class HeaderRows(HTMLParser):
         self.nodes = 0
         self.input_chars = 0
         self.counts = {k: 0 for k in COUNT_KEYS}
+        self.unsupported_span_cells = 0
 
     def _close_cell(self, f):
         if f["cell"] is None:
@@ -127,6 +129,7 @@ class HeaderRows(HTMLParser):
         self.counts["operating_candidate_tables"] += 1
         self.counts["operating_candidate_in_nested_table"] += bool(f["nested"])
         self.counts["operating_candidate_table_has_nested_child"] += bool(f["child"])
+        self.counts["operating_candidate_tables_with_unsupported_span"] += bool(f["span_unknown"])
         for index, row in candidates:
             self.counts["operating_candidate_rows"] += 1
             direct = any(c["value"] in LABELS for c in row[:2])
@@ -169,7 +172,8 @@ class HeaderRows(HTMLParser):
             if self.frames:
                 self.frames[-1]["child"] = True
             self.frames.append({"nested": bool(self.frames), "child": False,
-                                "rows": [], "row": [], "cell": None})
+                                "rows": [], "row": [], "cell": None,
+                                "span_unknown": False})
         elif tag == "tr" and self.frames:
             self._close_row(self.frames[-1])
         elif tag in ("td", "th") and self.frames:
@@ -181,9 +185,17 @@ class HeaderRows(HTMLParser):
             for attr in ("colspan", "rowspan"):
                 value = kv.get(attr)
                 if value is not None:
-                    if not str(value).isdigit() or not 1 <= int(value) <= MAX_CELLS_PER_ROW:
-                        raise SectionGap("HEADER_CELL_SPAN_INVALID")
-                    merged |= int(value) > 1
+                    # Unknown SGML/HTML span syntax is evidence of ambiguous
+                    # layout, NOT permission to infer an accounting column.
+                    valid = (type(value) is str and value.isascii()
+                             and value.isdecimal()
+                             and len(value) <= 3
+                             and 1 <= int(value) <= MAX_CELLS_PER_ROW)
+                    if not valid:
+                        f["span_unknown"] = True
+                        self.unsupported_span_cells += 1
+                    else:
+                        merged |= int(value) > 1
             f["cell"] = {"parts": [], "n": 0, "tag": tag, "merged": merged}
 
     def handle_data(self, value):
@@ -215,7 +227,11 @@ class HeaderRows(HTMLParser):
             raise SectionGap("HEADER_TABLE_UNBALANCED")
         if self.counts["operating_candidate_tables"] > self.tables:
             raise SectionGap("HEADER_CANDIDATE_COUNT_INVALID")
-        return {"table_tags": self.tables, **self.counts}
+        return {
+            "table_tags": self.tables,
+            "unsupported_span_attributes_encountered": self.unsupported_span_cells,
+            **self.counts,
+        }
 
 
 def inspect(session, toc: str, first: str) -> dict:
@@ -235,6 +251,11 @@ def inspect(session, toc: str, first: str) -> dict:
         "source_status": "FIRST_RECEIPT_VIEWER_HEADER_ROW_SHAPES_ONLY",
         "fixed_first_filing_financial_subdocuments": len(pages),
         "source_table_tags": sum(page["table_tags"] for page in pages),
+        "unsupported_span_attributes_encountered": sum(
+            page["unsupported_span_attributes_encountered"] for page in pages
+        ),
+        "any_unsupported_span_makes_column_geometry_unverified": True,
+        "original_profit_numeric_column_assignment_verified": False,
         **report,
         "header_word_column_or_group_identity_verified": False,
         "viewer_header_row_is_not_original_accounting_fact": True,
@@ -277,7 +298,7 @@ def run(session=None) -> dict:
         codes = {
             "HEADER_CELL_COUNT_LIMIT", "HEADER_ROW_COUNT_LIMIT",
             "HEADER_HTML_NODE_LIMIT", "HEADER_TABLE_COUNT_LIMIT",
-            "HEADER_CELL_SPAN_INVALID", "HEADER_SOURCE_TEXT_LIMIT",
+            "HEADER_SOURCE_TEXT_LIMIT",
             "HEADER_CELL_TEXT_LIMIT", "HEADER_TABLE_UNBALANCED",
             "HEADER_CANDIDATE_COUNT_INVALID", "HEADER_FOUR_FIRST_SECTIONS_REQUIRED",
             "HEADER_ORIGINAL_ROW_CANDIDATES_DRIFT", "HEADER_FROZEN_ISSUER_MISSING",

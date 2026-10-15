@@ -58,6 +58,10 @@ jobs:
           assert 0<x["source_table_tags"]<=2000
           assert x["header_word_column_or_group_identity_verified"] is False
           assert x["viewer_header_row_is_not_original_accounting_fact"] is True
+          assert x["any_unsupported_span_makes_column_geometry_unverified"] is True
+          assert x["original_profit_numeric_column_assignment_verified"] is False
+          assert type(x["unsupported_span_attributes_encountered"]) is int
+          assert 0<=x["unsupported_span_attributes_encountered"]<=900000
           assert x["ordering"] == "DISABLED"
           for k in ("first_filing_immutable_viewer_snapshot_verified",
                     "original_cfs_identity_and_profit_colmap_verified",
@@ -85,7 +89,8 @@ jobs:
                 "operating_with_preceding_colspan_or_rowspan",
                 "operating_with_direct_numeric_cells_and_four_peers",
                 "operating_candidate_in_nested_table",
-                "operating_candidate_table_has_nested_child")
+                "operating_candidate_table_has_nested_child",
+                "operating_candidate_tables_with_unsupported_span")
           assert 0<x["operating_candidate_tables"]<=10
           for k in keys:
             assert type(x[k]) is int and 0<=x[k]<=20,k

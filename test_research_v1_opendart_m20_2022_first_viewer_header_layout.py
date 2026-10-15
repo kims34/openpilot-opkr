@@ -72,9 +72,19 @@ class HeaderRowLayoutTests(unittest.TestCase):
             with self.assertRaisesRegex(p.SectionGap,"HEADER_CELL_TEXT_LIMIT"):
                 self.scan(table())
 
-    def test_invalid_spans_not_quarter_column_proof(self):
-        with self.assertRaisesRegex(p.SectionGap,"HEADER_CELL_SPAN_INVALID"):
-            self.scan(table("<tr><th colspan='10000'>3개월</th></tr>"))
+    def test_invalid_spans_keep_original_column_geometry_unverified(self):
+        z=self.scan(table("<tr><th colspan='10000'>3개월</th>"
+                          "<th rowspan='0'>당분기</th></tr>"))
+        self.assertEqual(z["unsupported_span_attributes_encountered"],2)
+        self.assertEqual(z["operating_candidate_tables_with_unsupported_span"],1)
+        self.assertEqual(z["operating_with_preceding_three_month_word"],1)
+        self.assertEqual(z["operating_with_preceding_colspan_or_rowspan"],0)
+
+    def test_invalid_span_in_other_table_not_attributed_to_operating_row(self):
+        z=self.scan("<table><tr><th rowspan='1000'>기타</th></tr></table>"
+                    +table())
+        self.assertEqual(z["unsupported_span_attributes_encountered"],1)
+        self.assertEqual(z["operating_candidate_tables_with_unsupported_span"],0)
 
     def test_four_exact_first_receipt_sections_and_safe_aggregate(self):
         sections=[{"receipt":FIRST,"document":"1","element":str(i),
@@ -92,6 +102,8 @@ class HeaderRowLayoutTests(unittest.TestCase):
         self.assertEqual(result["operating_candidate_tables"],2)
         self.assertEqual(result["operating_with_preceding_current_and_prior_quarter_words"],1)
         self.assertFalse(result["header_word_column_or_group_identity_verified"])
+        self.assertFalse(result["original_profit_numeric_column_assignment_verified"])
+        self.assertTrue(result["any_unsupported_span_makes_column_geometry_unverified"])
         self.assertTrue(result["viewer_header_row_is_not_original_accounting_fact"])
         for raw in ("100",FIRST,"dart3.xsd"):
             self.assertNotIn(raw,str(result))
