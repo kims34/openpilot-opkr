@@ -14,6 +14,13 @@ DATE = re.compile(r"20(?:17|18|19|20|21|22)-\d{2}-\d{2}\Z")
 # Independently observed KRX prospective H5 FAIL_CLOSED source-failure session.
 # Deliberately NOT a historical 2017-2022 market-calendar exception day.
 PROSPECTIVE_FAILURE_DAY = "2026-09-28"
+# Korean exchange announced new substitute-market closures on 2021-08-04;
+# the 2020-12-28 prospective 2021 holiday list did not include these days.
+# These calendar dates alone do NOT prove the private original pair content.
+KRX_2021_ADDED_CLOSURES = frozenset((
+    "2021-08-16", "2021-10-04", "2021-10-11",
+))
+KRX_2021_ANNOUNCEMENT_DATE = "2021-08-04"
 MARKET = frozenset(("OPEN", "CLOSED"))
 STOCK = frozenset(("SUSPENDED", "DELISTED", "LISTED", "UNKNOWN"))
 MAX_DAYS = 1565
@@ -139,6 +146,17 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
         if historical_anomaly_counts[day] > raw[day]["daily_row_count"]:
             raise EvidenceNotAdmitted(
                 "historical price-anomaly evidence exceeds captured source rows")
+    # Historical exchange closure announcement was issued 2021-08-04.
+    # Reject any captured *trade* rows on those dates. Keep provenance PIT
+    # and the remaining 87/90 dates unverified until full original date audit.
+    revised_2021_scope = scope.intersection(KRX_2021_ADDED_CLOSURES)
+    for d in revised_2021_scope:
+        if raw[d]["daily_row_count"] != 0:
+            raise EvidenceNotAdmitted(
+                "captured trades conflict with 2021 KRX added market closure")
+        if d in cal and cal[d]["session"] != "CLOSED":
+            raise EvidenceNotAdmitted(
+                "2021 added exchange closure conflicts with calendar claim")
     for d, row in cal.items():
         n = raw[d]["daily_row_count"]
         if row["session"] == "CLOSED" and n > 0:
@@ -155,6 +173,15 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
         "calendar_claimed_open": sum(x["session"] == "OPEN" for x in cal.values()),
         "calendar_claimed_closed": sum(x["session"] == "CLOSED" for x in cal.values()),
         "calendar_unresolved": len(dates) - len(cal),
+        "krx_2021_later_added_closure_notice_date": KRX_2021_ANNOUNCEMENT_DATE,
+        "krx_2021_later_added_closure_dates_in_source_scope": len(
+            revised_2021_scope
+        ),
+        "krx_2021_later_added_closure_dates_missing_from_source_scope": (
+            len(KRX_2021_ADDED_CLOSURES) - len(revised_2021_scope)
+        ),
+        "krx_2021_later_added_closures_not_pit_source_admission": True,
+        "historical_2021_official_calendar_fully_reconciled": False,
         "nonpositive_ohlc_rows_quarantined": len(bad),
         "prospective_source_failure_session": PROSPECTIVE_FAILURE_DAY,
         "prospective_nonpositive_ohlc_rows_quarantined": sum(
