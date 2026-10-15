@@ -12,7 +12,8 @@ DATE="2026-06-03"
 OTHER="2026-07-17"
 def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               bad_style=False,second_sheet=False,extra_path=None,external=False,
-              hidden=False,mislinked=False):
+              hidden=False,mislinked=False,hidden_row=False,hidden_column=False,
+              filtered=False,merged=False,zero_height=False,row_ht_zero=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -23,7 +24,14 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
         a2='<c r="A2"><f>DATE(2026,6,3)</f><v>46176</v></c>'
     r2=a2+cell("B2","수")+cell("C2","선거일")
     r3=cell("A3",d1 if duplicate else d2)+cell("B3","수" if duplicate else "금")+cell("C3","휴장")
-    xml=f'<worksheet xmlns="{S}"><sheetData><row r="1">{hdr}</row><row r="2">{r2}</row><row r="3">{r3}</row></sheetData></worksheet>'
+    row_attr=' hidden="1"' if hidden_row else (' ht="0"' if row_ht_zero else "")
+    cols='<cols><col min="1" max="1" hidden="true"/></cols>' if hidden_column else ""
+    filt='<autoFilter ref="A1:C3"/>' if filtered else ""
+    merge='<mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>' if merged else ""
+    fmt='<sheetFormatPr zeroHeight="true"/>' if zero_height else ""
+    xml=(f'<worksheet xmlns="{S}">{fmt}{cols}<sheetData>'
+         f'<row r="1">{hdr}</row><row r="2"{row_attr}>{r2}</row>'
+         f'<row r="3">{r3}</row></sheetData>{filt}{merge}</worksheet>')
     state=' state="hidden"' if hidden else ""
     sheet2='<sheet name="Second" sheetId="2"/>' if second_sheet else ""
     w=f'<workbook xmlns="{S}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Holidays" sheetId="1" r:id="rId1"{state}/>{sheet2}</sheets></workbook>'
@@ -95,6 +103,28 @@ class XlsxSourceRows(unittest.TestCase):
                      {"extra_path":"xl/externalLinks/link1.xml"},{"mislinked":True}):
             raw=make_book(**opts)
             self.assertTrue(check(raw,claim(raw),2026)["status"].startswith("FAIL_CLOSED"))
+
+    def test_invisible_or_filtered_date_rows_cannot_pass_human_visible_source_claim(self):
+        # A sidecar can accurately list XML rows but still misrepresent
+        # what an operator sees if a KRX holiday row/column was hidden.
+        for opts in ({"hidden_row":True},{"hidden_column":True},
+                     {"filtered":True},{"merged":True},
+                     {"zero_height":True},{"row_ht_zero":True}):
+            with self.subTest(opts=opts):
+                raw=make_book(**opts)
+                result=check(raw,claim(raw),2026)
+                self.assertEqual(
+                    result["status"],
+                    "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertFalse(result["exchange_session_source_admitted"])
+                self.assertEqual(result["parsed_source_days"],0)
+
+    def test_normal_visible_xlsx_still_reconciles_without_metadata_claiming_pit(self):
+        raw=make_book()
+        result=check(raw,claim(raw),2026)
+        self.assertEqual(result["status"],
+                         "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+        self.assertFalse(result["original_publication_pit_attested"])
 
     def test_excel_serial_requires_date_style(self):
         raw=make_book(serial=True)
