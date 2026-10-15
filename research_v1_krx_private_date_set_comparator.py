@@ -211,11 +211,11 @@ def audit_private_scope(
         # historical annual SHA receipt. Only synthetic callbacks can omit
         # the SHA, and those ALWAYS return SYNTHETIC status.
         if (type(expected_original_audit_snapshot_sha256) is not str
-        or not SHA.fullmatch(expected_original_audit_snapshot_sha256)
-        or type(expected_empty_count) is not int or expected_empty_count < 0
-        or not isinstance(reference_closed_iso_days, list)
-        or not reference_closed_iso_days):
-        return {"status": "FAIL_CLOSED_UNPINNED_PRIVATE_ORIGINAL_RECEIPTS", **BLOCK}
+                or not SHA.fullmatch(expected_original_audit_snapshot_sha256)
+                or type(expected_empty_count) is not int or expected_empty_count < 0
+                or not isinstance(reference_closed_iso_days, list)
+                or not reference_closed_iso_days):
+            return {"status": "FAIL_CLOSED_UNPINNED_PRIVATE_ORIGINAL_RECEIPTS", **BLOCK}
         from research_v1_krx_openapi_private_integrity_audit import (
             _check_one, _trusted_private_root,
         )
