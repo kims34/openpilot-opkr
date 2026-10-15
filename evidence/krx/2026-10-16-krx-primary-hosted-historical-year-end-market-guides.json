@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "observed_date_kst": "2026-10-16",
+  "purpose": "PRIMARY_KRX_KIND_HOSTED_HANDBOOK_YEAR_END_YEAR_SPECIFIC_CASH_MARKET_EVENTS_NOT_COMPLETE_2015_2026_PIT",
+  "market": "KOSPI_CASH_EQUITIES",
+  "records": [
+    {
+      "market_event_year": 2023,
+      "source_url": "https://kind.krx.co.kr/external/dst/reference/10827/%EC%9C%A0%EA%B0%80%EC%A6%9D%EA%B6%8C%EC%8B%9C%EC%9E%A5%20%EA%B3%B5%EC%8B%9C_%EC%83%81%EC%9E%A5%20%EC%97%85%EB%AC%B4%ED%95%B4%EC%84%A4%EC%84%9C.pdf",
+      "source_document_kind": "KRX_KIND_HOSTED_KOSPI_DISCLOSURE_LISTING_GUIDE",
+      "market_event_section": "2023_YEAR_END_DIVIDEND_PRICE_FORMULA_CALENDAR_EXAMPLE",
+      "year_end_last_trading_date": "2023-12-28",
+      "year_end_closed_weekday": "2023-12-29",
+      "source_observation": "FIRST_PARTY_DOMAIN_SEARCH_INDEX_PDF_TEXT_ONLY_TOO_LARGE_FOR_FULL_PAGE_OPEN",
+      "source_page_visually_checked": false,
+      "actual_original_pdf_bytes_sha256_verified": false,
+      "original_document_first_available_at_instant_verified": false,
+      "document_contemporaneous_to_market_event_verified": false,
+      "private_original_source_day_row_sha_compared": false,
+      "claims_full_year_calendar": false
+    },
+    {
+      "market_event_year": 2025,
+      "source_url": "https://kind.krx.co.kr/external/dst/reference/11635/%EC%9C%A0%EA%B0%80%EC%A6%9D%EA%B6%8C%EC%8B%9C%EC%9E%A5%20%EA%B3%B5%EC%8B%9C_%EC%83%81%EC%9E%A5%20%EC%97%85%EB%AC%B4%ED%95%B4%EC%84%A4%EC%84%9C.pdf",
+      "source_document_kind": "KRX_KIND_HOSTED_KOSPI_DISCLOSURE_LISTING_GUIDE",
+      "market_event_section": "2025_YEAR_END_DIVIDEND_PRICE_FORMULA_CALENDAR_EXAMPLE",
+      "page_zero_based": 95,
+      "year_end_last_trading_date": "2025-12-30",
+      "year_end_closed_weekday": "2025-12-31",
+      "other_confirmed_trading_date": "2025-12-29",
+      "source_observation": "FIRST_PARTY_DOMAIN_PDF_PAGE_VISUALLY_CHECKED_AND_SEARCHABLE_TEXT",
+      "source_page_visually_checked": true,
+      "actual_original_pdf_bytes_sha256_verified": false,
+      "original_document_first_available_at_instant_verified": false,
+      "document_contemporaneous_to_market_event_verified": false,
+      "private_original_source_day_row_sha_compared": false,
+      "claims_full_year_calendar": false
+    }
+  ],
+  "evidence_limitations": {
+    "cannot_call_2023_file_original_binary_verified": true,
+    "cannot_call_2025_document_2025_pit": true,
+    "official_KRX_holiday_date_complete_calendar_2015_2026_authenticated": false,
+    "original_private_184_ambiguous_dates_reconciled": false,
+    "original_private_184_ambiguous_dates_remaining": 184,
+    "historical_securities_27_released": false,
+    "H5_frozen_settings_modified": false,
+    "champion_promoted": false,
+    "source_contract_C_D_open": false,
+    "m20_profitability_run_authorized": false,
+    "sealed_holdout_authorized": false,
+    "real_orders_authorized": false,
+    "ordering": "DISABLED",
+    "authenticated_KRX_provider_requests": 0
+  }
+}
