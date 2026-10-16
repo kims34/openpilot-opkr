@@ -1,0 +1,97 @@
+{
+  "schema_version": "1",
+  "reviewed_at_kst": "2026-10-16",
+  "market": "KOSPI_CASH_EQUITIES",
+  "purpose": "CONTEMPORANEOUS_NON_EXCHANGE_ORIGINAL_MARKET_NOTICE_PUBLIC_SOURCE_HOLIDAY_EVENTS_ONLY_NOT_DATE_COMPLETE_PIT",
+  "source_records": [
+    {
+      "record_id": "KIND_ISSUER_2016_CORPORATE_MERGER_FILING",
+      "url": "https://kind.krx.co.kr/external/2016/10/17/000375/20161017000905/10081.htm",
+      "host": "kind.krx.co.kr",
+      "actual_document_origin": "ISSUER_PROSPECTUS_NOT_KRX_MARKET_OPERATION_NOTICE",
+      "indexed_path_date_kst": "2016-10-17",
+      "actual_original_revision_publication_timestamp_verified": false,
+      "verified_excerpt": "Issuer merger filing explicitly states 2016-12-30 as exchange holiday and 2016-12-31 as Saturday",
+      "source_observation": "FIRST_PARTY_KRX_KIND_HOSTED_INDEXED_ISSUER_TEXT; FULL_FILE_TOO_LARGE_TO_OPEN",
+      "original_full_file_bytes_sha256_verified": false,
+      "market_event": {
+        "date": "2016-12-30",
+        "event": "YEAR_END_HOLIDAY_CANDIDATE",
+        "evidence_level": "CONTEMPORANEOUS_ISSUER_DISCLOSURE_NOT_KRX_ORIGINAL"
+      }
+    },
+    {
+      "record_id": "NEWS_DEC2016_EXCHANGE_YEAR_END",
+      "url": "https://www.hankyung.com/article/2016121961416",
+      "host": "www.hankyung.com",
+      "actual_document_origin": "CONTEMPORANEOUS_MEDIA_ATTRIBUTED_TO_KRX_NOT_KRX_ORIGINAL",
+      "published_at_kst": "2016-12-19T11:21:00+09:00",
+      "original_article_publication_timing_marked": true,
+      "market_events": [
+        {
+          "date": "2016-12-29",
+          "event": "FINAL_TRADING_DAY"
+        },
+        {
+          "date": "2016-12-30",
+          "event": "YEAR_END_HOLIDAY"
+        },
+        {
+          "date": "2017-01-02",
+          "event": "OPEN_10_00_KST"
+        }
+      ],
+      "original_krx_press_release_retrieved": false
+    },
+    {
+      "record_id": "YONHAP_DEC2025_EXCHANGE_YEAR_END",
+      "url": "https://www.yna.co.kr/view/AKR20251218057300008",
+      "host": "www.yna.co.kr",
+      "actual_document_origin": "CONTEMPORANEOUS_MEDIA_ATTRIBUTED_TO_KRX_NOT_KRX_ORIGINAL",
+      "published_at_kst": "2025-12-18T10:33:00+09:00",
+      "original_article_publication_timing_marked": true,
+      "market_events": [
+        {
+          "date": "2025-12-30",
+          "event": "FINAL_TRADING_DAY"
+        },
+        {
+          "date": "2025-12-31",
+          "event": "YEAR_END_HOLIDAY"
+        },
+        {
+          "date": "2026-01-02",
+          "event": "OPEN_10_00_KST"
+        }
+      ],
+      "original_krx_press_release_retrieved": false
+    }
+  ],
+  "separate_source_tier_distinctions": {
+    "KRX_KIND_ISSUER_DISCLOSURE_IS_NOT_KRX_MARKET_OPERATIONS_PUBLICATION": true,
+    "DATED_MEDIA_ARTICLE_PUBLICATION_IS_NOT_EXCHANGE_FIRST_RELEASE": true,
+    "DATE_IN_ARCHIVE_URL_CANNOT_ATTEST_FIRST_APPEARANCE_OF_REVISION": true,
+    "SPECIAL_FIRST_TRADING_DAY_LATE_OPEN_NOT_FULL_DAY_HOLIDAY": true,
+    "KOSPI_CASH_MARKET_SCOPE_EXCLUDES_OTC_CCP_AND_DERIVATIVES": true,
+    "RETROSPECTIVE_HANDOOK_SHOULD_NOT_BE_ASSIGNED_CONTEMPORANEOUS_RELEASE_TIMES": true
+  },
+  "actual_protected_original_integrity": {
+    "year_2016_weekdays_sha_backed_previous_record": 261,
+    "year_2016_source_empty_ambiguous_previous_record": 15,
+    "year_2025_weekdays_sha_backed_previous_record": 261,
+    "year_2025_source_empty_ambiguous_previous_record": 19,
+    "historical_2015_2026_source_empty_ambiguous_total": 184,
+    "historical_27_quarantined_securities_released": false,
+    "private_source_date_identifiers_read_this_run": false,
+    "original_krx_market_operations_source_file_bytes_downloaded": false,
+    "official_full_2015_2026_cash_calendar_attested": false,
+    "source_contract_C_D_open": false,
+    "m20_profitability_authorized": false,
+    "independent_holdout_authorized": false,
+    "real_orders_authorized": false,
+    "ordering": "DISABLED",
+    "authenticated_krx_provider_calls_new": 0,
+    "railway_maintenance_or_deployment_performed": false
+  },
+  "remaining_required": "Official permitted original KOSPI cash annual calendar + first publication/version lineage + independent binary SHA and read-only SHA-pinned actual private date-set comparison, with exact event-level as-of cutoff."
+}
