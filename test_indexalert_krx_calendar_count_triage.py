@@ -67,6 +67,32 @@ class CalendarCountTriage(unittest.TestCase):
                 x = check_aggregate_calendar_candidate(self.observed, self.secondary, bad)
                 self.assertEqual(x["status"], "INVALID_REFERENCE_FAIL_CLOSED")
 
+    def test_count_match_must_not_accept_arbitrary_2026_weekdays_as_holidays(self):
+        # Two bogus open weekdays could previously explain the +2 count
+        # without any secondary announcement matching those dates.
+        for fake in (
+            ["2026-06-02", "2026-07-16"],
+            ["2026-06-03", "2026-07-16"],
+            ["2026-06-02", "2026-07-17"],
+        ):
+            with self.subTest(fake=fake):
+                x=check_aggregate_calendar_candidate(
+                    self.observed, self.secondary, fake)
+                self.assertEqual(x["status"], "INVALID_REFERENCE_FAIL_CLOSED")
+                self.assertFalse(x["date_level_original_krx_calendar_attested"])
+                self.assertFalse(x["pit_admitted"])
+                self.assertEqual(x["ordering"], "DISABLED")
+
+    def test_subset_of_known_exception_dates_does_not_falsely_fix_difference(self):
+        for part in ([], ["2026-06-03"], ["2026-07-17"]):
+            with self.subTest(part=part):
+                x=check_aggregate_calendar_candidate(
+                    self.observed, self.secondary, part)
+                self.assertEqual(
+                    x["status"], "AGGREGATE_DISCREPANCIES_REMAIN_PIT_BLOCKED")
+                self.assertEqual(x["annual_mismatch_years_after_exceptions"], [2026])
+                self.assertFalse(x["performance_authorized"])
+
     def test_production_baseline_stays_quarantined(self):
         x = check_aggregate_calendar_candidate(self.observed, self.secondary, self.exceptions)
         self.assertFalse(x["security_tradability_verified"])
