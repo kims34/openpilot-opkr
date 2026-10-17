@@ -157,6 +157,15 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
         or obj["ERROR_CLASS"] is not None
     ):
         raise DiagnosticError("BROKER_DENIAL_IN_SUCCESS_OR_INCONCLUSIVE")
+    # A failed diagnostic process can never attest success or even a
+    # post-ACK observationally inconclusive subscription. The exit code is
+    # evidence too: reject contradictory success/inconclusive stage labels.
+    if returncode == 2 and stage in {
+        "REAL_TYPE00_READ_ONLY_SMOKE",
+        "TYPE00_ACK_ONLY_NO_EVENTS",
+        "TYPE00_EVENTS_UNMATCHED_ACCOUNT",
+    }:
+        raise DiagnosticError("POSITIVE_STAGE_ON_FAILED_EXIT")
     if returncode == 0 and (
         stage != "REAL_TYPE00_READ_ONLY_SMOKE"
         or not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK")
