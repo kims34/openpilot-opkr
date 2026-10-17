@@ -9,6 +9,13 @@ No KRX request, no privileged source reads, no broker imports.
 from __future__ import annotations
 from datetime import date
 
+# Non-authoritative public news-supported EXCEPTIONS to the secondary
+# exchange_calendars/XKRX 4.13.1 calendar for the pinned 2026 private
+# Jan01-Oct08 source snapshot. This is NOT a KRX original holiday notice.
+NEWS_SUPPORTED_EXTRA_2026_DATES = frozenset({
+    date(2026, 6, 3), date(2026, 7, 17),
+})
+
 FLAGS = {
     "date_level_original_krx_calendar_attested": False,
     "source_pairs_at_date_level_reconciled": False,
@@ -56,6 +63,11 @@ def check_aggregate_calendar_candidate(observed, secondary, exception_days):
             return result
         if (d.isoformat() != day or d.weekday() >= 5 or d.year != 2026
                 or not (date(2026, 1, 1) <= d <= date(2026, 10, 8))):
+            return result
+        if d not in NEWS_SUPPORTED_EXTRA_2026_DATES:
+            # Never make any arbitrary 2026 weekday masquerade as one of
+            # the two independently reported extraordinary market closings.
+            # Counting is diagnostic only; no public source is admitted.
             return result
         parsed.append(d)
     matches = [y for y in sorted(observed) if observed[y] == secondary[y]]
