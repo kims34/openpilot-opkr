@@ -130,7 +130,8 @@ class KRX2021PrivateCalendarTest(unittest.TestCase):
 
     def test_forged_calendar_source_class_and_rows_mismatch_rejected(self):
         rows, sha = fixture()
-        rows[0]["daily_rows"] = 0
+        self.assertEqual(rows[1]["day"], "20210104")
+        rows[1]["daily_rows"] = 0
         self.assertEqual(assess(rows, sha)["status"],
                          "FAIL_CLOSED_2021_EMPTY_ROW_CONTRADICTION")
 
