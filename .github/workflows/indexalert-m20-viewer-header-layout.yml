@@ -1,0 +1,104 @@
+name: IndexAlert M20 First Original Viewer Header Row Structure
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_viewer_header_layout.py'
+      - 'test_research_v1_opendart_m20_2022_first_viewer_header_layout.py'
+      - '.github/workflows/indexalert-m20-viewer-header-layout.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-first-viewer-header-layout
+  cancel-in-progress: false
+jobs:
+  offline-header-structure-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Finite source-only header-cell parser and no PIT tests
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_first_viewer_header_layout.py test_research_v1_opendart_m20_2022_first_viewer_header_layout.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_first_viewer_header_layout
+      - name: Ensure no broker APIs / ordering permissions
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_first_viewer_header_layout.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_first_viewer_header_layout.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_first_viewer_header_layout.py
+  official-original-viewer-header-layout:
+    needs: offline-header-structure-safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Scan four earliest DART financial tables for TH/TD header-cell layout only
+        run: |
+          python research_v1_opendart_m20_2022_first_viewer_header_layout.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_2022_first_viewer_header_layout/counts.json").read_text())
+          assert x["credential_present"] is True
+          assert x["source_status"] == "FIRST_RECEIPT_VIEWER_HEADER_ROW_SHAPES_ONLY",x.get("failure_code","UNKNOWN")
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_official_api_calls"] == 2
+          assert x["max_public_viewer_calls"] == 5
+          assert x["fixed_first_filing_financial_subdocuments"] == 4
+          assert 0<x["source_table_tags"]<=2000
+          assert x["header_word_column_or_group_identity_verified"] is False
+          assert x["viewer_header_row_is_not_original_accounting_fact"] is True
+          assert x["any_unsupported_span_makes_column_geometry_unverified"] is True
+          assert x["original_profit_numeric_column_assignment_verified"] is False
+          assert type(x["unsupported_span_attributes_encountered"]) is int
+          assert 0<=x["unsupported_span_attributes_encountered"]<=900000
+          assert x["ordering"] == "DISABLED"
+          for k in ("first_filing_immutable_viewer_snapshot_verified",
+                    "original_cfs_identity_and_profit_colmap_verified",
+                    "original_2022_q3_standalone_cfs_operating_amount_verified",
+                    "original_2021_q3_standalone_comparator_verified",
+                    "original_2022_period_and_monetary_units_verified",
+                    "historical_first_publication_instant_verified",
+                    "historical_corp_security_pit_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_headers_cell_values_row_positions_or_identifiers_saved"):
+            assert x[k] is False,k
+          keys=("operating_candidate_tables","operating_candidate_rows",
+                "operating_with_four_numeric_peers",
+                "operating_rows_with_preceding_table_row",
+                "operating_with_preceding_th_cell",
+                "operating_with_preceding_explicit_quarter_words",
+                "operating_with_preceding_current_and_prior_quarter_words",
+                "operating_with_same_header_row_current_and_prior_words",
+                "operating_with_preceding_three_month_word",
+                "operating_with_preceding_cumulative_word",
+                "operating_with_preceding_third_quarter_word",
+                "operating_with_preceding_colspan_or_rowspan",
+                "operating_with_direct_numeric_cells_and_four_peers",
+                "operating_candidate_in_nested_table",
+                "operating_candidate_table_has_nested_child",
+                "operating_candidate_tables_with_unsupported_span")
+          assert 0<x["operating_candidate_tables"]<=10
+          for k in keys:
+            assert type(x[k]) is int and 0<=x[k]<=20,k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-2022-original-viewer-header-shape-counts-only
+          path: research_results/opendart_m20_2022_first_viewer_header_layout/counts.json
+          retention-days: 7
+          if-no-files-found: warn

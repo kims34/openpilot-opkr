@@ -1,0 +1,122 @@
+name: IndexAlert M20 Original Official Source Evidence Freeze Gate
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json'
+      - 'research_v1_m20_original_source_evidence_gate.py'
+      - 'test_research_v1_m20_original_source_evidence_gate.py'
+      - '.github/workflows/indexalert-m20-original-source-evidence-gate.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-original-source-evidence-freeze
+  cancel-in-progress: false
+jobs:
+  offline-manifest-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate pinned source manifest and all no-trading flags offline
+        run: |
+          python -m py_compile research_v1_m20_original_source_evidence_gate.py test_research_v1_m20_original_source_evidence_gate.py
+          python -m unittest -v test_research_v1_m20_original_source_evidence_gate
+      - name: Guard against DART broker and market requests
+        run: |
+          ! grep -E 'opendart.fss.or.kr/api/|api.kiwoom.com|data.krx.co.kr|/api/dostk/ordr|requests.get|urllib.request' research_v1_m20_original_source_evidence_gate.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_original_source_evidence_gate.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_original_source_evidence_gate.py
+  verify-previous-actual-official-source-artifacts:
+    needs: offline-manifest-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact GitHub run and artifact metadata only (NO new DART requests)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research_results/m20_source_gate_metadata
+          for item in \
+            financial_sections:38706084440:11958577751 \
+            same_subdocument:38708786002:11958909398 \
+            same_table:38731230183:11971011193 \
+            header_rows:38822004271:12013358036
+          do
+            IFS=: read -r key run_id artifact_id <<< "$item"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" > "research_results/m20_source_gate_metadata/$key.run.json"
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id" > "research_results/m20_source_gate_metadata/$key.artifact.json"
+          done
+
+      - name: Download exact previously successful financial_sections flags only
+        uses: actions/download-artifact@v4
+        with:
+          name: 'm20-2022-original-viewer-financial-section-counts-only'
+          run-id: 38706084440
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: research_results/m20_original_gated_inputs/financial_sections
+      - name: Download exact previously successful same_subdocument flags only
+        uses: actions/download-artifact@v4
+        with:
+          name: 'm20-first-source-q3-subdocument-cooccurrence-counts-only'
+          run-id: 38708786002
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: research_results/m20_original_gated_inputs/same_subdocument
+      - name: Download exact previously successful same_table flags only
+        uses: actions/download-artifact@v4
+        with:
+          name: 'm20-first-original-viewer-same-table-q3-counts-only'
+          run-id: 38731230183
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: research_results/m20_original_gated_inputs/same_table
+      - name: Download exact previously successful header_rows flags only
+        uses: actions/download-artifact@v4
+        with:
+          name: 'm20-2022-original-viewer-header-shape-counts-only'
+          run-id: 38822004271
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: research_results/m20_original_gated_inputs/header_rows
+      - name: Cross-check original first receipt all four independent proof classes
+        run: |
+          python research_v1_m20_original_source_evidence_gate.py \
+            --manifest INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json \
+            --input-dir research_results/m20_original_gated_inputs \
+            --metadata-dir research_results/m20_source_gate_metadata \
+            --output research_results/opendart_m20_original_evidence_gate/verdict.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_original_evidence_gate/verdict.json").read_text())
+          assert x["verified_pinned_source_artifact_count"] == 4
+          assert x["financial_viewer_table_tags"] == 329
+          assert x["first_original_operating_label_table_candidates"] == 2
+          assert x["candidates_with_both_quarter_words_in_preceding_header_rows"] == 0
+          assert x["actual_original_cfs_operating_profit_cell_period_lineage_verified"] is False
+          assert x["frozen_strategy_source_data_admitted"] is False
+          assert x["m20_performance_run_authorized"] is False
+          assert x["independent_holdout_authorized"] is False
+          assert x["champion_change_authorized"] is False
+          assert x["real_orders_authorized"] is False
+          assert x["ordering"] == "DISABLED"
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-pinned-four-original-official-sources-fail-closed-no-pit
+          path: research_results/opendart_m20_original_evidence_gate/verdict.json
+          retention-days: 7
+          if-no-files-found: warn
