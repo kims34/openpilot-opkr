@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "observed_at_kst": "2026-10-17",
+  "classification": "OFFICIAL_KRX_ORIGINAL_PARTIAL_HOLIDAY_REFERENCE_NOT_FULL_SESSION_SOURCE_NOT_PIT",
+  "subject_market": "KOSPI_AND_KOSDAQ_CASH_DISCLOSURE_MARKET_CONTEXT",
+  "source": {
+    "publisher": "한국거래소 유가증권시장본부·코스닥시장본부 공시부",
+    "document_title": "2026년 올빼미공시 안내",
+    "url": "https://kind.krx.co.kr/external/dst/notice/11637/%5B%ED%95%9C%EA%B5%AD%EA%B1%B0%EB%9E%98%EC%86%8C%5D%202026%EB%85%84%20%EC%98%AC%EB%B9%BC%EB%AF%B8%EA%B3%B5%EC%8B%9C%20%EC%95%88%EB%82%B4.pdf",
+    "domain": "kind.krx.co.kr",
+    "first_party_exchange_document_visible": true,
+    "pdf_pages": 1,
+    "pdf_page_zero_based_visually_checked": 0,
+    "contains_only_holiday_spans_at_least_3_days_for_disclosure_reposting": true,
+    "full_year_trading_sessions_calendar": false,
+    "original_binary_pdf_sha256_verified": false,
+    "original_document_first_publication_instant_verified": false,
+    "historical_version_chain_asof_verified": false,
+    "first_party_annual_krx_holiday_export_retrieved": false,
+    "pdf_original_binary_download_attempt": "ATTEMPTED_BUT_FAILED"
+  },
+  "official_document_weekday_closed_days_within_private_snapshot_2026_01_01_through_2026_10_08": [
+    "2026-02-16",
+    "2026-02-17",
+    "2026-02-18",
+    "2026-03-02",
+    "2026-05-01",
+    "2026-05-25",
+    "2026-08-17",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-10-05"
+  ],
+  "xkrx_secondary_calendar": {
+    "source": "exchange_calendars/XKRX",
+    "version": "4.13.1",
+    "closed_weekdays_through_2026_10_08": 12,
+    "all_ten_official_disclosure_long_break_weekdays_in_secondary_calendar": true,
+    "additional_single_day_holidays_omitted_from_selective_document": [
+      "2026-01-01",
+      "2026-05-05"
+    ],
+    "known_secondary_calendar_missing_extra_holiday_news_candidates": [
+      "2026-06-03",
+      "2026-07-17"
+    ],
+    "source_date_level_krx_original_verified": false,
+    "original_provider_empty_set_matched": false
+  },
+  "original_private_worker_metadata": {
+    "covered_end": "2026-10-08",
+    "verified_weekday_pairs": 201,
+    "source_empty_weekday_pairs_unverified": 14,
+    "year_2015_to_2025_aggregate_empty_equal_xkrx_closure_counts": true,
+    "year_2026_secondary_xkrx_closed_count": 12,
+    "year_2026_independent_news_exception_count": 2,
+    "year_2026_count_after_news_exceptions": 14,
+    "actual_private_dates_inspected": false,
+    "year_2015_to_2026_ambiguous_days_remain": 184,
+    "quarantined_historical_securities_remain": 27,
+    "pit_source_contract_C_D_open": false,
+    "m20_performance_authorized": false,
+    "sealed_holdout_authorized": false,
+    "real_orders_authorized": false,
+    "ordering": "DISABLED"
+  },
+  "warning": "The exchange-authored owl disclosure scheduling PDF is a selected set of long holiday spans, not a full cash market session calendar. Its omission of isolated holidays or May-announced special closings does NOT establish that those days were trading days on any historical date or that the PDF preceded the announcement. Do not infer PDF first public timestamp from a search index, and do not deduct any of 184 private original unresolved dates from the candidate count absent exact snapshot-pinned private per-day reconciliation. The two news exceptional days are news evidence, not KRX original session proof."
+}
