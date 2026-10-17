@@ -158,6 +158,61 @@ class ReadonlyRouteCompareTests(unittest.TestCase):
                 dict(reg_failed, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False)
             ), 2, "system")
 
+    def test_success_or_ack_only_cannot_carry_8050_provider_denial(self):
+        # A synthetic "successful" local exit must never override a broker
+        # 805004 / 8050 denial. Test both positive matched-account events
+        # and explicit inconclusive post-REG admission.
+        accepted = state(stage="REAL_TYPE00_READ_ONLY_SMOKE", code=0,
+                         detail=None, login_ok=True, ack_ok=True, events=1)
+        pending = state(stage="TYPE00_ACK_ONLY_NO_EVENTS", code=0,
+                        detail=None, login_ok=True, ack_ok=True)
+        self.assertEqual(
+            probe._safe_summary(json.dumps(accepted), 0, "system")["RETURN_CODE"], 0
+        )
+        self.assertEqual(
+            probe._safe_summary(json.dumps(pending), 3, "system")["RETURN_CODE"], 0
+        )
+        for original, process_exit in ((accepted, 0), (pending, 3)):
+            for mismatch in (
+                {"RETURN_CODE": 805004, "DETAIL_CODE": 8050,
+                 "ERROR_CLASS": "DEVICE_AUTH"},
+                {"RETURN_CODE": 805004},
+                {"DETAIL_CODE": 8050},
+                {"ERROR_CLASS": "DEVICE_AUTH"},
+            ):
+                with self.subTest(process_exit=process_exit, mismatch=mismatch):
+                    inconsistent = dict(original, **mismatch)
+                    with self.assertRaisesRegex(
+                        probe.DiagnosticError,
+                        "BROKER_DENIAL_IN_SUCCESS_OR_INCONCLUSIVE",
+                    ):
+                        probe._safe_summary(json.dumps(inconsistent),
+                                            process_exit, "system")
+
+    def test_failed_process_cannot_report_success_or_post_ack_evidence(self):
+        # A local error exit is not a positive broker connection outcome,
+        # even if a corrupted or contradictory stage label says otherwise.
+        states = (
+            state(stage="REAL_TYPE00_READ_ONLY_SMOKE", code=0,
+                  detail=None, login_ok=True, ack_ok=True, events=1),
+            state(stage="TYPE00_ACK_ONLY_NO_EVENTS", code=0,
+                  detail=None, login_ok=True, ack_ok=True),
+            state(stage="TYPE00_EVENTS_UNMATCHED_ACCOUNT", code=0,
+                  detail=None, login_ok=True, ack_ok=True, events=1),
+        )
+        states[2]["ACCOUNT_MATCHED_TYPE00_EVENT_COUNT"] = 0
+        for item in states:
+            with self.subTest(stage=item["STAGE"]):
+                with self.assertRaisesRegex(
+                    probe.DiagnosticError, "POSITIVE_STAGE_ON_FAILED_EXIT"
+                ):
+                    probe._safe_summary(json.dumps(item), 2, "system")
+        denied = state(stage="WS_LOGIN", code=805004, detail=8050)
+        self.assertEqual(
+            probe._safe_summary(json.dumps(denied), 2, "system")["DETAIL_CODE"],
+            8050,
+        )
+
     def test_failed_ws_login_never_claims_connected_or_subscribed(self):
         # A 805004 / 8050 LOGIN denial is not a successful authenticated WS.
         denied = state(stage="WS_LOGIN", code=805004, detail=8050)
