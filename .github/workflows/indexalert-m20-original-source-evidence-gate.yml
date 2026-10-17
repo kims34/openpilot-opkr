@@ -52,7 +52,7 @@ jobs:
             same_subdocument:38708786002:11958909398 \
             same_table:38731230183:11971011193 \
             header_rows:38822004271:12013358036
-          ; do
+          do
             IFS=: read -r key run_id artifact_id <<< "$item"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" > "research_results/m20_source_gate_metadata/$key.run.json"
             gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id" > "research_results/m20_source_gate_metadata/$key.artifact.json"
