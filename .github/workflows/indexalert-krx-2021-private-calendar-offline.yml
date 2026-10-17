@@ -1,0 +1,33 @@
+name: IndexAlert KRX 2021 Private Calendar Offline Synthetic
+on:
+  push:
+    branches: [indexalert-krx-session-gap-review-v1-20261015]
+    paths:
+      - research_v1_krx_2021_private_calendar_reconcile.py
+      - test_research_v1_krx_2021_private_calendar_reconcile.py
+      - .github/workflows/indexalert-krx-2021-private-calendar-offline.yml
+  pull_request:
+    branches: [index-alert-position-regen-fix-v1]
+permissions:
+  contents: read
+jobs:
+  no-source-no-orders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned import dependencies only
+        run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Compile and run synthetic source-bound 2021 holiday tests
+        run: |
+          python -m py_compile research_v1_krx_2021_private_calendar_reconcile.py test_research_v1_krx_2021_private_calendar_reconcile.py
+          python -m unittest -v test_research_v1_krx_2021_private_calendar_reconcile
+      - name: Preserve no PIT and trading authority
+        run: |
+          grep -F '"private_2021_original_date_set_independently_reconciled": False' research_v1_krx_2021_private_calendar_reconcile.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_krx_2021_private_calendar_reconcile.py
+          grep -F '"live_orders_authorized": False' research_v1_krx_2021_private_calendar_reconcile.py
+          grep -F '"ordering": "DISABLED"' research_v1_krx_2021_private_calendar_reconcile.py
