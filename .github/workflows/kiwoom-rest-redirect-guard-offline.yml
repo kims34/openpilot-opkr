@@ -81,6 +81,7 @@ jobs:
           assert 'WS_LOGIN_MISSING_AUTHENTICATED_PREREQUISITES' in comparator
           assert 'TYPE00_ACK_WITHOUT_AUTHENTICATED_REG' in comparator
           assert 'BROKER_DENIAL_IN_SUCCESS_OR_INCONCLUSIVE' in comparator
+          assert 'POSITIVE_STAGE_ON_FAILED_EXIT' in comparator
           assert 'WS_LOGIN_FAILURE_MISLABELED_AS_CONNECTED' in comparator
           assert 'TYPE00_REG_SENT_BEFORE_AUTHENTICATED_LOGIN' in comparator
           assert 'REAL_ORDERS_AUTHORIZED: bool = False' in src
