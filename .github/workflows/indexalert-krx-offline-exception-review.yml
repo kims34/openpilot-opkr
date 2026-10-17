@@ -5,12 +5,16 @@ on:
     paths:
       - 'research_v1_krx_offline_exception_review.py'
       - 'test_research_v1_krx_offline_exception_review.py'
+      - 'research_v1_krx_2021_private_calendar_day_reconciliation.py'
+      - 'test_research_v1_krx_2021_private_calendar_day_reconciliation.py'
       - '.github/workflows/indexalert-krx-offline-exception-review.yml'
   pull_request:
     branches: [index-alert-position-regen-fix-v1]
     paths:
       - 'research_v1_krx_offline_exception_review.py'
       - 'test_research_v1_krx_offline_exception_review.py'
+      - 'research_v1_krx_2021_private_calendar_day_reconciliation.py'
+      - 'test_research_v1_krx_2021_private_calendar_day_reconciliation.py'
       - '.github/workflows/indexalert-krx-offline-exception-review.yml'
 permissions:
   contents: read
@@ -26,10 +30,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned offline test import dependencies
+        run: pip install requests==2.32.3 defusedxml==0.7.1
       - name: Offline syntax and synthetic fail-closed tests
         run: |
           python -m py_compile research_v1_krx_offline_exception_review.py test_research_v1_krx_offline_exception_review.py
           python -m unittest -v test_research_v1_krx_offline_exception_review
+          python -m py_compile research_v1_krx_2021_private_calendar_day_reconciliation.py test_research_v1_krx_2021_private_calendar_day_reconciliation.py
+          python -m unittest -v test_research_v1_krx_2021_private_calendar_day_reconciliation
       - name: Ensure no external source APIs, secrets, broker orders or PIT admissions
         run: |
           ! grep -En '(import requests|import urllib|api\.kiwoom|openapi\.krx|data\.krx|OPENDART_API_KEY|ORDERING=true)' research_v1_krx_offline_exception_review.py
