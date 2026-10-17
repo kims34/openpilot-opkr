@@ -75,13 +75,15 @@ class PrivateCalendarEvidenceGap(ValueError):
 
 def compare_verified_2021(rows: Mapping[str, dict], *,
                           prior_snapshot_sha256: str,
-                          expected_snapshot_sha256: str = PINNED_2021_PRIVATE_SNAPSHOT_SHA256) -> dict:
+                          expected_snapshot_sha256: str | None = None) -> dict:
     """Compare a complete already SHA-verified private corpus, count-only.
 
     Caller supplies all 261 **rechecked** receipt summaries, never just
     selected candidate holiday dates. Recompute exact audit snapshot digest,
     ensuring no private checkpoint/source changed between audit passes.
     """
+    if expected_snapshot_sha256 is None:
+        expected_snapshot_sha256 = PINNED_2021_PRIVATE_SNAPSHOT_SHA256
     days = _bounds(START, END)
     if len(days) != COUNT or type(rows) is not dict or set(rows) != set(days):
         raise PrivateCalendarEvidenceGap("2021_COMPLETE_WEEKDAY_PAIR_SET_MISSING")
