@@ -1,0 +1,95 @@
+# Kiwoom REAL 8050 — registered-PC route comparison
+
+**Diagnostic only; no live-trading authority or evidence of a resolved 8050.**
+
+The registered-IP Windows PC previously received a successful REAL OAuth token and REST account response, then WebSocket LOGIN `805004 / 8050`. Kiwoom support reportedly confirmed the account's configuration was normal. Railway's earlier token-stage 8050 is a separate problem.
+
+## What the diagnostic checks
+
+The script `kiwoom_readonly_route_compare.py` is designed **only for the owner's already-registered-IP local PC**. It requires both this script and `kiwoom_real_type00_readonly_smoke.py` together in the same directory. It uses existing local environment credentials, and refuses to run unless `KIWOOM_ENV=REAL`, `KIWOOM_BASE_URL=https://api.kiwoom.com`, and `KIWOOM_ORDERING_ENABLED=false`.
+
+On that PC, once the existing Python dependencies are available, execute from the isolated local directory:
+
+```powershell
+python -B kiwoom_readonly_route_compare.py
+```
+
+It issues a **single fresh OAuth token and one read-only REST account lookup**, then tries WebSocket LOGIN / Type00 REG on the **system-selected route**. Only when REST succeeded, a WebSocket login/connection blocker occurred, **and WebSocket system-proxy discovery confirmed a configured proxy** does it try **one** direct WebSocket comparison (`proxy=None`) with the same in-memory token and account identity. When no WebSocket proxy is configured, system mode already selects a direct route: the diagnostic avoids another identical LOGIN. When proxy discovery is unknown, it also skips the second call. Thus the two WS paths can be compared without token reissue confounding. No tokens or account identifiers are written to files or displayed. It never sends buy/sell/cancel orders, moves funds, changes account settings, opens holdout, or configures Railway.
+
+Only stages, numeric error/detail codes, boolean proxy configuration indicators and an assessment are emitted. Secret keys, token, account number, IP addresses, proxy URLs, original provider messages and subprocess stderr are never printed. Do not share those secrets separately.
+
+## Error-code classification
+
+The [official Kiwoom Python SDK error taxonomy](https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/kiwoom/core/errors.py) categorizes embedded code `8050` as `DEVICE_AUTH`, including when top-level WS `return_code` is `805004`. Earlier isolated diagnostics used the misleading class `TOKEN_OR_LOGIN_AUTH`; this was corrected to `DEVICE_AUTH` without changing order permissions, token handling, connection URLs or retry logic. **The category does not prove a specific IP, device, network or account entitlement caused the denial**, especially when broker support reports normal registration.
+
+## Account-matched event admission (fail-closed)
+
+The registered account number is used **only inside the running process** to
+match type00 field `9201`; neither the account value nor token/order identity is
+written to disk or emitted. A successful `REG` ACK proves subscription
+acceptance but not a subsequent event. If one or more post-ACK Type00 events
+arrive but **none matches the read-only REST account identity**, the program now
+returns `TYPE00_EVENTS_UNMATCHED_ACCOUNT` with inconclusive exit code **3**,
+not a success. A successful `REAL_TYPE00_READ_ONLY_SMOKE` stage requires
+at least one post-ACK account-matched Type00 event, in addition to token,
+account, WebSocket LOGIN and REG ACK success. Even then this is a
+read-only transport/data event result, **not** broker execution proof,
+strategy profitability or Tiny Live readiness.
+
+## Interpretation
+
+- `REST_PRECONDITION_NOT_MET`: Token or read-only account lookup failed; no direct comparison attempted.
+- `SYSTEM_WS_NO_PROXY_TO_BYPASS`: The selected WebSocket system route has no configured proxy; a direct retry would repeat the same route. This does not establish public egress/IP or explain 8050.
+- `WS_PROXY_DISCOVERY_UNVERIFIED`: Proxy discovery unavailable; no direct second attempt or network identity inference.
+- `8050_PERSISTS_IN_BOTH_WS_MODES`: Both routes reached WS LOGIN and got the same authentication failure; this does not establish the exact backend cause.
+- `ROUTE_DEPENDENT_OUTCOME_POSSIBLE`: The direct route reached WS login success when the system route could not. This suggests a routing difference without proving any particular source IP.
+- `WS_LOGIN_ALREADY_OK_NO_ROUTE_COMPARISON`: The system route already logged in successfully; direct mode was not attempted.
+- `DIFFERENCE_INCONCLUSIVE`: Compare the two non-sensitive stage/error summaries before concluding.
+- `TYPE00_EVENTS_UNMATCHED_ACCOUNT`: WebSocket received Type00 frames but none matched the authenticated REST account. Keep the result inconclusive.
+
+**Important**: `broker_connected=true` is not proof of profitability, genuine fills or Tiny Live readiness. Type00 REG ACK with no events remains inconclusive. Automated and CI runs mock out the broker; no online test was performed by creating this tool.
+
+Only the final `assessment` and `system/direct.STAGE`, `RETURN_CODE`, and `DETAIL_CODE` are needed for an escalation. Do not retry indefinitely. Keep all ordering disabled. The owner must explicitly authorize real trading separately.
+
+## Windows process exit status (different from the broker return code)
+
+The actual packaged Windows `.cmd` launcher now returns its Python diagnostic
+exit code to the calling terminal, even after informational echoes and `pause`.
+The paired comparator reports the **same redacted JSON object** as before.
+
+- **2 = failure / blocker**, including a real REST/WS LOGIN `805004/8050`,
+  no local credentials, or `KIWOOM_ORDERING_ENABLED=true`. Never infer that a
+  JSON report means authentication succeeded.
+- **3 = inconclusive**: LOGIN and Type00 REG ACK passed but no Type00 event
+  matching the authenticated REST account was observed during the one-shot
+  window. This does not imply trading readiness.
+- **0 = read-only observation only**: one or more post-ACK Type00 events
+  matched the authenticated account. **This is not a REAL-order execution
+  authorization, a proved signed fill, or approval of a profitable strategy.**
+
+The *process exit code* above is not the broker's `RETURN_CODE` or embedded
+`DETAIL_CODE`; check the latter fields and `assessment` for the actual
+authentication blocker. One local observation is sufficient for escalation;
+do not retry login indefinitely or publish full logs.
+
+## Downloadable Windows ZIP (no credentials included)
+
+GitHub Actions workflow **Kiwoom REAL Type00 Python Readonly** uploads **five allowlisted source files directly** into artifact `kiwoom-readonly-pc-diagnostic` after offline validation. Download it from the latest **successful** workflow run on Draft PR #415, then unzip **once** on the already registered Windows PC: `RUN_KIWOOM_READONLY_DIAG.cmd` must be visible directly in the extracted folder, alongside the two Python scripts. CI downloads the uploaded artifact again and checks the exact five-file layout and byte-for-byte source integrity. No scripts run automatically on download/unzip.
+
+From an existing terminal session in which your REAL credentials are already securely configured, enter the unzipped folder and run:
+
+```cmd
+RUN_KIWOOM_READONLY_DIAG.cmd
+```
+
+The Windows launcher first selects the `python` executable active in your trusted terminal (including its virtual environment); if it is unavailable, it falls back to `py -3`. Install pinned dependencies using the **same interpreter** that will run the script:
+
+```cmd
+python -m pip install -r kiwoom_readonly_pc_requirements.txt
+```
+
+If `python` is unavailable and the launcher uses `py -3`, use `py -3 -m pip install -r kiwoom_readonly_pc_requirements.txt` instead.
+
+In GitHub Actions the actual five-file ZIP is now unpacked and its `RUN_KIWOOM_READONLY_DIAG.cmd` launcher exercised on **Windows** after installing pinned dependencies. This Windows check runs with intentionally **empty** REAL App Key/Secret and confirms `LOCAL_CREDENTIALS_NOT_FOUND` and all trading/readiness flags false, **without calling the broker**. Linux contract tests and byte-for-byte artifact verification are separate. Neither check proves a real Kiwoom LOGIN.
+
+The launch script does **not** create or retrieve API keys; if the current shell does not have credentials, it safely exits without broker requests. It does **not** turn on order submission or modify any permissions. Avoid double-clicking unless those same secret-bearing environment variables are already available in that session. Use only one controlled read-only run; repeated retries are not required. Never share full environment output, IPs, provider raw messages, tokens, or credentials.

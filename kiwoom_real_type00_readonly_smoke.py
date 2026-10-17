@@ -24,6 +24,8 @@ from typing import Any, Mapping
 
 import requests
 import websockets
+from websockets.asyncio.client import get_proxy as _websockets_get_proxy
+from websockets.uri import parse_uri as _websockets_parse_uri
 
 
 REAL_BASE_URL = "https://api.kiwoom.com"
@@ -32,6 +34,18 @@ ACCOUNT_URL = REAL_BASE_URL + "/api/dostk/acnt"
 WS_URL = "wss://api.kiwoom.com:10000/api/dostk/websocket"
 MAX_JSON_BYTES = 1024 * 1024
 FALSE_VALUES = frozenset({"0", "false", "off", "no"})
+# websockets 15.x discovers proxy settings by default. A direct connection
+# can be explicitly selected for a single read-only smoke on an approved host.
+# No proxy URL, private IP, token, or credential may be emitted.
+WS_PROXY_POLICIES = frozenset({"system", "direct"})
+
+
+def _ws_proxy_options() -> dict[str, Any]:
+    policy = str(os.getenv("KIWOOM_WS_PROXY_POLICY") or "system").strip().lower()
+    if policy not in WS_PROXY_POLICIES:
+        raise ReadOnlySmokeError("CONFIG")
+    return {"proxy": None} if policy == "direct" else {}
+
 TYPE00_ALLOWED_FIELDS = frozenset({
     "9201","9203","9205","9001","912","913","302","900","901","902","903",
     "904","905","906","907","908","909","910","911","10","27","28","914",
@@ -64,6 +78,10 @@ class SmokeState:
     TOKEN_OK: bool = False
     ACCOUNT_ENDPOINT_OK: bool = False
     WS_CONNECTED: bool = False
+    WS_PROXY_POLICY: str = "SYSTEM"
+    REST_CONFIGURED_PROXY_PRESENT: bool | None = None
+    WS_SYSTEM_CONFIGURED_PROXY_PRESENT: bool | None = None
+    REST_WS_CONFIGURED_PROXY_URLS_EQUAL: bool | None = None
     WS_LOGIN_OK: bool = False
     TYPE00_REG_SENT: bool = False
     TYPE00_REG_ACK_OK: bool = False
@@ -120,6 +138,25 @@ def return_code(obj: Mapping[str, Any]) -> int:
     return code
 
 
+def ws_return_code(obj: Mapping[str, Any]) -> int:
+    """Parse WS-only codes: Kiwoom can send 0, "0", or "0000".
+
+    Missing or ambiguous responses still fail closed; REST maintains its
+    separate strict integer-only contract. Never coerce bool/float/null.
+    """
+    if "return_code" not in obj:
+        raise ValueError("missing WS return_code")
+    code = obj["return_code"]
+    if isinstance(code, str):
+        raw = code.strip()
+        if not re.fullmatch(r"[0-9]{1,10}", raw):
+            raise ValueError("invalid WS return_code")
+        code = int(raw)
+    if type(code) is not int or not 0 <= code <= 2_147_483_647:
+        raise ValueError("invalid WS return_code")
+    return code
+
+
 def classify_detail(message: Any) -> tuple[int | None, str | None]:
     text = "" if message is None else str(message)
     match = re.search(r"(?:\[|CODE=)(\d{3,5})(?::|\b)", text)
@@ -132,9 +169,9 @@ def classify_detail(message: Any) -> tuple[int | None, str | None]:
         kind = "INVALID_TOKEN"
     elif code in {8030,8031}:
         kind = "MODE_MISMATCH"
-    elif code == 8050:
-        kind = "TOKEN_OR_LOGIN_AUTH"
-    elif code in {8010,8040,8103}:
+    elif code in {8010, 8040, 8050, 8103}:
+        # Kiwoom's official SDK categorizes 8050 under DEVICE_AUTH.
+        # Classification alone cannot establish the exact IP/host cause.
         kind = "DEVICE_AUTH"
     else:
         kind = "UNCLASSIFIED"
@@ -148,7 +185,24 @@ def _name(obj: Mapping[str, Any]) -> str:
     return name.upper()
 
 
+def _proxy_route_snapshot() -> tuple[bool | None, bool | None, bool | None]:
+    """Report *configuration* parity only; not public IP or proven egress.
+
+    Neither proxy URLs (which can embed secrets) nor private addresses are
+    returned or emitted.  No socket or credential is needed for this check.
+    A resolution problem is UNKNOWN, never an implied matching path.
+    """
+    try:
+        rest_settings = requests.utils.get_environ_proxies(TOKEN_URL)
+        rest_proxy = requests.utils.select_proxy(TOKEN_URL, rest_settings)
+        ws_proxy = _websockets_get_proxy(_websockets_parse_uri(WS_URL))
+        return bool(rest_proxy), bool(ws_proxy), rest_proxy == ws_proxy
+    except Exception:
+        return None, None, None
+
+
 def _config() -> tuple[str, str]:
+    _ws_proxy_options()  # invalid proxy policy rejects before OAuth
     if os.getenv("KIWOOM_ENV") != "REAL":
         raise ReadOnlySmokeError("CONFIG")
     if os.getenv("KIWOOM_BASE_URL") != REAL_BASE_URL:
@@ -164,6 +218,14 @@ def _config() -> tuple[str, str]:
 
 def _token_and_account(state: SmokeState) -> tuple[str, str, float]:
     app_key, app_secret = _config()
+    # Record which WS routing policy was requested even if token/account
+    # issuance fails before the websocket transport is ever initialized.
+    state.WS_PROXY_POLICY = "DIRECT" if "proxy" in _ws_proxy_options() else "SYSTEM"
+    (
+        state.REST_CONFIGURED_PROXY_PRESENT,
+        state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT,
+        state.REST_WS_CONFIGURED_PROXY_URLS_EQUAL,
+    ) = _proxy_route_snapshot()
     try:
         token_response = requests.post(
             TOKEN_URL,
@@ -263,6 +325,8 @@ async def _recv_text(ws, timeout: float) -> str:
 
 
 async def _run_ws(token: str, account: str, issued_monotonic: float, state: SmokeState) -> None:
+    proxy_options = _ws_proxy_options()
+    state.WS_PROXY_POLICY = "DIRECT" if "proxy" in proxy_options else "SYSTEM"
     try:
         async with websockets.connect(
             WS_URL,
@@ -270,11 +334,14 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
             close_timeout=3,
             max_size=MAX_JSON_BYTES,
             ping_interval=None,
+            **proxy_options,
         ) as ws:
             state.WS_CONNECTED = True
             state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = max(0, int(time.monotonic() - issued_monotonic))
-            state.WS_LOGIN_USED_ISSUED_TOKEN = True
             await ws.send(json.dumps({"trnm": "LOGIN", "token": token}, separators=(",", ":")))
+            # A prepared token is not proof it was sent; only record
+            # use after the websocket transport accepted LOGIN.
+            state.WS_LOGIN_USED_ISSUED_TOKEN = True
 
             login_ok = False
             for _ in range(10):
@@ -292,7 +359,7 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
                 if _name(obj) != "LOGIN":
                     raise ReadOnlySmokeError("WS_LOGIN_PROTOCOL", 0)
                 try:
-                    code = return_code(obj)
+                    code = ws_return_code(obj)
                 except Exception:
                     raise ReadOnlySmokeError("WS_LOGIN_PROTOCOL", 0) from None
                 if code != 0:
@@ -333,7 +400,7 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
                     continue
                 if name == "REG":
                     try:
-                        code = return_code(obj)
+                        code = ws_return_code(obj)
                     except Exception:
                         raise ReadOnlySmokeError("TYPE00_REG_PROTOCOL", 0) from None
                     if code != 0:
@@ -343,6 +410,11 @@ async def _run_ws(token: str, account: str, issued_monotonic: float, state: Smok
                     continue
                 if name != "REAL":
                     continue
+                if not state.TYPE00_REG_ACK_OK:
+                    # An unsolicited REAL frame cannot become admitted
+                    # subscription or execution evidence before broker REG
+                    # acceptance, even if a later REG ACK arrives.
+                    raise ReadOnlySmokeError("TYPE00_FRAME_BEFORE_REG_ACK", 0)
                 try:
                     events, matched, seen_execution = _type00_observation(obj, account)
                 except Exception:
@@ -373,6 +445,26 @@ def main() -> None:
     try:
         token, account, issued = _token_and_account(state)
         asyncio.run(_run_ws(token, account, issued, state))
+        if not (
+            state.TOKEN_OK
+            and state.ACCOUNT_ENDPOINT_OK
+            and state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN
+            and state.WS_LOGIN_OK
+            and state.TYPE00_REG_SENT
+            and state.TYPE00_REG_ACK_OK
+        ):
+            raise ReadOnlySmokeError("TYPE00_ADMISSION_INCOMPLETE", 0)
+        if state.TYPE00_EVENT_COUNT <= 0:
+            # REG ACK alone is not actual event evidence.
+            state.STAGE = "TYPE00_ACK_ONLY_NO_EVENTS"
+            state.RETURN_CODE = 0
+            _emit(state, exit_code=3)
+        if state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT <= 0:
+            # A Type00 event for another account cannot qualify as
+            # evidence for the authenticated account under test.
+            state.STAGE = "TYPE00_EVENTS_UNMATCHED_ACCOUNT"
+            state.RETURN_CODE = 0
+            _emit(state, exit_code=3)
         state.STAGE = "REAL_TYPE00_READ_ONLY_SMOKE"
         state.RETURN_CODE = 0
         _emit(state, exit_code=0)

@@ -6,6 +6,11 @@ on:
     paths:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_readonly_route_compare.py'
+      - 'test_kiwoom_readonly_route_compare.py'
+      - 'RUN_KIWOOM_READONLY_DIAG.cmd'
+      - 'kiwoom_readonly_pc_requirements.txt'
+      - 'KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md'
       - 'kiwoom_token_mode_probe.py'
       - 'test_kiwoom_token_mode_probe.py'
       - 'Dockerfile.kiwoom-real-readonly'
@@ -19,6 +24,11 @@ on:
     paths:
       - 'kiwoom_real_type00_readonly_smoke.py'
       - 'test_kiwoom_real_type00_readonly_smoke.py'
+      - 'kiwoom_readonly_route_compare.py'
+      - 'test_kiwoom_readonly_route_compare.py'
+      - 'RUN_KIWOOM_READONLY_DIAG.cmd'
+      - 'kiwoom_readonly_pc_requirements.txt'
+      - 'KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md'
       - 'kiwoom_token_mode_probe.py'
       - 'test_kiwoom_token_mode_probe.py'
       - 'Dockerfile.kiwoom-real-readonly'
@@ -41,13 +51,14 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install requests==2.32.3 websockets==15.0.1
-      - run: python -m py_compile kiwoom_real_type00_readonly_smoke.py
-      - run: python -m unittest test_kiwoom_real_type00_readonly_smoke.py test_kiwoom_token_mode_probe.py
+      - run: python -m py_compile kiwoom_real_type00_readonly_smoke.py kiwoom_readonly_route_compare.py
+      - run: python -m unittest test_kiwoom_real_type00_readonly_smoke.py test_kiwoom_token_mode_probe.py test_kiwoom_readonly_route_compare.py
       - name: Assert no order endpoint or authority is present
         run: |
           ! grep -E '/api/dostk/ordr|kt10000|kt10001|kt10002|kt10003' kiwoom_real_type00_readonly_smoke.py
           grep -F 'ORDERING: str = "DISABLED"' kiwoom_real_type00_readonly_smoke.py
           grep -F 'REAL_ORDERS_AUTHORIZED: bool = False' kiwoom_real_type00_readonly_smoke.py
+          ! grep -E '/api/dostk/ordr|kt10000|kt10001|kt10002|kt10003' kiwoom_readonly_route_compare.py
       - name: Assert isolated Railway packaging
         run: |
           grep -F '"dockerfilePath": "Dockerfile.kiwoom-real-readonly"' railway-kiwoom-real-readonly.json
@@ -60,7 +71,179 @@ jobs:
           grep -Fx 'COPY smoke.py ./' kiwoom_real_readonly/Dockerfile
           grep -F 'CMD ["python","-B","smoke.py"]' kiwoom_real_readonly/Dockerfile
 
+      - name: Assert strictly allowlisted Windows diagnostic files exist
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          files = (
+              "kiwoom_real_type00_readonly_smoke.py",
+              "kiwoom_readonly_route_compare.py",
+              "RUN_KIWOOM_READONLY_DIAG.cmd",
+              "kiwoom_readonly_pc_requirements.txt",
+              "KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md",
+          )
+          if any(not Path(name).is_file() for name in files):
+              raise SystemExit("Missing required read-only diagnostic file")
+          PY
+      - name: Upload one-level Windows diagnostic artifact (no nested ZIP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic
+          path: |
+            kiwoom_real_type00_readonly_smoke.py
+            kiwoom_readonly_route_compare.py
+            RUN_KIWOOM_READONLY_DIAG.cmd
+            kiwoom_readonly_pc_requirements.txt
+            KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md
+          if-no-files-found: error
+          retention-days: 7
+      - name: Fetch and verify exact downloaded diagnostic artifact layout
+        uses: actions/download-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic
+          path: verify-pc-diagnostic
+      - name: Fail closed if packaged layout is incomplete or includes other files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          folder = Path("verify-pc-diagnostic")
+          expected = {
+              "kiwoom_real_type00_readonly_smoke.py",
+              "kiwoom_readonly_route_compare.py",
+              "RUN_KIWOOM_READONLY_DIAG.cmd",
+              "kiwoom_readonly_pc_requirements.txt",
+              "KIWOOM_8050_REGISTERED_PC_ROUTE_COMPARE_RUNBOOK.md",
+          }
+          actual = {str(p.relative_to(folder)).replace("\\", "/") for p in folder.rglob("*") if p.is_file()}
+          if actual != expected:
+              raise SystemExit("Invalid artifact layout or unexpected files")
+          for name in expected:
+              if (folder / name).read_bytes() != Path(name).read_bytes():
+                  raise SystemExit("Artifact file mismatched verified source")
+          PY
+
       - name: Assert token-mode probe has no order path
         run: |
           ! grep -E '/api/dostk/ordr|kt10000|kt10001|kt10002|kt10003' kiwoom_token_mode_probe.py
           ! grep -E 'print\(.+(APP_KEY|APP_SECRET|token|return_msg)' kiwoom_token_mode_probe.py
+
+
+  windows-packaged-cmd-failclosed:
+    needs: offline-contract
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download exactly the artifact verified by the Linux contract job
+        uses: actions/download-artifact@v4
+        with:
+          name: kiwoom-readonly-pc-diagnostic
+          path: windows-readonly
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the pinned runtime dependencies (no keys provided)
+        shell: pwsh
+        run: python -m pip install -r windows-readonly/kiwoom_readonly_pc_requirements.txt
+      - name: Run real Windows CMD entrypoint with absent keys (no broker traffic)
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: ''
+          KIWOOM_APP_SECRET: ''
+        run: |
+          @'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          folder = Path("windows-readonly").resolve()
+          assert (folder / "RUN_KIWOOM_READONLY_DIAG.cmd").is_file()
+          assert not os.environ.get("KIWOOM_APP_KEY")
+          assert not os.environ.get("KIWOOM_APP_SECRET")
+          # Intentionally no real credentials. The Python preflight must stop
+          # before OAuth, account REST or WebSocket can be attempted.
+          proc = subprocess.run(
+              ["cmd.exe", "/d", "/c", "RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder, text=True, capture_output=True, input="\n", timeout=35,
+              errors="replace",
+          )
+          def check_safe_result(run, expected_assessment):
+              payloads = []
+              for line in run.stdout.splitlines():
+                  if line.startswith("{"):
+                      payloads.append(json.loads(line))
+              if len(payloads) != 1:
+                  raise SystemExit("Windows CMD did not emit one safe diagnostic")
+              report = payloads[0]
+              if report.get("assessment") != expected_assessment:
+                  raise SystemExit("Windows CMD did not fail closed as required")
+              for name in ("broker_connected", "real_orders_authorized",
+                           "funds_movement_authorized", "trading_readiness_proven"):
+                  if report.get(name) is not False:
+                      raise SystemExit("Unsafe Windows diagnostic report")
+
+          check_safe_result(proc, "LOCAL_CREDENTIALS_NOT_FOUND")
+          if proc.returncode != 2:
+              raise SystemExit("CMD incorrectly reported successful exit after missing-key rejection")
+          # An ordering-enabled local shell must reject the unsafe toggle
+          # *before* checking whether REAL API credentials exist.
+          # This re-executes the ZIP's CMD entrypoint on actual Windows.
+          env_unsafe = dict(os.environ, KIWOOM_ORDERING_ENABLED="true")
+          proc_unsafe = subprocess.run(
+              ["cmd.exe", "/d", "/c", "RUN_KIWOOM_READONLY_DIAG.cmd"],
+              cwd=folder, text=True, capture_output=True, input="\n",
+              timeout=35, errors="replace", env=env_unsafe,
+          )
+          check_safe_result(proc_unsafe, "ORDERING_MUST_BE_DISABLED")
+          if proc_unsafe.returncode != 2:
+              raise SystemExit("CMD incorrectly reported successful exit after ORDERING rejection")
+          # No REAL credentials were ever present in either case; no broker
+          # transport is permitted. Print only the stable attestation.
+          print("WINDOWS_PACKAGED_CMD_NO_CREDENTIALS_FAIL_CLOSED=PASS")
+          print("WINDOWS_PACKAGED_CMD_ORDERING_ENABLED_FAIL_CLOSED=PASS")
+          '@ | python -
+
+      - name: Assert synthetic Windows CMD exit-code propagation (no broker network)
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: ''
+          KIWOOM_APP_SECRET: ''
+        run: |
+          @'
+          import os
+          import shutil
+          import subprocess
+          import tempfile
+          from pathlib import Path
+
+          launcher = Path("windows-readonly/RUN_KIWOOM_READONLY_DIAG.cmd").resolve()
+          assert launcher.is_file()
+          assert not os.environ.get("KIWOOM_APP_KEY")
+          assert not os.environ.get("KIWOOM_APP_SECRET")
+          # Copy ONLY the shipped CMD launcher. Do not run the real probe or
+          # import either diagnostic: this test makes ZERO broker requests.
+          with tempfile.TemporaryDirectory(prefix="kiwoom-cmd-offline-") as dirname:
+              folder = Path(dirname)
+              shutil.copy2(launcher, folder / launcher.name)
+              stub = folder / "kiwoom_readonly_route_compare.py"
+              for expected in (0, 3):
+                  # Synthetic Python exits; the distributed probe remains
+                  # unchanged and is not executed by this test.
+                  stub.write_text(
+                      f"raise SystemExit({expected})\n", encoding="utf-8"
+                  )
+                  proc = subprocess.run(
+                      ["cmd.exe", "/d", "/c", launcher.name],
+                      cwd=folder, text=True, capture_output=True,
+                      input="\n", timeout=30, errors="replace",
+                  )
+                  if proc.returncode != expected:
+                      raise SystemExit("Packaged CMD did not propagate synthetic exit")
+          print("WINDOWS_PACKAGED_CMD_SYNTHETIC_EXIT_0_AND_3=PASS")
+          '@ | python -

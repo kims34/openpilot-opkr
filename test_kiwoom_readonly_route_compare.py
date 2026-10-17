@@ -1,0 +1,397 @@
+"""Network-free contract tests for the local registered-PC REAL route comparison."""
+import io
+import json
+import os
+import unittest
+from unittest.mock import patch
+
+import kiwoom_readonly_route_compare as probe
+
+
+def state(*, stage="WS_LOGIN", code=805004, detail=8050, token_ok=True,
+          account_ok=True, login_ok=False, ack_ok=False, events=0, policy="system"):
+    return {
+        "STAGE": stage,
+        "RETURN_CODE": code,
+        "DETAIL_CODE": detail,
+        "ERROR_CLASS": "DEVICE_AUTH" if detail == 8050 else None,
+        "WS_PROXY_POLICY": policy.upper(),
+        "TOKEN_OK": token_ok,
+        "ACCOUNT_ENDPOINT_OK": account_ok,
+        "WS_CONNECTED": token_ok and account_ok,
+        "WS_LOGIN_OK": login_ok,
+        "WS_LOGIN_USED_ISSUED_TOKEN": login_ok,
+        "TOKEN_AGE_SECONDS_AT_WS_LOGIN": 0 if login_ok else None,
+        "TYPE00_REG_SENT": ack_ok,
+        "TYPE00_REG_ACK_OK": ack_ok,
+        "REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN": account_ok,
+        "REST_CONFIGURED_PROXY_PRESENT": False,
+        "WS_SYSTEM_CONFIGURED_PROXY_PRESENT": False,
+        "REST_WS_CONFIGURED_PROXY_URLS_EQUAL": True,
+        "TYPE00_EVENT_COUNT": events,
+        "ACCOUNT_MATCHED_TYPE00_EVENT_COUNT": events if account_ok and ack_ok else 0,
+        "ORDERING": "DISABLED",
+        "REAL_ORDERS_AUTHORIZED": False,
+        "FUNDS_MOVEMENT_AUTHORIZED": False,
+        "PERMISSION_CHANGE_AUTHORIZED": False,
+        "GENUINE_LIVE_PROVENANCE_VERIFIED": False,
+        "PRIVATE_ACCESS_TOKEN": "synthetic-never-print",
+        "PRIVATE_ACCOUNT": "synthetic-private-account",
+        "PRIVATE_PROXY_URL": "http://private-proxy/",
+    }
+
+
+class ReadonlyRouteCompareTests(unittest.TestCase):
+    def test_fails_closed_before_network_with_missing_or_unsafe_configuration(self):
+        good = {
+            "KIWOOM_ENV": "REAL",
+            "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "dummy-key",
+            "KIWOOM_APP_SECRET": "dummy-secret",
+        }
+        probe._preflight(good)
+        for key, value in [
+            ("KIWOOM_ENV", "DEMO"),
+            ("KIWOOM_BASE_URL", "https://mockapi.kiwoom.com"),
+            ("KIWOOM_ORDERING_ENABLED", "true"),
+            ("KIWOOM_APP_KEY", ""),
+            ("KIWOOM_APP_SECRET", ""),
+        ]:
+            with self.subTest(key=key):
+                changed = dict(good, **{key: value})
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._preflight(changed)
+
+    def test_only_allowlisted_fields_returned_from_subprocess(self):
+        sample = state()
+        reduced = probe._safe_summary(json.dumps(sample), 2, "system")
+        self.assertEqual(reduced["DETAIL_CODE"], 8050)
+        self.assertNotIn("PRIVATE_ACCESS_TOKEN", reduced)
+        self.assertNotIn("PRIVATE_ACCOUNT", reduced)
+        self.assertNotIn("PRIVATE_PROXY_URL", reduced)
+        for secret in ("synthetic-never-print", "synthetic-private-account", "private-proxy"):
+            self.assertNotIn(secret, json.dumps(reduced))
+        for field, replacement in [
+            ("STAGE", []),
+            ("ERROR_CLASS", []),
+            ("TYPE00_EVENT_COUNT", True),
+            ("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT", True),
+            ("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT", -1),
+            ("ACCOUNT_MATCHED_TYPE00_EVENT_COUNT", 2),
+            ("ORDERING", "ENABLED"),
+            ("REAL_ORDERS_AUTHORIZED", True),
+            ("FUNDS_MOVEMENT_AUTHORIZED", True),
+            ("PERMISSION_CHANGE_AUTHORIZED", True),
+            ("GENUINE_LIVE_PROVENANCE_VERIFIED", True),
+            ("WS_PROXY_POLICY", "DIRECT"),
+        ]:
+            with self.subTest(field=field):
+                bad = dict(sample, **{field: replacement})
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(bad), 2, "system")
+
+    def test_success_requires_ack_and_real_event_and_rejects_fake_exit(self):
+        valid = state(stage="REAL_TYPE00_READ_ONLY_SMOKE", code=0, detail=None,
+                      login_ok=True, ack_ok=True, events=1)
+        self.assertEqual(probe._safe_summary(json.dumps(valid), 0, "system")["STAGE"],
+                         "REAL_TYPE00_READ_ONLY_SMOKE")
+        for mutation in [
+            dict(valid, TYPE00_EVENT_COUNT=0),
+            dict(valid, ACCOUNT_MATCHED_TYPE00_EVENT_COUNT=0),
+            dict(valid, WS_LOGIN_OK=False),
+            dict(valid, TYPE00_REG_ACK_OK=False),
+            dict(valid, TOKEN_OK=False),
+            dict(valid, ACCOUNT_ENDPOINT_OK=False),
+            dict(valid, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False),
+            dict(valid, WS_CONNECTED=False),
+            dict(valid, TYPE00_REG_SENT=False),
+            dict(valid, WS_LOGIN_USED_ISSUED_TOKEN=False),
+            dict(valid, WS_LOGIN_USED_ISSUED_TOKEN=None),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=None),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=-1),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=True),
+            dict(valid, TOKEN_AGE_SECONDS_AT_WS_LOGIN=3601),
+        ]:
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(mutation), 0, "system")
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(state()), 0, "system")
+        foreign_event = state(
+            stage="TYPE00_EVENTS_UNMATCHED_ACCOUNT", code=0, detail=None,
+            login_ok=True, ack_ok=True, events=1,
+        )
+        foreign_event["ACCOUNT_MATCHED_TYPE00_EVENT_COUNT"] = 0
+        self.assertEqual(
+            probe._safe_summary(json.dumps(foreign_event), 3, "system")["STAGE"],
+            "TYPE00_EVENTS_UNMATCHED_ACCOUNT",
+        )
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(foreign_event), 0, "system")
+        incomplete = state()
+        incomplete.pop("WS_LOGIN_OK")
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(incomplete), 2, "system")
+        ack = state(stage="TYPE00_ACK_ONLY_NO_EVENTS", code=0, detail=None,
+                    login_ok=True, ack_ok=True)
+        self.assertEqual(probe._safe_summary(json.dumps(ack), 3, "system")["STAGE"],
+                         "TYPE00_ACK_ONLY_NO_EVENTS")
+        for broken in (
+            dict(ack, TOKEN_OK=False),
+            dict(ack, ACCOUNT_ENDPOINT_OK=False),
+            dict(ack, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False),
+            dict(ack, WS_CONNECTED=False),
+            dict(ack, TYPE00_REG_SENT=False),
+        ):
+            with self.subTest(inconclusive_prereq=broken):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(broken), 3, "system")
+        # Even an unsuccessful REG result may not claim WS login success
+        # without the prerequisite authenticated REST and websocket steps.
+        reg_failed = state(stage="TYPE00_REG", code=805004, detail=8050,
+                           login_ok=True, ack_ok=False)
+        self.assertEqual(probe._safe_summary(json.dumps(reg_failed), 2, "system")["STAGE"],
+                         "TYPE00_REG")
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(json.dumps(
+                dict(reg_failed, REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN=False)
+            ), 2, "system")
+
+    def test_failed_ws_login_never_claims_connected_or_subscribed(self):
+        # A 805004 / 8050 LOGIN denial is not a successful authenticated WS.
+        denied = state(stage="WS_LOGIN", code=805004, detail=8050)
+        self.assertFalse(probe._safe_summary(json.dumps(denied), 2, "system")["WS_LOGIN_OK"])
+        for bad_age in (-1, True, 3601, "0"):
+            with self.subTest(bad_age=bad_age):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(dict(
+                        denied, TOKEN_AGE_SECONDS_AT_WS_LOGIN=bad_age
+                    )), 2, "system")
+        for inconsistent in (
+            dict(denied, WS_LOGIN_OK=True),
+            dict(denied, TYPE00_REG_SENT=True),
+            dict(denied, TYPE00_REG_ACK_OK=True),
+            dict(denied, WS_LOGIN_OK=None),
+        ):
+            with self.subTest(inconsistent=inconsistent):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(json.dumps(inconsistent), 2, "system")
+        for failure_stage in ("WS_LOGIN_PROTOCOL", "WS_LOGIN_TIMEOUT"):
+            with self.subTest(stage=failure_stage):
+                with self.assertRaises(probe.DiagnosticError):
+                    probe._safe_summary(
+                        json.dumps(dict(denied, STAGE=failure_stage, WS_LOGIN_OK=True)),
+                        2, "system",
+                    )
+        # A REG packet cannot be recorded as sent before LOGIN is accepted,
+        # even when no REG acknowledgment was received.
+        with self.assertRaises(probe.DiagnosticError):
+            probe._safe_summary(
+                json.dumps(dict(denied, STAGE="TYPE00_REG_PROTOCOL",
+                                TYPE00_REG_SENT=True)),
+                2, "system",
+            )
+
+    def test_only_retry_ws_specific_blocker_never_token_or_rest_or_success(self):
+        blocked = state()
+        # First-stage WebSocket must demonstrably use a system proxy.
+        # Otherwise "system" and "direct" select the same route.
+        blocked["WS_SYSTEM_CONFIGURED_PROXY_PRESENT"] = True
+        self.assertTrue(probe._eligible_for_direct(blocked))
+        for discovered in (False, None):
+            with self.subTest(proxy_discovery=discovered):
+                candidate = dict(blocked, WS_SYSTEM_CONFIGURED_PROXY_PRESENT=discovered)
+                self.assertFalse(probe._eligible_for_direct(candidate))
+                self.assertEqual(
+                    probe._interpret(candidate, None),
+                    "SYSTEM_WS_NO_PROXY_TO_BYPASS" if discovered is False
+                    else "WS_PROXY_DISCOVERY_UNVERIFIED",
+                )
+        self.assertFalse(probe._eligible_for_direct(
+            state(stage="TOKEN", token_ok=False, account_ok=False)))
+        self.assertFalse(probe._eligible_for_direct(
+            state(stage="ACCOUNT", account_ok=False)))
+        self.assertFalse(probe._eligible_for_direct(
+            state(stage="REAL_TYPE00_READ_ONLY_SMOKE", code=0, detail=None,
+                  login_ok=True, ack_ok=True, events=1)))
+        self.assertFalse(probe._eligible_for_direct(
+            state(stage="TYPE00_REG", login_ok=True)))
+        self.assertEqual(probe._interpret(blocked, dict(blocked, WS_PROXY_POLICY="DIRECT")),
+                         "8050_PERSISTS_IN_BOTH_WS_MODES")
+        self.assertEqual(probe._interpret(
+            blocked, dict(blocked, WS_PROXY_POLICY="DIRECT", WS_LOGIN_OK=True)),
+            "ROUTE_DEPENDENT_OUTCOME_POSSIBLE")
+
+    def test_one_token_and_one_rest_lookup_across_two_ws_policies(self):
+        # Re-issuing OAuth would confound the intended 8050 route comparison.
+        from kiwoom_real_type00_readonly_smoke import ReadOnlySmokeError
+        env = {
+            "KIWOOM_ENV": "REAL", "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "synthetic-key", "KIWOOM_APP_SECRET": "synthetic-secret",
+            "KIWOOM_WS_PROXY_POLICY": "owner-original-setting",
+        }
+        issued, seen = 12345.678, []
+
+        def account(state):
+            state.TOKEN_OK = True
+            state.ACCOUNT_ENDPOINT_OK = True
+            state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN = True
+            state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT = True
+            return "synthetic-secret-token", "synthetic-account", issued
+
+        async def ws(token, account_no, token_time, state):
+            policy = os.environ.get("KIWOOM_WS_PROXY_POLICY")
+            seen.append((policy, token, account_no, token_time))
+            state.WS_CONNECTED = True
+            if policy == "system":
+                raise ReadOnlySmokeError("WS_LOGIN", 805004, 8050, "DEVICE_AUTH")
+            if policy != "direct":
+                raise AssertionError("unexpected route")
+            state.WS_LOGIN_USED_ISSUED_TOKEN = True
+            state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = 0
+            state.WS_LOGIN_OK = True
+            state.TYPE00_REG_SENT = True
+            state.TYPE00_REG_ACK_OK = True
+            state.TYPE00_EVENT_COUNT = 0
+
+        with patch.dict(os.environ, env, clear=True), \
+             patch("kiwoom_readonly_route_compare.smoke._token_and_account",
+                   side_effect=account) as rest, \
+             patch("kiwoom_readonly_route_compare.smoke._run_ws",
+                   side_effect=ws) as stream, \
+             patch("kiwoom_readonly_route_compare.smoke.requests.post",
+                   side_effect=AssertionError("no real REST")) as network, \
+             patch("sys.stdout", new_callable=io.StringIO) as capture:
+            with self.assertRaises(SystemExit) as stopped:
+                probe.main()
+            self.assertEqual(stopped.exception.code, 3)
+            self.assertEqual(os.environ["KIWOOM_WS_PROXY_POLICY"], "owner-original-setting")
+        self.assertEqual(rest.call_count, 1)
+        self.assertEqual(stream.call_count, 2)
+        network.assert_not_called()
+        self.assertEqual(seen, [
+            ("system", "synthetic-secret-token", "synthetic-account", issued),
+            ("direct", "synthetic-secret-token", "synthetic-account", issued),
+        ])
+        result = json.loads(capture.getvalue())
+        self.assertEqual(result["assessment"], "ROUTE_DEPENDENT_OUTCOME_POSSIBLE")
+        self.assertTrue(result["broker_connected"])
+        self.assertEqual(result["direct"]["STAGE"], "TYPE00_ACK_ONLY_NO_EVENTS")
+        self.assertTrue(result["direct"]["TYPE00_REG_ACK_OK"])
+        self.assertFalse(result["real_orders_authorized"])
+        self.assertFalse(result["funds_movement_authorized"])
+        self.assertFalse(result["trading_readiness_proven"])
+        self.assertNotIn("synthetic-secret-token", capture.getvalue())
+        self.assertNotIn("synthetic-account", capture.getvalue())
+
+    def test_exit_code_for_real_ws_8050_denial_and_matched_readonly_event(self):
+        # Synthetic IO; no API key, user account or broker traffic is used.
+        from kiwoom_real_type00_readonly_smoke import ReadOnlySmokeError
+        env = {
+            "KIWOOM_ENV": "REAL", "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "offline-key",
+            "KIWOOM_APP_SECRET": "offline-secret",
+        }
+        for case, expected_exit in (("8050", 2), ("event", 0)):
+            with self.subTest(case=case):
+                def account(state):
+                    state.TOKEN_OK = True
+                    state.ACCOUNT_ENDPOINT_OK = True
+                    state.REST_ACCOUNT_ACCEPTED_ISSUED_TOKEN = True
+                    state.WS_SYSTEM_CONFIGURED_PROXY_PRESENT = False
+                    return "offline-token", "offline-account", 123.0
+
+                async def ws(token, number, issued, state):
+                    self.assertEqual((token, number, issued),
+                                     ("offline-token", "offline-account", 123.0))
+                    state.WS_CONNECTED = True
+                    state.WS_LOGIN_USED_ISSUED_TOKEN = True
+                    state.TOKEN_AGE_SECONDS_AT_WS_LOGIN = 0
+                    if case == "8050":
+                        raise ReadOnlySmokeError("WS_LOGIN", 805004, 8050, "DEVICE_AUTH")
+                    state.WS_LOGIN_OK = True
+                    state.TYPE00_REG_SENT = True
+                    state.TYPE00_REG_ACK_OK = True
+                    state.TYPE00_EVENT_COUNT = 1
+                    state.ACCOUNT_MATCHED_TYPE00_EVENT_COUNT = 1
+
+                with patch.dict(os.environ, env, clear=True), \
+                     patch("kiwoom_readonly_route_compare.smoke._token_and_account",
+                           side_effect=account) as rest, \
+                     patch("kiwoom_readonly_route_compare.smoke._run_ws",
+                           side_effect=ws) as stream, \
+                     patch("kiwoom_readonly_route_compare.smoke.requests.post",
+                           side_effect=AssertionError("No external network")) as net, \
+                     patch("sys.stdout", new_callable=io.StringIO) as capture:
+                    with self.assertRaises(SystemExit) as stopped:
+                        probe.main()
+                self.assertEqual(stopped.exception.code, expected_exit)
+                rest.assert_called_once()
+                stream.assert_called_once()
+                net.assert_not_called()
+                result = json.loads(capture.getvalue())
+                self.assertIsNone(result["direct"])
+                self.assertEqual(result["system"]["STAGE"],
+                                 "WS_LOGIN" if case == "8050" else "REAL_TYPE00_READ_ONLY_SMOKE")
+                self.assertEqual(result["broker_connected"], case == "event")
+                self.assertFalse(result["real_orders_authorized"])
+                self.assertFalse(result["funds_movement_authorized"])
+                self.assertFalse(result["trading_readiness_proven"])
+                for secret in ("offline-token", "offline-account", "offline-secret"):
+                    self.assertNotIn(secret, capture.getvalue())
+
+    def test_token_error_never_attempts_any_websocket(self):
+        from kiwoom_real_type00_readonly_smoke import ReadOnlySmokeError
+        env = {
+            "KIWOOM_ENV": "REAL", "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "synthetic-key", "KIWOOM_APP_SECRET": "synthetic-secret",
+        }
+        def deny(_state):
+            raise ReadOnlySmokeError("TOKEN", 3, 8050, "DEVICE_AUTH")
+        with patch.dict(os.environ, env, clear=True), \
+             patch("kiwoom_readonly_route_compare.smoke._token_and_account",
+                   side_effect=deny) as rest, \
+             patch("kiwoom_readonly_route_compare.smoke._run_ws",
+                   side_effect=AssertionError("WS forbidden")) as stream, \
+             patch("kiwoom_readonly_route_compare.smoke.requests.post",
+                   side_effect=AssertionError("real REST forbidden")) as network, \
+             patch("sys.stdout", new_callable=io.StringIO) as capture:
+            with self.assertRaises(SystemExit) as stopped:
+                probe.main()
+        self.assertEqual(stopped.exception.code, 2)
+        rest.assert_called_once()
+        stream.assert_not_called()
+        network.assert_not_called()
+        report = json.loads(capture.getvalue())
+        self.assertEqual(report["assessment"], "REST_PRECONDITION_NOT_MET")
+        self.assertIsNone(report["direct"])
+        self.assertEqual(report["system"]["DETAIL_CODE"], 8050)
+
+    def test_broker_exception_never_leaks_secrets(self):
+        env = {
+            "KIWOOM_ENV": "REAL", "KIWOOM_BASE_URL": "https://api.kiwoom.com",
+            "KIWOOM_ORDERING_ENABLED": "false",
+            "KIWOOM_APP_KEY": "synthetic-key", "KIWOOM_APP_SECRET": "synthetic-secret",
+        }
+        def sensitive_error(_state):
+            raise RuntimeError("secret from provider synthetic-key")
+        with patch.dict(os.environ, env, clear=True), \
+             patch("kiwoom_readonly_route_compare.smoke._token_and_account",
+                   side_effect=sensitive_error), \
+             patch("sys.stdout", new_callable=io.StringIO) as capture:
+            with self.assertRaises(SystemExit) as stopped:
+                probe.main()
+        self.assertEqual(stopped.exception.code, 2)
+        report = json.loads(capture.getvalue())
+        self.assertEqual(report["system"]["STAGE"], "LOCAL_COMPATIBILITY_OR_NETWORK")
+        self.assertEqual(report["assessment"], "REST_PRECONDITION_NOT_MET")
+        self.assertIsNone(report["direct"])
+        self.assertNotIn("synthetic-key", capture.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()
