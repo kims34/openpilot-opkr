@@ -323,3 +323,45 @@ jobs:
               )), "PRIVATE_DIAGNOSTIC_OUTPUT"
           print("WINDOWS_DISTRIBUTED_CMD_PREFLIGHT_MATRIX=PASS")
           '@ | python -
+
+
+      - name: Exercise shipped Windows CMD with synthetic exit 0 and 3, offline
+        # Rehearses process-exit propagation only. The genuine diagnostic
+        # scripts are NOT executed and broker connectivity is NOT attempted.
+        shell: pwsh
+        env:
+          KIWOOM_ENV: REAL
+          KIWOOM_BASE_URL: https://api.kiwoom.com
+          KIWOOM_ORDERING_ENABLED: 'false'
+          KIWOOM_APP_KEY: ''
+          KIWOOM_APP_SECRET: ''
+          KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC: ''
+        run: |
+          @'
+          import os
+          import shutil
+          import subprocess
+          import tempfile
+          from pathlib import Path
+
+          launcher = Path("windows-readonly/RUN_KIWOOM_READONLY_DIAG.cmd").resolve()
+          assert launcher.is_file()
+          assert not os.environ.get("KIWOOM_APP_KEY")
+          assert not os.environ.get("KIWOOM_APP_SECRET")
+          with tempfile.TemporaryDirectory(prefix="kiwoom-cmd-no-network-") as dirname:
+              folder = Path(dirname)
+              shutil.copy2(launcher, folder / launcher.name)
+              stub = folder / "kiwoom_readonly_route_compare.py"
+              for expected in (0, 3):
+                  # This creates a harmless stub, not a simulated broker login.
+                  stub.write_text(f"raise SystemExit({expected})\n", encoding="utf-8")
+                  result = subprocess.run(
+                      ["cmd.exe", "/d", "/c", launcher.name],
+                      cwd=folder, input="\n", text=True, capture_output=True,
+                      timeout=30, errors="replace",
+                  )
+                  if result.returncode != expected:
+                      raise SystemExit("SHIPPED_CMD_DID_NOT_PROPAGATE_EXIT")
+                  assert "Traceback" not in result.stdout + result.stderr
+          print("WINDOWS_PACKAGED_CMD_SYNTHETIC_EXIT_0_AND_3=PASS")
+          '@ | python -
