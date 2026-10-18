@@ -73,5 +73,41 @@ class ExactCalendarTests(unittest.TestCase):
         self.assertEqual(x["status"], "FAIL_CLOSED_PRIVATE_2021_SOURCE_UNVERIFIED")
 
 
+    def test_unexpected_private_store_exceptions_cannot_escape_with_source_details(self):
+        # Private read/store libraries can fail with KeyError, RuntimeError
+        # or AttributeError outside the known integrity exception families.
+        for problem in (
+            KeyError("PRIVATE_2021_SECURITY_IDENTIFIERS"),
+            RuntimeError("PRIVATE_2021_SECRET_20210816"),
+            AttributeError("PRIVATE_2021_SOURCE_PATH"),
+        ):
+            with self.subTest(error=type(problem).__name__):
+                with (patch.object(m, "_trusted_private_root",
+                                   return_value=Path("/data/mock")),
+                      patch.object(m, "_check_one", side_effect=problem)):
+                    x = m.review_private_2021(execute=True, environment=ENV)
+                self.assertEqual(x["status"],
+                                 "FAIL_CLOSED_PRIVATE_2021_SOURCE_UNVERIFIED")
+                self.assertNotIn("PRIVATE_2021_SECRET", str(x))
+                self.assertNotIn("PRIVATE_2021_SECURITY", str(x))
+                self.assertNotIn("PRIVATE_2021_SOURCE_PATH", str(x))
+                self.assertEqual(x["original_pairs_reverified"], 0)
+                self.assertFalse(x["original_panel_sha256_matches_prior_audit"])
+                self.assertFalse(x["private_2021_original_date_set_independently_reconciled"])
+                self.assertFalse(x["real_orders_authorized"])
+                self.assertFalse(x["network_request_attempted"])
+                self.assertEqual(x["ordering"], "DISABLED")
+
+    def test_unexpected_private_root_validation_error_is_redacted(self):
+        with (patch.object(m, "_trusted_private_root",
+                           side_effect=RuntimeError("PRIVATE_PATH_LEAK")),
+              patch.object(m, "_check_one") as check):
+            x = m.review_private_2021(execute=True, environment=ENV)
+        check.assert_not_called()
+        self.assertEqual(x["status"], "FAIL_CLOSED_PRIVATE_2021_SOURCE_UNVERIFIED")
+        self.assertNotIn("PRIVATE_PATH_LEAK", str(x))
+        self.assertFalse(x["m20_performance_run_authorized"])
+
+
 if __name__ == "__main__":
     unittest.main()
