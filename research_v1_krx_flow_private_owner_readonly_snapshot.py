@@ -15,6 +15,7 @@ from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
+import re
 import stat
 from typing import Any
 
@@ -58,7 +59,7 @@ def _protected_root(root: str, worktree: str) -> Path:
     return resolved
 
 
-def _read_exact_private_metadata(root: Path, rel: tuple[str, str]) -> bytes:
+def _read_exact_private_metadata(root: Path, rel: tuple[str, ...]) -> bytes:
     """Anchor every existing directory and file to O_NOFOLLOW descriptors.
 
     The former Path.is_symlink checks were vulnerable to the parent being
@@ -70,10 +71,14 @@ def _read_exact_private_metadata(root: Path, rel: tuple[str, str]) -> bytes:
     """
     _need(hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY"),
           "PRIVATE_SECURE_OPEN_FLAGS_UNAVAILABLE")
-    parent = root / rel[0]
+    _need(type(rel) is tuple and 2 <= len(rel) <= 7
+          and all(type(p) is str and p not in {".", ".."}
+                  and re.fullmatch(r"[A-Za-z0-9._-]+", p) is not None
+                  for p in rel), "PRIVATE_RELATIVE_PATH_UNSAFE")
+    parent = root.joinpath(*rel[:-1])
     _need(not parent.is_symlink() and parent.is_dir(),
           "PRIVATE_METADATA_PARENT_INVALID")
-    item = parent / rel[1]
+    item = parent / rel[-1]
     _need(not item.is_symlink(), "PRIVATE_METADATA_SYMLINK_REJECTED")
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     file_flags = os.O_RDONLY | os.O_NOFOLLOW
@@ -87,9 +92,11 @@ def _read_exact_private_metadata(root: Path, rel: tuple[str, str]) -> bytes:
                 child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
                 stack.callback(os.close, child_fd)
                 directory_fd = child_fd
-            parent_fd = os.open(rel[0], directory_flags, dir_fd=directory_fd)
-            stack.callback(os.close, parent_fd)
-            fd = os.open(rel[1], file_flags, dir_fd=parent_fd)
+            for part in rel[:-1]:
+                parent_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+                stack.callback(os.close, parent_fd)
+                directory_fd = parent_fd
+            fd = os.open(rel[-1], file_flags, dir_fd=directory_fd)
             stack.callback(os.close, fd)
             st = os.fstat(fd)
             _need(stat.S_ISREG(st.st_mode), "PRIVATE_METADATA_NOT_REGULAR_FILE")
