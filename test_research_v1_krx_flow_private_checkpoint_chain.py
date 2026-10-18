@@ -120,13 +120,14 @@ class ProtectedKRXOriginalCheckpointChainTest(unittest.TestCase):
         ):
             verify_2022_krx_private_full_checkpoint_chain(**item)
 
-    def test_receipt_json_guardrail_mutation_rejected_by_manifest_sha(self):
+    def test_receipt_json_guardrail_mutation_rejected_before_manifest_sha(self):
         item = fixture()
         rewrite(item, "acquisition_receipt",
                 lambda value: value.update({"guardrail": "synthetic"}))
+        # Original pinned receipt producer creates this exact safety string.
+        # Reject counterfeit safety claims before byte-chain reconciliation.
         with self.assertRaisesRegex(
-            KRXPrivateCheckpointChainError,
-            "ORIGINAL_ACQUISITION_MANIFEST_RECEIPT_OR_RAW_DRIFT",
+            Exception, "ORIGINAL_RECEIPT_GUARDRAIL_DRIFT",
         ):
             verify_2022_krx_private_full_checkpoint_chain(**item)
 
