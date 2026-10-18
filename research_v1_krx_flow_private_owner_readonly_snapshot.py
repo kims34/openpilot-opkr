@@ -81,7 +81,7 @@ def _read_exact_private_metadata(root: Path, rel: tuple[str, ...]) -> bytes:
     item = parent / rel[-1]
     _need(not item.is_symlink(), "PRIVATE_METADATA_SYMLINK_REJECTED")
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-    file_flags = os.O_RDONLY | os.O_NOFOLLOW
+    # O_NONBLOCK makes an attacker-swapped FIFO fail fast at fstat rather than\n    # hanging forever in open(). On regular metadata/blob files it has no effect.\n    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
     try:
         with ExitStack() as stack:
             directory_fd = os.open(root.anchor, directory_flags)
