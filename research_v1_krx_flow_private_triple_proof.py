@@ -20,6 +20,12 @@ SOURCE_DAY = re.compile(r"^(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}/[0-9]
 ORIGINAL_CLIENT_REVISION = "e6ebac9b71482db127348d8a08ebc6743aa3b50e"
 FROZEN_BLD = "dbms/MDC/STAT/standard/MDCSTAT02303"
 ORIGINAL_RECEIPT_CLIENT_REVISION = "krx-data-api@" + ORIGINAL_CLIENT_REVISION
+ORIGINAL_RECEIPT_VERSION = "2026-10-01.v2"
+ORIGINAL_INTENDED_SCOPE = "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION"
+ORIGINAL_RECEIPT_GUARDRAIL = (
+    "This receipt proves only reproducible provenance/integrity metadata for one acquisition, including the validated structured authorization-record fingerprint. "
+    "It does not make any A-F source gate PASS and cannot authorize feature testing, holdout, promotion or live trading."
+)
 # Original pinned third-party endpoint defaults, not user-adjustable mode knobs.
 PINNED_PARAMS = {
     "inqTpCd": "2", "trdVolVal": "2", "askBid": "3",
@@ -163,6 +169,18 @@ def verify_krx_2022_private_flow_triple(
     body = {k: r[k] for k in RECEIPT_BODY}
     _require(_sha(body) == r["receipt_fingerprint_sha256"],
              "RECEIPT_BODY_TAMPERED")
+    # The ORIGINAL historical worker used build_acquisition_receipt from
+    # pinned 2026-10-03 source. A mutually rehashed receipt could otherwise
+    # spoof a different producer/version or add unauthorized authority fields.
+    _require(set(r) == set(RECEIPT_BODY) | {
+        "receipt_fingerprint_sha256", "guardrail",
+    }, "ORIGINAL_RECEIPT_FIELDS_DRIFT")
+    _require(r.get("receipt_version") == ORIGINAL_RECEIPT_VERSION,
+             "ORIGINAL_RECEIPT_VERSION_DRIFT")
+    _require(r.get("intended_use_scope") == ORIGINAL_INTENDED_SCOPE,
+             "ORIGINAL_RECEIPT_SCOPE_DRIFT")
+    _require(r.get("guardrail") == ORIGINAL_RECEIPT_GUARDRAIL,
+             "ORIGINAL_RECEIPT_GUARDRAIL_DRIFT")
     _require(r.get("source_family") == "KRX_INVESTOR_FLOW"
              and r.get("access_route")
                  == "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION"
