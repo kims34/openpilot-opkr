@@ -62,6 +62,59 @@ SAFE = {
 }
 
 
+# The KRX confirmation of extra market-wide closures was publicly reported
+# on 2021-08-04 *after market open*. The exact first exchange publication
+# instant has NOT been cryptographically verified. Conservatively, a
+# pre-open model must wait until 2021-08-05 to use that confirmation.
+KRX_REVISION_FIRST_SAFE_PREOPEN_DAY = date(2021, 8, 5)
+
+
+def strict_krx_2021_calendar_preopen_reference(decision_day: str) -> dict:
+    """Historical exchange ANNOUNCEMENT knowledge only; never trading PIT.
+
+    A final revised 2021 market holiday table is NOT a point-in-time safe
+    reference for a strategy decision before the 2021-08-04 KRX notice.
+    The initial 10-day schedule remains the safe announcement reference
+    at and before the 2021-08-04 market open. Public reporting of the
+    KRX market notice happened that afternoon, so on the following day
+    the post-revision 13-day reference is conservatively usable.
+    """
+    if type(decision_day) is not str or not re.fullmatch(
+        r"2021-\\d{2}-\\d{2}", decision_day
+    ):
+        raise OfflinePrivateAuditError("KRX_2021_PREOPEN_DATE_INVALID")
+    try:
+        on = date.fromisoformat(decision_day)
+    except ValueError:
+        raise OfflinePrivateAuditError("KRX_2021_PREOPEN_DATE_INVALID") from None
+    if on.year != 2021:
+        raise OfflinePrivateAuditError("KRX_2021_PREOPEN_DATE_INVALID")
+    after_announcement = on >= KRX_REVISION_FIRST_SAFE_PREOPEN_DAY
+    return {
+        "reference_vintage": (
+            "KRX_2021_REVISED_NOTICE_CONSERVATIVE_NEXT_DAY"
+            if after_announcement else "KRX_2021_INITIAL_MARKET_CALENDAR"
+        ),
+        "reference_market_closure_count": (
+            len(EXPECTED_CLOSED) if after_announcement
+            else len(KRX_INITIAL_2021_CLOSED)
+        ),
+        "extra_2021_exchange_closures_from_later_notice_usable_preopen":
+            3 if after_announcement else 0,
+        "krx_notice_day": "2021-08-04",
+        "first_conservative_preopen_for_revised_reference": "2021-08-05",
+        "official_exchange_publication_instant_verified": False,
+        "official_asof_market_calendar_source_admitted": False,
+        "individual_security_tradability_verified": False,
+        "historical_source_publication_pit_verified": False,
+        "m20_performance_run_authorized": False,
+        "independent_holdout_authorized": False,
+        "live_orders_authorized": False,
+        "network_request_attempted": False,
+        "ordering": "DISABLED",
+    }
+
+
 def _base() -> dict:
     return {
         "purpose": "2021_KRX_DATED_CALENDAR_PRIVATE_ORIGINAL_SOURCE_READONLY_NOT_PIT",
