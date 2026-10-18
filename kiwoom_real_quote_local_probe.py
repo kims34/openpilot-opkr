@@ -10,6 +10,7 @@ One token, one account-identity read, and at most one ka10001 stock-info
 request. Never sends orders, writes broker state, or prints tokens, account,
 quote price, provider message, network addresses, or raw exceptions.
 An offline test with synthetic responses cannot prove a genuine broker quote.
+A valid-looking response exits 3 (inconclusive), never 0 (verified).
 """
 from __future__ import annotations
 
@@ -102,7 +103,11 @@ def main() -> None:
             and os.getenv("KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC") == "YES"):
         result = one_shot(sys.argv[2])
     print(json.dumps(result, sort_keys=True, separators=(",", ":")), flush=True)
-    raise SystemExit(0 if result["quote_response_structure_ok"] else 2)
+    # A structurally valid quote is an inconclusive local observation:
+    # it is NOT signed REAL broker provenance or trading admission. Reserve
+    # exit 0 for a future, independently verified end-to-end evidence gate.
+    # Exit 3 = shape accepted but provenance unknown; 2 = blocked/failed.
+    raise SystemExit(3 if result["quote_response_structure_ok"] else 2)
 
 
 if __name__ == "__main__":
