@@ -65,6 +65,8 @@ jobs:
           assert 'KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC' in quote_probe
           assert '"YES"' in quote_probe
           assert 'allow_redirects=False' in quote_probe
+          # Shape acceptance is not independently proven broker provenance.
+          assert 'raise SystemExit(3 if result["quote_response_structure_ok"] else 2)' in quote_probe
           assert 'real_orders_authorized": False' in quote_probe
           assert 'permission_change_authorized": False' in quote_probe
           assert 'funds_movement_authorized": False' in quote_probe
