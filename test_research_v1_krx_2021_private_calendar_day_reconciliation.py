@@ -211,5 +211,62 @@ class KRX2021PrivateCalendarTest(unittest.TestCase):
         self.assertEqual(out["ordering"],"DISABLED")
 
 
+    def test_2021_market_vintage_initial_preopen_never_uses_future_august_notice(self):
+        for day in ("2021-01-01", "2021-08-03", "2021-08-04"):
+            with self.subTest(day=day):
+                x = p.strict_krx_2021_calendar_preopen_reference(day)
+                self.assertEqual(x["reference_market_closure_count"], 10)
+                self.assertEqual(
+                    x["extra_2021_exchange_closures_from_later_notice_usable_preopen"], 0)
+                self.assertEqual(x["reference_vintage"],
+                                 "KRX_2021_INITIAL_MARKET_CALENDAR")
+                self.assertFalse(x["official_asof_market_calendar_source_admitted"])
+
+    def test_2021_market_vintage_added_days_safe_no_earlier_than_next_preopen(self):
+        for day in ("2021-08-05", "2021-08-16", "2021-10-11", "2021-12-31"):
+            with self.subTest(day=day):
+                x = p.strict_krx_2021_calendar_preopen_reference(day)
+                self.assertEqual(x["reference_market_closure_count"], 13)
+                self.assertEqual(
+                    x["extra_2021_exchange_closures_from_later_notice_usable_preopen"], 3)
+                self.assertEqual(x["first_conservative_preopen_for_revised_reference"],
+                                 "2021-08-05")
+                self.assertEqual(x["reference_vintage"],
+                                 "KRX_2021_REVISED_NOTICE_CONSERVATIVE_NEXT_DAY")
+                self.assertFalse(x["official_exchange_publication_instant_verified"])
+
+    def test_2021_market_vintage_date_shape_invalid_fails_closed(self):
+        for bad in ("2021-02-29", "2021-08-00", "2021-13-01",
+                    "2021-8-5", "2021/08/05", "2022-08-05",
+                    "2020-12-31", "", 20210805, True, None):
+            with self.subTest(bad=bad), self.assertRaises(p.OfflinePrivateAuditError):
+                p.strict_krx_2021_calendar_preopen_reference(bad)
+
+    def test_2021_market_vintage_never_authorizes_any_economic_or_order_right(self):
+        for day in ("2021-02-01", "2021-08-04", "2021-08-05"):
+            v = p.strict_krx_2021_calendar_preopen_reference(day)
+            for flag in (
+                "official_exchange_publication_instant_verified",
+                "official_asof_market_calendar_source_admitted",
+                "individual_security_tradability_verified",
+                "historical_source_publication_pit_verified",
+                "m20_performance_run_authorized",
+                "independent_holdout_authorized",
+                "live_orders_authorized",
+                "network_request_attempted",
+            ):
+                self.assertIs(v[flag], False, flag)
+            self.assertEqual(v["ordering"], "DISABLED")
+
+    def test_2021_retrospective_13_day_match_is_not_retroactive_preopen_proof(self):
+        rows, source_sha = fixture()
+        x = assess(rows, source_sha)
+        self.assertTrue(x["source_date_by_date_retrospective_calendar_match"])
+        pre = p.strict_krx_2021_calendar_preopen_reference("2021-08-04")
+        self.assertEqual(pre["reference_market_closure_count"], 10)
+        self.assertFalse(pre["official_asof_market_calendar_source_admitted"])
+        self.assertFalse(x["2021_exchange_calendar_pit_admitted"])
+
+
 if __name__ == "__main__":
     unittest.main()
