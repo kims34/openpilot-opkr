@@ -11,6 +11,7 @@ This script is NOT shipped to, or executed on, the live Railway worker here.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -58,36 +59,60 @@ def _protected_root(root: str, worktree: str) -> Path:
 
 
 def _read_exact_private_metadata(root: Path, rel: tuple[str, str]) -> bytes:
+    """Anchor every existing directory and file to O_NOFOLLOW descriptors.
+
+    The former Path.is_symlink checks were vulnerable to the parent being
+    exchanged for a symlink between check and opening a full absolute file
+    path. Use openat-style dir_fd lookups for every ancestor, the metadata
+    directory, and finally the file; never navigate via mutable full paths
+    once traversal begins. Linux private worker is required to support both
+    O_DIRECTORY and O_NOFOLLOW. All descriptors are closed in ExitStack.
+    """
+    _need(hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY"),
+          "PRIVATE_SECURE_OPEN_FLAGS_UNAVAILABLE")
     parent = root / rel[0]
     _need(not parent.is_symlink() and parent.is_dir(),
           "PRIVATE_METADATA_PARENT_INVALID")
     item = parent / rel[1]
     _need(not item.is_symlink(), "PRIVATE_METADATA_SYMLINK_REJECTED")
-    # An O_NOFOLLOW fd is used to avoid following final-component symlinks
-    # even if the file changed after the preceding stat check.
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW
     try:
-        fd = os.open(item, flags)
+        with ExitStack() as stack:
+            directory_fd = os.open(root.anchor, directory_flags)
+            stack.callback(os.close, directory_fd)
+            # A relative, fd-anchored lookup of each path component rejects
+            # directory-symlink replacements even when a race occurs.
+            for part in root.parts[1:]:
+                child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+                stack.callback(os.close, child_fd)
+                directory_fd = child_fd
+            parent_fd = os.open(rel[0], directory_flags, dir_fd=directory_fd)
+            stack.callback(os.close, parent_fd)
+            fd = os.open(rel[1], file_flags, dir_fd=parent_fd)
+            stack.callback(os.close, fd)
+            st = os.fstat(fd)
+            _need(stat.S_ISREG(st.st_mode), "PRIVATE_METADATA_NOT_REGULAR_FILE")
+            _need(stat.S_IMODE(st.st_mode) == 0o600,
+                  "PRIVATE_METADATA_PERMISSION_DRIFT")
+            _need(st.st_size >= 2, "PRIVATE_METADATA_EMPTY")
+            _need(st.st_size <= 32 * 1024 * 1024,
+                  "PRIVATE_METADATA_EXCEEDS_SAFETY_LIMIT")
+            with os.fdopen(fd, "rb", closefd=False) as stream:
+                payload = stream.read(st.st_size + 1)
+            _need(len(payload) == st.st_size,
+                  "PRIVATE_METADATA_CHANGED_DURING_READ")
+            after = os.fstat(fd)
+            _need(after.st_dev == st.st_dev
+                  and after.st_ino == st.st_ino
+                  and after.st_size == st.st_size
+                  and after.st_mtime_ns == st.st_mtime_ns,
+                  "PRIVATE_METADATA_CHANGED_DURING_READ")
+            return payload
     except OSError:
         raise KRXPrivateOwnerReadOnlyError(
             "PRIVATE_METADATA_READ_DENIED_OR_MISSING"
         ) from None
-    try:
-        st = os.fstat(fd)
-        _need(stat.S_ISREG(st.st_mode), "PRIVATE_METADATA_NOT_REGULAR_FILE")
-        _need(stat.S_IMODE(st.st_mode) == 0o600,
-              "PRIVATE_METADATA_PERMISSION_DRIFT")
-        _need(st.st_size >= 2, "PRIVATE_METADATA_EMPTY")
-        # Bound memory use without exposing a source path or file size.
-        _need(st.st_size <= 32 * 1024 * 1024,
-              "PRIVATE_METADATA_EXCEEDS_SAFETY_LIMIT")
-        with os.fdopen(fd, "rb", closefd=False) as f:
-            payload = f.read(st.st_size + 1)
-        _need(len(payload) == st.st_size,
-              "PRIVATE_METADATA_CHANGED_DURING_READ")
-        return payload
-    finally:
-        os.close(fd)
 
 
 def read_protected_krx_original_manifest_and_phase_state(
