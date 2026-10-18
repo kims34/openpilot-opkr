@@ -49,13 +49,35 @@ def _checked_checksum(field: str, path: Path, expected: str) -> None:
         raise EvidenceGap("REPLAY_CHECKSUM_MISMATCH")
 
 
+def _sealed_file(root: Path, relative: Path) -> Path:
+    """Refuse aliases anywhere below the extracted, pinned archive root.
+
+    The final JSON file's own is_symlink check in _digest is insufficient
+    when an *intermediate directory* resolves outside the capsule root.
+    """
+    if relative.is_absolute() or not relative.parts or any(
+        part in ("..", ".") for part in relative.parts
+    ):
+        raise EvidenceGap("REPLAY_RELATIVE_PATH_INVALID")
+    current = root
+    for index, component in enumerate(relative.parts):
+        current = current / component
+        if current.is_symlink():
+            raise EvidenceGap("REPLAY_CAPSULE_PATH_SYMLINK")
+        if index < len(relative.parts) - 1 and not current.is_dir():
+            raise EvidenceGap("REPLAY_CAPSULE_PARENT_INVALID")
+    if not current.is_file():
+        raise EvidenceGap("REPLAY_SOURCE_SIZE_OR_SYMLINK_INVALID")
+    return current
+
+
 def replay(root: Path, output: Path) -> dict:
     if not root.is_dir() or root.is_symlink():
         raise EvidenceGap("REPLAY_CAPSULE_ROOT_INVALID")
-    manifest_path = root / "INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json"
-    source_dir = root / "research_results/m20_original_gated_inputs"
-    verdict_path = root / "research_results/opendart_m20_original_evidence_gate/verdict.json"
-    checksum_path = root / "research_results/m20_original_source_capsule/checksums.json"
+    manifest_path = _sealed_file(root, Path("INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json"))
+    source_dir = Path("research_results/m20_original_gated_inputs")
+    verdict_path = _sealed_file(root, Path("research_results/opendart_m20_original_evidence_gate/verdict.json"))
+    checksum_path = _sealed_file(root, Path("research_results/m20_original_source_capsule/checksums.json"))
     capsule = _read(checksum_path, 16384)
     if set(capsule) != CAPSULE_KEYS or (
         capsule.get("kind") != CAPSULE_KIND or capsule.get("source_kind") != SOURCE_KIND
@@ -79,7 +101,7 @@ def replay(root: Path, output: Path) -> dict:
         raise EvidenceGap("REPLAY_FOUR_PINNED_SOURCE_COUNTS_MISSING")
     records = {}
     for key in EXPECTED:
-        path = source_dir / key / "counts.json"
+        path = _sealed_file(root, source_dir / key / "counts.json")
         records[key] = _read(path, 16384)
         _checked_checksum(key, path, pins[key])
     recomputed = validate_source_counts(records)
