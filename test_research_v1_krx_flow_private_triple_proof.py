@@ -11,6 +11,7 @@ from research_v1_krx_flow_private_triple_proof import (
     KRXPrivateFlowTripleError,
     RECEIPT_BODY,
     ORIGINAL_CLIENT_REVISION,
+    ORIGINAL_RECEIPT_VERSION, ORIGINAL_RECEIPT_GUARDRAIL,
     _sha,
     verify_krx_2022_private_flow_triple,
 )
@@ -52,7 +53,7 @@ def fixture():
         "pinned_client_commit": ORIGINAL_CLIENT_REVISION,
     }
     receipt = {
-        "receipt_version": "2026-10-02.v1",
+        "receipt_version": ORIGINAL_RECEIPT_VERSION,
         "source_family": "KRX_INVESTOR_FLOW",
         "intended_use_scope": "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION",
         "access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
@@ -75,6 +76,7 @@ def fixture():
         "alpha_or_final_judge_promotion_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
+        "guardrail": ORIGINAL_RECEIPT_GUARDRAIL,
     }
     receipt["receipt_fingerprint_sha256"] = _sha(
         {k: receipt[k] for k in RECEIPT_BODY}
@@ -153,6 +155,52 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
             self.assertIs(r[flag], False, flag)
         self.assertNotIn("KR7005930003", str(r))
         self.assertNotIn("SYNTHETIC_ONLY", str(r))
+
+    def test_rehashed_wrong_original_receipt_version_still_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["receipt_version"] = "2026-10-02.v1"
+        r["receipt_fingerprint_sha256"] = _sha({
+            k: r[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            r["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_RECEIPT_VERSION_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_wrong_historical_source_scope_still_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["intended_use_scope"] = "INTERNAL_RESEARCH_AND_FINAL_JUDGE_INPUT_PREPARATION"
+        r["receipt_fingerprint_sha256"] = _sha({
+            k: r[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            r["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_RECEIPT_SCOPE_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_guardrail_override_still_rejected(self):
+        item = fixture()
+        item["acquisition_receipt"]["guardrail"] = "PERFORMANCE_APPROVED"
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_RECEIPT_GUARDRAIL_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_unknown_receipt_promotion_field_is_blocked(self):
+        item = fixture()
+        item["acquisition_receipt"]["promotion_authorized"] = True
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError, "ORIGINAL_RECEIPT_FIELDS_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
 
     def test_self_consistent_raw_sha_does_not_admit_non_csv_bytes(self):
         item = fixture()
