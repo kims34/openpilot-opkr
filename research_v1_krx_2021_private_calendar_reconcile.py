@@ -141,9 +141,12 @@ def review_private_2021(*, execute: bool = False, environment=None) -> dict:
             out["status"] = "PRIVATE_2021_DATE_SET_SHAPE_MATCH_NOT_PIT"
         else:
             out["status"] = "PRIVATE_2021_DATE_SET_DISCREPANCY_NOT_PIT"
-    except (OfflinePrivateAuditError, OSError, ValueError, TypeError):
-        # Do not disclose private filenames, hashes, failed dates or provider
-        # exception messages. A failure never makes an admissible result.
+    except Exception:
+        # The private read stack can also raise unexpected KeyError,
+        # AttributeError, RuntimeError or store-specific exceptions on
+        # damaged checkpoints. Never let their messages/tracebacks reveal
+        # source paths, exact dates, private digests or internal data.
+        # An unexpected failure must have the same redacted no-PIT verdict.
         out = _base()
         out["status"] = "FAIL_CLOSED_PRIVATE_2021_SOURCE_UNVERIFIED"
     return out
