@@ -122,7 +122,10 @@ class CalendarAuditorParity(unittest.TestCase):
             self.assertFalse(a["network_request_attempted"])
             self.assertFalse(a["storage_mutated"])
             self.assertFalse(a["champion_change_authorized"])
-            self.assertFalse(a["independent_holdout_authorized"])
+        # These independent reviewers deliberately expose different names for
+        # the same forbidden Holdout access right.
+        self.assertIs(first["independent_holdout_authorized"], False)
+        self.assertIs(second["holdout_access_authorized"], False)
             for row in rows:
                 self.assertNotIn(row["day"], str(a))
                 self.assertNotIn(row["pair_sha256"], str(a))
