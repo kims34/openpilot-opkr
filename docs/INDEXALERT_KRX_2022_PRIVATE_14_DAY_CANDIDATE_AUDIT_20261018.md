@@ -1,0 +1,50 @@
+# KRX 2022: complete 14-day public holiday *candidate* comparator — 2026-10-18
+
+**Classification: OFFLINE EXPERIMENTAL, READ-ONLY WHEN SEPARATELY AUTHORIZED, NOT OFFICIAL MARKET-PIT APPROVED.** This isolated Draft is based on the KRX specialist's separate still-Draft #420. No KRX endpoint, secret, Railway deployment, broker, code merge, original private 2022 volume read or actual model profitability run was performed in this work.
+
+## Why this matters
+
+Actual read-only 2026-10-12 Railway `indexalert-krx-historical-worker` deployment log for **2022** reports:
+- `260/260` stored weekday original KRX-approved **daily/master** pairs SHA/backing-content integrity verified.
+- `14` source-empty days, all classified `unverified_calendar_or_source_gap`. Source-empty does **not** mean market holiday, nor stock-day tradability.
+- Original private 2022 full-year snapshot digest pinned to `0b110aaa452f43788e9880f4bf769981dee5f31c617485ca49cc7e7918306c9e`.
+- `historical_pit_source_admitted=false`, `performance_run_authorized=false`, `real_orders_authorized=false`.
+
+Separate [Draft PR #422](https://github.com/kims34/openpilot-opkr/pull/422) already prepared the **2021** private original 13-day comparator. This PR is the **non-overlapping 2022** counterpart; it does not modify #420 or #422 code and MUST NOT be deployed or merged automatically.
+
+## Explicit public 2022 candidates: 11 regular + 2 election + 1 year-end = 14
+
+| Date(s), YYYY-MM-DD | Category | Evidence-vintage cautions |
+|---|---|---|
+| 2022-01-31, 02-01, 02-02 | Lunar New Year | Public holiday pattern; original KRX announcement/authentic as-of receipt for Jan 31 still separately needed |
+| 2022-03-01 | Independence Movement Day | Regular market-holiday candidate |
+| 2022-05-05 | Children's Day | Regular market-holiday candidate |
+| 2022-06-06 | Memorial Day | Regular market-holiday candidate |
+| 2022-08-15 | Liberation Day | Regular market-holiday candidate |
+| 2022-09-09, 09-12 | Chuseok & substitute | Regular market-holiday candidate |
+| 2022-10-03, 10-10 | National Foundation / Hangul substitute holiday | Regular market-holiday candidate |
+| 2022-03-09, 06-01 | **Presidential / local elections** | KRX **2022-02-10** announcement, before each event, not a timeless original from Jan 1 |
+| 2022-12-30 | **Exchange year-end closing** | KRX **2022-12-15** announcement; do not use as an as-of known 2022 January decision |
+
+Actual contemporary sources and rules:
+- [KRX trading holiday rules](https://global.krx.co.kr/contents/GLB/06/0602/0602010201/GLB0602010201T1.jsp) include statutory public holidays, election days, last exchange business day before Dec 31, and extraordinary closings.
+- [2022-02-10 Yonhap report of KRX official stock-market closure statement](https://www.yna.co.kr/view/AKR20220210072200002), confirms election holidays of March 9 and June 1.
+- [2022-12-15 Yonhap report of KRX year-end exchange statement](https://www.yna.co.kr/view/AKR20221215067400002), confirms Dec 30 stock-market closing and Dec 29 final 2022 session.
+- [2022-02-01 contemporary local market holiday compilation](https://www.mediainnews.com/news/articleView.html?idxno=21240) lists the 2022 weekday closures; this source is **secondary**, cannot verify first KRX publication dates for each ordinary holiday or original private stored SHA receipts.
+- [KRX official market closing holiday lookup](https://open.krx.co.kr/contents/MKD/01/0110/01100305/MKD01100305.jsp) is dynamic, year-specific historical output and its publication-vintage *not* independently obtained here.
+
+**Caveat:** All 14 candidates are weekdays and numerically equal the 2022 worker's 14 unverified empty-day *count*. This equality says **nothing** about whether the precise stored day IDs match. In particular this is not complete original 2022 official holiday-vintage proof; later year-end announcements cannot be used for earlier features.
+
+## Prepared independent 2022 original private exact-set audit
+
+- `research_v1_krx_private_2022_calendar_candidate_audit.py` defaults to `DRY_RUN_NO_PRIVATE_STORAGE_READ`, permits `--audit` only in the **existing named dedicated worker** environment with dedicated `/data` private volume, and only reads the already approved 2022 stored dataset, no network/official source calls.
+- Before comparing **in memory** it executes existing `audit_private_range` to re-verify complete `260` weekday pairs, dual original raw SHA bytes/schema, `14` old source-empty dates, pinned full 2022 snapshot fingerprint and all denied permissions. Second pass re-reads all `260` `_check_one` receipts and recomputes same snapshot fingerprint to fail closed on changed in-flight private storage.
+- Exact original private SHA-backed *empty source* day set is compared against this fixed public 14-date candidate set (not just both totals of 14); returns **only counters**, e.g. matched / missing / unexpected, plus `...NOT_PIT` classification. Private raw dates and original rows/hashes never appear in output or GitHub Actions. Same-count/different-date mismatch is rejected as verification.
+- All authority flags are literal false: `official_market_status_admitted=false`, `full_universe_source_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `real_orders_authorized=false`, `ordering=DISABLED`.
+- Separate `test_research_v1_krx_private_2022_calendar_candidate_audit.py` contains **synthetic only** positive and adversarial fixtures; `.github/workflows/indexalert-krx-private-2022-calendar-candidate-offline-ci.yml` has no secrets, API provider requests, or volume mount. A passing CI confirms code's synthetic contradiction response **ONLY**.
+
+## Hard boundary and next real evidence
+
+**NO ACTUAL PRIVATE 2022 EXACT-SET RECONCILIATION WAS EXECUTED HERE.** Only the authorized KRX worker owner, after independent review/explicit deployment/access authorization, can run `python research_v1_krx_private_2022_calendar_candidate_audit.py --audit` in the worker's verified original private volume. A real exact-set match, should one ever occur, remains **private-source-date vs public-source-candidate corroboration, not authoritative original KRX calendar source-PIT**.
+
+For 2017–2022 all 90 gaps remain unapproved until individual authenticated original exchange calendar, market type, as-of/publication vintage and stock-level listing/suspension/delist/corporate action independently validated. The prospective 2026-09-28 **27** nonpositive OHLC stock rows are entirely separate and quarantined. OpenDART first-published 2022/2021 Q3 CFS profit/period + issuer identity still incomplete. The entire H5/M20 Frozen framework, WF504/126/126, PIT/Purged/CPCV, sealed Holdout, Champion/Top3, NO_TRADE, costs/fees/taxes unchanged. **ORDERING=false.** Draft-only, unmerged, no live order, capital, permission, API subscription or Railway deployment.
