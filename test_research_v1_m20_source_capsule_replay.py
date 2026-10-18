@@ -120,6 +120,58 @@ class SealedCapsuleReplayTests(unittest.TestCase):
             with self.assertRaisesRegex(EvidenceGap,"REPLAY_PREVIOUS_VERDICT_DRIFT"):
                 p.replay(root,root/"out.json")
 
+    def test_intermediate_source_input_directory_symlink_denied_even_with_valid_hashes(self):
+        with TemporaryDirectory() as td:
+            root=Path(td)
+            install_fixture(root)
+            source=root/"research_results/m20_original_gated_inputs"
+            outside=root/"outside_source_files"
+            source.rename(outside)
+            source.symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(EvidenceGap,"REPLAY_CAPSULE_PATH_SYMLINK"):
+                p.replay(root,root/"out.json")
+
+    def test_individual_count_parent_directory_symlink_denied(self):
+        with TemporaryDirectory() as td:
+            root=Path(td)
+            install_fixture(root)
+            folder=root/"research_results/m20_original_gated_inputs/same_table"
+            outside=root/"elsewhere_same_table"
+            folder.rename(outside)
+            folder.symlink_to(outside,target_is_directory=True)
+            with self.assertRaisesRegex(EvidenceGap,"REPLAY_CAPSULE_PATH_SYMLINK"):
+                p.replay(root,root/"out.json")
+
+    def test_manifest_and_verdict_intermediate_or_final_symlinks_denied(self):
+        with TemporaryDirectory() as td:
+            root=Path(td)
+            install_fixture(root)
+            manifest=root/"INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json"
+            direct=root/"other_manifest.json"
+            manifest.rename(direct)
+            manifest.symlink_to(direct)
+            with self.assertRaisesRegex(EvidenceGap,"REPLAY_CAPSULE_PATH_SYMLINK"):
+                p.replay(root,root/"out.json")
+        with TemporaryDirectory() as td:
+            root=Path(td)
+            install_fixture(root)
+            dirname=root/"research_results/opendart_m20_original_evidence_gate"
+            direct=root/"elsewhere_verdict"
+            dirname.rename(direct)
+            dirname.symlink_to(direct,target_is_directory=True)
+            with self.assertRaisesRegex(EvidenceGap,"REPLAY_CAPSULE_PATH_SYMLINK"):
+                p.replay(root,root/"out.json")
+
+    def test_sealed_file_path_must_be_relative_and_inside_archive(self):
+        with TemporaryDirectory() as td:
+            root=Path(td)
+            install_fixture(root)
+            for name in ("../outside.json",str(root/"absolute.json")):
+                with self.subTest(name=name),self.assertRaisesRegex(
+                    EvidenceGap,"REPLAY_RELATIVE_PATH_INVALID"
+                ):
+                    p._sealed_file(root,Path(name))
+
     def test_capsule_directory_symlink_denied(self):
         with TemporaryDirectory() as td:
             root=Path(td)
