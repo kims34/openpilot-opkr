@@ -148,6 +148,18 @@ class ReadOnlyKRXOwnerSnapshotTest(unittest.TestCase):
         with self.assertRaisesRegex(KRXPrivateOwnerReadOnlyError, "NOT_REGULAR_FILE"):
             self.read()
 
+    def test_replaced_original_state_fifo_is_nonblocking_and_rejected(self):
+        # Without O_NONBLOCK, opening an attacker-swapped FIFO in O_RDONLY
+        # may hang indefinitely BEFORE fstat can reject the file type.
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("Linux FIFO availability required")
+        self.state.unlink()
+        os.mkfifo(self.state, 0o600)
+        with self.assertRaisesRegex(
+            KRXPrivateOwnerReadOnlyError, "PRIVATE_METADATA_NOT_REGULAR_FILE"
+        ):
+            self.read()
+
     def test_fd_relative_open_prevents_parent_symlink_race(self):
         # Simulates a swap AFTER the legacy Path.is_symlink check but
         # BEFORE an fd-relative open of the metadata parent directory.
