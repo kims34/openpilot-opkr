@@ -157,6 +157,44 @@ class QuoteLocalProbeOfflineTests(unittest.TestCase):
         for private in ("synthetic-token","proxy-secret","12345"):
             self.assertNotIn(private,json.dumps(result))
 
+    def test_main_synthetic_quote_only_exits_inconclusive_never_success(self):
+        # A synthetic provider reply can prove JSON structure only, not
+        # authentic REAL provenance. It must not exit 0 like a verified probe.
+        with patch.dict(os.environ, ENV, clear=True), \
+             patch("sys.argv", ["kiwoom_real_quote_local_probe.py",
+                                "--run-readonly-quote", "005930"]), \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=[reply(TOKEN), reply(ACCOUNT), reply(QUOTE)]) as post, \
+             patch("sys.stdout", new_callable=io.StringIO) as output:
+            with self.assertRaises(SystemExit) as exit_signal:
+                probe.main()
+        self.assertEqual(exit_signal.exception.code, 3)
+        self.assertEqual(post.call_count, 3)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["stage"],
+                         "QUOTE_STRUCTURE_ACCEPTED_PROVENANCE_UNVERIFIED")
+        self.assertTrue(report["quote_response_structure_ok"])
+        self.assertIs(report["genuine_live_provenance_verified"], False)
+        self.assertIs(report["real_orders_authorized"], False)
+        self.assertNotIn("synthetic-test-token", output.getvalue())
+        self.assertNotIn("12345", output.getvalue())
+
+    def test_main_rejected_quote_exits_failure_never_inconclusive(self):
+        with patch.dict(os.environ, ENV, clear=True), \
+             patch("sys.argv", ["kiwoom_real_quote_local_probe.py",
+                                "--run-readonly-quote", "005930"]), \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=[reply(TOKEN), reply(ACCOUNT),
+                                reply(b'{"return_code":805004,"return_msg":"8050"}')]) as post, \
+             patch("sys.stdout", new_callable=io.StringIO) as output:
+            with self.assertRaises(SystemExit) as exit_signal:
+                probe.main()
+        self.assertEqual(exit_signal.exception.code, 2)
+        self.assertEqual(post.call_count, 3)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["stage"], "QUOTE_CONTRACT_BLOCKED")
+        self.assertFalse(report["quote_response_structure_ok"])
+
     def test_main_without_explicit_cli_flag_never_opens_network(self):
         with patch.dict(os.environ, ENV, clear=True), \
              patch("sys.argv", ["kiwoom_real_quote_local_probe.py"]), \
