@@ -94,7 +94,7 @@ class ExactCalendarTests(unittest.TestCase):
                 self.assertEqual(x["original_pairs_reverified"], 0)
                 self.assertFalse(x["original_panel_sha256_matches_prior_audit"])
                 self.assertFalse(x["private_2021_original_date_set_independently_reconciled"])
-                self.assertFalse(x["real_orders_authorized"])
+                self.assertFalse(x["live_orders_authorized"])
                 self.assertFalse(x["network_request_attempted"])
                 self.assertEqual(x["ordering"], "DISABLED")
 
