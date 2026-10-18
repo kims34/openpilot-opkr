@@ -148,6 +148,113 @@ class ReadOnlyKRXOwnerSnapshotTest(unittest.TestCase):
         with self.assertRaisesRegex(KRXPrivateOwnerReadOnlyError, "NOT_REGULAR_FILE"):
             self.read()
 
+    def test_fd_relative_open_prevents_parent_symlink_race(self):
+        # Simulates a swap AFTER the legacy Path.is_symlink check but
+        # BEFORE an fd-relative open of the metadata parent directory.
+        outside = Path(self.temp.name) / "other_parent"
+        outside.mkdir()
+        (outside / "PER_SECURITY_HISTORY.json").write_bytes(
+            self.synthetic["private_phase_state_bytes"]
+        )
+        old = self.root / "batch_state_original"
+        real_open = os.open
+        swapped = []
+
+        def race(path, flags, mode=0o777, *, dir_fd=None):
+            if path == "batch_state" and dir_fd is not None and not swapped:
+                (self.root / "batch_state").rename(old)
+                (self.root / "batch_state").symlink_to(
+                    outside, target_is_directory=True
+                )
+                swapped.append(True)
+            return real_open(path, flags, mode, dir_fd=dir_fd)
+
+        with patch(
+            "research_v1_krx_flow_private_owner_readonly_snapshot.os.open",
+            side_effect=race,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerReadOnlyError, "READ_DENIED_OR_MISSING"
+            ):
+                self.read()
+        self.assertTrue(swapped, "test must exercise dir_fd parent lookup")
+
+    def test_fd_relative_open_prevents_file_symlink_race(self):
+        # The original absolute-path open() could follow a swapped final
+        # component; the new fd-relative O_NOFOLLOW must fail closed.
+        outside = self.root / "replacement_content"
+        outside.write_bytes(self.synthetic["private_phase_state_bytes"])
+        old = self.root / "batch_state" / "PER_SECURITY_HISTORY_original.json"
+        real_open = os.open
+        swapped = []
+
+        def race(path, flags, mode=0o777, *, dir_fd=None):
+            if path == "PER_SECURITY_HISTORY.json" and dir_fd is not None and not swapped:
+                self.state.rename(old)
+                self.state.symlink_to(outside)
+                swapped.append(True)
+            return real_open(path, flags, mode, dir_fd=dir_fd)
+
+        with patch(
+            "research_v1_krx_flow_private_owner_readonly_snapshot.os.open",
+            side_effect=race,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerReadOnlyError, "READ_DENIED_OR_MISSING"
+            ):
+                self.read()
+        self.assertTrue(swapped, "test must exercise dir_fd file lookup")
+
+    def test_fd_relative_open_prevents_root_directory_symlink_race(self):
+        # Replace the protected private root after initial root checks.
+        original_root = self.root.with_name("sealed_data_original")
+        outside = Path(self.temp.name) / "alternate_archive"
+        outside.mkdir()
+        real_open = os.open
+        swapped = []
+
+        def race(path, flags, mode=0o777, *, dir_fd=None):
+            if path == self.root.name and dir_fd is not None and not swapped:
+                self.root.rename(original_root)
+                self.root.symlink_to(outside, target_is_directory=True)
+                swapped.append(True)
+            return real_open(path, flags, mode, dir_fd=dir_fd)
+
+        with patch(
+            "research_v1_krx_flow_private_owner_readonly_snapshot.os.open",
+            side_effect=race,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerReadOnlyError, "READ_DENIED_OR_MISSING"
+            ):
+                self.read()
+        self.assertTrue(swapped, "test must exercise every ancestor via dir_fd")
+
+    def test_original_private_files_opened_only_fd_relative_and_no_follow(self):
+        real_open = os.open
+        audit = []
+
+        def observe(path, flags, mode=0o777, *, dir_fd=None):
+            audit.append((path, flags, dir_fd))
+            return real_open(path, flags, mode, dir_fd=dir_fd)
+
+        with patch(
+            "research_v1_krx_flow_private_owner_readonly_snapshot.os.open",
+            side_effect=observe,
+        ):
+            first, second = self.read()
+        self.assertEqual(first, self.synthetic["private_manifest_bytes"])
+        self.assertEqual(second, self.synthetic["private_phase_state_bytes"])
+        metadata = [x for x in audit if x[0] in (
+            "PER_SECURITY_HISTORY.json", "per-security-history-v3.json",
+        )]
+        self.assertEqual(len(metadata), 2)
+        for path, flags, dir_fd in metadata:
+            self.assertFalse(Path(path).is_absolute())
+            self.assertIsNotNone(dir_fd)
+            self.assertTrue(flags & os.O_NOFOLLOW)
+        self.assertGreater(len(audit), 4)
+
     def test_main_stdout_only_fixed_safe_error_when_private_root_missing(self):
         out = io.StringIO()
         with patch.dict(os.environ, {"KRX_PRIVATE_RAW_DIR": ""}), redirect_stdout(out):
