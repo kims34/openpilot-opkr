@@ -80,7 +80,7 @@ def strict_krx_2021_calendar_preopen_reference(decision_day: str) -> dict:
     the post-revision 13-day reference is conservatively usable.
     """
     if type(decision_day) is not str or not re.fullmatch(
-        r"2021-\\d{2}-\\d{2}", decision_day
+        r"2021-\d{2}-\d{2}", decision_day
     ):
         raise OfflinePrivateAuditError("KRX_2021_PREOPEN_DATE_INVALID")
     try:
