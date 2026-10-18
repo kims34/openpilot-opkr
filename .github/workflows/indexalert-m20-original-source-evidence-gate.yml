@@ -113,6 +113,65 @@ jobs:
           assert x["real_orders_authorized"] is False
           assert x["ordering"] == "DISABLED"
           PY
+      - name: Seal verified four-source counts for future read-only replay
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from research_v1_m20_original_source_evidence_gate import (
+              EXPECTED, _read, validate_contract, validate_source_counts,
+          )
+          manifest=Path("INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json")
+          base=Path("research_results/m20_original_gated_inputs")
+          verified=Path("research_results/opendart_m20_original_evidence_gate/verdict.json")
+          manifest_obj=_read(manifest, 16384)
+          validate_contract(manifest_obj)
+          records={key:_read(base/key/"counts.json",16384) for key in EXPECTED}
+          summary=validate_source_counts(records)
+          assert summary == _read(verified, 16384)
+          assert summary["m20_feature_pit_admitted"] is False
+          assert summary["m20_performance_run_authorized"] is False
+          assert summary["real_orders_authorized"] is False
+          assert summary["ordering"] == "DISABLED"
+          def digest(path):
+              return "sha256:"+hashlib.sha256(path.read_bytes()).hexdigest()
+          capsule={
+              "kind":"READ_ONLY_REPLAY_FOUR_FIRST_RECEIPT_COUNTS_NOT_PIT",
+              "source_kind":"PREVIOUSLY_VERIFIED_EXACT_GITHUB_RUNS",
+              "source_manifest_sha256":digest(manifest),
+              "source_count_files_sha256":{
+                  key:digest(base/key/"counts.json") for key in EXPECTED
+              },
+              "source_gate_verdict_sha256":digest(verified),
+              "original_cfs_profit_cells_verified":False,
+              "first_publication_instant_verified":False,
+              "m20_feature_pit_admitted":False,
+              "m20_performance_run_authorized":False,
+              "real_orders_authorized":False,
+              "ordering":"DISABLED",
+          }
+          out=Path("research_results/m20_original_source_capsule/checksums.json")
+          out.parent.mkdir(parents=True,exist_ok=True)
+          out.write_text(json.dumps(capsule,indent=2,sort_keys=True),encoding="utf-8")
+          print("M20_FOUR_SOURCE_CAPSULE=" + json.dumps({
+              "source_count_files":len(capsule["source_count_files_sha256"]),
+              "source_gate_verified":True,
+              "financial_profit_verified":False,
+              "ordering":"DISABLED",
+          },sort_keys=True))
+          PY
+      - name: Upload source-only verified inputs for 30-day read-only replay
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-first-original-four-pinned-counts-replay-capsule-no-pit
+          path: |
+            INDEXALERT_M20_2022_Q3_VERIFIED_SOURCE_ARTIFACT_MANIFEST.json
+            research_results/m20_original_gated_inputs/*/counts.json
+            research_results/opendart_m20_original_evidence_gate/verdict.json
+            research_results/m20_original_source_capsule/checksums.json
+          retention-days: 30
+          if-no-files-found: error
       - if: always()
         uses: actions/upload-artifact@v4
         with:
