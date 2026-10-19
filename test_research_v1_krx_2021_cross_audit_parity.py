@@ -118,7 +118,7 @@ class CrossAuditParityTest(unittest.TestCase):
         self.assertFalse(y["live_orders_authorized"])
 
     def test_2021_notice_vintage_is_distinct_from_retrospective_calendar(self):
-        self.assertEqual(a.KRX_2021_ANNOUNCEMENT_DATE, b.HOLIDAY_NOTICE_ASOF)
+        self.assertEqual(a._base()["2021_later_announcement_publication_date"], b.HOLIDAY_NOTICE_ASOF)
         before = a.strict_krx_2021_calendar_preopen_reference("2021-08-04")
         after = a.strict_krx_2021_calendar_preopen_reference("2021-08-05")
         self.assertEqual(before["reference_market_closure_count"], 10)
