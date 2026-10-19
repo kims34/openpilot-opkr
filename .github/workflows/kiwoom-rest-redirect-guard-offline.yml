@@ -65,6 +65,10 @@ jobs:
           assert 'KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC' in quote_probe
           assert '"YES"' in quote_probe
           assert 'allow_redirects=False' in quote_probe
+          assert 'HOSTED_RUNTIME_BLOCKED' in quote_probe
+          for cloud_marker in ('GITHUB_ACTIONS', 'CI', 'RAILWAY_PROJECT_ID', 'RAILWAY_SERVICE_ID'):
+              assert cloud_marker in quote_probe
+          assert quote_probe.index('if any(name in os.environ for name in _HOSTED_RUNTIME_MARKERS)') < quote_probe.index('token, _account, _issued = smoke._token_and_account(state)')
           # Shape acceptance is not independently proven broker provenance.
           assert 'raise SystemExit(3 if result["quote_response_structure_ok"] else 2)' in quote_probe
           assert 'real_orders_authorized": False' in quote_probe
