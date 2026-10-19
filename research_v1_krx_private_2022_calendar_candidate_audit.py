@@ -40,6 +40,17 @@ PUBLIC_CANDIDATES = (
     REGULAR_2022_CANDIDATES | ELECTION_2022_CANDIDATES |
     YEAR_END_2022_CANDIDATES
 )
+# Primary issuer/KRX KIND page has actual 2022 election holiday dates, but
+# explicitly applies to KOSDAQ. Our private 2022 raw source is KOSPI. Venue
+# transposition is NOT allowed. The document path date is not an authenticated
+# first-release clock-time or 2022-era independently archived PIT receipt.
+KRX_KIND_KOSDAQ_ELECTION_PRIMARY_NOTICE_URL = (
+    "https://kind.krx.co.kr/external/2022/02/10/000126/"
+    "20220209001809/71985.htm"
+)
+KRX_KIND_KOSDAQ_ELECTION_DATES = frozenset(("20220309", "20220601"))
+PRIVATE_DATA_MARKET = "KOSPI"
+PRIMARY_NOTICE_MARKET = "KOSDAQ"
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 EMPTY_CLASSES = frozenset((
     "DAILY_EMPTY_MASTER_PRESENT_UNVERIFIED_CALENDAR_OR_SOURCE_GAP",
@@ -139,6 +150,16 @@ def compare_verified_2022(
         "election_candidates": len(ELECTION_2022_CANDIDATES),
         "year_end_candidates": len(YEAR_END_2022_CANDIDATES),
         "public_holiday_candidates": len(PUBLIC_CANDIDATES),
+        # Original public notice is market-specific, not a universal trading
+        # calendar. These are source-scope hints ONLY, never PIT admission.
+        "private_2022_market_scope": PRIVATE_DATA_MARKET,
+        "identified_krx_kind_primary_notice_market_scope": PRIMARY_NOTICE_MARKET,
+        "identified_krx_kind_primary_notice_election_dates": len(
+            KRX_KIND_KOSDAQ_ELECTION_DATES
+        ),
+        "cross_venue_kosdaq_primary_notice_is_kospi_evidence": False,
+        "matched_kospi_first_party_original_kind_election_notice_count": 0,
+        "krx_kind_primary_notice_original_publication_instant_verified": False,
         "matched_candidate_empty_dates": len(empty_days & PUBLIC_CANDIDATES),
         "expected_closure_dates_missing_in_private_empty_count": len(missing),
         "unexpected_private_empty_dates_count": len(unexpected),
