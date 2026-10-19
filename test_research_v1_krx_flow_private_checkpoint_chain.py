@@ -31,7 +31,7 @@ def fixture():
         "source_family": "KRX_INVESTOR_FLOW",
         "dataset_identifier": "MDCSTAT02303",
         "request_metadata_sha256": request_sha,
-        "transport_status": "HTTP_200",
+        "transport_status": "HTTP_200_CSV",
         "retrieved_at": rec["retrieved_at"],
         "raw_object_sha256": raw_sha,
         "raw_bytes_size": len(raw),
@@ -200,6 +200,57 @@ class ProtectedKRXOriginalCheckpointChainTest(unittest.TestCase):
             "ORIGINAL_REQUEST_CHECKPOINT_FIELDS_DRIFT",
         ):
             verify_2022_krx_private_full_checkpoint_chain(**item)
+
+    def test_non_success_4xx_csv_download_status_rejected_even_if_manifest_rehashed(self):
+        item = fixture()
+        rewrite(item, "acquisition_manifest",
+                lambda value: value.update({"transport_status": "HTTP_403_CSV"}))
+        with self.assertRaisesRegex(
+            KRXPrivateCheckpointChainError,
+            "ORIGINAL_ACQUISITION_MANIFEST_ROUTE_DRIFT"
+        ):
+            verify_2022_krx_private_full_checkpoint_chain(**item)
+
+    def test_unpinned_json_2xx_download_status_rejected(self):
+        item = fixture()
+        rewrite(item, "acquisition_manifest",
+                lambda value: value.update({"transport_status": "HTTP_200_JSON"}))
+        with self.assertRaisesRegex(
+            KRXPrivateCheckpointChainError,
+            "ORIGINAL_ACQUISITION_MANIFEST_ROUTE_DRIFT"
+        ):
+            verify_2022_krx_private_full_checkpoint_chain(**item)
+
+    def test_invented_producer_status_or_missing_csv_suffix_rejected(self):
+        for bogus in ("SUCCESS", "HTTP_200", "HTTP_500_CSV", "HTTP_200_CSV_FAKE"):
+            with self.subTest(status=bogus):
+                item = fixture()
+                rewrite(item, "acquisition_manifest",
+                        lambda value: value.update({"transport_status": bogus}))
+                with self.assertRaisesRegex(
+                    KRXPrivateCheckpointChainError,
+                    "ORIGINAL_ACQUISITION_MANIFEST_ROUTE_DRIFT"
+                ):
+                    verify_2022_krx_private_full_checkpoint_chain(**item)
+
+    def test_original_2xx_csv_transport_success_is_accepted(self):
+        item = fixture()
+        rewrite(item, "acquisition_manifest",
+                lambda value: value.update({"transport_status": "HTTP_201_CSV"}))
+        # Original worker accepts any 2xx transport, not only HTTP 200.
+        # Recomputed manifest bytes are also checked by checkpoint; this
+        # synthetic test updates its pinned expected metadata digest.
+        import hashlib
+        rewritten_manifest_sha = hashlib.sha256(
+            item["acquisition_manifest_bytes"]
+        ).hexdigest()
+        rewrite(item, "request_checkpoint",
+                lambda value: value.update({
+                    "manifest_metadata_sha256": rewritten_manifest_sha
+                }))
+        out = verify_2022_krx_private_full_checkpoint_chain(**item)
+        self.assertTrue(out["original_manifest_file_bytes_sha_matches_checkpoint"])
+        self.assertFalse(out["source_admitted"])
 
     def test_relabelled_request_dataset_is_rejected(self):
         item = fixture()
