@@ -11,6 +11,8 @@ request. Never sends orders, writes broker state, or prints tokens, account,
 quote price, provider message, network addresses, or raw exceptions.
 An offline test with synthetic responses cannot prove a genuine broker quote.
 A valid-looking response exits 3 (inconclusive), never 0 (verified).
+Known GitHub Actions/CI and Railway environment markers block before OAuth.
+Marker absence does not prove registered-PC origin; no IP discovery is made.
 """
 from __future__ import annotations
 
@@ -43,10 +45,25 @@ def _empty_result() -> dict[str, Any]:
     }
 
 
+# Reject known hosted CI and Railway contexts before any OAuth or network
+# activity. This is conservative defense-in-depth, not proof of the owner's
+# registered IP: environment markers can be absent or removed.
+_HOSTED_RUNTIME_MARKERS = frozenset({
+    "CI", "GITHUB_ACTIONS", "GITHUB_WORKFLOW", "RUNNER_OS",
+    "RAILWAY_PROJECT_ID", "RAILWAY_ENVIRONMENT", "RAILWAY_ENVIRONMENT_ID",
+    "RAILWAY_SERVICE_ID", "RAILWAY_DEPLOYMENT_ID",
+})
+
+
 def one_shot(symbol: str) -> dict[str, Any]:
     """Return a redacted summary; never call on a cloud CI runner."""
     result = _empty_result()
     if os.getenv("KIWOOM_ENABLE_READONLY_QUOTE_DIAGNOSTIC") != "YES":
+        return result
+    # Even explicit quote opt-in is insufficient on a known automation
+    # runner. Refuse before looking up keys or constructing a broker request.
+    if any(name in os.environ for name in _HOSTED_RUNTIME_MARKERS):
+        result["stage"] = "HOSTED_RUNTIME_BLOCKED"
         return result
     try:
         request = offline_quote_envelope(symbol)
