@@ -36,6 +36,35 @@ def corpus(*, omit=None, add=None):
 
 
 class PrivateKRX2022CandidateTests(unittest.TestCase):
+    def test_kosdaq_kind_primary_notice_never_cross_certifies_kospi(self):
+        self.assertEqual(m.PRIVATE_DATA_MARKET, "KOSPI")
+        self.assertEqual(m.PRIMARY_NOTICE_MARKET, "KOSDAQ")
+        self.assertNotEqual(m.PRIVATE_DATA_MARKET, m.PRIMARY_NOTICE_MARKET)
+        self.assertEqual(m.KRX_KIND_KOSDAQ_ELECTION_DATES,
+                         m.ELECTION_2022_CANDIDATES)
+        self.assertIn("kind.krx.co.kr/external/2022/02/10/",
+                      m.KRX_KIND_KOSDAQ_ELECTION_PRIMARY_NOTICE_URL)
+        rows, sha = corpus()
+        out = m.compare_verified_2022(
+            rows, first_pass_snapshot_sha256=sha,
+            expected_snapshot_sha256=sha,
+        )
+        self.assertTrue(out["2022_private_candidate_date_sets_equal"])
+        self.assertEqual(out["private_2022_market_scope"], "KOSPI")
+        self.assertEqual(out["identified_krx_kind_primary_notice_market_scope"],
+                         "KOSDAQ")
+        self.assertEqual(out["identified_krx_kind_primary_notice_election_dates"], 2)
+        self.assertEqual(
+            out["matched_kospi_first_party_original_kind_election_notice_count"], 0
+        )
+        self.assertFalse(out["cross_venue_kosdaq_primary_notice_is_kospi_evidence"])
+        self.assertFalse(
+            out["krx_kind_primary_notice_original_publication_instant_verified"]
+        )
+        self.assertFalse(out["official_market_status_admitted"])
+        self.assertFalse(out["m20_performance_run_authorized"])
+        self.assertEqual(out["ordering"], "DISABLED")
+
     def test_expected_candidate_dates_are_14_unique_weekdays(self):
         import datetime
         self.assertEqual(len(m.PUBLIC_CANDIDATES), 14)
