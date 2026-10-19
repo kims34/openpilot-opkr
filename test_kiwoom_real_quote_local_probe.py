@@ -42,6 +42,46 @@ class QuoteLocalProbeOfflineTests(unittest.TestCase):
         post.assert_not_called()
         self.assertEqual(result["stage"], "PREFLIGHT_BLOCKED")
 
+    def test_known_hosted_runtime_markers_prevent_broker_network(self):
+        # A deliberately opted-in quote probe is not permitted from cloud CI
+        # or Railway; even an empty/false marker means hosted provenance may
+        # be present. No token is issued and no provider content is leaked.
+        for marker in sorted(probe._HOSTED_RUNTIME_MARKERS):
+            for marker_value in ("", "false", "synthetic-runner"):
+                with self.subTest(marker=marker, value=marker_value), \
+                     patch.dict(os.environ, dict(ENV, **{marker: marker_value}),
+                                clear=True), \
+                     patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                           side_effect=AssertionError("no hosted HTTP permitted")) as post:
+                    result = probe.one_shot("005930")
+                post.assert_not_called()
+                self.assertEqual(result["stage"], "HOSTED_RUNTIME_BLOCKED")
+                self.assertFalse(result["token_ok"])
+                self.assertFalse(result["quote_response_structure_ok"])
+                self.assertFalse(result["genuine_live_provenance_verified"])
+                self.assertFalse(result["real_orders_authorized"])
+                self.assertFalse(result["funds_movement_authorized"])
+                self.assertNotIn(marker_value if marker_value else "synthetic-private",
+                                 json.dumps(result))
+
+    def test_hosted_runtime_cli_exits_failure_not_success(self):
+        with patch.dict(os.environ, dict(ENV, RAILWAY_PROJECT_ID="synthetic-project"),
+                        clear=True), \
+             patch("sys.argv", ["kiwoom_real_quote_local_probe.py",
+                                "--run-readonly-quote", "005930"]), \
+             patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                   side_effect=AssertionError("no hosted HTTP permitted")) as post, \
+             patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(SystemExit) as done:
+                probe.main()
+        post.assert_not_called()
+        self.assertEqual(done.exception.code, 2)
+        report = json.loads(out.getvalue())
+        self.assertEqual(report["stage"], "HOSTED_RUNTIME_BLOCKED")
+        self.assertIs(report["genuine_live_provenance_verified"], False)
+        self.assertIs(report["real_orders_authorized"], False)
+        self.assertNotIn("synthetic-project", out.getvalue())
+
     def test_real_disabled_orders_and_credentials_are_preconditions(self):
         for override in (
             {"KIWOOM_ORDERING_ENABLED": "true"},
