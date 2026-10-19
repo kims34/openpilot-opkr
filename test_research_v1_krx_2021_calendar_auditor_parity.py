@@ -131,5 +131,37 @@ class CalendarAuditorParity(unittest.TestCase):
         self.assertIs(second["holdout_access_authorized"], False)
 
 
+    def test_fourteenth_empty_day_blocks_both_auditors(self):
+        rows, sha = synthetic_source()
+        added = next(row for row in rows if row["day"] == "20210817")
+        added.update(
+            daily_rows=0,
+            source_day_class="DAILY_EMPTY_MASTER_PRESENT_UNVERIFIED_CALENDAR_OR_SOURCE_GAP",
+        )
+        first, second = evaluate_both(rows, sha)
+        self.assertEqual(first["original_source_empty_days_count"], 14)
+        self.assertEqual(second["empty_daily_original_pairs_total"], 14)
+        self.assertFalse(first["source_date_by_date_retrospective_calendar_match"])
+        self.assertEqual(first["status"], "FAIL_CLOSED_2021_DAY_BY_DAY_CALENDAR_MISMATCH")
+        self.assertEqual(second["status"], "PRIVATE_2021_DATE_SET_DISCREPANCY_NOT_PIT")
+        self.assertFalse(second["private_2021_original_date_set_independently_reconciled"])
+
+    def test_preopen_vintage_cannot_inherit_final_retrospective_13(self):
+        rows, sha = synthetic_source()
+        first, second = evaluate_both(rows, sha)
+        self.assertTrue(first["source_date_by_date_retrospective_calendar_match"])
+        self.assertEqual(second["status"], "PRIVATE_2021_DATE_SET_SHAPE_MATCH_NOT_PIT")
+        for day in ("2021-01-04", "2021-08-03", "2021-08-04"):
+            with self.subTest(day=day):
+                ref = strict.strict_krx_2021_calendar_preopen_reference(day)
+                self.assertEqual(ref["reference_market_closure_count"], 10)
+                self.assertFalse(ref["official_asof_market_calendar_source_admitted"])
+                self.assertFalse(ref["m20_performance_run_authorized"])
+        post = strict.strict_krx_2021_calendar_preopen_reference("2021-08-05")
+        self.assertEqual(post["reference_market_closure_count"], 13)
+        self.assertFalse(post["official_asof_market_calendar_source_admitted"])
+        self.assertFalse(second["original_publication_pit_verified"])
+
+
 if __name__ == "__main__":
     unittest.main()
