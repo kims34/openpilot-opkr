@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "observed_at_kst": "2026-10-19",
+  "market": "KOSPI_CASH_EQUITIES",
+  "record_type": "FIRST_PARTY_EXCHANGE_AUTHOR_PDF_PARTIAL_MULTI_DAY_CLOSURE_EXCERPTS_NOT_HISTORICAL_PIT_CALENDAR",
+  "author": "한국거래소 유가증권시장본부·코스닥시장본부 공시부",
+  "original_first_party_pdf_url": "https://kind.krx.co.kr/external/dst/notice/11158/%5B%ED%95%9C%EA%B5%AD%EA%B1%B0%EB%9E%98%EC%86%8C%5D%202025%EB%85%84%20%EC%98%AC%EB%B9%BC%EB%AF%B8%EA%B3%B5%EC%8B%9C%20%EC%95%88%EB%82%B4.pdf",
+  "document_title": "[한국거래소] 2025년 올빼미공시 안내",
+  "document_pages": 1,
+  "pdf_page_zero_based_visually_checked": 0,
+  "source_table_title": "2025년 올빼미공시 대상일 및 재공지일",
+  "source_table_scope": "At least three consecutive closed calendar days, plus year-end last trading day; not all ordinary weekday closures",
+  "block_rows": [
+    {
+      "label": "SEOLLAL",
+      "closed_start": "2025-01-25",
+      "closed_end": "2025-01-30",
+      "last_trading_before": "2025-01-24",
+      "first_trading_after": "2025-01-31",
+      "closed_weekday_candidates": [
+        "2025-01-27",
+        "2025-01-28",
+        "2025-01-29",
+        "2025-01-30"
+      ]
+    },
+    {
+      "label": "MARCH_FIRST",
+      "closed_start": "2025-03-01",
+      "closed_end": "2025-03-03",
+      "last_trading_before": "2025-02-28",
+      "first_trading_after": "2025-03-04",
+      "closed_weekday_candidates": [
+        "2025-03-03"
+      ]
+    },
+    {
+      "label": "CHILDRENS_BUDDHA",
+      "closed_start": "2025-05-03",
+      "closed_end": "2025-05-06",
+      "last_trading_before": "2025-05-02",
+      "first_trading_after": "2025-05-07",
+      "closed_weekday_candidates": [
+        "2025-05-05",
+        "2025-05-06"
+      ]
+    },
+    {
+      "label": "MEMORIAL",
+      "closed_start": "2025-06-06",
+      "closed_end": "2025-06-08",
+      "last_trading_before": "2025-06-05",
+      "first_trading_after": "2025-06-09",
+      "closed_weekday_candidates": [
+        "2025-06-06"
+      ]
+    },
+    {
+      "label": "LIBERATION",
+      "closed_start": "2025-08-15",
+      "closed_end": "2025-08-17",
+      "last_trading_before": "2025-08-14",
+      "first_trading_after": "2025-08-18",
+      "closed_weekday_candidates": [
+        "2025-08-15"
+      ]
+    },
+    {
+      "label": "OCTOBER_LONG_HOLIDAY",
+      "closed_start": "2025-10-03",
+      "closed_end": "2025-10-09",
+      "last_trading_before": "2025-10-02",
+      "first_trading_after": "2025-10-10",
+      "closed_weekday_candidates": [
+        "2025-10-03",
+        "2025-10-06",
+        "2025-10-07",
+        "2025-10-08",
+        "2025-10-09"
+      ]
+    },
+    {
+      "label": "YEAR_END_NEW_YEAR",
+      "closed_start": "2025-12-31",
+      "closed_end": "2026-01-01",
+      "last_trading_before": "2025-12-30",
+      "first_trading_after": "2026-01-02",
+      "closed_weekday_candidates": [
+        "2025-12-31"
+      ]
+    }
+  ],
+  "weekday_closure_candidates_from_original_first_party_table": [
+    "2025-01-27",
+    "2025-01-28",
+    "2025-01-29",
+    "2025-01-30",
+    "2025-03-03",
+    "2025-05-05",
+    "2025-05-06",
+    "2025-06-06",
+    "2025-08-15",
+    "2025-10-03",
+    "2025-10-06",
+    "2025-10-07",
+    "2025-10-08",
+    "2025-10-09",
+    "2025-12-31"
+  ],
+  "weekday_candidates_count": 15,
+  "candidate_count_vs_original_Railway_2025_source_empty_count": {
+    "candidate_count": 15,
+    "private_Railway_2025_source_empty_count": 19,
+    "arithmetic_gap_not_date_level_compared": 4
+  },
+  "date_level_original_KRX_private_receipts_examined": false,
+  "original_document_full_pdf_bytes_downloaded": false,
+  "original_document_sha256_verified": false,
+  "original_first_publication_at_verified": false,
+  "official_complete_2025_trading_calendar_verified": false,
+  "reused_old_Railway_checkpoint_digests_only": true,
+  "nontrading_derivatives_or_otc_evidence_must_not_be_confused_with_KOSPI_cash_market": true,
+  "contradiction_warning": {
+    "source": "https://kind.krx.co.kr/external/2025/12/31/000569/20251231001197/10800.htm",
+    "source_kind": "ISSUER_DISCLOSURE_CONTAINING_OTC_OR_NON_STANDARD_ENTRIES",
+    "example": "The issuer document contains dated over-the-counter entries on 2025-12-31; not proof that on-exchange KOSPI cash equities were open on that holiday.",
+    "can_overturn_original_first_party_exchange_closure": false
+  },
+  "permission_safety": {
+    "original_contract_C_D_approved": false,
+    "calendar_PIT_admitted": false,
+    "annual_2025_19_ambiguous_days_resolved": 0,
+    "all_2015_2026_184_ambiguous_days_remaining": 184,
+    "security_27_quarantine_released": false,
+    "m20_profitability_authorized": false,
+    "holdout_authorized": false,
+    "live_orders_authorized": false,
+    "ordering": "DISABLED",
+    "new_authenticated_KRX_provider_requests": 0,
+    "private_Railway_volume_executed": false,
+    "deploy_or_fund_mutation": false
+  }
+}
