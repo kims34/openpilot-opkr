@@ -134,7 +134,7 @@ class ProtectedKRXOriginalCheckpointChainTest(unittest.TestCase):
     def test_old_original_checkpoint_rejects_rewritten_manifest(self):
         item = fixture()
         rewrite(item, "acquisition_manifest",
-                lambda value: value.update({"transport_status": "HTTP_201"}))
+                lambda value: value.update({"transport_status": "HTTP_201_CSV"}))
         with self.assertRaisesRegex(
             KRXPrivateCheckpointChainError,
             "ORIGINAL_REQUEST_CHECKPOINT_MANIFEST_OR_RECEIPT_DRIFT",
