@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any, Mapping
 
 from research_v1_krx_flow_pandas_payload_integrity import (
@@ -109,7 +110,12 @@ def verify_2022_krx_private_full_checkpoint_chain(
           and manifest["source_family"] == FAMILY
           and manifest["dataset_identifier"] == DATASET
           and type(manifest["transport_status"]) is str
-          and bool(manifest["transport_status"].strip()),
+          # The original 2026-10-03 KRX CSV fetcher emits precisely
+          # f"HTTP_{status}_{method.upper()}" AFTER rejecting non-2xx
+          # download responses. A nonempty "HTTP_403_CSV" or "HTTP_200_JSON"
+          # cannot prove the pinned daily net-buy CSV acquisition succeeded.
+          and re.fullmatch(r"HTTP_2[0-9]{2}_CSV",
+                           manifest["transport_status"]) is not None,
           "ORIGINAL_ACQUISITION_MANIFEST_ROUTE_DRIFT")
     expected_manifest = {
         "request_metadata_sha256": request_sha,
