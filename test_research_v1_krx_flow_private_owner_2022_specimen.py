@@ -165,7 +165,7 @@ class OriginalKRXFirst2022FlowSpecimenTest(unittest.TestCase):
 
     def test_original_acquisition_manifest_corruption_fails(self):
         data = json.loads(self.file("acquisition").read_bytes())
-        data["transport_status"] = "HTTP_205"
+        data["transport_status"] = "HTTP_205_CSV"
         self.write("acquisition", original_writer_bytes(data))
         with self.assertRaisesRegex(Exception, "MANIFEST_OR_RECEIPT_DRIFT"):
             self.audit()
