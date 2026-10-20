@@ -65,6 +65,30 @@ class QuoteLocalProbeOfflineTests(unittest.TestCase):
                 # leaked environment value. Assert only unique private data.
                 self.assertNotIn("synthetic-runner", json.dumps(result))
 
+    def test_unlisted_hosted_runtime_prefixes_block_before_token(self):
+        # Never allow a newly named Railway/GitHub/runner variable to evade
+        # the existing known-marker allowlist. Presence alone is sufficient.
+        for name in (
+            "RAILWAY_ENVIRONMENT_NAME", "RAILWAY_STATIC_URL",
+            "RAILWAY_FUTURE_MARKER", "GITHUB_JOB", "GITHUB_FUTURE_MARKER",
+            "RUNNER_FUTURE_MARKER",
+        ):
+            self.assertNotIn(name, probe._HOSTED_RUNTIME_MARKERS)
+            for value in ("", "false", "synthetic-private-host-identity"):
+                with self.subTest(marker=name, value=value), \\
+                     patch.dict(os.environ, {**ENV, name: value}, clear=True), \\
+                     patch("kiwoom_real_type00_readonly_smoke.requests.post",
+                           side_effect=AssertionError("hosted HTTP must not run")) as post:
+                    result = probe.one_shot("005930")
+                post.assert_not_called()
+                self.assertEqual(result["stage"], "HOSTED_RUNTIME_BLOCKED")
+                self.assertIs(result["token_ok"], False)
+                self.assertIs(result["account_endpoint_ok"], False)
+                self.assertIs(result["quote_response_structure_ok"], False)
+                self.assertIs(result["genuine_live_provenance_verified"], False)
+                self.assertIs(result["real_orders_authorized"], False)
+                self.assertNotIn("synthetic-private-host-identity", json.dumps(result))
+
     def test_hosted_runtime_cli_exits_failure_not_success(self):
         with patch.dict(os.environ, dict(ENV, RAILWAY_PROJECT_ID="synthetic-project"),
                         clear=True), \
