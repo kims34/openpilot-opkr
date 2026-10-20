@@ -1,7 +1,8 @@
 """Offline-only proof of matching pandas receipt hashes; no real KRX data."""
 from __future__ import annotations
 
-from io import BytesIO
+import csv
+from io import BytesIO, StringIO
 import unittest
 from unittest.mock import patch
 
@@ -55,6 +56,19 @@ def valid_case():
     return data
 
 
+def _retarget_rehash_one_investor_cell(item, investor_bucket, display):
+    """Adversary changes EVERY related source/receipt/completion SHA in fixture."""
+    reader = list(csv.reader(StringIO(
+        item["original_raw_bytes"].decode("euc_kr"), newline=""
+    )))
+    column = reader[0].index(investor_bucket)
+    reader[1][column] = display
+    sink = StringIO(newline="")
+    csv.writer(sink).writerows(reader)
+    retarget_original_bytes(item, sink.getvalue().encode("euc_kr"))
+    _rebuild_receipt_for_original_csv(item)
+
+
 class OriginalKRXPandasPayloadTest(unittest.TestCase):
     def test_original_runtime_requirements_are_pinned(self):
         self.assertEqual(pd.__version__, "2.3.3")
@@ -65,6 +79,8 @@ class OriginalKRXPandasPayloadTest(unittest.TestCase):
         self.assertTrue(result["original_pandas_schema_sha_independently_recomputed"])
         self.assertTrue(result["parsed_payload_digest_independently_recomputed"])
         self.assertTrue(result["original_pandas_payload_sha_matches_archived_receipt"])
+        self.assertTrue(result["original_2022_foreign_institution_amount_display_format_checked"])
+        self.assertFalse(result["original_2022_net_buy_amount_unit_or_scale_verified"])
         for key in (
             "source_admitted", "performance_testing_authorized",
             "sealed_holdout_authorized", "ordering_enabled",
@@ -159,6 +175,59 @@ class OriginalKRXPandasPayloadTest(unittest.TestCase):
                 "ORIGINAL_NUMPY_VERSION_DRIFT",
             ):
                 verify_2022_krx_flow_pandas_payload(**item)
+
+    def test_forged_text_foreign_amount_with_every_hash_recomputed_is_rejected(self):
+        item = valid_case()
+        _retarget_rehash_one_investor_cell(item, "외국인", "NOT_A_NUMBER")
+        with self.assertRaisesRegex(
+            KRXInvestorFlowPandasDigestError,
+            "ORIGINAL_INVESTOR_AMOUNT_NOT_FINITE_NUMERIC_FORMAT",
+        ):
+            verify_2022_krx_flow_pandas_payload(**item)
+
+    def test_rehashed_missing_pension_numeric_cell_is_rejected(self):
+        item = valid_case()
+        _retarget_rehash_one_investor_cell(item, "연기금 등", "")
+        with self.assertRaisesRegex(
+            KRXInvestorFlowPandasDigestError,
+            "ORIGINAL_INVESTOR_AMOUNT_NOT_FINITE_NUMERIC_FORMAT",
+        ):
+            verify_2022_krx_flow_pandas_payload(**item)
+
+    def test_rehashed_bad_institution_thousands_grouping_is_rejected(self):
+        item = valid_case()
+        _retarget_rehash_one_investor_cell(item, "금융투자", "1,23,456")
+        with self.assertRaisesRegex(
+            KRXInvestorFlowPandasDigestError,
+            "ORIGINAL_INVESTOR_AMOUNT_NOT_FINITE_NUMERIC_FORMAT",
+        ):
+            verify_2022_krx_flow_pandas_payload(**item)
+
+    def test_forged_nonfinite_or_exponent_display_is_rejected(self):
+        for bad in ("NaN", "inf", "1e+9", "--", "−120", "(10)", "N/A"):
+            with self.subTest(value=bad):
+                item = valid_case()
+                _retarget_rehash_one_investor_cell(item, "보험", bad)
+                with self.assertRaisesRegex(
+                    KRXInvestorFlowPandasDigestError,
+                    "ORIGINAL_INVESTOR_AMOUNT_NOT_FINITE_NUMERIC_FORMAT",
+                ):
+                    verify_2022_krx_flow_pandas_payload(**item)
+
+    def test_original_display_negative_grouping_decimal_and_zero_remain_nonadmitted(self):
+        for sample in ("-1,234", "+1,234.50", "0", "-12.25", "1200000"):
+            with self.subTest(display=sample):
+                item = valid_case()
+                _retarget_rehash_one_investor_cell(item, "외국인", sample)
+                proof = verify_2022_krx_flow_pandas_payload(**item)
+                self.assertTrue(
+                    proof["original_2022_foreign_institution_amount_display_format_checked"]
+                )
+                self.assertFalse(
+                    proof["original_2022_net_buy_amount_unit_or_scale_verified"]
+                )
+                self.assertFalse(proof["source_admitted"])
+                self.assertFalse(proof["performance_testing_authorized"])
 
     def test_header_only_empty_original_csv_has_zero_rows_without_pit_admission(self):
         item = valid_case()
