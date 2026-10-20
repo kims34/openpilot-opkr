@@ -22,9 +22,9 @@ def sample():
         ],
         independent_calendar=[
             {"date": D1, "session": "CLOSED", "evidence_sha256": SHA_B,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"},
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"},
             {"date": D2, "session": "OPEN", "evidence_sha256": SHA_C,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"},
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"},
         ],
         price_anomalies=[
             {"date": D2, "security_token_sha256": SHA_A, "row_sha256": SHA_B,
@@ -159,7 +159,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         x = sample()
         x["independent_calendar"].append(
             {"date": "2018-01-03", "session": "CLOSED", "evidence_sha256": SHA_A,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"})
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"})
         with self.assertRaises(EvidenceNotAdmitted):
             review_exceptions(**x)
 
@@ -199,7 +199,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         x["independent_calendar"].append(
             {"date": "2026-09-28", "session": "CLOSED",
              "evidence_sha256": SHA_A,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"})
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"})
         with self.assertRaises(EvidenceNotAdmitted):
             review_exceptions(**x)
 
@@ -321,7 +321,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         ]
         x["independent_calendar"] = [
             {"date": d, "session": "CLOSED", "evidence_sha256": SHA_B,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"}
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"}
             for d in extra
         ]
         x["price_anomalies"] = []
@@ -355,7 +355,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         ]
         x["independent_calendar"] = [
             {"date": "2021-10-04", "session": "OPEN", "evidence_sha256": SHA_C,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"}
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"}
         ]
         x["price_anomalies"] = []
         x["independent_security_days"] = []
@@ -377,7 +377,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         ]
         x["independent_calendar"] = [
             {"date": "2021-08-04", "session": "OPEN", "evidence_sha256": SHA_C,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"}
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM", "market_scope": "KOSPI_EQUITIES"}
         ]
         x["price_anomalies"] = []
         x["independent_security_days"] = []
