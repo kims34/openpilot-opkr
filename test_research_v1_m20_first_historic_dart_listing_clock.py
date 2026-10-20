@@ -99,11 +99,66 @@ class HistoricalDisclosureTimeTests(unittest.TestCase):
         self.assertIn("<html>",page)
         url,kw=s.info
         self.assertEqual(url,"https://dart.fss.or.kr/dsac001/mainAll.do")
-        self.assertEqual(kw["params"],{"selectDate":"2022.11.14"})
+        self.assertEqual(kw["params"],{"selectDate":"2022.11.14","currentPage":"1","mdayCnt":"0"})
         self.assertFalse(kw["allow_redirects"])
         self.assertTrue(kw["stream"])
         self.assertNotIn("crtfc_key",str(s.info))
         self.assertTrue(s.response.closed)
+
+    def test_fixed_page_boundary_never_exceeds_eight(self):
+        class BrokenSession:
+            def get(self,*args,**kwargs):
+                raise AssertionError("should never call")
+        for page in (0,-1,9,True,"3",None):
+            with self.subTest(page=page),self.assertRaisesRegex(
+                p.ClockGap,"HISTORIC_LIST_PAGE_OUTSIDE_FIXED_CAP"
+            ):
+                p._public_listing(BrokenSession(),"20221114",page)
+
+    def test_paged_historical_list_hits_first_original_receipt_on_page_two_only(self):
+        actual=[]
+        def official(session,kind,params,zip_response=False):
+            actual.append(kind)
+            if kind=="corpCode.xml":
+                return b"mock"
+            if kind=="list.json":
+                return {"list":[{"rcept_no":RECEIPT,"rcept_dt":"20221114"}]}
+            raise AssertionError("unexpected official read")
+        class Session: pass
+        pages=[]
+        def public(session,day,page=1):
+            pages.append(page)
+            if page==1: return document(row(OTHER,"15:35"))
+            if page==2: return document(row(RECEIPT,"18:10"))
+            raise AssertionError("should stop before page three")
+        with (patch.object(p,"_official_get",side_effect=official),
+              patch.object(p,"_registry",return_value={p.COHORT[5]:"00000001"}),
+              patch.object(p,"original_first_receipt",return_value=RECEIPT),
+              patch.object(p,"_public_listing",side_effect=public)):
+            x=p.execute(Session(),"DUMMY_PRIVATE_KEY")
+        self.assertEqual(actual,["corpCode.xml","list.json"])
+        self.assertEqual(pages,[1,2])
+        self.assertEqual(x["pages_searched_before_exact_receipt"],2)
+        self.assertTrue(x["first_original_receipt_row_has_unique_time_cell"])
+        self.assertTrue(x["row_clock_is_not_original_first_published_time"])
+        self.assertNotIn("18:10",str(x))
+        self.assertNotIn(RECEIPT,str(x))
+
+    def test_all_eight_pages_without_first_receipt_remain_unknown(self):
+        pages=[]
+        with (patch.object(p,"_official_get",side_effect=[b"mock",{
+                "list":[{"rcept_no":RECEIPT,"rcept_dt":"20221114"}]
+              }]),
+              patch.object(p,"_registry",return_value={p.COHORT[5]:"00000001"}),
+              patch.object(p,"original_first_receipt",return_value=RECEIPT),
+              patch.object(p,"_public_listing",side_effect=lambda _s,_d,page: (
+                  pages.append(page) or document(row(OTHER))
+              ))):
+            with self.assertRaisesRegex(
+                p.ClockGap,"HISTORIC_LIST_FIRST_RECEIPT_NOT_VISIBLE_IN_BOUNDED_PAGES"
+            ):
+                p.execute(object(),"DUMMY_PRIVATE_KEY")
+        self.assertEqual(pages,list(range(1,9)))
 
     def test_unsupported_html_and_redirect_fail_closed(self):
         class R:
