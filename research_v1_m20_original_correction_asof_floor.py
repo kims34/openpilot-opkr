@@ -77,22 +77,23 @@ def edition_date_floor(
     if not orig < corrected <= orig + timedelta(days=366*MAX_RELATIVE_CORRECTION_YEARS):
         raise EditionFloorGap("EDITION_DATE_ORDER_OR_SCOPE_INVALID")
 
-    # Same trusted historical-calendar rule is used independently for BOTH
-    # filings, preventing accidental use of next-year revised data in an
-    # earlier simulated session.
-    try:
-        first = source_date_floor(
-            original_receipt_day, trade_session_day,
-            official_historical_sessions,
-            first_receipt_verified=original_first_filing_verified,
-            calendar_official_historical_pit_verified=calendar_official_historical_pit_verified,
-        )
-    except ReceiptDateGap as e:
-        raise EditionFloorGap("ORIGINAL_DATE_FLOOR_OR_CALENDAR_INVALID") from None
+    # Source-date floor has a one-year horizon. An original-edition window
+    # is tested only before the correction day; years later, only the later
+    # edition can be considered, so do not incorrectly reject that as
+    # outside the original date's one-year horizon.
+    first_candidate = False
+    if orig < decision < corrected:
+        try:
+            first = source_date_floor(
+                original_receipt_day, trade_session_day,
+                official_historical_sessions,
+                first_receipt_verified=original_first_filing_verified,
+                calendar_official_historical_pit_verified=calendar_official_historical_pit_verified,
+            )
+        except ReceiptDateGap as e:
+            raise EditionFloorGap("ORIGINAL_DATE_FLOOR_OR_CALENDAR_INVALID") from None
+        first_candidate = first["after_receipt_trading_session_candidate"]
 
-    # A decision before correction or many years before its day is not a
-    # corrected-edition candidate. The base floor has a bounded horizon;
-    # apply it for an actual later decision, never for pre-correction dates.
     corrected_candidate = False
     if decision > corrected:
         try:
@@ -112,7 +113,7 @@ def edition_date_floor(
                   and calendar_official_historical_pit_verified)
     orig_candidate = (
         provenance and orig < decision < corrected
-        and first["after_receipt_trading_session_candidate"]
+        and first_candidate
     )
     corrected_candidate = provenance and corrected_candidate
 
