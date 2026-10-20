@@ -24,6 +24,49 @@ class TokenModeProbeTests(unittest.TestCase):
         self.assertNotIn("message", out)
 
     @patch("kiwoom_token_mode_probe.requests.post")
+    def test_broker_8050_denial_cannot_claim_token_issuance(self, post):
+        # Even if a malformed/hostile response includes token-like fields,
+        # broker denial takes precedence over structural field presence.
+        for code in (805004, 8050, -1, None, True, "0"):
+            with self.subTest(code=repr(code)):
+                response = Mock(status_code=200)
+                response.json.return_value = {
+                    "return_code": code,
+                    "return_msg": "[8050: synthetic redacted denial]",
+                    "token": "synthetic-private-token",
+                    "expires_dt": "20991231235959",
+                    "token_type": "Bearer",
+                }
+                post.return_value = response
+                out = attempt("https://api.kiwoom.com",
+                              "synthetic-key", "synthetic-secret")
+                self.assertFalse(out["token_present"])
+                self.assertFalse(out["expiry_present"])
+                self.assertFalse(out["token_type_present"])
+                self.assertEqual(out["detail_code"], 8050)
+                self.assertEqual(out["return_code"],
+                                 code if type(code) is int else None)
+                self.assertIs(post.call_args.kwargs["allow_redirects"], False)
+                self.assertNotIn("synthetic-private-token", str(out))
+
+    @patch("kiwoom_token_mode_probe.requests.post")
+    def test_success_code_with_empty_token_does_not_fake_token_presence(self, post):
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            "return_code": 0,
+            "token": " ",
+            "expires_dt": "20991231235959",
+            "token_type": "Bearer",
+        }
+        post.return_value = response
+        out = attempt("https://api.kiwoom.com",
+                      "synthetic-key", "synthetic-secret")
+        self.assertEqual(out["return_code"], 0)
+        self.assertFalse(out["token_present"])
+        self.assertTrue(out["expiry_present"])
+        self.assertTrue(out["token_type_present"])
+
+    @patch("kiwoom_token_mode_probe.requests.post")
     def test_redirect_does_not_consume_provider_body(self, post):
         for status in (301, 302, 303, 307, 308):
             with self.subTest(status=status):
