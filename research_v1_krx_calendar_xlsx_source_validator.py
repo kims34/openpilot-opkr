@@ -24,6 +24,7 @@ SS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 PKGREL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 PACKAGE_REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 SHEET_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+DOCUMENT_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MAX_XML = 8_000_000
 MAX_UNCOMPRESSED = 12_000_000
@@ -161,8 +162,8 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                 names.add(name)
                 total+=item.file_size
             if total > MAX_UNCOMPRESSED or not (
-                {"[Content_Types].xml","xl/workbook.xml","xl/worksheets/sheet1.xml",
-                 "xl/_rels/workbook.xml.rels"} <= names
+                {"[Content_Types].xml","_rels/.rels","xl/workbook.xml",
+                 "xl/worksheets/sheet1.xml","xl/_rels/workbook.xml.rels"} <= names
             ):
                 return error
             # Relationship XML may carry remote links. Reject all external
@@ -173,6 +174,21 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                     for r in rel.iter():
                         if r.attrib.get("TargetMode","").lower()=="external":
                             return error
+            # The *package-root* Office Document relationship decides
+            # which workbook Excel actually opens. Checking only workbook
+            # -> sheet1 is unsafe: a decoy xl/workbook.xml/sheet1.xml
+            # can be byte-consistent while the package points elsewhere.
+            package_root=parse_xml(book.read("_rels/.rels"))
+            actual_workbooks=[
+                r for r in package_root.findall(PACKAGE_REL+"Relationship")
+                if r.attrib.get("Type")==DOCUMENT_TYPE
+            ]
+            if (len(actual_workbooks)!=1
+                    or not actual_workbooks[0].attrib.get("Id")
+                    or actual_workbooks[0].attrib.get("Target") not in (
+                        "xl/workbook.xml", "/xl/workbook.xml"
+                    )):
+                return error
             workbook=parse_xml(book.read("xl/workbook.xml"))
             sheets=workbook.find(SS+"sheets")
             if sheets is None or len(sheets.findall(SS+"sheet")) != 1:
