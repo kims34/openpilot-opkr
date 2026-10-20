@@ -15,17 +15,62 @@ No raw rows, issuer symbols, task IDs or row hashes are returned.
 """
 from __future__ import annotations
 
+import csv
 import hashlib
-from io import BytesIO
+from io import BytesIO, StringIO
 import json
+import re
 from typing import Any, Mapping
 
 from research_v1_krx_flow_private_triple_proof import (
     verify_krx_2022_private_flow_triple,
 )
+from research_v1_krx_flow_2022_receipt_gate import INSTITUTION_COMPONENTS
 
 PINNED_PANDAS_VERSION = "2.3.3"
 PINNED_NUMPY_VERSION = "2.5.3"
+# Syntax-only; 2022 KRX amounts and KRW scaling are NOT inferred.
+# Accept plain signed values, canonical 3-digit thousands grouping, and an
+# optional decimal portion. Blank, placeholders, scientific notation,
+# malformed commas and non-finite labels are NOT valid numeric observations.
+_SOURCE_AMOUNT = re.compile(
+    r"[+-]?(?:[0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)(?:[.][0-9]+)?"
+)
+_REQUIRED_FLOW_BUCKETS = ("외국인", *INSTITUTION_COMPONENTS)
+
+
+def _verify_required_investor_amount_cell_format(raw: bytes) -> None:
+    """Fail closed on opaque original financial cells, not on unknown units.
+
+    Parsed frame SHA can faithfully preserve arbitrary text: that alone does
+    NOT establish numeric foreign/institution net-buy data. Check EVERY 2022
+    row of all 8 required individual investor buckets against a conservative
+    finite displayed-number grammar. Do not normalize units, infer signs,
+    aggregate institutions, expose any amount or promote source/PIT.
+    """
+    try:
+        reader = csv.reader(
+            StringIO(raw.decode("euc_kr", errors="strict"), newline=""),
+            strict=True,
+        )
+        header = next(reader)
+        indexes = [header.index(name) for name in _REQUIRED_FLOW_BUCKETS]
+        for row in reader:
+            if not row:
+                continue
+            if len(row) != len(header):
+                raise KRXInvestorFlowPandasDigestError(
+                    "ORIGINAL_INVESTOR_AMOUNT_CSV_WIDTH_DRIFT"
+                )
+            for index in indexes:
+                value = row[index].strip()
+                _need(_SOURCE_AMOUNT.fullmatch(value) is not None,
+                      "ORIGINAL_INVESTOR_AMOUNT_NOT_FINITE_NUMERIC_FORMAT")
+    except (UnicodeError, csv.Error, StopIteration, ValueError):
+        raise KRXInvestorFlowPandasDigestError(
+            "ORIGINAL_INVESTOR_AMOUNT_CSV_PARSE_FAILED"
+        ) from None
+
 
 
 class KRXInvestorFlowPandasDigestError(ValueError):
@@ -119,6 +164,11 @@ def verify_2022_krx_flow_pandas_payload(
         fingerprint == acquisition_receipt["response_payload_sha256"],
         "ORIGINAL_PANDAS_PAYLOAD_SHA_MISMATCH",
     )
+    # A fully matching historical pandas content digest can still cover
+    # arbitrary strings. Before deeming a 2022 request a usable numeric
+    # *candidate*, reject malformed foreign/institution cells. The source
+    # response is not thereby admitted as authentic, PIT or KRW-scaled.
+    _verify_required_investor_amount_cell_format(original_raw_bytes)
     return {
         **prior,
         "checked_type": "KRX_INVESTOR_FLOW_2022_ORIGINAL_PANDAS_DIGEST",
@@ -127,6 +177,8 @@ def verify_2022_krx_flow_pandas_payload(
         "original_pandas_schema_sha_independently_recomputed": True,
         "parsed_payload_digest_independently_recomputed": True,
         "original_pandas_payload_sha_matches_archived_receipt": True,
+        "original_2022_foreign_institution_amount_display_format_checked": True,
+        "original_2022_net_buy_amount_unit_or_scale_verified": False,
         "provider_authenticity_independently_verified": False,
         "original_2022_as_published_vintage_verified": False,
         "original_2022_historical_publication_instant_verified": False,
