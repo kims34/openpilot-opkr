@@ -75,8 +75,8 @@ class QuoteLocalProbeOfflineTests(unittest.TestCase):
         ):
             self.assertNotIn(name, probe._HOSTED_RUNTIME_MARKERS)
             for value in ("", "false", "synthetic-private-host-identity"):
-                with self.subTest(marker=name, value=value), \\
-                     patch.dict(os.environ, {**ENV, name: value}, clear=True), \\
+                with self.subTest(marker=name, value=value), \
+                     patch.dict(os.environ, {**ENV, name: value}, clear=True), \
                      patch("kiwoom_real_type00_readonly_smoke.requests.post",
                            side_effect=AssertionError("hosted HTTP must not run")) as post:
                     result = probe.one_shot("005930")
