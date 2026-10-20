@@ -216,7 +216,12 @@ def run(*, audit: bool = False, environment: Mapping[str, str] | None = None,
         return out
     try:
         root = verify_root(Path(raw_root) / PRIVATE_SUBDIR)
-    except (OfflinePrivateAuditError, OSError, ValueError):
+    except Exception:
+        # Private store mount verification is not a public data surface.
+        # Even unexpected store/helper exceptions (e.g. KeyError,
+        # RuntimeError, AttributeError) must never leak private volume paths,
+        # original per-day identifiers or underlying exception messages.
+        # Match the independent 2021 private reviewer fail-closed behavior.
         out["status"] = "FAIL_CLOSED_PRIVATE_ROOT_NOT_VERIFIED"
         return out
     checked = []
