@@ -22,9 +22,9 @@ def sample():
         ],
         independent_calendar=[
             {"date": D1, "session": "CLOSED", "evidence_sha256": SHA_B,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"},
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"},
             {"date": D2, "session": "OPEN", "evidence_sha256": SHA_C,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"},
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"},
         ],
         price_anomalies=[
             {"date": D2, "security_token_sha256": SHA_A, "row_sha256": SHA_B,
@@ -159,7 +159,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         x = sample()
         x["independent_calendar"].append(
             {"date": "2018-01-03", "session": "CLOSED", "evidence_sha256": SHA_A,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"})
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"})
         with self.assertRaises(EvidenceNotAdmitted):
             review_exceptions(**x)
 
@@ -199,7 +199,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         x["independent_calendar"].append(
             {"date": "2026-09-28", "session": "CLOSED",
              "evidence_sha256": SHA_A,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"})
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"})
         with self.assertRaises(EvidenceNotAdmitted):
             review_exceptions(**x)
 
@@ -321,7 +321,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         ]
         x["independent_calendar"] = [
             {"date": d, "session": "CLOSED", "evidence_sha256": SHA_B,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"}
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"}
             for d in extra
         ]
         x["price_anomalies"] = []
@@ -355,7 +355,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         ]
         x["independent_calendar"] = [
             {"date": "2021-10-04", "session": "OPEN", "evidence_sha256": SHA_C,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"}
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"}
         ]
         x["price_anomalies"] = []
         x["independent_security_days"] = []
@@ -377,7 +377,7 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         ]
         x["independent_calendar"] = [
             {"date": "2021-08-04", "session": "OPEN", "evidence_sha256": SHA_C,
-             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM"}
+             "source_kind": "INDEPENDENT_OFFICIAL_SESSION_CLAIM, "market_scope": "KOSPI_EQUITIES"}
         ]
         x["price_anomalies"] = []
         x["independent_security_days"] = []
@@ -385,6 +385,45 @@ class OfflineExceptionReviewTest(unittest.TestCase):
         self.assertEqual(y["krx_2021_later_added_closure_dates_in_source_scope"], 0)
         self.assertEqual(y["calendar_claimed_open"], 1)
         self.assertFalse(y["historical_2021_official_calendar_fully_reconciled"])
+
+
+    def test_derivatives_market_closure_cannot_certify_kospi_stock_session(self):
+        x = sample()
+        x["independent_calendar"][0]["market_scope"] = "KRX_DERIVATIVES"
+        with self.assertRaisesRegex(
+            EvidenceNotAdmitted, "non-equity or ambiguous market calendar"
+        ):
+            review_exceptions(**x)
+
+    def test_issuer_etf_market_note_is_not_exchange_equity_calendar_receipt(self):
+        x = sample()
+        x["independent_calendar"][0]["market_scope"] = "ETF_ISSUER_DISCLOSURE"
+        with self.assertRaisesRegex(
+            EvidenceNotAdmitted, "non-equity or ambiguous market calendar"
+        ):
+            review_exceptions(**x)
+
+    def test_omitted_equity_scope_or_nonstring_scope_rejected(self):
+        for change in ("OMIT", None, 123, False, [], "KOSPI", "ALL_MARKETS"):
+            x = sample()
+            if change == "OMIT":
+                del x["independent_calendar"][0]["market_scope"]
+            else:
+                x["independent_calendar"][0]["market_scope"] = change
+            with self.subTest(scope=str(change)), self.assertRaises(
+                EvidenceNotAdmitted
+            ):
+                review_exceptions(**x)
+
+    def test_explicit_kospi_equities_calendar_still_remains_unverified_claim(self):
+        x = sample()
+        y = review_exceptions(**x)
+        self.assertEqual(y["schema"], "indexalert-krx-offline-exception-review-v2")
+        self.assertFalse(y["retrospective_claims_independently_authenticated"])
+        self.assertFalse(y["calendar_original_publication_pit_verified"])
+        self.assertFalse(y["full_universe_source_admitted"])
+        self.assertFalse(y["live_orders_authorized"])
+        self.assertEqual(y["ordering"], "DISABLED")
 
 
 if __name__ == "__main__":
