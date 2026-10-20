@@ -25,6 +25,12 @@ PKGREL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 PACKAGE_REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 SHEET_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
 DOCUMENT_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+CONTENT_TYPES = "{http://schemas.openxmlformats.org/package/2006/content-types}"
+EXPECTED_PART_TYPES = {
+    "/xl/workbook.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+    "/xl/worksheets/sheet1.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+    "/xl/styles.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
+}
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MAX_XML = 8_000_000
 MAX_UNCOMPRESSED = 12_000_000
@@ -165,6 +171,26 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                 {"[Content_Types].xml","_rels/.rels","xl/workbook.xml",
                  "xl/worksheets/sheet1.xml","xl/_rels/workbook.xml.rels"} <= names
             ):
+                return error
+            # OPC content-type declarations identify workbook and sheet
+            # parts; a ZIP with plausible xl/workbook.xml bytes but empty
+            # or contradictory [Content_Types].xml is not an authenticated
+            # XLSX document. Ignore optional unrelated part declarations,
+            # but refuse duplicate/ambiguous core-part overrides.
+            ct=parse_xml(book.read("[Content_Types].xml"))
+            if ct.tag != CONTENT_TYPES+"Types":
+                return error
+            overrides={}
+            for element in ct.findall(CONTENT_TYPES+"Override"):
+                part=element.attrib.get("PartName")
+                kind=element.attrib.get("ContentType")
+                if not part or not kind or part in overrides:
+                    return error
+                overrides[part]=kind
+            required=EXPECTED_PART_TYPES.keys() if "xl/styles.xml" in names else (
+                "/xl/workbook.xml", "/xl/worksheets/sheet1.xml"
+            )
+            if any(overrides.get(part)!=EXPECTED_PART_TYPES[part] for part in required):
                 return error
             # Relationship XML may carry remote links. Reject all external
             # relationships rather than relying on URI dereference behavior.
