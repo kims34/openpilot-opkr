@@ -14,6 +14,8 @@ import json
 import re
 from typing import Any, Mapping
 
+from research_v1_krx_flow_2022_receipt_gate import COLUMNS as PINNED_INVESTOR_COLUMNS
+
 SHA = re.compile(r"^[0-9a-f]{64}$")
 DAY = re.compile(r"^[0-9]{8}$")
 SOURCE_DAY = re.compile(r"^(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{4}/[0-9]{2}/[0-9]{2}|[0-9]{4}[.][0-9]{2}[.][0-9]{2})$")
@@ -240,6 +242,15 @@ def verify_krx_2022_private_flow_triple(
         _require(columns == r["response_columns"],
                  "ORIGINAL_CSV_HEADER_RECEIPT_DRIFT")
         _require("일자" in columns, "ORIGINAL_CSV_DATE_COLUMN_MISSING")
+        # Existing standalone 2022 KRX receipt gate pins the full investor
+        # category vocabulary, not merely an arbitrary hash-pinned header.
+        # A self-consistently rehashed date-only or foreign-only table is
+        # NOT a valid investor-flow panel for candidate feature research.
+        # This is a structural schema check; value units, authentic KRX
+        # publication, categories' meaning and PIT remain unverified.
+        _require(len(columns) == len(PINNED_INVESTOR_COLUMNS)
+                 and set(columns) == PINNED_INVESTOR_COLUMNS,
+                 "ORIGINAL_CSV_INVESTOR_BUCKET_SCHEMA_DRIFT")
         date_index = columns.index("일자")
         observed_dates: set[datetime] = set()
         csv_rows = 0
@@ -270,6 +281,7 @@ def verify_krx_2022_private_flow_triple(
         "archived_csv_header_and_row_count_cross_checked": True,
         "archived_csv_observed_dates_in_2022_task_window_checked": True,
         "archived_csv_duplicate_day_rejected": True,
+        "archived_csv_investor_bucket_schema_cross_checked": True,
         "source_numeric_rows_or_identifiers_emitted": False,
         "parsed_payload_digest_independently_recomputed": False,
         "provider_authenticity_independently_verified": False,
