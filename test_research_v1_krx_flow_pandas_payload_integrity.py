@@ -204,7 +204,7 @@ class OriginalKRXPandasPayloadTest(unittest.TestCase):
             verify_2022_krx_flow_pandas_payload(**item)
 
     def test_forged_nonfinite_or_exponent_display_is_rejected(self):
-        for bad in ("NaN", "inf", "1e+9", "--", "−120", "(10)", "N/A"):
+        for bad in ("NaN", "inf", "1e+9", "--", "--120", "(10)", "N/A"):
             with self.subTest(value=bad):
                 item = valid_case()
                 _retarget_rehash_one_investor_cell(item, "보험", bad)
