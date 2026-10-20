@@ -7,11 +7,15 @@ on:
     paths:
       - 'research_v1_krx_private_2022_calendar_candidate_audit.py'
       - 'test_research_v1_krx_private_2022_calendar_candidate_audit.py'
+      - 'research_v1_krx_holiday_notice_venue_asof_gate.py'
+      - 'test_research_v1_krx_holiday_notice_venue_asof_gate.py'
       - '.github/workflows/indexalert-krx-private-2022-calendar-candidate-offline-ci.yml'
   pull_request:
     paths:
       - 'research_v1_krx_private_2022_calendar_candidate_audit.py'
       - 'test_research_v1_krx_private_2022_calendar_candidate_audit.py'
+      - 'research_v1_krx_holiday_notice_venue_asof_gate.py'
+      - 'test_research_v1_krx_holiday_notice_venue_asof_gate.py'
       - '.github/workflows/indexalert-krx-private-2022-calendar-candidate-offline-ci.yml'
   workflow_dispatch:
 
@@ -34,7 +38,7 @@ jobs:
       - name: Install pinned import-only HTTP dependency
         run: python -m pip install requests==2.32.3
       - name: Run no-provider original-source calendar fixtures
-        run: python -m unittest -v test_research_v1_krx_private_2022_calendar_candidate_audit
+        run: python -m unittest -v test_research_v1_krx_private_2022_calendar_candidate_audit test_research_v1_krx_holiday_notice_venue_asof_gate
       - name: Dry run must not touch private source
         run: |
           python research_v1_krx_private_2022_calendar_candidate_audit.py | python -c '
