@@ -15,6 +15,21 @@ VALID_MARKETS = frozenset(("KOSPI", "KOSDAQ", "DERIVATIVES", "ALL_EQUITIES",
 VALID_SOURCES = frozenset(("KRX_PRIMARY_MARKET_NOTICE", "REPORTED_KRX_MARKET_NOTICE",
                             "GOVERNMENT_PUBLIC_HOLIDAY", "ISSUER_PRODUCT_DISCLOSURE"))
 DATE_RE = re.compile(r"[0-9]{8}\Z")
+# These public KIND source paths were independently read, and bind exact
+# historical notice VENUE and dates only. They do NOT prove original publication
+# timestamp/archived bytes, exchange calendar PIT, or individual stock tradability.
+PINNED_KIND_MARKET_NOTICES = {
+    "https://kind.krx.co.kr/external/2021/08/04/000158/20210804000347/99340.htm": {
+        "market": "KOSPI", "dates": frozenset(("20210816",)),
+    },
+    "https://kind.krx.co.kr/external/2021/09/27/000115/20210927000265/70868.htm": {
+        "market": "DERIVATIVES", "dates": frozenset(("20211004", "20211011")),
+    },
+    "https://kind.krx.co.kr/external/2022/02/10/000126/20220209001809/71985.htm": {
+        "market": "KOSDAQ", "dates": frozenset(("20220309", "20220601")),
+    },
+}
+
 TIMESTAMP_RE = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(?::[0-9]{2})?\+09:00\Z"
 )
@@ -54,6 +69,7 @@ def _parse_kst(value: str) -> datetime:
 def classify_notice(
     *, session_day: str, required_market: str, source_kind: str,
     notice_market: str, public_report_at_kst: str, signal_asof_kst: str,
+    original_kind_notice_url: str | None = None,
 ) -> dict:
     """Return source consistency hints, never an authenticated PIT entitlement.
 
@@ -74,6 +90,18 @@ def classify_notice(
         )
     except ValueError:
         raise CalendarNoticeGap("CALENDAR_NOTICE_DATE_INVALID") from None
+    # Caller-supplied first-party document URL must match the inspected
+    # exact public KIND venue/date profile. No API or storage reads performed.
+    kind_document_profile_checked = original_kind_notice_url is not None
+    if kind_document_profile_checked:
+        if (type(original_kind_notice_url) is not str
+                or original_kind_notice_url not in PINNED_KIND_MARKET_NOTICES
+                or source_kind != "KRX_PRIMARY_MARKET_NOTICE"):
+            raise CalendarNoticeGap("ORIGINAL_KIND_NOTICE_PROFILE_UNVERIFIED")
+        profile = PINNED_KIND_MARKET_NOTICES[original_kind_notice_url]
+        if (notice_market != profile["market"]
+                or session_day not in profile["dates"]):
+            raise CalendarNoticeGap("ORIGINAL_KIND_NOTICE_MARKET_OR_DAY_CONFLICT")
     published = _parse_kst(public_report_at_kst)
     signal = _parse_kst(signal_asof_kst)
     if signal.date() > target_day:
@@ -106,5 +134,7 @@ def classify_notice(
         "reported_evidence_available_by_signal": reported_available_by_signal,
         "candidate_notice_may_be_considered_not_pit": possible,
         "self_supplied_publication_metadata_is_not_authenticated": True,
+        "original_kind_url_venue_date_profile_checked": kind_document_profile_checked,
+        "original_kind_profile_is_not_immutable_publication_proof": True,
         **DENIED,
     }
