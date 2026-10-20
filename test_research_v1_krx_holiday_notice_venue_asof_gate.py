@@ -177,6 +177,7 @@ class MarketNoticeSourceScopeTest(unittest.TestCase):
             ):
                 fields = dict(
                     session_day="20210816",
+                    required_market="KOSPI",
                     source_kind="KRX_PRIMARY_MARKET_NOTICE",
                     notice_market="KOSPI",
                     public_report_at_kst="2021-08-05T10:00+09:00",
