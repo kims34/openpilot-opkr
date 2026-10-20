@@ -268,5 +268,64 @@ class KRX2021PrivateCalendarTest(unittest.TestCase):
         self.assertFalse(x["2021_exchange_calendar_pit_admitted"])
 
 
+    def test_private_root_unexpected_exceptions_redacted(self):
+        # The stored source root can fail with unexpected exceptions before
+        # any actual per-day object is read. Never expose private paths.
+        for problem in (
+            RuntimeError("PRIVATE_SOURCE_ROOT_PATH_20210816"),
+            KeyError("PRIVATE_SECURITY_TOKEN_20211004"),
+            AttributeError("PRIVATE_RAW_OBJECT_HASH_20210101"),
+        ):
+            with self.subTest(error=type(problem).__name__):
+                read_called = []
+                def forbidden_read(root, day):
+                    read_called.append(day)
+                    raise AssertionError("never read source after invalid root")
+                def root_error(root):
+                    raise problem
+                out = p.run(
+                    audit=True,
+                    environment={
+                        "RAILWAY_SERVICE_NAME": p.WORKER,
+                        "KRX_PRIVATE_RAW_DIR": "/data",
+                    },
+                    verify_root=root_error,
+                    check_day=forbidden_read,
+                )
+                self.assertEqual(read_called, [])
+                self.assertEqual(
+                    out["status"], "FAIL_CLOSED_PRIVATE_ROOT_NOT_VERIFIED")
+                self.assertEqual(out["private_original_2021_weekday_pairs_verified"], 0)
+                self.assertFalse(out["original_pair_fingerprint_matched"])
+                self.assertFalse(out["source_date_by_date_retrospective_calendar_match"])
+                self.assertFalse(out["raw_security_rows_or_private_dates_emitted"])
+                self.assertFalse(out["official_exchange_calendar_pit_admitted"]
+                                 if "official_exchange_calendar_pit_admitted" in out
+                                 else out["2021_exchange_calendar_pit_admitted"])
+                self.assertFalse(out["real_orders_authorized"])
+                self.assertEqual(out["ordering"], "DISABLED")
+                for forbidden in (
+                    "PRIVATE_SOURCE_ROOT_PATH", "PRIVATE_SECURITY_TOKEN",
+                    "PRIVATE_RAW_OBJECT_HASH", "20210816", "20211004", "20210101",
+                ):
+                    self.assertNotIn(forbidden, str(out))
+
+    def test_root_failure_keeps_no_network_no_storage_writes(self):
+        def unexpected(root):
+            raise RuntimeError("PRIVATE_VOLUME_ACL_FAILURE")
+        out = p.run(
+            audit=True,
+            environment={"RAILWAY_SERVICE_NAME": p.WORKER,
+                         "KRX_PRIVATE_RAW_DIR": "/data"},
+            verify_root=unexpected,
+        )
+        self.assertEqual(out["status"], "FAIL_CLOSED_PRIVATE_ROOT_NOT_VERIFIED")
+        self.assertFalse(out["official_network_requests_made"]
+                         if "official_network_requests_made" in out
+                         else out.get("network_request_attempted", True))
+        self.assertFalse(out["storage_mutated"])
+        self.assertFalse(out["m20_performance_run_authorized"])
+
+
 if __name__ == "__main__":
     unittest.main()
