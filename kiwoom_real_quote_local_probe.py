@@ -11,7 +11,7 @@ request. Never sends orders, writes broker state, or prints tokens, account,
 quote price, provider message, network addresses, or raw exceptions.
 An offline test with synthetic responses cannot prove a genuine broker quote.
 A valid-looking response exits 3 (inconclusive), never 0 (verified).
-Known GitHub Actions/CI and Railway environment markers block before OAuth.
+Known GitHub Actions/CI and Railway environment markers and their future\nRAILWAY_ / GITHUB_ / RUNNER_ variants block before OAuth.
 Marker absence does not prove registered-PC origin; no IP discovery is made.
 """
 from __future__ import annotations
@@ -62,7 +62,11 @@ def one_shot(symbol: str) -> dict[str, Any]:
         return result
     # Even explicit quote opt-in is insufficient on a known automation
     # runner. Refuse before looking up keys or constructing a broker request.
-    if any(name in os.environ for name in _HOSTED_RUNTIME_MARKERS):
+    if (
+        any(name in os.environ for name in _HOSTED_RUNTIME_MARKERS)
+        or any(name.startswith(("RAILWAY_", "GITHUB_", "RUNNER_"))
+               for name in os.environ)
+    ):
         result["stage"] = "HOSTED_RUNTIME_BLOCKED"
         return result
     try:
