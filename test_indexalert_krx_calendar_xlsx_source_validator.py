@@ -18,7 +18,10 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               serial_builtin_id=14,serial_custom_format=None,
               date_style_applied=None,override_builtin_numfmt=False,
               root_relationship=True,root_target="xl/workbook.xml",
-              root_relation_duplicate=False,root_relation_wrong_type=False):
+              root_relation_duplicate=False,root_relation_wrong_type=False,
+              missing_workbook_content_type=False,
+              misleading_sheet_content_type=False,
+              duplicate_content_type=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -52,7 +55,28 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
     styles=(f'<styleSheet xmlns="{S}">{fmt}<cellXfs count="2">'
             f'<xf numFmtId="0"/><xf numFmtId="{date_id}"{apply_attr}/>'
             f'</cellXfs></styleSheet>')
-    content_types='<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>'
+    parts=[
+        ('/xl/workbook.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml'),
+        ('/xl/worksheets/sheet1.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml'),
+        ('/xl/styles.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml'),
+    ]
+    if missing_workbook_content_type:
+        parts=[(p,t) for p,t in parts if p!='/xl/workbook.xml']
+    if misleading_sheet_content_type:
+        parts=[(p,'application/xml' if p.endswith('sheet1.xml') else t)
+               for p,t in parts]
+    if duplicate_content_type:
+        parts.append(parts[0])
+    overrides=''.join(
+        '<Override PartName="'+p+'" ContentType="'+t+'"/>' for p,t in parts
+    )
+    content_types=(
+        '<?xml version="1.0"?><Types '
+        'xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        +overrides+'</Types>'
+    )
     with BytesIO() as output:
         with ZipFile(output,mode="w",compression=ZIP_DEFLATED) as z:
             z.writestr("[Content_Types].xml",content_types)
@@ -146,6 +170,22 @@ class XlsxSourceRows(unittest.TestCase):
                 self.assertFalse(x["xlsx_source_rows_match_claim"])
                 self.assertEqual(x["parsed_source_days"],0)
                 self.assertFalse(x["exchange_session_source_admitted"])
+
+    def test_invalid_opc_content_type_must_not_be_treated_as_real_xlsx(self):
+        for opts in (
+            {"missing_workbook_content_type":True},
+            {"misleading_sheet_content_type":True},
+            {"duplicate_content_type":True},
+        ):
+            with self.subTest(opts=opts):
+                raw=make_book(**opts)
+                result=check(raw,claim(raw),2026)
+                self.assertEqual(
+                    result["status"],
+                    "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertFalse(result["original_krx_provider_authenticated"])
+                self.assertFalse(result["exchange_session_source_admitted"])
+                self.assertEqual(result["parsed_source_days"],0)
 
     def test_valid_opc_root_relationship_preserves_read_only_date_match(self):
         for target in ("xl/workbook.xml","/xl/workbook.xml"):
