@@ -11,7 +11,8 @@ request. Never sends orders, writes broker state, or prints tokens, account,
 quote price, provider message, network addresses, or raw exceptions.
 An offline test with synthetic responses cannot prove a genuine broker quote.
 A valid-looking response exits 3 (inconclusive), never 0 (verified).
-Known GitHub Actions/CI and Railway environment markers and their future\nRAILWAY_ / GITHUB_ / RUNNER_ variants block before OAuth.
+Known GitHub Actions/CI and Railway environment markers and their future
+RAILWAY_ / GITHUB_ / RUNNER_ variants block before OAuth.
 Marker absence does not prove registered-PC origin; no IP discovery is made.
 """
 from __future__ import annotations
