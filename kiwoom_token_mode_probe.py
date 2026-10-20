@@ -41,20 +41,37 @@ def attempt(base: str, app_key: str, app_secret: str) -> dict[str, Any]:
                 "secretkey":app_secret,
             },
             timeout=15,
+            allow_redirects=False,
         )
+        # Never accept a redirect or HTTP denial as an OAuth success,
+        # even if an intermediate response contains success-looking JSON.
+        status = response.status_code
+        if type(status) is not int or status != 200:
+            return {
+                "http_status": status if type(status) is int and 100 <= status <= 599 else None,
+                "return_code": None,
+                "detail_code": None,
+                "token_present": False,
+                "expiry_present": False,
+                "token_type_present": False,
+            }
         obj = _strict_object(response.json())
         code = obj.get("return_code")
         code = code if type(code) is int else None
         token = obj.get("token")
         expiry = obj.get("expires_dt")
         token_type = obj.get("token_type")
+        # A token-shaped field in an 805004/8050 denial is NOT an
+        # accepted OAuth token. Keep the numeric broker error for diagnosis,
+        # but never assert issuance or expiry/type proof on broker rejection.
+        accepted = code == 0
         return {
             "http_status": int(response.status_code),
             "return_code": code,
             "detail_code": _detail_code(obj.get("return_msg")),
-            "token_present": isinstance(token, str) and bool(token.strip()),
-            "expiry_present": isinstance(expiry, str) and bool(expiry.strip()),
-            "token_type_present": isinstance(token_type, str) and bool(token_type.strip()),
+            "token_present": accepted and isinstance(token, str) and bool(token.strip()),
+            "expiry_present": accepted and isinstance(expiry, str) and bool(expiry.strip()),
+            "token_type_present": accepted and isinstance(token_type, str) and bool(token_type.strip()),
         }
     except Exception:
         return {

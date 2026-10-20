@@ -148,6 +148,24 @@ def _safe_summary(stdout: str, returncode: int, policy: str) -> dict[str, Any]:
         raise DiagnosticError("WS_LOGIN_FAILURE_MISLABELED_AS_CONNECTED")
     if obj["TYPE00_REG_SENT"] is True and obj["WS_LOGIN_OK"] is not True:
         raise DiagnosticError("TYPE00_REG_SENT_BEFORE_AUTHENTICATED_LOGIN")
+    # Process success (0) and observation-inconclusive (3) must carry a
+    # successful broker result. Never call an 805004/8050 result accepted or
+    # inconclusive when the exact reported provider code is a denial.
+    if returncode in {0, 3} and (
+        obj["RETURN_CODE"] != 0
+        or obj["DETAIL_CODE"] is not None
+        or obj["ERROR_CLASS"] is not None
+    ):
+        raise DiagnosticError("BROKER_DENIAL_IN_SUCCESS_OR_INCONCLUSIVE")
+    # A failed diagnostic process can never attest success or even a
+    # post-ACK observationally inconclusive subscription. The exit code is
+    # evidence too: reject contradictory success/inconclusive stage labels.
+    if returncode == 2 and stage in {
+        "REAL_TYPE00_READ_ONLY_SMOKE",
+        "TYPE00_ACK_ONLY_NO_EVENTS",
+        "TYPE00_EVENTS_UNMATCHED_ACCOUNT",
+    }:
+        raise DiagnosticError("POSITIVE_STAGE_ON_FAILED_EXIT")
     if returncode == 0 and (
         stage != "REAL_TYPE00_READ_ONLY_SMOKE"
         or not obj.get("WS_LOGIN_OK") or not obj.get("TYPE00_REG_ACK_OK")
