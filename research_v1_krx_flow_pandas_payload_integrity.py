@@ -66,6 +66,11 @@ def _verify_required_investor_amount_cell_format(raw: bytes) -> None:
                 value = row[index].strip()
                 _need(_SOURCE_AMOUNT.fullmatch(value) is not None,
                       "ORIGINAL_INVESTOR_AMOUNT_NOT_FINITE_NUMERIC_FORMAT")
+    except KRXInvestorFlowPandasDigestError:
+        # Keep the distinct fail-closed invalid-amount reason. This class
+        # subclasses ValueError, which would otherwise be accidentally
+        # rewritten as a structural CSV decoding failure.
+        raise
     except (UnicodeError, csv.Error, StopIteration, ValueError):
         raise KRXInvestorFlowPandasDigestError(
             "ORIGINAL_INVESTOR_AMOUNT_CSV_PARSE_FAILED"
