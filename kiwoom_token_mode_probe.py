@@ -61,13 +61,17 @@ def attempt(base: str, app_key: str, app_secret: str) -> dict[str, Any]:
         token = obj.get("token")
         expiry = obj.get("expires_dt")
         token_type = obj.get("token_type")
+        # A token-shaped field in an 805004/8050 denial is NOT an
+        # accepted OAuth token. Keep the numeric broker error for diagnosis,
+        # but never assert issuance or expiry/type proof on broker rejection.
+        accepted = code == 0
         return {
             "http_status": int(response.status_code),
             "return_code": code,
             "detail_code": _detail_code(obj.get("return_msg")),
-            "token_present": isinstance(token, str) and bool(token.strip()),
-            "expiry_present": isinstance(expiry, str) and bool(expiry.strip()),
-            "token_type_present": isinstance(token_type, str) and bool(token_type.strip()),
+            "token_present": accepted and isinstance(token, str) and bool(token.strip()),
+            "expiry_present": accepted and isinstance(expiry, str) and bool(expiry.strip()),
+            "token_type_present": accepted and isinstance(token_type, str) and bool(token_type.strip()),
         }
     except Exception:
         return {
