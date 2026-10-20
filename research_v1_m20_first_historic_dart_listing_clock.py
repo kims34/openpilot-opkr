@@ -1,7 +1,7 @@
 """2022 Q3 fixed original receipt: historical DART list clock availability probe.
 
 Uses the OFFICIAL original-filing index to select the first submitted receipt,
-then ONE public DART recent-disclosure page by its *receipt date*. Checks
+then at most EIGHT bounded public DART recent-disclosure pages by its receipt date. Checks
 whether the exact original receipt appears in a bounded table row and whether
 that SAME row contains a single HH:MM or HH:MM:SS cell.
 
@@ -26,7 +26,7 @@ from research_v1_opendart_m20_six_issuer_2022_2023_q3_originals import original_
 
 OUTPUT = Path("research_results/m20_2022_first_historical_dart_clock/counts.json")
 PUBLIC_LIST_URL = "https://dart.fss.or.kr/dsac001/mainAll.do"
-MAX_PUBLIC_CALLS = 1
+MAX_PUBLIC_CALLS = 8
 MAX_OFFICIAL_CALLS = 2
 MAX_HTML_BYTES = 2 * 1024 * 1024
 MAX_HTML_NODES = 250000
@@ -177,13 +177,15 @@ class ExactReceiptRows(HTMLParser):
         }
 
 
-def _public_listing(session, receipt_day: str) -> str:
+def _public_listing(session, receipt_day: str, page: int = 1) -> str:
+    if type(page) is not int or not 1 <= page <= MAX_PUBLIC_CALLS:
+        raise ClockGap("HISTORIC_LIST_PAGE_OUTSIDE_FIXED_CAP")
     if type(receipt_day) is not str or not DAY.fullmatch(receipt_day):
         raise ClockGap("HISTORIC_LIST_REQUEST_DATE_INVALID")
     pretty = ".".join((receipt_day[:4],receipt_day[4:6],receipt_day[6:]))
     try:
         resp = session.get(
-            PUBLIC_LIST_URL, params={"selectDate": pretty},
+            PUBLIC_LIST_URL, params={"selectDate": pretty, "currentPage": str(page), "mdayCnt": "0"},
             allow_redirects=False, stream=True, timeout=20,
             headers={"User-Agent": "IndexAlert-ReadOnlyResearch/1.0"},
         )
@@ -222,10 +224,22 @@ def execute(session, key: str) -> dict:
         "pblntf_ty": "A", "last_reprt_at": "N", "page_count": "100",
     })
     first, day = _first_receipt_and_day(index)
-    parser = ExactReceiptRows(first)
-    parser.feed(_public_listing(session, day))
-    parser.close()
-    return parser.verdict()
+    # Historical DART day lists are paginated. An unobserved exact receipt on
+    # page one is not evidence that its original clock was never displayed.
+    # Bound all public source work to eight pages, and never extrapolate a
+    # missing target into an assertion about the historical release instant.
+    for page in range(1, MAX_PUBLIC_CALLS + 1):
+        parser = ExactReceiptRows(first)
+        parser.feed(_public_listing(session, day, page))
+        parser.close()
+        if parser.active or not parser.rows:
+            raise ClockGap("HISTORIC_LIST_TABLE_ROWS_UNVERIFIED")
+        if parser.receipt_matches:
+            evidence = parser.verdict()
+            evidence["pages_searched_before_exact_receipt"] = page
+            evidence["source_status"] = "FIRST_RECEIPT_HISTORIC_PAGED_LIST_CLOCK_SHAPE_ONLY"
+            return evidence
+    raise ClockGap("HISTORIC_LIST_FIRST_RECEIPT_NOT_VISIBLE_IN_BOUNDED_PAGES")
 
 
 def run(session=None) -> dict:
@@ -258,7 +272,8 @@ def run(session=None) -> dict:
             "HISTORIC_LIST_TABLE_ROWS_UNVERIFIED",
             "HISTORIC_LIST_DUPLICATE_FIRST_RECEIPT",
             "HISTORIC_LIST_FIRST_RECEIPT_NOT_VISIBLE",
-            "HISTORIC_LIST_REQUEST_DATE_INVALID",
+            "HISTORIC_LIST_REQUEST_DATE_INVALID", "HISTORIC_LIST_PAGE_OUTSIDE_FIXED_CAP",
+            "HISTORIC_LIST_FIRST_RECEIPT_NOT_VISIBLE_IN_BOUNDED_PAGES",
             "HISTORIC_LIST_NETWORK_UNAVAILABLE", "HISTORIC_LIST_HTTP_UNAVAILABLE",
             "HISTORIC_LIST_CONTENT_TYPE_INVALID",
             "HISTORIC_LIST_HTML_SIZE_LIMIT", "HISTORIC_LIST_ENCODING_UNVERIFIED",
