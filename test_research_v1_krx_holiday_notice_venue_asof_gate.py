@@ -93,6 +93,91 @@ class MarketNoticeSourceScopeTest(unittest.TestCase):
         self.assertEqual(z["status"], "CANDIDATE_ONLY_NOT_AUTHENTICATED")
         self.assertFalse(z["original_exchange_market_status_pit_verified"])
 
+    def test_pinned_primary_kospi_aug_2021_notice_is_venue_bound_only(self):
+        out = case(
+            session_day="20210816",
+            required_market="KOSPI",
+            source_kind="KRX_PRIMARY_MARKET_NOTICE",
+            notice_market="KOSPI",
+            original_kind_notice_url=(
+                "https://kind.krx.co.kr/external/2021/08/04/000158/"
+                "20210804000347/99340.htm"),
+            # Synthetic time fixture; not an authenticated original filing instant.
+            public_report_at_kst="2021-08-05T10:00+09:00",
+            signal_asof_kst="2021-08-13T15:00+09:00",
+        )
+        self.assertTrue(out["original_kind_url_venue_date_profile_checked"])
+        self.assertTrue(out["candidate_notice_may_be_considered_not_pit"])
+        for key, denied in DENIED.items():
+            self.assertEqual(out[key], denied, key)
+
+    def test_2021_derivatives_primary_notice_cannot_cross_certify_kospi(self):
+        url = ("https://kind.krx.co.kr/external/2021/09/27/000115/"
+               "20210927000265/70868.htm")
+        with self.assertRaisesRegex(CalendarNoticeGap,
+                                    "MARKET_OR_DAY_CONFLICT"):
+            case(
+                session_day="20211004",
+                source_kind="KRX_PRIMARY_MARKET_NOTICE",
+                original_kind_notice_url=url,
+                notice_market="KOSPI",
+                public_report_at_kst="2021-09-28T12:00+09:00",
+                signal_asof_kst="2021-10-01T15:00+09:00")
+        honest = case(
+            session_day="20211004",
+            source_kind="KRX_PRIMARY_MARKET_NOTICE",
+            original_kind_notice_url=url,
+            notice_market="DERIVATIVES",
+            public_report_at_kst="2021-09-28T12:00+09:00",
+            signal_asof_kst="2021-10-01T15:00+09:00")
+        self.assertEqual(honest["status"], "WRONG_MARKET_SCOPE")
+        self.assertFalse(honest["original_exchange_market_status_pit_verified"])
+
+    def test_2022_kosdaq_election_kind_notice_cannot_be_relabelled_kospi(self):
+        url = ("https://kind.krx.co.kr/external/2022/02/10/000126/"
+               "20220209001809/71985.htm")
+        with self.assertRaisesRegex(CalendarNoticeGap,
+                                    "MARKET_OR_DAY_CONFLICT"):
+            case(
+                session_day="20220309",
+                source_kind="KRX_PRIMARY_MARKET_NOTICE",
+                original_kind_notice_url=url,
+                notice_market="ALL_EQUITIES",
+                public_report_at_kst="2022-02-11T12:00+09:00",
+                signal_asof_kst="2022-03-08T15:00+09:00")
+        honest = case(
+            session_day="20220309",
+            source_kind="KRX_PRIMARY_MARKET_NOTICE",
+            original_kind_notice_url=url,
+            notice_market="KOSDAQ",
+            public_report_at_kst="2022-02-11T12:00+09:00",
+            signal_asof_kst="2022-03-08T15:00+09:00")
+        self.assertFalse(honest["candidate_notice_may_be_considered_not_pit"])
+        self.assertEqual(honest["status"], "WRONG_MARKET_SCOPE")
+
+    def test_pinned_kind_url_unknown_wrong_date_or_report_class_rejected(self):
+        known = ("https://kind.krx.co.kr/external/2021/08/04/000158/"
+                 "20210804000347/99340.htm")
+        for override in (
+            {"original_kind_notice_url": "https://kind.krx.co.kr/unknown"},
+            {"original_kind_notice_url": known, "session_day": "20210817"},
+            {"original_kind_notice_url": known,
+             "source_kind": "REPORTED_KRX_MARKET_NOTICE"},
+        ):
+            with self.subTest(override=override), self.assertRaises(
+                CalendarNoticeGap
+            ):
+                fields = dict(
+                    session_day="20210816",
+                    source_kind="KRX_PRIMARY_MARKET_NOTICE",
+                    notice_market="KOSPI",
+                    public_report_at_kst="2021-08-05T10:00+09:00",
+                    signal_asof_kst="2021-08-13T15:00+09:00",
+                    original_kind_notice_url=known,
+                )
+                fields.update(override)
+                classify_notice(**fields)
+
     def test_bad_types_and_market_labels_fail_closed(self):
         for kwargs in (
             {"required_market": "KRX"}, {"notice_market": "BOTH"},
