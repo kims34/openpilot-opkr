@@ -131,6 +131,33 @@ def replace_date_in_first_csv_row(item, value):
     retarget_original_bytes(item, "".join(lines).encode("euc_kr"))
 
 
+def reshape_columns_and_rehash_original_receipt(item, retained_columns):
+    """Malicious fixture: raw CSV, receipt body, and checkpoint all rehashed.
+
+    Deliberately leaves pandas schema/payload fingerprints as internally
+    declared digests, because this standalone structural gate runs before
+    full pinned pandas re-materialization. Any false-positive here would be
+    especially dangerous when other hashes were self-consistently replaced.
+    """
+    source = list(csv.reader(io.StringIO(
+        item["original_raw_bytes"].decode("euc_kr"), newline=""
+    )))
+    columns = source[0]
+    subset_indices = [columns.index(name) for name in retained_columns]
+    buf = io.StringIO(newline="")
+    writer = csv.writer(buf)
+    writer.writerows([[row[i] for i in subset_indices] for row in source])
+    retarget_original_bytes(item, buf.getvalue().encode("euc_kr"))
+    rec = item["acquisition_receipt"]
+    rec["response_columns"] = list(retained_columns)
+    rec["receipt_fingerprint_sha256"] = _sha({
+        key: rec[key] for key in RECEIPT_BODY
+    })
+    item["completion"]["receipt_fingerprint_sha256"] = (
+        rec["receipt_fingerprint_sha256"]
+    )
+
+
 class PurePrivateOriginalTripleTest(unittest.TestCase):
     def test_synthetic_triple_hashes_match_without_any_pit_claim(self):
         r = verify_krx_2022_private_flow_triple(**fixture())
@@ -201,6 +228,70 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
             KRXPrivateFlowTripleError, "ORIGINAL_RECEIPT_FIELDS_DRIFT"
         ):
             verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_date_only_csv_never_passes_investor_schema(self):
+        item = fixture()
+        reshape_columns_and_rehash_original_receipt(item, ["일자"])
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_CSV_INVESTOR_BUCKET_SCHEMA_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_foreign_only_csv_never_counts_as_institution_coverage(self):
+        item = fixture()
+        reshape_columns_and_rehash_original_receipt(item, ["일자", "외국인"])
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_CSV_INVESTOR_BUCKET_SCHEMA_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_pension_component_omission_is_not_full_investor_panel(self):
+        item = fixture()
+        all_columns = item["acquisition_receipt"]["response_columns"]
+        reshape_columns_and_rehash_original_receipt(
+            item, [name for name in all_columns if name != "연기금 등"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_CSV_INVESTOR_BUCKET_SCHEMA_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_rehashed_header_alias_cannot_replace_original_investor_category(self):
+        item = fixture()
+        raw = item["original_raw_bytes"].decode("euc_kr")
+        self.assertIn("연기금 등", raw)
+        retarget_original_bytes(item, raw.replace(
+            "연기금 등", "기관계", 1
+        ).encode("euc_kr"))
+        rec = item["acquisition_receipt"]
+        rec["response_columns"] = [
+            "기관계" if x == "연기금 등" else x for x in rec["response_columns"]
+        ]
+        rec["receipt_fingerprint_sha256"] = _sha({
+            k: rec[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            rec["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_CSV_INVESTOR_BUCKET_SCHEMA_DRIFT"
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_valid_original_categories_can_arrive_in_different_column_order(self):
+        item = fixture()
+        cols = item["acquisition_receipt"]["response_columns"]
+        reshape_columns_and_rehash_original_receipt(
+            item, [cols[1], cols[0]] + cols[2:]
+        )
+        evidence = verify_krx_2022_private_flow_triple(**item)
+        self.assertTrue(evidence["archived_csv_investor_bucket_schema_cross_checked"])
+        self.assertFalse(evidence["parsed_payload_digest_independently_recomputed"])
+        self.assertFalse(evidence["source_admitted"])
 
     def test_self_consistent_raw_sha_does_not_admit_non_csv_bytes(self):
         item = fixture()
