@@ -67,10 +67,16 @@ def _records(items: object, *, kind: str, maximum: int) -> dict:
                 raise EvidenceNotAdmitted("invalid daily row count")
             key = day
         elif kind == "calendar":
-            if set(row) != {"date", "session", "evidence_sha256", "source_kind"}:
-                raise EvidenceNotAdmitted("unsupported session source fields")
+            if set(row) != {"date", "session", "evidence_sha256", "source_kind",
+                            "market_scope"}:
+                raise EvidenceNotAdmitted("explicit market scope required on session source")
             if row["source_kind"] != "INDEPENDENT_OFFICIAL_SESSION_CLAIM":
                 raise EvidenceNotAdmitted("market status needs independent source")
+            # KRX stock market and derivatives/commodity closures may differ.
+            # A SHA-shaped derivatives notice is not a KOSPI equity session
+            # receipt, even if the calendar day happens to coincide.
+            if type(row["market_scope"]) is not str or row["market_scope"] != "KOSPI_EQUITIES":
+                raise EvidenceNotAdmitted("non-equity or ambiguous market calendar evidence")
             _sha(row["evidence_sha256"])
             if type(row["session"]) is not str or row["session"] not in MARKET:
                 raise EvidenceNotAdmitted("official market session unknown")
@@ -166,7 +172,7 @@ def review_exceptions(exception_dates: list[str], private_raw_days: list[dict],
     # Date-scoped stock statuses cannot make nonpositive OHLC executable.
     # A LISTED stock may still halt: verify separately, never mark TRADABLE.
     return {
-        "schema": "indexalert-krx-offline-exception-review-v1",
+        "schema": "indexalert-krx-offline-exception-review-v2",
         "source_status": "SOURCE_ONLY_RETROSPECTIVE_CLAIMS_NOT_PIT",
         "exception_weekdays_checked": len(dates),
         "raw_source_day_hash_shape_checked": len(raw),
