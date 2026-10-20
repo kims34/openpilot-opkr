@@ -45,6 +45,9 @@ class MarketNoticeSourceScopeTest(unittest.TestCase):
             session_day="20220309",
             notice_market="KOSDAQ",
             source_kind="KRX_PRIMARY_MARKET_NOTICE",
+            original_kind_notice_url=(
+                "https://kind.krx.co.kr/external/2022/02/10/000126/"
+                "20220209001809/71985.htm"),
             public_report_at_kst="2022-02-10T10:50+09:00",
             signal_asof_kst="2022-03-08T15:00+09:00",
         )
@@ -54,8 +57,14 @@ class MarketNoticeSourceScopeTest(unittest.TestCase):
 
     def test_original_derivatives_notice_cannot_prove_equity(self):
         out = case(
+            session_day="20211004",
             notice_market="DERIVATIVES",
             source_kind="KRX_PRIMARY_MARKET_NOTICE",
+            original_kind_notice_url=(
+                "https://kind.krx.co.kr/external/2021/09/27/000115/"
+                "20210927000265/70868.htm"),
+            public_report_at_kst="2021-09-28T12:00+09:00",
+            signal_asof_kst="2021-10-01T15:00+09:00",
         )
         self.assertEqual(out["status"], "WRONG_MARKET_SCOPE")
 
@@ -88,10 +97,9 @@ class MarketNoticeSourceScopeTest(unittest.TestCase):
         self.assertTrue(later["candidate_notice_may_be_considered_not_pit"])
         self.assertFalse(later["official_original_market_calendar_authenticated"])
 
-    def test_exact_equity_market_primary_text_is_still_not_authenticated(self):
-        z = case(source_kind="KRX_PRIMARY_MARKET_NOTICE", notice_market="KOSPI")
-        self.assertEqual(z["status"], "CANDIDATE_ONLY_NOT_AUTHENTICATED")
-        self.assertFalse(z["original_exchange_market_status_pit_verified"])
+    def test_unpinned_primary_kospi_label_must_fail_closed(self):
+        with self.assertRaisesRegex(CalendarNoticeGap, "URL_REQUIRED"):
+            case(source_kind="KRX_PRIMARY_MARKET_NOTICE", notice_market="KOSPI")
 
     def test_pinned_primary_kospi_aug_2021_notice_is_venue_bound_only(self):
         out = case(
