@@ -93,6 +93,9 @@ def classify_notice(
     # Caller-supplied first-party document URL must match the inspected
     # exact public KIND venue/date profile. No API or storage reads performed.
     kind_document_profile_checked = original_kind_notice_url is not None
+    if (source_kind == "KRX_PRIMARY_MARKET_NOTICE"
+            and not kind_document_profile_checked):
+        raise CalendarNoticeGap("ORIGINAL_KIND_NOTICE_URL_REQUIRED")
     if kind_document_profile_checked:
         if (type(original_kind_notice_url) is not str
                 or original_kind_notice_url not in PINNED_KIND_MARKET_NOTICES
