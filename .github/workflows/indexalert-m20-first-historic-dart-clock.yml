@@ -1,0 +1,85 @@
+name: IndexAlert M20 First Receipt Historical DART Listing Clock Shape
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_first_historic_dart_listing_clock.py'
+      - 'test_research_v1_m20_first_historic_dart_listing_clock.py'
+      - '.github/workflows/indexalert-m20-first-historic-dart-clock.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-first-2022-q3-one-listing-clock-shape
+  cancel-in-progress: false
+jobs:
+  offline-receipt-time-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Check exact first receipt, unique clock cell and source fail-closed tests
+        run: |
+          python -m py_compile research_v1_m20_first_historic_dart_listing_clock.py test_research_v1_m20_first_historic_dart_listing_clock.py
+          python -m unittest -v test_research_v1_m20_first_historic_dart_listing_clock
+      - name: Static no real broker and no financial/PIT permissions
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_m20_first_historic_dart_listing_clock.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_first_historic_dart_listing_clock.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_first_historic_dart_listing_clock.py
+  official-first-receipt-public-historical-list:
+    needs: offline-receipt-time-safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Query one exact historical public DART disclosure-list day (metadata only)
+        run: |
+          python research_v1_m20_first_historic_dart_listing_clock.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/m20_2022_first_historical_dart_clock/counts.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"]==5
+          assert x["official_api_request_ceiling"]==2
+          assert x["public_dart_page_request_ceiling"]==1
+          assert x["source_status"]=="FIRST_RECEIPT_HISTORIC_LIST_ROW_CLOCK_SHAPE_ONLY",x.get("source_gap_reason","SOURCE_UNKNOWN")
+          assert x["first_original_receipt_row_on_selected_listing_page"] is True
+          assert type(x["first_original_receipt_row_has_unique_time_cell"]) is bool
+          assert x["source_website_time_value_discarded"] is True
+          assert x["row_clock_is_not_original_first_published_time"] is True
+          assert x["historical_listing_pagination_or_archive_completeness_verified"] is False
+          assert x["ordering"]=="DISABLED"
+          for field in ("website_clock_is_authoritative_first_release_instant",
+                        "exact_original_first_publication_timestamp_verified",
+                        "original_2022_q3_three_month_cfs_operating_profit_verified",
+                        "original_2021_q3_three_month_cfs_comparator_verified",
+                        "historical_issuer_security_pit_verified",
+                        "financial_correction_vintage_verified",
+                        "m20_feature_pit_admitted",
+                        "m20_performance_run_authorized",
+                        "independent_holdout_authorized",
+                        "champion_change_authorized",
+                        "real_orders_authorized",
+                        "funds_movement_authorized",
+                        "permissions_change_authorized",
+                        "source_html_raw_receipt_time_date_company_or_values_saved"):
+            assert x[field] is False,field
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-2022-first-filing-historical-dart-clock-metadata-only
+          path: research_results/m20_2022_first_historical_dart_clock/counts.json
+          if-no-files-found: warn
+          retention-days: 7
