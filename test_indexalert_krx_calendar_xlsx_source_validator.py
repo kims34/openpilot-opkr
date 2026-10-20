@@ -16,7 +16,9 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               hidden=False,mislinked=False,hidden_row=False,hidden_column=False,
               filtered=False,merged=False,zero_height=False,row_ht_zero=False,
               serial_builtin_id=14,serial_custom_format=None,
-              date_style_applied=None,override_builtin_numfmt=False):
+              date_style_applied=None,override_builtin_numfmt=False,
+              root_relationship=True,root_target="xl/workbook.xml",
+              root_relation_duplicate=False,root_relation_wrong_type=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -54,6 +56,20 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
     with BytesIO() as output:
         with ZipFile(output,mode="w",compression=ZIP_DEFLATED) as z:
             z.writestr("[Content_Types].xml",content_types)
+            if root_relationship:
+                doc_type=("worksheet" if root_relation_wrong_type
+                          else "officeDocument")
+                root_rel=(
+                    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                    '<Relationship Id="rootDoc" '
+                    'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/'
+                    +doc_type+'" Target="'+root_target+'"/>')
+                if root_relation_duplicate:
+                    root_rel+=(
+                        '<Relationship Id="otherRoot" '
+                        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+                        'Target="xl/workbook.xml"/>')
+                z.writestr("_rels/.rels",root_rel+"</Relationships>")
             z.writestr("xl/workbook.xml",w)
             z.writestr("xl/styles.xml",styles)
             z.writestr("xl/worksheets/sheet1.xml",xml)
@@ -111,6 +127,35 @@ class XlsxSourceRows(unittest.TestCase):
         for opts in ({"hidden":True},{"second_sheet":True}):
             raw=make_book(**opts)
             self.assertTrue(check(raw,claim(raw),2026)["status"].startswith("FAIL_CLOSED"))
+
+    def test_package_root_must_point_to_the_workbook_actually_parsed(self):
+        # A valid workbook->worksheet link alone is insufficient when
+        # OPC root can point at a different document or be absent.
+        for options in (
+            {"root_relationship":False},
+            {"root_target":"docProps/app.xml"},
+            {"root_target":"xl/hidden-workbook.xml"},
+            {"root_relation_duplicate":True},
+            {"root_relation_wrong_type":True},
+        ):
+            with self.subTest(options=options):
+                raw=make_book(**options)
+                x=check(raw,claim(raw),2026)
+                self.assertEqual(x["status"],
+                                 "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertFalse(x["xlsx_source_rows_match_claim"])
+                self.assertEqual(x["parsed_source_days"],0)
+                self.assertFalse(x["exchange_session_source_admitted"])
+
+    def test_valid_opc_root_relationship_preserves_read_only_date_match(self):
+        for target in ("xl/workbook.xml","/xl/workbook.xml"):
+            with self.subTest(target=target):
+                raw=make_book(root_target=target)
+                result=check(raw,claim(raw),2026)
+                self.assertEqual(result["status"],
+                                 "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+                self.assertFalse(result["original_krx_provider_authenticated"])
+                self.assertFalse(result["original_publication_pit_attested"])
 
     def test_unsafe_traversal_and_external_relationships_fail(self):
         for opts in ({"extra_path":"../../secret.xml"},{"external":True},
