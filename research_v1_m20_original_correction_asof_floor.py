@@ -85,13 +85,18 @@ def edition_date_floor(
     # In particular: the official October 13, 2026 census cannot validate
     # an Oct 14+ synthetic trading session's complete correction lineage.
     coverage_through_trade = index_end >= decision
+    provenance = (original_first_filing_verified
+                  and later_correction_receipt_verified
+                  and correction_index_complete_for_window
+                  and coverage_through_trade
+                  and calendar_official_historical_pit_verified)
 
     # Source-date floor has a one-year horizon. An original-edition window
     # is tested only before the correction day; years later, only the later
     # edition can be considered, so do not incorrectly reject that as
     # outside the original date's one-year horizon.
     first_candidate = False
-    if orig < decision < corrected:
+    if provenance and orig < decision < corrected:
         try:
             first = source_date_floor(
                 original_receipt_day, trade_session_day,
@@ -104,7 +109,7 @@ def edition_date_floor(
         first_candidate = first["after_receipt_trading_session_candidate"]
 
     corrected_candidate = False
-    if decision > corrected:
+    if provenance and decision > corrected:
         try:
             later = source_date_floor(
                 correction_receipt_day, trade_session_day,
@@ -116,11 +121,6 @@ def edition_date_floor(
             raise EditionFloorGap("CORRECTION_DATE_FLOOR_OR_CALENDAR_INVALID") from None
         corrected_candidate = later["after_receipt_trading_session_candidate"]
 
-    provenance = (original_first_filing_verified
-                  and later_correction_receipt_verified
-                  and correction_index_complete_for_window
-                  and coverage_through_trade
-                  and calendar_official_historical_pit_verified)
     orig_candidate = (
         provenance and orig < decision < corrected
         and first_candidate
