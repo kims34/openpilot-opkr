@@ -192,14 +192,23 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
             )
             if any(overrides.get(part)!=EXPECTED_PART_TYPES[part] for part in required):
                 return error
-            # Relationship XML may carry remote links. Reject all external
-            # relationships rather than relying on URI dereference behavior.
+            # OPC relationship IDs are unique within each .rels part.
+            # Duplicated IDs (including one hidden behind an unrelated Type)
+            # make the workbook->sheet graph ambiguous in standard readers.
+            # Reject those and external links before inspecting any dates.
             for name in names:
                 if name.endswith(".rels"):
                     rel=parse_xml(book.read(name))
-                    for r in rel.iter():
-                        if r.attrib.get("TargetMode","").lower()=="external":
+                    if rel.tag != PACKAGE_REL+"Relationships":
+                        return error
+                    ids=set()
+                    for r in rel:
+                        if (r.tag != PACKAGE_REL+"Relationship"
+                                or not r.attrib.get("Id")
+                                or r.attrib["Id"] in ids
+                                or r.attrib.get("TargetMode","").lower()=="external"):
                             return error
+                        ids.add(r.attrib["Id"])
             # The *package-root* Office Document relationship decides
             # which workbook Excel actually opens. Checking only workbook
             # -> sheet1 is unsafe: a decoy xl/workbook.xml/sheet1.xml
