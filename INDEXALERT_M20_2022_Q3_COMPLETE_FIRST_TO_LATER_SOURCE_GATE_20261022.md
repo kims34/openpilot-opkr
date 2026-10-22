@@ -31,3 +31,22 @@ Source commits: `187cb42968fd982edacfa0fffc7e36ac98f0af76` (source), `735c2fbe1a
 A completed official index chronology, if achieved, establishes only that the **query returned a bounded as-of sequence of filing identifiers/metadata** for the fixed current issuer. It does not authenticate 2022 originally public financial CFS accounting cells, monetary scale, the first-disclosure clock, future/earlier amendments outside scope, historical issuer/security PIT or whether current DART rendering reflects historical data. The date-only edition candidate gate still needs separately verified historical KRX sessions and original-vintage release timing. The query does not access trading endpoints, KRX, Railway, broker tokens or account funds. Original four-document source-count capsule ID `12138239045` remains unchanged and is not a signed original financial snapshot.
 
 **All hard stops remain:** `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `champion_change_authorized=false`, `real_orders_authorized=false`, no funds/permissions; `ORDERING=DISABLED`. Frozen H5 and M20, preregistered cohort, taxes/costs, Walk-Forward and separate holdout unchanged. [Draft PR #412](https://github.com/kims34/openpilot-opkr/pull/412) **unmerged**. No extra hourly automation created.
+
+
+## Final independently verified source — completed official GitHub Actions
+
+[Actions #39721626218](https://github.com/kims34/openpilot-opkr/actions/runs/39721626218) **COMPLETED SUCCESS** after the provisional entry above. Both `offline-complete-edition-chain-security` and `official-complete-edition-chronology` succeeded. The offline job ran **16** complete-input, tamper, identity, chronology and no-network/no-order synthetic tests. The official job used the three-call limit and emitted:
+
+- `source_status=FULL_CONTIGUOUS_OFFICIAL_INDEX_RANGE_VERIFIED_SOURCE_ONLY`, fixed cohort slot 5, observed index end **2026-10-21**.
+- Original 2022-Q3 first-submitted receipt unique; original listing page completely checked, corresponding correction hint present, and no original-window corrected rows.
+- Later 2023-03-01..2026-10-21 index one-page metadata and every row checked; **31** periodic records for the same currently registered issuer, **one** correction of the 2022 Q3 report and **zero** attachment additions.
+- The one correction remains inside the previously pinned prior window ending Oct13; **zero** new 2022 Q3 correction/attachment editions for Oct14..21; contiguous initial/later windows verified for this **queried and returned official index**.
+- `current_day_20261022_index_complete=false`, `all_time_revision_history_verified=false`, `index_is_historically_immutable_archive_verified=false`. A current registry identity is **not** independently historically PIT validated.
+
+**Official safe source-count artifact:** ID `12401173549`, sha256 `8deb40bd1fa9714277346d052f346dd570894bc5a356d63fcdd5580ef4d8b4d2`, expires `2026-10-29T04:22:35Z`. This archive holds **counts and authorization flags only**. It is not a source document or extracted monetary data and does not replace the separate 30-day first-viewer count capsule.
+
+### Interpretation
+
+For the fixed issuer, the *official indexed periodic-filing inventory* observed in this precise three-call run is now internally consistent across the **original-window, subsequent-window and previously observed Oct14–21 extension**. This is a stronger bounded-index source-provenance result than simply combining two earlier independent runs. It neither proves source immortality or a historical time-of-day publication clock, nor binds a single original CFS 2022/2021 standalone Q3 profit number to the first edition. As-of availability, full historical issuer/security PIT, financial amount/period/unit semantics, actual correction-to-financial-cell linkage and OpenDART XBRL 014 gap remain **NO-GO**.
+
+**Safety verified:** `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `champion_change_authorized=false`, `real_orders_authorized=false`, `ORDERING=DISABLED`. No broker, Railway, trading rights or funds changed. Draft PR #412 unmerged.
