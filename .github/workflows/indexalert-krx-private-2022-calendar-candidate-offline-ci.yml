@@ -1,0 +1,55 @@
+name: IndexAlert KRX Private 2022 Holiday Candidate Offline (No Provider)
+
+on:
+  push:
+    branches:
+      - indexalert-krx-private-2022-calendar-candidate-v1-20261018
+    paths:
+      - 'research_v1_krx_private_2022_calendar_candidate_audit.py'
+      - 'test_research_v1_krx_private_2022_calendar_candidate_audit.py'
+      - 'research_v1_krx_holiday_notice_venue_asof_gate.py'
+      - 'test_research_v1_krx_holiday_notice_venue_asof_gate.py'
+      - '.github/workflows/indexalert-krx-private-2022-calendar-candidate-offline-ci.yml'
+  pull_request:
+    paths:
+      - 'research_v1_krx_private_2022_calendar_candidate_audit.py'
+      - 'test_research_v1_krx_private_2022_calendar_candidate_audit.py'
+      - 'research_v1_krx_holiday_notice_venue_asof_gate.py'
+      - 'test_research_v1_krx_holiday_notice_venue_asof_gate.py'
+      - '.github/workflows/indexalert-krx-private-2022-calendar-candidate-offline-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-private-source-offline-fixtures:
+    name: 2022 SHA-backed private candidate day-set synthetic controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned import-only HTTP dependency
+        run: python -m pip install requests==2.32.3
+      - name: Run no-provider original-source calendar fixtures
+        run: python -m unittest -v test_research_v1_krx_private_2022_calendar_candidate_audit test_research_v1_krx_holiday_notice_venue_asof_gate
+      - name: Dry run must not touch private source
+        run: |
+          python research_v1_krx_private_2022_calendar_candidate_audit.py | python -c '
+          import sys,json
+          raw=sys.stdin.read().strip()
+          assert raw.startswith("INDEXALERT_2022_PRIVATE_CALENDAR_CANDIDATE_AUDIT=")
+          a=json.loads(raw.partition("=")[2])
+          assert a["status"] == "DRY_RUN_NO_PRIVATE_STORAGE_READ"
+          assert a["2022_private_candidate_date_sets_equal"] is False
+          assert a["network_request_attempted"] is False
+          assert a["storage_mutated"] is False
+          assert a["official_market_status_admitted"] is False
+          assert a["ordering"] == "DISABLED"
+          '

@@ -1,0 +1,126 @@
+# KRX 2022: complete 14-day public holiday *candidate* comparator — 2026-10-18
+
+**Classification: OFFLINE EXPERIMENTAL, READ-ONLY WHEN SEPARATELY AUTHORIZED, NOT OFFICIAL MARKET-PIT APPROVED.** This isolated Draft is based on the KRX specialist's separate still-Draft #420. No KRX endpoint, secret, Railway deployment, broker, code merge, original private 2022 volume read or actual model profitability run was performed in this work.
+
+## Why this matters
+
+Actual read-only 2026-10-12 Railway `indexalert-krx-historical-worker` deployment log for **2022** reports:
+- `260/260` stored weekday original KRX-approved **daily/master** pairs SHA/backing-content integrity verified.
+- `14` source-empty days, all classified `unverified_calendar_or_source_gap`. Source-empty does **not** mean market holiday, nor stock-day tradability.
+- Original private 2022 full-year snapshot digest pinned to `0b110aaa452f43788e9880f4bf769981dee5f31c617485ca49cc7e7918306c9e`.
+- `historical_pit_source_admitted=false`, `performance_run_authorized=false`, `real_orders_authorized=false`.
+
+Separate [Draft PR #422](https://github.com/kims34/openpilot-opkr/pull/422) already prepared the **2021** private original 13-day comparator. This PR is the **non-overlapping 2022** counterpart; it does not modify #420 or #422 code and MUST NOT be deployed or merged automatically.
+
+## Explicit public 2022 candidates: 11 regular + 2 election + 1 year-end = 14
+
+| Date(s), YYYY-MM-DD | Category | Evidence-vintage cautions |
+|---|---|---|
+| 2022-01-31, 02-01, 02-02 | Lunar New Year | Public holiday pattern; original KRX announcement/authentic as-of receipt for Jan 31 still separately needed |
+| 2022-03-01 | Independence Movement Day | Regular market-holiday candidate |
+| 2022-05-05 | Children's Day | Regular market-holiday candidate |
+| 2022-06-06 | Memorial Day | Regular market-holiday candidate |
+| 2022-08-15 | Liberation Day | Regular market-holiday candidate |
+| 2022-09-09, 09-12 | Chuseok & substitute | Regular market-holiday candidate |
+| 2022-10-03, 10-10 | National Foundation / Hangul substitute holiday | Regular market-holiday candidate |
+| 2022-03-09, 06-01 | **Presidential / local elections** | KRX **2022-02-10** announcement, before each event, not a timeless original from Jan 1 |
+| 2022-12-30 | **Exchange year-end closing** | KRX **2022-12-15** announcement; do not use as an as-of known 2022 January decision |
+
+Actual contemporary sources and rules:
+- [KRX trading holiday rules](https://global.krx.co.kr/contents/GLB/06/0602/0602010201/GLB0602010201T1.jsp) include statutory public holidays, election days, last exchange business day before Dec 31, and extraordinary closings.
+- [2022-02-10 Yonhap report of KRX official stock-market closure statement](https://www.yna.co.kr/view/AKR20220210072200002), confirms election holidays of March 9 and June 1.
+- [2022-12-15 Yonhap report of KRX year-end exchange statement](https://www.yna.co.kr/view/AKR20221215067400002), confirms Dec 30 stock-market closing and Dec 29 final 2022 session.
+- [2022-02-01 contemporary local market holiday compilation](https://www.mediainnews.com/news/articleView.html?idxno=21240) lists the 2022 weekday closures; this source is **secondary**, cannot verify first KRX publication dates for each ordinary holiday or original private stored SHA receipts.
+- [KRX official market closing holiday lookup](https://open.krx.co.kr/contents/MKD/01/0110/01100305/MKD01100305.jsp) is dynamic, year-specific historical output and its publication-vintage *not* independently obtained here.
+
+**Caveat:** All 14 candidates are weekdays and numerically equal the 2022 worker's 14 unverified empty-day *count*. This equality says **nothing** about whether the precise stored day IDs match. In particular this is not complete original 2022 official holiday-vintage proof; later year-end announcements cannot be used for earlier features.
+
+## Prepared independent 2022 original private exact-set audit
+
+- `research_v1_krx_private_2022_calendar_candidate_audit.py` defaults to `DRY_RUN_NO_PRIVATE_STORAGE_READ`, permits `--audit` only in the **existing named dedicated worker** environment with dedicated `/data` private volume, and only reads the already approved 2022 stored dataset, no network/official source calls.
+- Before comparing **in memory** it executes existing `audit_private_range` to re-verify complete `260` weekday pairs, dual original raw SHA bytes/schema, `14` old source-empty dates, pinned full 2022 snapshot fingerprint and all denied permissions. Second pass re-reads all `260` `_check_one` receipts and recomputes same snapshot fingerprint to fail closed on changed in-flight private storage.
+- Exact original private SHA-backed *empty source* day set is compared against this fixed public 14-date candidate set (not just both totals of 14); returns **only counters**, e.g. matched / missing / unexpected, plus `...NOT_PIT` classification. Private raw dates and original rows/hashes never appear in output or GitHub Actions. Same-count/different-date mismatch is rejected as verification.
+- All authority flags are literal false: `official_market_status_admitted=false`, `full_universe_source_admitted=false`, `m20_performance_run_authorized=false`, `independent_holdout_authorized=false`, `real_orders_authorized=false`, `ordering=DISABLED`.
+- Separate `test_research_v1_krx_private_2022_calendar_candidate_audit.py` contains **synthetic only** positive and adversarial fixtures; `.github/workflows/indexalert-krx-private-2022-calendar-candidate-offline-ci.yml` has no secrets, API provider requests, or volume mount. A passing CI confirms code's synthetic contradiction response **ONLY**.
+
+## Hard boundary and next real evidence
+
+**NO ACTUAL PRIVATE 2022 EXACT-SET RECONCILIATION WAS EXECUTED HERE.** Only the authorized KRX worker owner, after independent review/explicit deployment/access authorization, can run `python research_v1_krx_private_2022_calendar_candidate_audit.py --audit` in the worker's verified original private volume. A real exact-set match, should one ever occur, remains **private-source-date vs public-source-candidate corroboration, not authoritative original KRX calendar source-PIT**.
+
+For 2017–2022 all 90 gaps remain unapproved until individual authenticated original exchange calendar, market type, as-of/publication vintage and stock-level listing/suspension/delist/corporate action independently validated. The prospective 2026-09-28 **27** nonpositive OHLC stock rows are entirely separate and quarantined. OpenDART first-published 2022/2021 Q3 CFS profit/period + issuer identity still incomplete. The entire H5/M20 Frozen framework, WF504/126/126, PIT/Purged/CPCV, sealed Holdout, Champion/Top3, NO_TRADE, costs/fees/taxes unchanged. **ORDERING=false.** Draft-only, unmerged, no live order, capital, permission, API subscription or Railway deployment.
+
+
+## Independent source cross-check — 2026-10-19 KST (historical publication vintages; still NOT PIT)
+
+After code CI SUCCESS, independently opened the three publicly dated sources without invoking any KRX private API or Railway container and cross-checked the exact 14 public candidate classes:
+
+1. The **Korean government's 2022-01-11 contemporaneous holiday list**, sourced from the Ministry of Personnel Management, explicitly enumerates 2022-01-31 to 02-02, 03-01, 03-09 presidential election, 05-05, 06-01 local election, 06-06, 08-15, 09-09 to 09-11 (weekend members excluded), 09-12 substitute, 10-03, 10-10 substitute. URL: https://www.korea.kr/multi/visualNewsView.do?newsId=148897861 . **This authenticates a public-holiday calendar, not original exchange data or issuer/tradability.**
+2. [Yonhap dated **2022-02-10 10:50 KST**](https://www.yna.co.kr/view/AKR20220210072200002) reports the **KRX** itself confirmed the securities market closed for 2022-03-09 and 2022-06-01 elections. This is independent contemporary exchange corroboration, as a journalistic transcription, NOT the exchange's raw original signed calendar payload.
+3. [Yonhap dated **2022-12-15 10:31 KST**](https://www.yna.co.kr/view/AKR20221215067400002) reports KRX designated 2022-12-30 a securities/derivatives year-end closure and **2022-12-29** the year's final market session. This vintage became available in December and must **not** be backdated into pre-December source knowledge.
+
+The 11 ordinary weekday holiday candidates, 2 explicit election closures, and 1 KRX year-end closure total **14 unique 2022 weekdays** (public evidence only). Compare to the actual Railway worker 2022 output of **14** private-source empty days: the public-date candidate **count** matches, but **exact original stored date-set not actually read or reconciled**.
+
+Completed Actions:
+- [Run #39132923556](https://github.com/kims34/openpilot-opkr/actions/runs/39132923556) exact PR #423 code branch HEAD `f69ca017cfd365b9ab81ccbf00ef42b06fbb9d4f`, **one job SUCCESS**, Python 3.12 and **12/12** synthetic negative/positive tests PASS; default CLI invocation validated `DRY_RUN_NO_PRIVATE_STORAGE_READ`, `official_market_status_admitted=false`, `ordering=DISABLED`.
+- The source SHA identity for original Railway private 2022 remains fixed at `0b110aaa452f43788e9880f4bf769981dee5f31c617485ca49cc7e7918306c9e`. Its full live rehash/2022 exact set comparison has NOT been executed, and none of the 14 source-empty days are promoted to official market days.
+
+**Authority and isolation:** [Draft PR #423](https://github.com/kims34/openpilot-opkr/pull/423) remains unmerged; [2021 separate Draft PR #422](https://github.com/kims34/openpilot-opkr/pull/422) untouched. Actual worker-volume execution needs separate owner authorization and code availability, currently absent. No new API permissions, official KRX endpoints, Railway deployment, model/Champion, sealed Holdout, funds or live orders; `ORDERING=false`.
+
+## 2026-10-19 primary KRX KIND first-party market-scope verification and mandatory anti-cross-venue regression
+
+Independent **first-party actual KRX KIND direct official notice** (not third-party press/Google snippet):
+
+- [KRX KIND original **2022-02-10** KOSDAQ election day market-closure notice](https://kind.krx.co.kr/external/2022/02/10/000126/20220209001809/71985.htm) explicitly specifies `대상시장: 전체 코스닥시장`, `휴장일자: 2022-03-09, 2022-06-01`, official KOSDAQ market rule Article 5. This is genuinely an exchange-issued dated notice **for KOSDAQ only**. It proves neither original 2022 per-day KOSPI private source nor KOSPI venue holiday/PIT as-of market decision.
+- [KRX KIND original **2021-09-27** KOSDAQ Oct substitute holiday notice](https://kind.krx.co.kr/external/2021/09/27/000113/20210915000217/71985.htm) explicitly specifies `대상시장: 전체 코스닥시장`, `휴장일자: 2021-10-04, 2021-10-11`. This is a helpful independent public archival 2021-source clue, but not KOSPI first-party proof.
+- [KRX KIND original **2021-08-04** KOSPI Aug substitute holiday notice](https://kind.krx.co.kr/external/2021/08/04/000158/20210804000347/99340.htm) explicitly specifies `대상시장: 유가증권시장`, `휴장일자: 2021-08-16`. This one **is in the KOSPI venue**, but still does not prove the SHA-pinned privately stored 2021 day and precise first-publication **clock time**.
+
+The preexisting 2022 PRIVATE worker stores **KOSPI market data**; its exact-date classifier must never use an original KIND notice whose stated market is KOSDAQ as KOSPI original market-source evidence. News reporting closures for stock markets generally and national public-holiday legal text remain independent *supporting* evidence, not substitutes for a venue-specific primary source.
+
+New narrowly scoped research-only code commit `8dfde89e047bb29a8c314fb444376e16a3b61f24` records a 2022 KOSDAQ KIND primary source link and a strict separate market-scope classification in the offline candidate result:
+`private_2022_market_scope="KOSPI"`; `identified_krx_kind_primary_notice_market_scope="KOSDAQ"`; `cross_venue_kosdaq_primary_notice_is_kospi_evidence=false`; `matched_kospi_first_party_original_kind_election_notice_count=0`; `krx_kind_primary_notice_original_publication_instant_verified=false`.
+The companion adversarial offline regression commit `3b5650aa47e1868a5934ed0461b5f1050e89cd18` asserts **a synthetically matching complete 14-day set still cannot certify KOSPI from the original KOSDAQ notice, or authorize M20/performance/orders**.
+
+These market-scope flags are **human-verified external-document hints**, not a programmatic cryptographic authentication of the original exchange notice or its historical availability. No first-party KOSPI 2022 election/other close-day notice has yet been independently retrieved in this particular PR. No new official API, private Railway data/worker, manifest, broker permission or production state was accessed or modified.
+
+**PIT gate still closed:** Neither synthetic 2022 date equality nor partial primary public KOSDAQ notice authenticates original 2022 private KOSPI exact 14-day source-empty set, KOSPI official per-day market status, security tradability, corporate actions, OpenDART M20 or after-cost/tax returns. `ORDERING=false`, dependent Draft PR unmerged.
+
+
+## 2026-10-20 — venue- and vintage-specific historical market notice classifier
+
+Added a new independent **no-network, no-private-data** negative gate on existing Draft PR #423:
+- `research_v1_krx_holiday_notice_venue_asof_gate.py` and `test_research_v1_krx_holiday_notice_venue_asof_gate.py`; existing GitHub Actions offline workflow updated to run both suites. Source commit `90cbd2f2f911caf66274c181b371da25ca53a997`, tests commit `c850d427ed28491952297a7188e32d2b1533a008`, workflow commit `3933edc71767f1a3a77ca9c5534a495fb27a33a0`.
+- Strictly discriminate `KOSPI` from `KOSDAQ`, `DERIVATIVES`, `ALL_EQUITIES`, `GENERAL_PUBLIC` market scope; original private 2022 worker is KOSPI. Even a genuine KRX KIND **KOSDAQ** 2022 election notice cannot **itself** prove KOSPI market status. Generic government holidays and KRX-hosted issuer product disclosures are not original exchange market-specific legal proof.
+- Require offset-aware **+09:00** report publication and strategy `signal_asof_kst`, with actual publication no later than the historical decision. [HanKyung's contemporaneous 2021-08-04 **13:37 KST** reported KRX equities closure notice](https://www.hankyung.com/article/2021080408136) is **NOT evidence available for 2021-08-04 09:00 KST**; [Yonhap **13:52 KST** same day corroboration](https://www.yna.co.kr/view/AKR20210804093200002). Reported KRX equity-market notice is only an external candidate; exact independent original exchange publication instant and bytes are NOT authenticated.
+- [Yonhap **2022-12-15 10:31 KST** KRX report](https://www.yna.co.kr/view/AKR20221215067400002) cannot justify 2022-12-15 09:00 KST strategy knowledge of the Dec 30 year-end closure. Its venue/time match **later that day** is only a reported-source candidate, not PIT or original market-calendar authenticity.
+- [KRX-hosted KIND **KOSDAQ** original election closure notice](https://kind.krx.co.kr/external/2022/02/10/000126/20220209001809/71985.htm) is **not** primary KOSPI legal-calendar evidence; [Yonhap's 2022-02-10 KRX reported election notice](https://www.yna.co.kr/view/AKR20220210072200002) is market-wide historical corroboration, not first-party bytes/time proof.
+- Source-kind labels and caller-supplied timestamps are *untrusted*, so `classify_notice` may only say `CANDIDATE_ONLY_NOT_AUTHENTICATED` or a reason for **rejecting** a date. Regardless of label, `original_exchange_market_status_pit_verified=false`, `official_original_market_calendar_authenticated=false`, `source_admitted=false`, `m20_performance_run_authorized=false`, `ordering=DISABLED`. It performs no KRX endpoint/network, private /data, brokerage or storage operations.
+
+**Real CI**: [Actions #39347432919](https://github.com/kims34/openpilot-opkr/actions/runs/39347432919), head `3933edc71767f1a3a77ca9c5534a495fb27a33a0`, SUCCESS with **26/26** synthetic/adversarial tests and verified default `DRY_RUN_NO_PRIVATE_STORAGE_READ`; [second #39347427130](https://github.com/kims34/openpilot-opkr/actions/runs/39347427130) SUCCESS. None of the 2021 13 / 2022 14 actual Railway private stored source-empty dates have been read/compared. This is a safer gate, NOT date-level original KOSPI market PIT, stock tradability, earnings validation or profit. Source #422/#423 stay Draft/unmerged, 2017–2022 90 and prospective 2026 27 source gaps unchanged, `ORDERING=false`.
+
+
+## 2026-10-21 original KIND document URL/market binding — exact public text; still NO PIT
+
+The earlier market-scope classifier accepted an unconstrained *caller-provided* `notice_market` and `source_kind`; although it NEVER granted PIT/permissions, it could describe a false market-scope candidate if the caller relabeled a KOSDAQ/derivatives document as KOSPI. Independently re-opened precisely these public original KIND text documents:
+
+| Public first-party KIND URL (exact archive path) | Explicit original target market | Listed closure day(s) | Allowed research classification |
+|---|---|---|---|
+| [2021-08-04 유가증권시장 휴장안내](https://kind.krx.co.kr/external/2021/08/04/000158/20210804000347/99340.htm) | **KOSPI / 유가증권시장** | 2021-08-16 | KOSPI source-text venue match ONLY |
+| [2021-09-27 파생상품시장 휴장 안내](https://kind.krx.co.kr/external/2021/09/27/000115/20210927000265/70868.htm) | **Derivatives + commodities**, NOT cash equities | 2021-10-04, 2021-10-11 | **NEVER** claim it certifies KOSPI |
+| [2022-02-10 코스닥시장 휴장안내](https://kind.krx.co.kr/external/2022/02/10/000126/20220209001809/71985.htm) | **KOSDAQ**, NOT KOSPI | 2022-03-09, 2022-06-01 | **NEVER** claim it certifies KOSPI |
+
+New `PINNED_KIND_MARKET_NOTICES` in `research_v1_krx_holiday_notice_venue_asof_gate.py` conservatively binds each **exact HTTPS KIND URL** to its specific text's venue and enumerated dates. If a caller claims `KRX_PRIMARY_MARKET_NOTICE` without a pinned URL, supplies an unrecognized/changed URL, mislabels its market, or applies it to a different holiday, it now raises a **constant fail-closed error**. Reported-journalism-source comparisons remain a separate, nonauthenticated source class, subject to their own as-of times.
+
+This static, manually inspected URL registry is **NOT** a cryptographic digest of originally published KRX bytes and **does not authenticate when the regulator first publicly posted those documents**. The web-serving page might have changed or been corrected. A reported announcement at [2021-08-04 13:52 KST](https://www.yna.co.kr/view/AKR20210804093200002) explicitly includes KOSPI+other markets for all three extra 2021 days, but it cannot prove the information was available during the 2021-08-04 market *pre-open*, and is not the original KOSPI regulator's publication timestamp. Likewise an original derivative-market page cannot substitute for an absent primary KOSPI 2021 Oct 4/11 notice.
+
+The existing real 2021 13-day and 2022 14-day private-sha date comparator workflows **have not been executed on the original Railway private /data volume**. CI in this Draft tests invented fixtures only. The original KRX market statuses, initial publication vintage, company-level trading status and full PIT remain denied, together with OpenDART original fiscal values, economics, Holdout, Champion and orders. No API, deployment, permission, archive, security ID, broker or funds changed. `ORDERING=false`.
+
+
+## 2026-10-22 independent direct KIND 2021 October original KOSDAQ equities source — NO KOSPI PIT
+
+Independently retrieved a fourth original public KRX KIND notice: [**2021-09-27 코스닥시장 휴장안내**](https://kind.krx.co.kr/external/2021/09/27/000113/20210915000217/71985.htm). Original on-page text explicitly states **2021-10-04 and 2021-10-11**, substitute holidays, target **"전체 코스닥시장"** under **코스닥시장 업무규정 제5조**. This is a market-wide **cash-equity KOSDAQ** direct KRX-published source, unlike the previously identified [2021-09-27 derivatives/commodities original](https://kind.krx.co.kr/external/2021/09/27/000115/20210927000265/70868.htm), which applies **only** to futures/derivatives and commodities. These two distinct first-party sources must never be conflated.
+
+New precisely pinned fourth URL profile in `research_v1_krx_holiday_notice_venue_asof_gate.py` binds that exact public KIND HTTPS URL to `market=KOSDAQ`, **only** days `20211004` and `20211011`. Two additional adversarial offline regressions verify both dates as research-source candidates under **KOSDAQ only**, reject relabeling as `KOSPI`, `ALL_EQUITIES`, derivatives, wrong day, modified URL or mislabeled news-source class. Even valid KOSDAQ profile leaves all original publication instant, archival bytes, original exchange PIT, per-security tradability, feature/performance/order rights **FALSE**. Synthetic time values in tests are NOT verified original notice publication clocks.
+
+**Important:** The PRIVATE stored 2021 historical worker market is **KOSPI**. Neither this new original KOSDAQ notice nor the derivatives notice can directly certify the 2021-10-04/11 KOSPI cash market. A contemporaneous media report of KRX all-stock-market closures is separate corroboration and not a separately authenticated original KOSPI regulatory notification. A 2021 primary cash KOSPI source and historic posting-vintage evidence remain outstanding.
+
+Neither the actual **2021 13-date** nor **2022 14-date** original Railway private receipt sets were re-read during this research. PR #423 is dependent on separate Draft KRX source-only PR #420, remains Draft/unmerged; no provider API, broker, funds, trading, Holdout, Champion, PIT authorization, permissions, or production deployment. `ORDERING=false`.
