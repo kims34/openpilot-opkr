@@ -182,7 +182,10 @@ def verify_2022_krx_flow_pandas_payload(
         "original_pandas_schema_sha_independently_recomputed": True,
         "parsed_payload_digest_independently_recomputed": True,
         "original_pandas_payload_sha_matches_archived_receipt": True,
-        # Header-only CSV cannot establish ANY actual numeric observation.\n        "original_2022_foreign_institution_amount_display_format_checked": (\n            prior["has_nonempty_source_response"]\n        ),
+        # Header-only CSV cannot establish ANY actual numeric observation.
+        "original_2022_foreign_institution_amount_display_format_checked": (
+            prior["has_nonempty_source_response"]
+        ),
         "original_2022_net_buy_amount_unit_or_scale_verified": False,
         "provider_authenticity_independently_verified": False,
         "original_2022_as_published_vintage_verified": False,
