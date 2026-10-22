@@ -39,6 +39,7 @@ jobs:
           assert result["feature_value_from_current_corrected_api_never_backfilled"] is True
           assert result["separately_attested_calendar_required"] is True
           assert result["separately_attested_full_correction_history_required"] is True
+          assert result["correction_index_cutoff_must_cover_decision_day"] is True
           assert result["ordering"]=="DISABLED"
           for k in ("original_2022_q3_three_month_cfs_value_verified",
                     "original_2021_comparator_three_month_cfs_value_verified",
