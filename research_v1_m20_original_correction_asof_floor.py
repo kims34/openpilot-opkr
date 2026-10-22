@@ -51,6 +51,7 @@ def edition_date_floor(
     *,
     original_receipt_day: str,
     correction_receipt_day: str,
+    correction_index_coverage_through_day: str,
     trade_session_day: str,
     official_historical_sessions: list[str],
     original_first_filing_verified: bool,
@@ -72,10 +73,18 @@ def edition_date_floor(
         orig = parse_day(original_receipt_day)
         corrected = parse_day(correction_receipt_day)
         decision = parse_day(trade_session_day)
+        index_end = parse_day(correction_index_coverage_through_day)
     except ReceiptDateGap as e:
         raise EditionFloorGap("EDITION_DAY_SHAPE_INVALID") from None
     if not orig < corrected <= orig + timedelta(days=366*MAX_RELATIVE_CORRECTION_YEARS):
         raise EditionFloorGap("EDITION_DATE_ORDER_OR_SCOPE_INVALID")
+    if index_end < corrected:
+        raise EditionFloorGap("CORRECTION_INDEX_END_BEFORE_KNOWN_EDITION")
+    # A census verified only through its historical cutoff is NEVER sufficient
+    # for a later decision day, even if the latest recorded edition is unique.
+    # In particular: the official October 13, 2026 census cannot validate
+    # an Oct 14+ synthetic trading session's complete correction lineage.
+    coverage_through_trade = index_end >= decision
 
     # Source-date floor has a one-year horizon. An original-edition window
     # is tested only before the correction day; years later, only the later
@@ -110,6 +119,7 @@ def edition_date_floor(
     provenance = (original_first_filing_verified
                   and later_correction_receipt_verified
                   and correction_index_complete_for_window
+                  and coverage_through_trade
                   and calendar_official_historical_pit_verified)
     orig_candidate = (
         provenance and orig < decision < corrected
@@ -123,6 +133,8 @@ def edition_date_floor(
         state = "ON_OR_BEFORE_FIRST_RECEIPT_REJECTED"
     elif decision == corrected:
         state = "CORRECTION_RECEIPT_DAY_REJECTED"
+    elif not coverage_through_trade:
+        state = "CORRECTION_INDEX_COVERAGE_ENDS_BEFORE_DECISION"
     elif not provenance:
         state = "EDITION_CALENDAR_OR_LINEAGE_UNATTESTED"
     elif orig_candidate:
@@ -141,6 +153,8 @@ def edition_date_floor(
         ),
         "same_day_receipt_or_correction_never_assumed_pretrade_available": True,
         "later_corrected_values_never_assigned_pre_correction": True,
+        "correction_index_covers_requested_decision_day": coverage_through_trade,
+        "correction_history_beyond_attested_cutoff_never_assumed_complete": True,
         "original_source_financial_data_not_certified_by_date_scope": True,
         "source_first_public_availability_verified": False,
         "m20_feature_pit_admitted": False,
@@ -155,6 +169,7 @@ def dry_run() -> dict:
     original = edition_date_floor(
         original_receipt_day="20221014",
         correction_receipt_day="20231214",
+        correction_index_coverage_through_day="20231215",
         trade_session_day="20221017",
         official_historical_sessions=["20221013", "20221014", "20221017"],
         original_first_filing_verified=True,
@@ -165,6 +180,7 @@ def dry_run() -> dict:
     corrected = edition_date_floor(
         original_receipt_day="20221014",
         correction_receipt_day="20231214",
+        correction_index_coverage_through_day="20231215",
         trade_session_day="20231215",
         official_historical_sessions=["20231214", "20231215"],
         original_first_filing_verified=True,
@@ -185,6 +201,7 @@ def dry_run() -> dict:
         "same_day_original_and_correction_trading_is_disallowed": True,
         "separately_attested_calendar_required": True,
         "separately_attested_full_correction_history_required": True,
+        "correction_index_cutoff_must_cover_decision_day": True,
         "feature_value_from_current_corrected_api_never_backfilled": True,
         **BLOCKED,
     }
