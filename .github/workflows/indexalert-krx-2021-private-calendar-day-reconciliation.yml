@@ -1,0 +1,24 @@
+name: KRX 2021 Private Calendar Offline Checks
+on:
+  push:
+    branches: [indexalert-krx-session-gap-review-v1-20261015]
+    paths:
+      - 'research_v1_krx_2021_private_calendar_day_reconciliation.py'
+      - 'test_research_v1_krx_2021_private_calendar_day_reconciliation.py'
+      - '.github/workflows/indexalert-krx-2021-private-calendar-day-reconciliation.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Run only synthetic date reconciliation tests
+        run: |
+          python -m py_compile research_v1_krx_2021_private_calendar_day_reconciliation.py test_research_v1_krx_2021_private_calendar_day_reconciliation.py
+          python -m unittest -v test_research_v1_krx_2021_private_calendar_day_reconciliation
