@@ -10,10 +10,12 @@ CORRECTED="20231214"
 CAL=["20221013","20221014","20221017","20231214","20231215"]
 
 
-def check(decision, *, origin=FIRST, corrected=CORRECTED, sessions=CAL,
-          first_ok=True, corrected_ok=True, index_ok=True, calendar_ok=True):
+def check(decision, *, origin=FIRST, corrected=CORRECTED, index_through="20231215",
+          sessions=CAL, first_ok=True, corrected_ok=True, index_ok=True,
+          calendar_ok=True):
     return p.edition_date_floor(
         original_receipt_day=origin, correction_receipt_day=corrected,
+        correction_index_coverage_through_day=index_through,
         trade_session_day=decision, official_historical_sessions=sessions,
         original_first_filing_verified=first_ok,
         later_correction_receipt_verified=corrected_ok,
@@ -121,7 +123,44 @@ class DateOnlyOriginalCorrectedAsOfTests(unittest.TestCase):
         self.assertTrue(out["corrected_edition_date_scope_candidate"])
         with self.assertRaisesRegex(p.EditionFloorGap,
                                     "CORRECTION_DATE_FLOOR_OR_CALENDAR_INVALID"):
-            check("20260102",sessions=CAL+["20260102"])
+            check("20260102",index_through="20260102",sessions=CAL+["20260102"])
+
+    def test_stale_official_correction_census_cutoff_blocks_later_trade(self):
+        # Not actual dates: synthetic illustration of a listing audit whose
+        # complete coverage ends before a requested future trading session.
+        x=check("20231215",index_through="20231214")
+        self.assertEqual(x["date_only_edition_scope"],
+                         "CORRECTION_INDEX_COVERAGE_ENDS_BEFORE_DECISION")
+        self.assertFalse(x["original_edition_date_scope_candidate"])
+        self.assertFalse(x["corrected_edition_date_scope_candidate"])
+        self.assertFalse(x["correction_index_covers_requested_decision_day"])
+        self.assertFalse(x["m20_feature_pit_admitted"])
+
+    def test_stale_window_does_not_invent_a_future_amendment_history(self):
+        # Uses deliberately generated business-like dates, NOT actual filings.
+        x=check("20261014",index_through="20261013")
+        self.assertEqual(x["date_only_edition_scope"],
+                         "CORRECTION_INDEX_COVERAGE_ENDS_BEFORE_DECISION")
+        self.assertFalse(x["corrected_edition_date_scope_candidate"])
+        self.assertTrue(x["correction_history_beyond_attested_cutoff_never_assumed_complete"])
+
+    def test_independently_attested_later_cutoff_does_not_alone_prove_source(self):
+        x=check("20231215",index_through="20261013")
+        self.assertTrue(x["corrected_edition_date_scope_candidate"])
+        self.assertFalse(x["source_first_public_availability_verified"])
+        self.assertFalse(x["m20_performance_run_authorized"])
+
+    def test_cutoff_prior_to_earliest_known_correction_is_rejected(self):
+        with self.assertRaisesRegex(p.EditionFloorGap,
+                                    "CORRECTION_INDEX_END_BEFORE_KNOWN_EDITION"):
+            check("20221017",index_through="20221014")
+
+    def test_invalid_or_time_of_day_census_cutoffs_never_accepted(self):
+        for wrong in ("2023-12-15","20231215093000","20230230"):
+            with self.subTest(wrong=wrong), self.assertRaisesRegex(
+                p.EditionFloorGap,"EDITION_DAY_SHAPE_INVALID"
+            ):
+                check("20231215",index_through=wrong)
 
     def test_safe_public_outputs_do_not_contain_dates_ids_or_amounts(self):
         result=p.dry_run()
@@ -131,6 +170,7 @@ class DateOnlyOriginalCorrectedAsOfTests(unittest.TestCase):
             self.assertNotIn(secret,serialized)
         self.assertTrue(result["synthetic_original_window_test_passed"])
         self.assertTrue(result["synthetic_correction_window_test_passed"])
+        self.assertTrue(result["correction_index_cutoff_must_cover_decision_day"])
         self.assertFalse(result["original_2022_q3_three_month_cfs_value_verified"])
         self.assertFalse(result["m20_feature_pit_admitted"])
         self.assertFalse(result["m20_performance_run_authorized"])
