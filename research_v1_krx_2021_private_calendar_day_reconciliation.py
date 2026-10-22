@@ -237,7 +237,16 @@ def run(*, audit: bool = False, environment: Mapping[str, str] | None = None,
         except Exception:
             out["status"] = "FAIL_CLOSED_PRIVATE_SOURCE_DAY_INVALID"
             return out
-    return _source_rows_match_expected_calendar(checked)
+    try:
+        return _source_rows_match_expected_calendar(checked)
+    except Exception:
+        # The reconciler runs only AFTER all 261 original private
+        # source pairs have been read. Any unexpected comparison/helper
+        # exception can carry private date, path, digest or source-data
+        # details: never allow it to escape into Railway public logs.
+        out = _base()
+        out["status"] = "FAIL_CLOSED_PRIVATE_CALENDAR_COMPARISON_UNVERIFIED"
+        return out
 
 
 if __name__ == "__main__":
