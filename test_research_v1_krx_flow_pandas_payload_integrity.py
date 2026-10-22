@@ -237,6 +237,11 @@ class OriginalKRXPandasPayloadTest(unittest.TestCase):
         result = verify_2022_krx_flow_pandas_payload(**item)
         self.assertFalse(result["has_nonempty_source_response"])
         self.assertTrue(result["original_pandas_payload_sha_matches_archived_receipt"])
+        # Matching an EMPTY dataframe hash says nothing about numeric cells.
+        self.assertFalse(
+            result["original_2022_foreign_institution_amount_display_format_checked"]
+        )
+        self.assertFalse(result["original_2022_net_buy_amount_unit_or_scale_verified"])
         self.assertFalse(result["source_admitted"])
 
 
