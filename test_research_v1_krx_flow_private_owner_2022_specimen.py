@@ -111,6 +111,54 @@ class OriginalKRXFirst2022FlowSpecimenTest(unittest.TestCase):
                 git_worktree=str(self.worktree),
             )
 
+    def test_original_unmodified_private_store_worker_and_phase_state_git_blob_pins(self):
+        # Independently pinned exact Git blob SHA from frozen 2026-10-03
+        # worker revision 9009c48a00394063c813d29219507ee2190ce09e.
+        # Never mistake a later source-worker refactor for the archived writer
+        # contract. This hashes local PUBLIC PYTHON SOURCE, not private data.
+        expected = {
+            "research_v1_krx_historical_worker_core.py": (
+                "ad7a7ba279e298e5883473a8cfe97a397826c170"
+            ),
+            "research_v1_krx_private_store.py": (
+                "93a0bd839d31fc6b099ba7660a55f1bc75529e2c"
+            ),
+            "research_v1_krx_historical_batch_state.py": (
+                "b8de59196f99e1af6a9c237f7cef5cef50f29fe5"
+            ),
+        }
+        for name, frozen_blob in expected.items():
+            with self.subTest(original_source=name):
+                content = (Path(__file__).resolve().parent / name).read_bytes()
+                data = b"blob " + str(len(content)).encode("ascii") + b"\\0" + content
+                self.assertEqual(hashlib.sha1(data).hexdigest(), frozen_blob)
+
+    def test_2022_request_checkpoint_path_matches_original_worker_constructor(self):
+        from research_v1_krx_historical_worker_core import _checkpoint_relpath
+        frozen_sha = self.chain["phase_completion"]["request_metadata_sha256"]
+        got = _checkpoint_relpath(
+            "KRX_INVESTOR_FLOW",
+            "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+            "MDCSTAT02303",
+            frozen_sha,
+        )
+        self.assertEqual(got, "/".join(self.paths["checkpoint"]))
+        self.assertFalse(Path(got).is_absolute())
+
+    def test_2022_raw_content_address_matches_original_worker_private_store(self):
+        from research_v1_krx_private_store import _object_path
+        frozen_sha = self.chain["phase_completion"]["raw_object_sha256"]
+        generated = _object_path(self.root, frozen_sha)
+        self.assertEqual(generated, self.file("raw"))
+        self.assertEqual(generated.name, frozen_sha + ".bin")
+        self.assertEqual(generated.parent.name, frozen_sha[:2])
+
+    def test_original_phase_state_location_matches_frozen_state_writer(self):
+        from research_v1_krx_historical_batch_state import _state_relpath
+        self.assertEqual(
+            _state_relpath("PER_SECURITY_HISTORY"), "/".join(self.paths["state"])
+        )
+
     def test_one_deterministic_nonempty_original_response_chain_all_hashes_match(self):
         result = self.audit()
         self.assertEqual(result["sample_selection"], "FIRST_ORIGINAL_ORDERED_2022_FLOW_TASK")
