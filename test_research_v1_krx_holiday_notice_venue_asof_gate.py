@@ -141,6 +141,55 @@ class MarketNoticeSourceScopeTest(unittest.TestCase):
         self.assertEqual(honest["status"], "WRONG_MARKET_SCOPE")
         self.assertFalse(honest["original_exchange_market_status_pit_verified"])
 
+    def test_primary_2021_oct_kosdaq_cash_notice_is_exact_venue_only(self):
+        # New first-party original KRX KIND KOSDAQ notice, not a KOSPI notice.
+        url = ("https://kind.krx.co.kr/external/2021/09/27/000113/"
+               "20210915000217/71985.htm")
+        for d in ("20211004", "20211011"):
+            with self.subTest(day=d):
+                source = dict(
+                    session_day=d,
+                    source_kind="KRX_PRIMARY_MARKET_NOTICE",
+                    original_kind_notice_url=url,
+                    notice_market="KOSDAQ",
+                    # Synthetic date/time only; original posting clock not attested.
+                    public_report_at_kst="2021-09-28T12:00+09:00",
+                    signal_asof_kst="2021-10-01T15:00+09:00",
+                )
+                right = case(required_market="KOSDAQ", **source)
+                self.assertTrue(right["original_kind_url_venue_date_profile_checked"])
+                self.assertTrue(right["candidate_notice_may_be_considered_not_pit"])
+                self.assertFalse(right["original_exchange_market_status_pit_verified"])
+                self.assertFalse(right["independently_authenticated_publication_instant"])
+                for key, denied in DENIED.items():
+                    self.assertEqual(right[key], denied, key)
+                wrong_venue = case(required_market="KOSPI", **source)
+                self.assertEqual(wrong_venue["status"], "WRONG_MARKET_SCOPE")
+                self.assertFalse(
+                    wrong_venue["candidate_notice_may_be_considered_not_pit"])
+
+    def test_primary_2021_oct_kosdaq_notice_cannot_be_forged_as_kospi(self):
+        url = ("https://kind.krx.co.kr/external/2021/09/27/000113/"
+               "20210915000217/71985.htm")
+        base = dict(
+            session_day="20211004",
+            source_kind="KRX_PRIMARY_MARKET_NOTICE",
+            original_kind_notice_url=url,
+            notice_market="KOSDAQ",
+            public_report_at_kst="2021-09-28T12:00+09:00",
+            signal_asof_kst="2021-10-01T15:00+09:00",
+        )
+        for change in (
+            {"notice_market": "KOSPI"},
+            {"notice_market": "ALL_EQUITIES"},
+            {"notice_market": "DERIVATIVES"},
+            {"session_day": "20211005"},
+            {"original_kind_notice_url": url + "?source=relabeled"},
+            {"source_kind": "REPORTED_KRX_MARKET_NOTICE"},
+        ):
+            with self.subTest(change=change), self.assertRaises(CalendarNoticeGap):
+                case(**dict(base, **change))
+
     def test_2022_kosdaq_election_kind_notice_cannot_be_relabelled_kospi(self):
         url = ("https://kind.krx.co.kr/external/2022/02/10/000126/"
                "20220209001809/71985.htm")
