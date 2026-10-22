@@ -153,6 +153,13 @@ def audit_2022_original_flow_first_specimen(
              and proof["original_receipt_file_bytes_sha_matches_manifest"] is True
              and proof["original_manifest_file_bytes_sha_matches_checkpoint"] is True,
              "ORIGINAL_2022_FLOW_SPECIMEN_NOT_VERIFIED")
+    # A header-only 2022 response contains ZERO financial observations:
+    # it cannot count as a verified numeric source specimen.
+    # The original selected task stays fixed, never skip empty to cherry-pick.
+    _require(proof["has_nonempty_source_response"] is True
+             and proof["original_2022_foreign_institution_amount_display_format_checked"]
+                 is True,
+             "ORIGINAL_2022_FLOW_SPECIMEN_HAS_NO_OBSERVATIONS")
     return {
         "audit_type": "FROZEN_2026_10_03_FIRST_2022_FLOW_SPECIMEN",
         "source_owner_only_read_only_audit": True,
