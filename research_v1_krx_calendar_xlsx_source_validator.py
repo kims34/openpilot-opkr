@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import io
+import math
 import re
 from zipfile import ZipFile, BadZipFile
 import xml.etree.ElementTree as ET
@@ -70,6 +71,22 @@ def refuse():
         "live_orders_authorized": False,
         "network_requests_made": False,
     }
+
+
+def _zero_or_invalid_visible_dimension(raw: str | None) -> bool:
+    """A zero-sized row/column is not evidence of a *visible* export.
+
+    OOXML widths and heights are numeric, not necessarily spelled '0' or
+    '0.0'. Malformed, negative, NaN or infinite sizes are unsupported and
+    conservatively rejected; an absent size means use a normal default.
+    """
+    if raw is None:
+        return False
+    try:
+        number=float(raw)
+    except (TypeError, ValueError, OverflowError):
+        return True
+    return not math.isfinite(number) or number <= 0
 
 
 def parse_xml(content: bytes):
@@ -287,7 +304,11 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
             # all parsed dates were visibly exported.
             fmt=root.find(SS+"sheetFormatPr")
             if (fmt is not None
-                    and fmt.attrib.get("zeroHeight", "0").lower() in ("1","true")):
+                    and (fmt.attrib.get("zeroHeight", "0").lower() in ("1","true")
+                         or _zero_or_invalid_visible_dimension(
+                             fmt.attrib.get("defaultRowHeight"))
+                         or _zero_or_invalid_visible_dimension(
+                             fmt.attrib.get("defaultColWidth")))):
                 return error
             if (root.find(SS+"autoFilter") is not None
                     or root.find(SS+"mergeCells") is not None):
@@ -295,7 +316,9 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
             cols=root.find(SS+"cols")
             if cols is not None:
                 for col in cols.findall(SS+"col"):
-                    if col.attrib.get("hidden", "0").lower() in ("1","true"):
+                    if (col.attrib.get("hidden", "0").lower() in ("1","true")
+                            or _zero_or_invalid_visible_dimension(
+                                col.attrib.get("width"))):
                         return error
             data=root.find(SS+"sheetData")
             if data is None:
@@ -307,7 +330,7 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
             seen=set()
             for i,row in enumerate(lines,start=1):
                 if (row.attrib.get("hidden","0").lower() in ("1","true")
-                        or row.attrib.get("ht") in ("0","0.0")
+                        or _zero_or_invalid_visible_dimension(row.attrib.get("ht"))
                         or row.attrib.get("r",str(i))!=str(i)):
                     return error
                 cells={}
