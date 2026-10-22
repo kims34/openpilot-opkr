@@ -21,7 +21,9 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               root_relation_duplicate=False,root_relation_wrong_type=False,
               missing_workbook_content_type=False,
               misleading_sheet_content_type=False,
-              duplicate_content_type=False):
+              duplicate_content_type=False,style_relation="styles.xml",
+              with_shared_strings=False,strings_relation="sharedStrings.xml",
+              duplicate_relation_id=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -60,6 +62,9 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
         ('/xl/worksheets/sheet1.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml'),
         ('/xl/styles.xml','application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml'),
     ]
+    if with_shared_strings:
+        parts.append(('/xl/sharedStrings.xml',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml'))
     if missing_workbook_content_type:
         parts=[(p,t) for p,t in parts if p!='/xl/workbook.xml']
     if misleading_sheet_content_type:
@@ -97,16 +102,29 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
             z.writestr("xl/workbook.xml",w)
             z.writestr("xl/styles.xml",styles)
             z.writestr("xl/worksheets/sheet1.xml",xml)
+            if with_shared_strings:
+                z.writestr("xl/sharedStrings.xml",
+                    f'<sst xmlns="{S}"><si><t>사용안함</t></si></sst>')
             if extra_path:
                 z.writestr(extra_path,b"x")
             rel_target = "worksheets/sheet2.xml" if mislinked else "worksheets/sheet1.xml"
             target_mode = ' TargetMode="External"' if external else ""
             if external:
                 rel_target = "https://example.com/evil.xml"
-            z.writestr("xl/_rels/workbook.xml.rels",
+            rels=(
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                 '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"'
-                + target_mode + ' Target="' + rel_target + '"/></Relationships>')
+                + target_mode + ' Target="' + rel_target + '"/>')
+            if style_relation is not None:
+                rels+=(
+                    '<Relationship Id="'+("rId1" if duplicate_relation_id else "styleId")
+                    +'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"'
+                    +' Target="'+style_relation+'"/>')
+            if with_shared_strings and strings_relation is not None:
+                rels+=(
+                    '<Relationship Id="sharedId" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings"'
+                    +' Target="'+strings_relation+'"/>')
+            z.writestr("xl/_rels/workbook.xml.rels",rels+"</Relationships>")
         return output.getvalue()
 
 
@@ -272,6 +290,41 @@ class XlsxSourceRows(unittest.TestCase):
         self.assertEqual(result["status"],
                          "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
         self.assertFalse(result["original_publication_pit_attested"])
+
+    def test_unlinked_or_decoy_styles_cannot_interpret_serial_as_date(self):
+        # The ZIP part exists and even has a valid numFmt, but Excel only
+        # applies it when the opened workbook references the styles part.
+        for props in ({"style_relation":None},
+                      {"style_relation":"worksheets/other.xml"},
+                      {"style_relation":"/xl/other-styles.xml"},
+                      {"duplicate_relation_id":True}):
+            with self.subTest(props=props):
+                raw=make_book(serial=True,**props)
+                x=check(raw,claim(raw),2026)
+                self.assertEqual(x["status"],
+                                 "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertEqual(x["parsed_source_days"],0)
+                self.assertFalse(x["exchange_session_source_admitted"])
+
+    def test_unlinked_optional_shared_strings_or_wrong_target_rejected(self):
+        for target in (None,"styles.xml","/xl/another-sharedStrings.xml"):
+            with self.subTest(target=target):
+                raw=make_book(with_shared_strings=True,strings_relation=target)
+                self.assertEqual(check(raw,claim(raw),2026)["status"],
+                                 "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+
+    def test_linked_workbook_styles_and_sharedstrings_keep_exact_row_match(self):
+        for opts in ({"serial":True},
+                     {"serial":True,"with_shared_strings":True},
+                     {"with_shared_strings":True,"strings_relation":"/xl/sharedStrings.xml"},
+                     {"serial":True,"style_relation":"/xl/styles.xml"}):
+            with self.subTest(opts=opts):
+                raw=make_book(**opts)
+                x=check(raw,claim(raw),2026)
+                self.assertEqual(x["status"],
+                                 "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+                self.assertFalse(x["original_krx_provider_authenticated"])
+                self.assertFalse(x["original_publication_pit_attested"])
 
     def test_excel_serial_requires_date_style(self):
         raw=make_book(serial=True)
