@@ -25,6 +25,11 @@ PINNED_KIND_MARKET_NOTICES = {
     "https://kind.krx.co.kr/external/2021/09/27/000115/20210927000265/70868.htm": {
         "market": "DERIVATIVES", "dates": frozenset(("20211004", "20211011")),
     },
+    # Direct KRX KIND 2021-09-27 cash equity notice: KOSDAQ only.
+    # Distinct from same-date derivative/commodity announcement above.
+    "https://kind.krx.co.kr/external/2021/09/27/000113/20210915000217/71985.htm": {
+        "market": "KOSDAQ", "dates": frozenset(("20211004", "20211011")),
+    },
     "https://kind.krx.co.kr/external/2022/02/10/000126/20220209001809/71985.htm": {
         "market": "KOSDAQ", "dates": frozenset(("20220309", "20220601")),
     },
