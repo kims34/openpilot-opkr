@@ -327,5 +327,52 @@ class KRX2021PrivateCalendarTest(unittest.TestCase):
         self.assertFalse(out["m20_performance_run_authorized"])
 
 
+    def test_post_read_private_calendar_comparison_unexpected_failure_redacts_all(self):
+        rows, _ = fixture()
+        by_day = {row["day"]: row for row in rows}
+        for problem in (
+            RuntimeError("PRIVATE_2021_COMPARISON_20210816_SHA"),
+            KeyError("PRIVATE_2021_ACCOUNT_PATH"),
+            AttributeError("PRIVATE_2021_SECURITY_TOKEN"),
+        ):
+            with self.subTest(error=type(problem).__name__):
+                seen = []
+                def synthetic_read(root, day):
+                    seen.append(day)
+                    return by_day[day]
+                with patch.object(p, "_source_rows_match_expected_calendar",
+                                  side_effect=problem):
+                    out = p.run(
+                        audit=True,
+                        environment={
+                            "RAILWAY_SERVICE_NAME": p.WORKER,
+                            "KRX_PRIVATE_RAW_DIR": "/data",
+                        },
+                        verify_root=lambda x: Path("/data/mock"),
+                        check_day=synthetic_read,
+                    )
+                self.assertEqual(len(seen), 261)
+                self.assertEqual(
+                    out["status"],
+                    "FAIL_CLOSED_PRIVATE_CALENDAR_COMPARISON_UNVERIFIED",
+                )
+                self.assertFalse(out["source_date_by_date_retrospective_calendar_match"])
+                self.assertEqual(out["private_original_2021_weekday_pairs_verified"], 0)
+                self.assertFalse(out["original_pair_fingerprint_matched"])
+                self.assertFalse(out["2021_exchange_calendar_pit_admitted"])
+                self.assertFalse(out["m20_performance_run_authorized"])
+                self.assertFalse(out["real_orders_authorized"])
+                self.assertFalse(out["raw_security_rows_or_private_dates_emitted"])
+                self.assertFalse(out["network_request_attempted"])
+                self.assertFalse(out["storage_mutated"])
+                self.assertEqual(out["ordering"], "DISABLED")
+                for forbidden in (
+                    "PRIVATE_2021_COMPARISON", "PRIVATE_2021_ACCOUNT",
+                    "PRIVATE_2021_SECURITY", "20210816",
+                ):
+                    self.assertNotIn(forbidden, str(out))
+
+
+
 if __name__ == "__main__":
     unittest.main()
