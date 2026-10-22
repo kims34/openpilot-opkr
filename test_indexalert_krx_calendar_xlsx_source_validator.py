@@ -187,6 +187,54 @@ class XlsxSourceRows(unittest.TestCase):
                 self.assertFalse(result["exchange_session_source_admitted"])
                 self.assertEqual(result["parsed_source_days"],0)
 
+    def test_opc_relationship_ids_must_be_unique_even_across_different_types(self):
+        # Old parser counted only officeDocument / worksheet Type; a
+        # second unrelated relationship could reuse the same Id and still
+        # pass, although standard OPC graph resolution would be ambiguous.
+        raw=make_book()
+        for relpath, duplicate_id in (
+            ("_rels/.rels","rootDoc"),
+            ("xl/_rels/workbook.xml.rels","rId1"),
+        ):
+            with self.subTest(relpath=relpath):
+                with ZipFile(BytesIO(raw),"r") as src:
+                    with BytesIO() as out:
+                        with ZipFile(out,"w",compression=ZIP_DEFLATED) as dst:
+                            for item in src.infolist():
+                                body=src.read(item.filename)
+                                if item.filename==relpath:
+                                    xml=body.decode("utf-8")
+                                    second=(
+                                        '<Relationship Id="'+duplicate_id+'" '
+                                        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom" '
+                                        'Target="xl/styles.xml"/>')
+                                    xml=xml.replace("</Relationships>",second+"</Relationships>")
+                                    body=xml.encode("utf-8")
+                                dst.writestr(item.filename,body)
+                        changed=out.getvalue()
+                result=check(changed,claim(changed),2026)
+                self.assertEqual(result["status"],
+                    "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertFalse(result["exchange_session_source_admitted"])
+
+    def test_opc_root_relationship_missing_id_is_not_ignored(self):
+        raw=make_book()
+        with ZipFile(BytesIO(raw),"r") as src:
+            with BytesIO() as out:
+                with ZipFile(out,"w",compression=ZIP_DEFLATED) as dst:
+                    for item in src.infolist():
+                        body=src.read(item.filename)
+                        if item.filename=="_rels/.rels":
+                            xml=body.decode("utf-8")
+                            second=(
+                                '<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom" '
+                                'Target="xl/styles.xml"/>')
+                            body=xml.replace("</Relationships>",second+"</Relationships>").encode()
+                        dst.writestr(item.filename,body)
+                changed=out.getvalue()
+        self.assertEqual(check(changed,claim(changed),2026)["status"],
+                         "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+
     def test_valid_opc_root_relationship_preserves_read_only_date_match(self):
         for target in ("xl/workbook.xml","/xl/workbook.xml"):
             with self.subTest(target=target):
