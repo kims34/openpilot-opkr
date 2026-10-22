@@ -134,6 +134,51 @@ class OriginalKRXFirst2022FlowSpecimenTest(unittest.TestCase):
         self.assertNotIn("KR7005930003", str(result))
         self.assertNotIn(self.paths["raw"][-1], str(result))
 
+    def test_empty_first_2022_original_specimen_is_blocked_not_skipped(self):
+        # The source selection must not silently move to a later task if
+        # its first pre-registered request has a valid but header-only CSV.
+        # All other synthetic source/archive checkpoints remain pristine.
+        verified = {
+            "parsed_payload_digest_independently_recomputed": True,
+            "original_pandas_payload_sha_matches_archived_receipt": True,
+            "original_receipt_file_bytes_sha_matches_manifest": True,
+            "original_manifest_file_bytes_sha_matches_checkpoint": True,
+            "has_nonempty_source_response": False,
+            "original_2022_foreign_institution_amount_display_format_checked": False,
+        }
+        with patch(
+            "research_v1_krx_flow_private_owner_2022_specimen."
+            "verify_2022_krx_private_full_checkpoint_chain",
+            return_value=verified,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerSpecimenError,
+                "ORIGINAL_2022_FLOW_SPECIMEN_HAS_NO_OBSERVATIONS",
+            ):
+                self.audit()
+
+    def test_nonempty_receipt_but_no_numeric_amount_observation_is_blocked(self):
+        # Do not equate an asserted positive row count with validated
+        # investor numeric cells, even when all per-file digests are matched.
+        claimed = {
+            "parsed_payload_digest_independently_recomputed": True,
+            "original_pandas_payload_sha_matches_archived_receipt": True,
+            "original_receipt_file_bytes_sha_matches_manifest": True,
+            "original_manifest_file_bytes_sha_matches_checkpoint": True,
+            "has_nonempty_source_response": True,
+            "original_2022_foreign_institution_amount_display_format_checked": False,
+        }
+        with patch(
+            "research_v1_krx_flow_private_owner_2022_specimen."
+            "verify_2022_krx_private_full_checkpoint_chain",
+            return_value=claimed,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerSpecimenError,
+                "ORIGINAL_2022_FLOW_SPECIMEN_HAS_NO_OBSERVATIONS",
+            ):
+                self.audit()
+
     def test_untrusted_synthetic_files_never_pass_frozen_production_sha(self):
         with self.assertRaisesRegex(Exception, "MANIFEST_BYTES_SHA_DRIFT"):
             audit_2022_original_flow_first_specimen(
