@@ -23,7 +23,9 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
               misleading_sheet_content_type=False,
               duplicate_content_type=False,style_relation="styles.xml",
               with_shared_strings=False,strings_relation="sharedStrings.xml",
-              duplicate_relation_id=False):
+              duplicate_relation_id=False,zero_width_column=False,
+              fractional_zero_height=False,zero_default_height=False,
+              zero_default_width=False,visible_custom_dimensions=False):
     def cell(addr, data, num=False, style=""):
         if num:
             return f'<c r="{addr}"{style}><v>{data}</v></c>'
@@ -34,11 +36,23 @@ def make_book(d1=DATE,d2=OTHER,duplicate=False,formula=False,serial=False,
         a2='<c r="A2"><f>DATE(2026,6,3)</f><v>46176</v></c>'
     r2=a2+cell("B2","수")+cell("C2","선거일")
     r3=cell("A3",d1 if duplicate else d2)+cell("B3","수" if duplicate else "금")+cell("C3","휴장")
-    row_attr=' hidden="1"' if hidden_row else (' ht="0"' if row_ht_zero else "")
-    cols='<cols><col min="1" max="1" hidden="true"/></cols>' if hidden_column else ""
+    row_attr=(' hidden="1"' if hidden_row else
+              ' ht="0"' if row_ht_zero else
+              ' ht="0.000"' if fractional_zero_height else
+              ' ht="14.5"' if visible_custom_dimensions else "")
+    cols=('<cols><col min="1" max="1" hidden="true"/></cols>'
+          if hidden_column else
+          '<cols><col min="1" max="1" width="0.00" customWidth="1"/></cols>'
+          if zero_width_column else
+          '<cols><col min="1" max="3" width="13.5" customWidth="1"/></cols>'
+          if visible_custom_dimensions else "")
     filt='<autoFilter ref="A1:C3"/>' if filtered else ""
     merge='<mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>' if merged else ""
-    fmt='<sheetFormatPr zeroHeight="true"/>' if zero_height else ""
+    fmt=('<sheetFormatPr zeroHeight="true"/>' if zero_height else
+         '<sheetFormatPr defaultRowHeight="0.000"/>' if zero_default_height else
+         '<sheetFormatPr defaultColWidth="0.00"/>' if zero_default_width else
+         '<sheetFormatPr defaultRowHeight="15" defaultColWidth="13.5"/>'
+         if visible_custom_dimensions else "")
     xml=(f'<worksheet xmlns="{S}">{fmt}{cols}<sheetData>'
          f'<row r="1">{hdr}</row><row r="2"{row_attr}>{r2}</row>'
          f'<row r="3">{r3}</row></sheetData>{filt}{merge}</worksheet>')
@@ -283,6 +297,31 @@ class XlsxSourceRows(unittest.TestCase):
                     "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
                 self.assertFalse(result["exchange_session_source_admitted"])
                 self.assertEqual(result["parsed_source_days"],0)
+
+    def test_numeric_zero_dimensions_can_hide_original_holiday_dates(self):
+        # Excel represents hidden dimensions with floating point widths,
+        # including 0.00 or 0.000, not just string '0' or hidden='true'.
+        for opts in (
+            {"zero_width_column":True},
+            {"fractional_zero_height":True},
+            {"zero_default_height":True},
+            {"zero_default_width":True},
+        ):
+            with self.subTest(opts=opts):
+                raw=make_book(**opts)
+                result=check(raw,claim(raw),2026)
+                self.assertEqual(result["status"],
+                    "FAIL_CLOSED_XLSX_SOURCE_ROWS_UNTRUSTED_OR_UNSUPPORTED")
+                self.assertFalse(result["exchange_session_source_admitted"])
+                self.assertEqual(result["dates"],[])
+
+    def test_regular_explicit_visible_row_and_column_dimensions_still_match(self):
+        raw=make_book(visible_custom_dimensions=True)
+        result=check(raw,claim(raw),2026)
+        self.assertEqual(result["status"],
+                         "SOURCE_XLSX_ROWS_EXACT_MATCH_CLAIM_ONLY_NOT_PIT")
+        self.assertEqual(result["dates"],[DATE,OTHER])
+        self.assertFalse(result["original_publication_pit_attested"])
 
     def test_normal_visible_xlsx_still_reconciles_without_metadata_claiming_pit(self):
         raw=make_book()
