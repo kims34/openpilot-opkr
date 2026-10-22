@@ -92,7 +92,9 @@ class DateOnlyOriginalCorrectedAsOfTests(unittest.TestCase):
                 self.assertFalse(out["corrected_edition_date_scope_candidate"])
 
     def test_nontrading_weekday_not_in_calendar_never_assumed_open(self):
-        out=check("20231218")
+        # Independently extend only the correction-index cutoff; the
+        # historical session list remains unchanged and does not include day.
+        out=check("20231218",index_through="20231218")
         self.assertEqual(out["date_only_edition_scope"],"NO_ELIGIBLE_ATTESTED_SESSION")
         self.assertFalse(out["corrected_edition_date_scope_candidate"])
 
