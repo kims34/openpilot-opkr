@@ -130,7 +130,7 @@ class OriginalKRXFirst2022FlowSpecimenTest(unittest.TestCase):
         for name, frozen_blob in expected.items():
             with self.subTest(original_source=name):
                 content = (Path(__file__).resolve().parent / name).read_bytes()
-                data = b"blob " + str(len(content)).encode("ascii") + b"\\0" + content
+                data = b"blob " + str(len(content)).encode("ascii") + bytes([0]) + content
                 self.assertEqual(hashlib.sha1(data).hexdigest(), frozen_blob)
 
     def test_2022_request_checkpoint_path_matches_original_worker_constructor(self):
