@@ -25,11 +25,14 @@ PKGREL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 PACKAGE_REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 SHEET_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
 DOCUMENT_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+STYLES_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"
+STRINGS_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings"
 CONTENT_TYPES = "{http://schemas.openxmlformats.org/package/2006/content-types}"
 EXPECTED_PART_TYPES = {
     "/xl/workbook.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
     "/xl/worksheets/sheet1.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
     "/xl/styles.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
+    "/xl/sharedStrings.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml",
 }
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MAX_XML = 8_000_000
@@ -187,9 +190,10 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                 if not part or not kind or part in overrides:
                     return error
                 overrides[part]=kind
-            required=EXPECTED_PART_TYPES.keys() if "xl/styles.xml" in names else (
-                "/xl/workbook.xml", "/xl/worksheets/sheet1.xml"
-            )
+            required=["/xl/workbook.xml","/xl/worksheets/sheet1.xml"]
+            for optional in ("xl/styles.xml","xl/sharedStrings.xml"):
+                if optional in names:
+                    required.append("/"+optional)
             if any(overrides.get(part)!=EXPECTED_PART_TYPES[part] for part in required):
                 return error
             # OPC relationship IDs are unique within each .rels part.
@@ -252,6 +256,25 @@ def read_holiday_source_xlsx(source_bytes: bytes, claim: dict, year: int) -> dic
                         "worksheets/sheet1.xml", "/xl/worksheets/sheet1.xml"
                     )):
                 return error
+            all_relations=relroot.findall(PACKAGE_REL+"Relationship")
+            # Every ancillary part that we parse must be reachable from
+            # the workbook Excel opens, not just an unreferenced ZIP decoy.
+            # Reject duplicate relationship IDs as ambiguous references.
+            ids=[r.attrib.get("Id") for r in all_relations]
+            if any(not item for item in ids) or len(ids)!=len(set(ids)):
+                return error
+            for member,rel_type,targets in (
+                ("xl/styles.xml",STYLES_TYPE,("styles.xml","/xl/styles.xml")),
+                ("xl/sharedStrings.xml",STRINGS_TYPE,
+                 ("sharedStrings.xml","/xl/sharedStrings.xml")),
+            ):
+                linked=[r for r in all_relations
+                        if r.attrib.get("Type")==rel_type]
+                if member in names:
+                    if len(linked)!=1 or linked[0].attrib.get("Target") not in targets:
+                        return error
+                elif linked:
+                    return error
             shared=(strings_from_shared(parse_xml(book.read("xl/sharedStrings.xml")))
                     if "xl/sharedStrings.xml" in names else [])
             styles=(date_style_indices(parse_xml(book.read("xl/styles.xml")))
