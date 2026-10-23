@@ -14,6 +14,11 @@ import json
 import re
 from typing import Any, Mapping
 
+from research_v1_krx_public_evidence import (
+    PUBLIC_EVIDENCE_VERSION,
+    public_evidence_fingerprint_sha256,
+)
+
 from research_v1_krx_flow_2022_receipt_gate import COLUMNS as PINNED_INVESTOR_COLUMNS
 
 SHA = re.compile(r"^[0-9a-f]{64}$")
@@ -24,6 +29,18 @@ FROZEN_BLD = "dbms/MDC/STAT/standard/MDCSTAT02303"
 ORIGINAL_RECEIPT_CLIENT_REVISION = "krx-data-api@" + ORIGINAL_CLIENT_REVISION
 ORIGINAL_RECEIPT_VERSION = "2026-10-01.v2"
 ORIGINAL_INTENDED_SCOPE = "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION"
+# The original 2026-10-03 worker validated the public, secret-free
+# INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json record and embedded its
+# canonical *normalized* record SHA, not the raw JSON-file SHA.
+# Original record Git blob: e4c19187cc66aefd895c87a4ef8973981a248d00.
+# The SHA below was recomputed from the original normalized 13 fields,
+# including UTC timestamp and explicit null valid_from/valid_until.
+ORIGINAL_AUTH_EVIDENCE_REFERENCE = (
+    "KRX_EMAIL_THREAD_PERMISSION_2026-10-02_V3_7361065E"
+)
+ORIGINAL_AUTH_EVIDENCE_RECORD_SHA256 = (
+    "4472c266379e58c22049310b09a820236c9276e190f3a8ca866761290d7afab3"
+)
 ORIGINAL_RECEIPT_GUARDRAIL = (
     "This receipt proves only reproducible provenance/integrity metadata for one acquisition, including the validated structured authorization-record fingerprint. "
     "It does not make any A-F source gate PASS and cannot authorize feature testing, holdout, promotion or live trading."
@@ -183,6 +200,24 @@ def verify_krx_2022_private_flow_triple(
              "ORIGINAL_RECEIPT_SCOPE_DRIFT")
     _require(r.get("guardrail") == ORIGINAL_RECEIPT_GUARDRAIL,
              "ORIGINAL_RECEIPT_GUARDRAIL_DRIFT")
+    # Bind the archived receipt to the EXACT original structured source
+    # authorization metadata and public-contract evidence. This is provenance
+    # consistency ONLY: a user-supplied 2026 record does not independently
+    # establish provider authenticity, historic usage rights, first publication
+    # time, or current authorization for any new collection.
+    _require(
+        r.get("authorization_evidence_reference")
+            == ORIGINAL_AUTH_EVIDENCE_REFERENCE
+        and r.get("authorization_evidence_fingerprint_sha256")
+            == ORIGINAL_AUTH_EVIDENCE_RECORD_SHA256,
+        "ORIGINAL_RECEIPT_AUTH_EVIDENCE_DRIFT",
+    )
+    _require(
+        r.get("public_contract_evidence_version") == PUBLIC_EVIDENCE_VERSION
+        and r.get("public_contract_evidence_fingerprint_sha256")
+            == public_evidence_fingerprint_sha256(),
+        "ORIGINAL_RECEIPT_PUBLIC_CONTRACT_EVIDENCE_DRIFT",
+    )
     _require(r.get("source_family") == "KRX_INVESTOR_FLOW"
              and r.get("access_route")
                  == "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION"
@@ -274,6 +309,8 @@ def verify_krx_2022_private_flow_triple(
         "checked_type": "KRX_INVESTOR_FLOW_2022_PRIVATE_ORIGINAL_TRIPLE",
         "exact_raw_object_bytes_match_checkpoint_sha": True,
         "exact_receipt_fingerprint_matches_body": True,
+        "original_receipt_authorization_record_fingerprint_pinned": True,
+        "original_receipt_public_contract_evidence_fingerprint_pinned": True,
         "exact_original_resolved_request_hash_matches_receipt": True,
         "frozen_task_id_and_window_match_request": True,
         "checked_2022_historical_year": True,
