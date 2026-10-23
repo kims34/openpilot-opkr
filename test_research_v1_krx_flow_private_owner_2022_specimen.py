@@ -163,6 +163,7 @@ class OriginalKRXFirst2022FlowSpecimenTest(unittest.TestCase):
         result = self.audit()
         self.assertEqual(result["sample_selection"], "FIRST_ORIGINAL_ORDERED_2022_FLOW_TASK")
         self.assertEqual(result["investor_flow_completed_request_checkpoints"], 3)
+        self.assertTrue(result["original_manifest_and_phase_state_stable_across_specimen_read"])
         self.assertTrue(result["one_original_2022_raw_object_and_checkpoint_chain_checked"])
         self.assertTrue(result["one_original_2022_pandas_numeric_payload_digest_checked"])
         self.assertTrue(result["sample_response_nonempty"])
@@ -181,6 +182,57 @@ class OriginalKRXFirst2022FlowSpecimenTest(unittest.TestCase):
             self.assertFalse(result[flag], flag)
         self.assertNotIn("KR7005930003", str(result))
         self.assertNotIn(self.paths["raw"][-1], str(result))
+
+    def test_concurrent_private_phase_state_rewrite_is_rejected_not_mixed(self):
+        # A still-running historical worker can change a phase-state file
+        # while original receipt/checkpoint bytes are being inspected.
+        # Simulate a replaced file AFTER source-chain proof but BEFORE report.
+        from research_v1_krx_flow_private_checkpoint_chain import (
+            verify_2022_krx_private_full_checkpoint_chain as actual_verify,
+        )
+        touched = []
+
+        def change_after_verification(**kwargs):
+            result = actual_verify(**kwargs)
+            self.write("state", self.file("state").read_bytes() + b" ")
+            touched.append(True)
+            return result
+
+        with patch(
+            "research_v1_krx_flow_private_owner_2022_specimen."
+            "verify_2022_krx_private_full_checkpoint_chain",
+            side_effect=change_after_verification,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerSpecimenError,
+                "ORIGINAL_PRIVATE_PHASE_STATE_CHANGED_DURING_AUDIT",
+            ):
+                self.audit()
+        self.assertEqual(touched, [True])
+
+    def test_concurrent_original_manifest_rewrite_rejected_before_pass(self):
+        from research_v1_krx_flow_private_checkpoint_chain import (
+            verify_2022_krx_private_full_checkpoint_chain as actual_verify,
+        )
+        touched = []
+
+        def change_after_verification(**kwargs):
+            result = actual_verify(**kwargs)
+            self.write("manifest", self.file("manifest").read_bytes() + b" ")
+            touched.append(True)
+            return result
+
+        with patch(
+            "research_v1_krx_flow_private_owner_2022_specimen."
+            "verify_2022_krx_private_full_checkpoint_chain",
+            side_effect=change_after_verification,
+        ):
+            with self.assertRaisesRegex(
+                KRXPrivateOwnerSpecimenError,
+                "ORIGINAL_PRIVATE_MANIFEST_CHANGED_DURING_AUDIT",
+            ):
+                self.audit()
+        self.assertEqual(touched, [True])
 
     def test_empty_first_2022_original_specimen_is_blocked_not_skipped(self):
         # The source selection must not silently move to a later task if
