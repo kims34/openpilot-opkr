@@ -7,11 +7,17 @@ import hashlib
 import io
 import unittest
 
+from research_v1_krx_public_evidence import (
+    PUBLIC_EVIDENCE_VERSION,
+    public_evidence_fingerprint_sha256,
+)
+
 from research_v1_krx_flow_private_triple_proof import (
     KRXPrivateFlowTripleError,
     RECEIPT_BODY,
     ORIGINAL_CLIENT_REVISION,
     ORIGINAL_RECEIPT_VERSION, ORIGINAL_RECEIPT_GUARDRAIL,
+    ORIGINAL_AUTH_EVIDENCE_REFERENCE, ORIGINAL_AUTH_EVIDENCE_RECORD_SHA256,
     _sha,
     verify_krx_2022_private_flow_triple,
 )
@@ -58,8 +64,8 @@ def fixture():
         "intended_use_scope": "INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION",
         "access_route": "DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
         "dataset_identifier": "MDCSTAT02303",
-        "authorization_evidence_reference": "SYNTHETIC_ONLY",
-        "authorization_evidence_fingerprint_sha256": "f"*64,
+        "authorization_evidence_reference": ORIGINAL_AUTH_EVIDENCE_REFERENCE,
+        "authorization_evidence_fingerprint_sha256": ORIGINAL_AUTH_EVIDENCE_RECORD_SHA256,
         "client_revision": "krx-data-api@" + ORIGINAL_CLIENT_REVISION,
         "retrieved_at": "2026-10-03T12:30:00+09:00",
         "request_metadata_sha256": _sha(request),
@@ -71,8 +77,8 @@ def fixture():
             "기타금융", "연기금 등", "기타법인", "개인", "외국인",
             "기타외국인", "전체",
         ],
-        "public_contract_evidence_version": "SYNTHETIC",
-        "public_contract_evidence_fingerprint_sha256": "e"*64,
+        "public_contract_evidence_version": PUBLIC_EVIDENCE_VERSION,
+        "public_contract_evidence_fingerprint_sha256": public_evidence_fingerprint_sha256(),
         "alpha_or_final_judge_promotion_authorized": False,
         "sealed_holdout_authorized": False,
         "live_trading_authorized": False,
@@ -182,6 +188,81 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
             self.assertIs(r[flag], False, flag)
         self.assertNotIn("KR7005930003", str(r))
         self.assertNotIn("SYNTHETIC_ONLY", str(r))
+
+    def test_original_public_evidence_source_blob_stays_frozen(self):
+        from pathlib import Path
+        path = Path(__file__).resolve().parent / "research_v1_krx_public_evidence.py"
+        data = path.read_bytes()
+        self.assertEqual(
+            hashlib.sha1(
+                b"blob " + str(len(data)).encode("ascii") + bytes([0]) + data
+            ).hexdigest(),
+            "d3876658d5793eaeddf794343c31c0b10f7cac57",
+        )
+
+    def test_wrong_authorization_fingerprint_with_rehashed_receipt_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["authorization_evidence_fingerprint_sha256"] = "a" * 64
+        r["receipt_fingerprint_sha256"] = _sha({
+            k: r[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            r["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_RECEIPT_AUTH_EVIDENCE_DRIFT",
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_wrong_original_authorization_reference_with_rehashed_receipt_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["authorization_evidence_reference"] = "UNTRUSTED_ALTERNATE_RECORD"
+        r["receipt_fingerprint_sha256"] = _sha({
+            k: r[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            r["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_RECEIPT_AUTH_EVIDENCE_DRIFT",
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_wrong_original_public_contract_version_rehashed_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["public_contract_evidence_version"] = "2026-10-04.v9"
+        r["receipt_fingerprint_sha256"] = _sha({
+            k: r[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            r["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_RECEIPT_PUBLIC_CONTRACT_EVIDENCE_DRIFT",
+        ):
+            verify_krx_2022_private_flow_triple(**item)
+
+    def test_wrong_original_public_contract_fingerprint_rehashed_rejected(self):
+        item = fixture()
+        r = item["acquisition_receipt"]
+        r["public_contract_evidence_fingerprint_sha256"] = "0" * 64
+        r["receipt_fingerprint_sha256"] = _sha({
+            k: r[k] for k in RECEIPT_BODY
+        })
+        item["completion"]["receipt_fingerprint_sha256"] = (
+            r["receipt_fingerprint_sha256"]
+        )
+        with self.assertRaisesRegex(
+            KRXPrivateFlowTripleError,
+            "ORIGINAL_RECEIPT_PUBLIC_CONTRACT_EVIDENCE_DRIFT",
+        ):
+            verify_krx_2022_private_flow_triple(**item)
 
     def test_rehashed_wrong_original_receipt_version_still_rejected(self):
         item = fixture()
