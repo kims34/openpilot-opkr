@@ -80,10 +80,10 @@ def _resolved_request(task: dict[str, Any]) -> dict[str, Any]:
 def audit_2022_original_flow_first_specimen(
     *, private_root: str, git_worktree: str,
 ) -> dict[str, Any]:
-    """Read exactly 6 source-owner frozen private files, all without writes.
+    """Read six unique protected source artifacts with an end-of-read recheck.
 
     1 frozen historical manifest + 1 phase-state snapshot + 4 per-request
-    originals (raw object, receipt, manifest, completed checkpoint).
+    originals (raw object, receipt, manifest, completed checkpoint).\n    Both frozen metadata files are re-read at end to detect concurrent change.
     Only public-safe counts and booleans are returned.
     """
     base = _protected_root(private_root, git_worktree)
@@ -160,6 +160,19 @@ def audit_2022_original_flow_first_specimen(
              and proof["original_2022_foreign_institution_amount_display_format_checked"]
                  is True,
              "ORIGINAL_2022_FLOW_SPECIMEN_HAS_NO_OBSERVATIONS")
+    # The original phase-state file may change while the four per-request
+    # objects are opened, e.g. during a live worker's checkpoint update.
+    # A successful proof must not mix phase-state/manifest snapshots from
+    # different instants. Re-read both exact same protected files with the
+    # no-follow fd-relative reader immediately before reporting success.
+    # This is a bounded concurrency check, not an externally signed or
+    # atomic filesystem snapshot and not independent source authenticity.
+    final_manifest_bytes = _read_exact_private_metadata(base, MANIFEST_PATH)
+    final_phase_bytes = _read_exact_private_metadata(base, STATE_PATH)
+    _require(final_manifest_bytes == manifest_bytes,
+             "ORIGINAL_PRIVATE_MANIFEST_CHANGED_DURING_AUDIT")
+    _require(final_phase_bytes == phase_bytes,
+             "ORIGINAL_PRIVATE_PHASE_STATE_CHANGED_DURING_AUDIT")
     return {
         "audit_type": "FROZEN_2026_10_03_FIRST_2022_FLOW_SPECIMEN",
         "source_owner_only_read_only_audit": True,
@@ -172,6 +185,7 @@ def audit_2022_original_flow_first_specimen(
         "year_2022_completed_request_checkpoints": (
             snapshot["year_2022_flow_completed_checkpoints"]
         ),
+        "original_manifest_and_phase_state_stable_across_specimen_read": True,
         "one_original_2022_raw_object_and_checkpoint_chain_checked": True,
         "one_original_2022_pandas_numeric_payload_digest_checked": True,
         "sample_response_nonempty": proof["has_nonempty_source_response"],
