@@ -189,6 +189,45 @@ class PurePrivateOriginalTripleTest(unittest.TestCase):
         self.assertNotIn("KR7005930003", str(r))
         self.assertNotIn("SYNTHETIC_ONLY", str(r))
 
+    def test_authorization_record_sha_matches_exact_original_git_artifact(self):
+        # The 2026-10-03 producer's trusted *metadata record*, NOT the
+        # original external email or current site approval, is independently
+        # reconstructed from the original secret-free Git blob. The full
+        # historical authorization still cannot pass any source/PIT gate.
+        import json
+        from pathlib import Path
+        from datetime import datetime, timezone
+        from research_v1_krx_authorization_evidence import (
+            validate_authorization_evidence,
+        )
+        p = (
+            Path(__file__).resolve().parent
+            / "INDEXALERT_KRX_AUTH_EVIDENCE_INVESTOR_FLOW.json"
+        )
+        raw = p.read_bytes()
+        git_blob_sha = hashlib.sha1(
+            b"blob " + str(len(raw)).encode("ascii") + bytes([0]) + raw
+        ).hexdigest()
+        self.assertEqual(
+            git_blob_sha, "e4c19187cc66aefd895c87a4ef8973981a248d00"
+        )
+        record = json.loads(raw.decode("utf-8"))
+        result = validate_authorization_evidence(
+            record,
+            expected_source_family="KRX_INVESTOR_FLOW",
+            expected_access_route="DATA_MARKETPLACE_AUTHENTICATED_WEB_SESSION",
+            expected_intended_use_scope="INTERNAL_RESEARCH_CANDIDATE_FEATURE_PREPARATION",
+            evaluation_time=datetime(2026, 10, 3, tzinfo=timezone.utc),
+            expected_reference=ORIGINAL_AUTH_EVIDENCE_REFERENCE,
+        )
+        self.assertEqual(
+            result["record_fingerprint_sha256"],
+            ORIGINAL_AUTH_EVIDENCE_RECORD_SHA256,
+        )
+        self.assertFalse(result["bulk_historical_acquisition_authorized"])
+        self.assertFalse(result["feature_performance_testing_authorized"])
+        self.assertFalse(result["live_trading_authorized"])
+
     def test_original_public_evidence_source_blob_stays_frozen(self):
         from pathlib import Path
         path = Path(__file__).resolve().parent / "research_v1_krx_public_evidence.py"
