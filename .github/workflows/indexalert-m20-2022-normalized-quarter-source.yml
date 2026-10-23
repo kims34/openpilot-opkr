@@ -1,0 +1,87 @@
+name: IndexAlert M20 2022 Q3 Current Normalized CFS Schema Probe
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_normalized_quarter_source_gate.py'
+      - 'test_research_v1_opendart_m20_2022_normalized_quarter_source_gate.py'
+      - '.github/workflows/indexalert-m20-2022-normalized-quarter-source.yml'
+permissions:
+  contents: read
+concurrency:
+  group: indexalert-m20-2022-normalized-current-schema
+  cancel-in-progress: false
+jobs:
+  offline-current-vintage-and-no-order-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Confirm fiscal Q3 and vintage ambiguity guards
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_normalized_quarter_source_gate.py test_research_v1_opendart_m20_2022_normalized_quarter_source_gate.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_normalized_quarter_source_gate
+      - name: Verify no broker market endpoints or order enablement
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_normalized_quarter_source_gate.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_normalized_quarter_source_gate.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_normalized_quarter_source_gate.py
+          grep -F '"this_endpoint_supports_original_filing_vintage_selection": False' research_v1_opendart_m20_2022_normalized_quarter_source_gate.py
+  official-read-only-normalized-schema:
+    needs: offline-current-vintage-and-no-order-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Official current normalized CFS source shape (NOT historical PIT)
+        run: |
+          python research_v1_opendart_m20_2022_normalized_quarter_source_gate.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_2022_normalized_quarter/shape.json").read_text())
+          assert x["fixed_cohort_slot"] == 5
+          assert x["fixed_report_year"] == "2022"
+          assert x["fixed_report_code"] == "11014"
+          assert x["fixed_statement"] == "CFS"
+          assert x["max_official_requests"] == 4
+          assert x["source_status"] == "CURRENT_API_NORMALIZED_CFS_2022_Q3_AMOUNT_SHAPE_ONLY_NOT_PIT", "NORMALIZED_SOURCE_NOT_AVAILABLE_OR_UNVERIFIED"
+          assert x["current_api_2022_q3_3month_amount_shape_present"] is True
+          assert x["current_api_2021_q3_3month_comparative_shape_present"] is True
+          assert x["recognized_unique_operating_account_id_count"] == 1
+          assert x["current_api_has_as_of_original_version_parameter"] is False
+          assert x["current_api_reported_receipt_is_first_published_version_verified"] is False
+          assert x["source_only_semantics_not_original_pit"] is True
+          assert x["ordering"] == "DISABLED"
+          for k in ("original_2022_filing_standardized_xbrl_verified",
+                    "first_published_2022_q3_cfs_three_month_profit_verified",
+                    "original_2021_q3_cfs_comparative_profit_verified",
+                    "historical_original_vs_amended_cells_reconciled",
+                    "this_endpoint_supports_original_filing_vintage_selection",
+                    "api_financial_cells_original_pit_admitted",
+                    "exact_historical_publication_instant_verified",
+                    "historical_issuer_security_pit_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_api_amounts_receipts_company_names_or_ids_persisted"):
+            assert x[k] is False, k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-2022-current-normalized-cfs-shape-no-pit
+          path: research_results/opendart_m20_2022_normalized_quarter/shape.json
+          retention-days: 7
+          if-no-files-found: warn

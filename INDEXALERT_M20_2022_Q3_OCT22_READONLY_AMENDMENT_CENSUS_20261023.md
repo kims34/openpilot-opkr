@@ -1,0 +1,24 @@
+# IndexAlert M20 — verified read-only Oct22 correction-index extension, original CFS PIT remains blocked
+
+**Source execution:** 2026-10-23 KST. Fixed 2022 Q3, frozen cohort slot **5**. No issuer reselection, no H5/M20 change, no credentials entered or source monetary values saved.
+
+## Previous independently verified contiguous record
+
+[October 22 same-run official indexed-chronology source verification #39721626218](https://github.com/kims34/openpilot-opkr/actions/runs/39721626218) passed both CI jobs with 16 offline tests. That bounded first-submitted filing search and later filing search found exactly one 2022 Q3 original initial filing, one later 2022 Q3 correction, zero Q3 attachment additions, 31 later-periodic index rows, and no new Q3 original/correction Oct14–21. This was **current OpenDART list index evidence**, not an immutable historical filing archive or an original 2022/2021 standalone CFS earnings source.
+
+## New 2026-10-22 one-day official evidence
+
+- Fixed contiguous window **2026-10-22..2026-10-22** only, one full elapsed Korea-local day after previous verified **2026-10-21** cutoff. October 23 remains an incomplete day at execution time and **was not queried or asserted complete**.
+- Code `research_v1_m20_2022_q3_incremental_20261022.py`, test `test_research_v1_m20_2022_q3_incremental_20261022.py`, workflow `.github/workflows/indexalert-m20-20261022-correction-index.yml`; code/test/workflow commits `f3b189f326ce509358a597842c260637c02d5bcf`, `3a04de8973d2dfff6879791e54e206e93dd08c08`, `6ca8e3d720d02140216b51438f582357b901b764`.
+- Two authenticated **read-only** official requests maximum: `corpCode.xml` for the previously frozen original issuer, then `list.json` using exact day `20261022`, periodic filing category A, `last_reprt_at=N`, first page with up to 100 records. Response is validated in memory; returned source data, issuer/company ID, report name, receipt number, source row dates, raw HTML/JSON, financial values, and API credentials are never saved or logged.
+- Strict `013` empty-response validation is separate from `014` missing-file and unexpected provider statuses. If an additional 2022 Q3 correction/attachment were found, it would quarantine, **not** silently overwrite or re-admit original M20 financial inputs. Duplicate receipts, wrong issuer, out-of-date rows, missing pages, unknown amendment titles and incomplete Korea-local day fail closed.
+- **Actual [GitHub Actions #39884243351](https://github.com/kims34/openpilot-opkr/actions/runs/39884243351): offline no-order/schema tests SUCCESS; official one-day source verification SUCCESS.** Official `list.json` returned **`013` = no queried periodic rows** for the selected issuer and exact Oct22 one-day window. Therefore zero 2022 Q3 correction rows and zero matching attachment rows **within this precise verified request**, not all possible historical disclosure channels.
+- Official flags-only artifact ID `12471308613`, digest `sha256:02e829d3a5fdde8754f649431363c74221eb192b78b8237c911f74b54325820c`, 7-day retention through `2026-10-30T01:29:32Z`.
+
+## What is **not** proved
+
+Combining the previously established **Oct21-indexed** source range with the new contiguous single-day Oct22 index gives an **observed issuer-specific periodic filing lookup through Oct22**. It is **not** a historically frozen intraday time series; it does not prove no later corrections would emerge, no other material report type or all-time amendments, or the original-versus-correction **accounting value/period/currency** relationship.
+
+Original financial source remains NO-GO: original 2022 July–Sept and comparative 2021 July–Sept standalone **consolidated operating profit** concepts and exact cells/currency/scale, full source-vintage cell identity, earliest public release instant, and historical issuer-security/tradable-session PIT all require independent proof. The 2022 first-submitted `fnlttXbrl.xml` previously returned `014`; original viewer candidate cells were not semantically bound. OpenDART describes `013` as **no queried data** and `014` as **file not found**; see [official original XBRL guide](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019019) and [official filing list API guide](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019001).
+
+**Keep existing controls:** frozen H5 Champion, original M20 prereg, verified PIT before fitting/simulation, costs/taxes, Walk-Forward, Purged/CPCV, sealed independent Holdout and broker credentials/env. `m20_feature_pit_admitted=false`; `m20_performance_run_authorized=false`; `independent_holdout_authorized=false`; `champion_change_authorized=false`; `real_orders_authorized=false`; no funds, permissions or real brokerage calls; **`ORDERING=DISABLED`**. Draft [PR #412](https://github.com/kims34/openpilot-opkr/pull/412) remains open, unmerged and Draft. No new hourly automation.
