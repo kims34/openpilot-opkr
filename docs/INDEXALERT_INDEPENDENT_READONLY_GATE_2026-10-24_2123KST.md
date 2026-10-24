@@ -1,0 +1,33 @@
+# IndexAlert independent source-lineage audit — 2026-10-24 21:23 KST
+
+Read-only independent profitability and isolated offline-runtime audit. This is not a source PIT admission, financial backtest, operational attestation, or permission grant. Compared with 2026-10-24 20:50 KST audit (blob `8a4a32fe9f3c55e5b05300bf96ab16696ef2bd45`). No specialist code, workflows, deployment, orders, funds, broker access, Holdout, Champion, or PR merge touched.
+
+## Exact GitHub refs independently fetched
+- Research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a`; development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`.
+- Integration Draft #414 pre-write HEAD `ac7d81dc032c51a7811c2e3d01f3dfe311522a96`; frozen integration gate blob `984c933651f39f1ee9e26a1d7ac3893aaa5335be`.
+- OpenDART Draft #412 `e82b26e2431ea15a42888f073a4b0b72a2e11ef6`; optimization Draft #413 `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; one-runner Draft #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`.
+- KRX Draft #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #422 `c14857620973531013799e44625d43080904fd5f`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`. All listed PRs remain open, Draft and unmerged at this read.
+
+## NEW independently reproduced source-lineage distinction (not a new performance result)
+Using connected GitHub `fetch_file` on the same `research_v1_runtime_manifest.py` path at three immutable commits:
+1. Archived successful CI baseline commit `05d73661bcc879fe0dd66ffcea5fe1f5ee6fbd56`: **Git blob SHA-1 `108f66714602a1bd3ae42c34dcca7c16e38f460b`**.
+2. Draft #418 direct branch HEAD `2f98401cc50a6c6a25808a98516efd5bf0c944ee`: **same Git blob `108f66714602a1bd3ae42c34dcca7c16e38f460b`**.
+3. Draft #413 upstream HEAD `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`: **different Git blob `e0055c66c59398fd4a1158077446d886b54c4e37`**.
+
+Direct code inspection shows #413 adds literal-`False` denial for required Holdout/live flags and optional six privilege aliases, plus componentwise `O_NOFOLLOW`/file-identity rechecks against local symlink/TOCTOU changes; the archived/#418 branch copy has only literal-`True` vetoes and simpler `Path.is_file/is_symlink` hashing. Thus the differing blobs are a **real reviewed implementation revision**, not evidence of corrupted stored source. The archived strict replay is correctly designed to reject that revision in the PR synthetic merge context. Neither archive replay nor candidate CI can silently substitute for the other.
+
+[Actions #39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478) job `117628139395` directly logged `SourceDriftError`: expected `108f66714602a1bd3ae42c34dcca7c16e38f460b`, observed `e0055c66c59398fd4a1158077446d886b54c4e37`, exit 1; dependent pinned parallel results absent. The separate candidate audit source file `research_v1_runtime_candidate_merge_gate.py` (Git blob `9bfc94edb43c10c7c06bb37b2bbafe6a05a0865c`) explicitly pins upstream `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`, observed new blob `e005...`, and returns `candidate_approved_for_merge=false`, `all_transitive_imports_pinned=false`. [Candidate CI #39111405494](https://github.com/kims34/openpilot-opkr/actions/runs/39111405494) passed its bounded proof, **not** archive replay. Archived 34-case fixed result SHA-256 remains `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`. Do not re-pin archive, treat candidate as approved, enable cache reuse, or claim end-to-end CI / real backtest acceleration.
+
+## Other current evidence and gates
+- [Watchdog #40087709481](https://github.com/kims34/openpilot-opkr/actions/runs/40087709481) job `120853913810` independently re-read: `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. Uploaded artifact `12557812112`, service-reported ZIP SHA-256 `1c86706ccb0de2b84bbff26f67febfc1594bc833d0cf337723d05e998eb14baa` (metadata checked; no independent ZIP rehash). Watchdog is **not** live Railway config proof.
+- OpenDART #412 latest two offline viewer CI runs #39884427765 and #39884427805 each PASS; current index/SGML fingerprints do **not** prove original 2022/2021 standalone consolidated Q3 three-month operating profit cells, earliest public available-at, amendment lineage or historical issuer/security mapping.
+- KRX #420/#422/#423 offline CI PASS as separately scoped; actual private exact 2021/2022 day sets, official historical market calendar/security status, corporate actions, and executable fills **NOT VERIFIED**. Earlier 1,565/1,565 private raw weekday pairs verified for storage integrity only; 90 unresolved days and 27 invalid OHLC observations remain excluded.
+- Prospective chronology [#39972035700](https://github.com/kims34/openpilot-opkr/actions/runs/39972035700) 404 anchor retrieval FAIL, record creation SKIPPED. No PIT chronology authority.
+- Railway direct read-only `list_projects` attempt returned `User input required but current turn is running in a non-interactive mode.` No fresh deployment/logs/live `ORDERING` attestation; authorized interactive Railway reconnection is needed, without credential/permission changes.
+
+## Admission verdict
+**PASS limited:** immutable three-way Git blob comparison and observed synthetic/offline CI controls. **FAIL closed:** archived #418 synthetic-merge source identity and prospective anchor retrieval. **NOT VERIFIED:** official original PIT/public timestamp, CFS 2022/2021 three-month accounting meaning, corrections and historical issuer mapping, KRX official tradability/actions/fills, verified commissions/slippage/taxes, after-tax NetEV/PF/CAGR/MDD/ES95/99, concentration and temporal robustness, runtime transitive/wheel/OS closure and real full-workflow acceleration.
+
+**M20 PIT NO-GO; M20 economic RUN NO-GO.** Frozen H5, M20 horizon20/purge20, WF504/126/126, labels/Purged/CPCV, sealed consumed Holdout, Champion/Top3/NO_TRADE and all costs/taxes/risk/promotion policies unchanged. `ORDERING=false` remains mandatory; production value not attested. Fail-closed cache requires independently approved source/data/code/Frozen policy/runtime/evidence SHA-256 equality; parallelize only independent read-only postprocessing, not refits or capital transitions. No real orders, funds, rights, deployments, workflow edits, strategy search, PR merges or promotion.
+
+Next: delegated OpenDART original-cell + chronology proof, KRX as-of official day/security/CA evidence, optimization owner's full transitive/runtime attestation and full CI timing. Do not duplicate specialist edits.
