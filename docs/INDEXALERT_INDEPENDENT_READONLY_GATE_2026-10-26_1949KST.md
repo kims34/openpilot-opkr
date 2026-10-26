@@ -1,0 +1,29 @@
+# IndexAlert independent read-only gate — 2026-10-26 19:49 KST
+
+Scope: documentation-only independent evidence audit. No market-performance experiment, source acquisition, parameter search, Holdout reuse, order, account/credential change, Railway deployment, workflow modification, PR merge or Champion promotion.
+
+## Read-only repository refs observed in this run
+- Research `index-alert-research-v1` HEAD: `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Development `index-alert-position-regen-fix-v1` HEAD: `1e6367d2863a86c3470da13d81a955d277eba485`.
+- Integration Draft #414 HEAD before this document-only write: `a2f20c3ef45dd6a1f95492d00cc623acd349a52e`; base research HEAD unchanged; integration gate document Git blob `984c933651f39f1ee9e26a1d7ac3893aaa5335be` as fetched on #414 branch.
+- OpenDART Draft #412 HEAD `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`.
+- Offline optimizer Draft #413 HEAD `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; one-runner Draft #418 HEAD `2f98401cc50a6c6a25808a98516efd5bf0c944ee`.
+- KRX specialist Draft #420 HEAD `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #422 `c14857620973531013799e44625d43080904fd5f`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`. Earlier KRX source #403/#404 merged; dependent comparator Drafts remain unmerged.
+
+## Directly observed source / CI evidence
+- OpenDART official read-only first-original 2021-Q3 GitHub Actions run [40262558066](https://github.com/kims34/openpilot-opkr/actions/runs/40262558066), head `1b37298bbc0a20c93cc93b688b1a75902e1b2b23`: both jobs SUCCESS, 13/13 offline tests PASS; official job log records original ZIP SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625`, 1 SGML, 1728 table shapes, 13 profit-label candidates, zero period/3-month bindings in same candidate table. Artifact ID `12625042488` digest `sha256:3fe75e2af23f508d3c518a14e98732a399eb0daeca46cccd7b3191b1e2e4777b` matched both artifact metadata and official job log. **PASS**: source-archive identity and CI only. **NOT VERIFIED**: authoritative original 2021/2022 comparable 3-month CFS profit cells, scale/sign, exact first public available-at, complete vintage lineage, 2022-original's 2021 comparative cell, issuer/security as-of identity.
+- Earlier #412 handoff reports first-original 2022-Q3 ZIP SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`; **not independently re-downloaded in this run**. First-original 2022 XBRL `014` source gap remains. Distinct 2021 and 2022 archive hashes do not prove comparable accounting values.
+- KRX Draft #420 offline Actions [39714240902](https://github.com/kims34/openpilot-opkr/actions/runs/39714240902) job SUCCESS (PR body reports 72 synthetic cases); dependent #422/#423 explicitly state no actual private 2021 13-day / 2022 14-day exact-date set run. 2017–2022 private 1565/1565 weekday pair integrity and 90 calendar/source gaps are *previous historical reports*, not fresh private-volume reattestation. **NOT VERIFIED**: official original market sessions, security-day tradability, halts, corporate actions, issuer/security mappings, realistic fills.
+- Optimizer Draft #413 [38508022564](https://github.com/kims34/openpilot-opkr/actions/runs/38508022564) 6/6 jobs SUCCESS; 34-case pinned SHA `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34` reported by PR. Downstream #418 archived-implementation run [39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478) job FAILURE. **NOT VERIFIED**: transitive dependency closure, whole CI acceleration, admitted-data H5/M20 backtest acceleration. Do not re-pin old archive or merge candidates.
+- Railway `list_projects` connector attempted read-only and returned `User input required but current turn is running in a non-interactive mode`. **NOT VERIFIED THIS RUN**: current production deployment/logs, actual ORDERING environment variable. No authentication workaround, variable read or deployment attempted.
+
+## Independent economic admission verdict
+- **PASS (bounded)**: 2021 original source ZIP fingerprint, synthetic CI, archived offline regression jobs as described above.
+- **FAIL / fail-closed**: #418 old archived-implementation CI comparison remains failed; this does not by itself prove raw source corruption.
+- **NOT VERIFIED**: first-public original filing public available-at/PIT, 2021/2022 original 3-month CFS operating-profit accounting cell/lineage, historical issuer/security PIT, official KRX status/corporate actions/price-path/fills, brokerage fees/slippage/tax model against actual execution, independent after-tax NetEV/PF/CAGR/MDD/ES95/ES99/concentration/period robustness.
+- **M20 source/PIT admission = false; M20 profitability run = NO-GO.** No numbers manufactured and no test of economic performance performed. Keep Frozen H5, M20 horizon20/purge20, WF504/126/126, Purged/CPCV, independent sealed Holdout, Champion/Top3/NO_TRADE, costs/taxes/risks and all escalation rules unchanged. Required `ORDERING=false`; current Railway effective setting not attested.
+
+## Next non-overlapping safe work
+OpenDART owner: authoritative first-edition CFS 3-month 2022 and 2021 comparator cell plus original release chronology. KRX owner: exact historical official calendar and security status/CA evidence on approved private worker without deployment or permissions change. Optimization owner: immutable transitive SHA closure and total CI time, offline synthetic only. Integration owner: read-only reconcile independently attested evidence; keep all draft PRs unmerged. Railway operator must complete interactive authentication in a permitted interactive session before production logs can be read; no credential change requested.
+
+This document is independent read-only audit evidence, **not** source or performance admission.
