@@ -57,6 +57,7 @@ jobs:
           assert x["original_2021_first_edition_unambiguous"] is True
           assert x["2021_original_archive_integrity_checked"] is True
           assert re.fullmatch("[0-9a-f]{64}",x["2021_original_zip_sha256"])
+          assert x["2021_original_zip_sha256"] == "8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625"
           assert x["2021_original_structured_markup_files"] >= 1
           assert x["2021_original_table_shapes"] >= 1
           assert x["original_2021_q3_comparative_is_not_bound_to_2022"] is True
