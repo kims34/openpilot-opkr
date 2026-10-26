@@ -1,0 +1,86 @@
+name: IndexAlert M20 Independent 2021 Q3 Original Source
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_first_2021_original_q3_source.py'
+      - 'test_research_v1_m20_first_2021_original_q3_source.py'
+      - '.github/workflows/indexalert-m20-first-2021-original-source.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-2021-q3-fixed-original-statutory-source
+  cancel-in-progress: false
+jobs:
+  offline-first-2021-original-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Select first 2021 Q3 edition and ensure provider/no-PIT regression
+        run: |
+          python -m py_compile research_v1_m20_first_2021_original_q3_source.py test_research_v1_m20_first_2021_original_q3_source.py
+          python -m unittest -v test_research_v1_m20_first_2021_original_q3_source
+      - name: No execution, trading, normalized current financial API or KRX
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr|fnlttSinglAcntAll|fnlttXbrl' research_v1_m20_first_2021_original_q3_source.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_first_2021_original_q3_source.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_first_2021_original_q3_source.py
+  official-first-2021-document-readonly:
+    needs: offline-first-2021-original-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Verify exact first 2021-Q3 filing ZIP for frozen source issuer, no financial cells
+        run: |
+          python research_v1_m20_first_2021_original_q3_source.py
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_first_2021_q3_original/source_only.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_authenticated_official_requests"] == 3
+          assert x["source_status"] == "FIRST_SUBMITTED_2021_Q3_DOCUMENT_SOURCE_SHAPE_ONLY",x.get("source_gap_reason","SOURCE_ORIGINAL_UNVERIFIED")
+          assert x["2021_initial_report_index_complete_single_page"] is True
+          assert x["original_2021_first_edition_unambiguous"] is True
+          assert x["2021_original_archive_integrity_checked"] is True
+          assert re.fullmatch("[0-9a-f]{64}",x["2021_original_zip_sha256"])
+          assert x["2021_original_structured_markup_files"] >= 1
+          assert x["2021_original_table_shapes"] >= 1
+          assert x["original_2021_q3_comparative_is_not_bound_to_2022"] is True
+          assert x["ordering"] == "DISABLED"
+          for k in ("original_2021_q3_three_month_cfs_profit_cell_verified",
+                    "first_2022_q3_report_2021_comparator_cell_verified",
+                    "2021_vs_2022_original_comparator_amounts_verified",
+                    "original_financial_xbrl_attested",
+                    "2021_first_publication_instant_verified",
+                    "2022_first_publication_instant_verified",
+                    "historical_issuer_security_pit_verified",
+                    "historical_market_session_pit_verified",
+                    "full_2021_amendment_vintage_chain_verified",
+                    "m20_feature_pit_admitted","m20_performance_run_authorized",
+                    "independent_holdout_authorized","champion_change_authorized",
+                    "real_orders_authorized","funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "original_document_amounts_receipts_company_ids_dates_or_raw_zip_saved"):
+            assert x[k] is False,k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-2021-q3-first-submitted-statutory-zip-hash-counts-only
+          path: research_results/opendart_m20_first_2021_q3_original/source_only.json
+          retention-days: 7
+          if-no-files-found: warn
