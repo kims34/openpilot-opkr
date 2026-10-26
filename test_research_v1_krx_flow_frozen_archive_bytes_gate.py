@@ -31,6 +31,14 @@ def original_fixture():
     state["completed_task_count"] = 3
     state["status"] = "IN_PROGRESS"
     state["phase_complete"] = False
+    # Pinned original 2026-10-03 writer, not a mutable current default.
+    state["state_version"] = "2026-10-02.v1"
+    for key in (
+        "source_gate_c_closed", "source_gate_d_closed",
+        "source_gate_e_closed", "feature_performance_testing_authorized",
+        "sealed_holdout_authorized", "live_trading_authorized",
+    ):
+        state[key] = False
     mb = original_writer_bytes(manifest)
     sb = original_writer_bytes(state)
     import hashlib
@@ -66,6 +74,64 @@ class FrozenPrivateArchiveBytesTest(unittest.TestCase):
         self.assertNotIn("005930", str(proof))
         self.assertNotIn("KR7005930003", str(proof))
         self.assertNotIn("task_id", str(proof))
+
+    def test_state_counterfeit_source_gate_true_is_rejected(self):
+        a = original_fixture()
+        s = json.loads(a["private_phase_state_bytes"])
+        s["source_gate_c_closed"] = True
+        a["private_phase_state_bytes"] = original_writer_bytes(s)
+        with self.assertRaisesRegex(
+            KRXArchivedSourceBytesError, "FROZEN_ORIGINAL_PHASE_AUTHORITY_DRIFT",
+        ):
+            audit_private_krx_flow_archived_snapshot_bytes(**a)
+
+    def test_state_counterfeit_holdout_or_trading_permission_rejected(self):
+        for flag in ("live_trading_authorized",
+                     "sealed_holdout_authorized",
+                     "feature_performance_testing_authorized"):
+            with self.subTest(flag=flag):
+                a = original_fixture()
+                s = json.loads(a["private_phase_state_bytes"])
+                s[flag] = True
+                a["private_phase_state_bytes"] = original_writer_bytes(s)
+                with self.assertRaisesRegex(
+                    KRXArchivedSourceBytesError,
+                    "FROZEN_ORIGINAL_PHASE_AUTHORITY_DRIFT",
+                ):
+                    audit_private_krx_flow_archived_snapshot_bytes(**a)
+
+    def test_unpinned_private_state_version_rejected(self):
+        a = original_fixture()
+        s = json.loads(a["private_phase_state_bytes"])
+        s["state_version"] = "2030-01-01.v1"
+        a["private_phase_state_bytes"] = original_writer_bytes(s)
+        with self.assertRaisesRegex(
+            KRXArchivedSourceBytesError,
+            "FROZEN_ORIGINAL_PHASE_STATE_VERSION_DRIFT",
+        ):
+            audit_private_krx_flow_archived_snapshot_bytes(**a)
+
+    def test_state_extra_private_issuer_and_row_fields_rejected(self):
+        a = original_fixture()
+        s = json.loads(a["private_phase_state_bytes"])
+        s["raw_market_rows"] = [{"isuCd": "KR7005930003"}]
+        a["private_phase_state_bytes"] = original_writer_bytes(s)
+        with self.assertRaisesRegex(
+            KRXArchivedSourceBytesError,
+            "FROZEN_ORIGINAL_PHASE_STATE_FIELDS_DRIFT",
+        ):
+            audit_private_krx_flow_archived_snapshot_bytes(**a)
+
+    def test_state_missing_original_writer_guardrail_rejected(self):
+        a = original_fixture()
+        s = json.loads(a["private_phase_state_bytes"])
+        del s["source_gate_e_closed"]
+        a["private_phase_state_bytes"] = original_writer_bytes(s)
+        with self.assertRaisesRegex(
+            KRXArchivedSourceBytesError,
+            "FROZEN_ORIGINAL_PHASE_STATE_FIELDS_DRIFT",
+        ):
+            audit_private_krx_flow_archived_snapshot_bytes(**a)
 
     def test_original_frozen_production_wrapper_rejects_synthetic_archive(self):
         a = original_fixture()
