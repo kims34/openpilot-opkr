@@ -1,0 +1,76 @@
+name: IndexAlert M20 First-vs-Corrected As-Of Date Floor
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_original_correction_asof_floor.py'
+      - 'test_research_v1_m20_original_correction_asof_floor.py'
+      - '.github/workflows/indexalert-m20-original-correction-asof-floor.yml'
+permissions:
+  contents: read
+concurrency:
+  group: indexalert-m20-original-vs-correction-asof-date-only
+  cancel-in-progress: false
+jobs:
+  offline-no-corrected-lookahead:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test source edition chronology, strict external calendar and date horizon
+        run: |
+          python -m py_compile research_v1_m20_original_correction_asof_floor.py test_research_v1_m20_original_correction_asof_floor.py
+          python -m unittest -v test_research_v1_m20_original_correction_asof_floor
+      - name: Synthetic original and correction date-floor claims only
+        run: |
+          python research_v1_m20_original_correction_asof_floor.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path("research_results/m20_original_correction_asof_floor/contract.json").read_text())
+          assert result["source_status"]=="SYNTHETIC_TWO_EDITION_DATE_SCOPE_ONLY_NOT_SOURCE"
+          assert result["purpose"]=="FIXED_M20_ORIGINAL_CORRECTED_DATE_ONLY_ASOF_VINTAGE_GATE"
+          assert result["synthetic_original_window_test_passed"] is True
+          assert result["synthetic_correction_window_test_passed"] is True
+          assert result["same_day_original_and_correction_trading_is_disallowed"] is True
+          assert result["feature_value_from_current_corrected_api_never_backfilled"] is True
+          assert result["separately_attested_calendar_required"] is True
+          assert result["separately_attested_full_correction_history_required"] is True
+          assert result["correction_index_cutoff_must_cover_decision_day"] is True
+          assert result["ordering"]=="DISABLED"
+          for k in ("original_2022_q3_three_month_cfs_value_verified",
+                    "original_2021_comparator_three_month_cfs_value_verified",
+                    "correction_2022_q3_financial_cell_change_verified",
+                    "first_publication_instant_verified",
+                    "historical_original_and_correction_publication_days_verified",
+                    "historical_issuer_security_pit_verified",
+                    "m20_feature_pit_admitted",
+                    "m20_performance_run_authorized",
+                    "independent_holdout_authorized",
+                    "champion_change_authorized",
+                    "real_orders_authorized",
+                    "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "input_dates_issuer_receipts_calendar_values_or_company_saved"):
+            assert result[k] is False,k
+          assert all("2022" not in str(v) and "2023" not in str(v)
+                     for k,v in result.items() if k not in (
+                        "original_2022_q3_three_month_cfs_value_verified",
+                        "original_2021_comparator_three_month_cfs_value_verified",
+                        "correction_2022_q3_financial_cell_change_verified"))
+          PY
+      - name: No DART KRX broker network financial tests or actual orders
+        run: |
+          ! grep -E 'requests\.|urllib\.|httpx\.|http[s]?://|api\.kiwoom|data\.krx|/api/dostk/ordr' research_v1_m20_original_correction_asof_floor.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_original_correction_asof_floor.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_original_correction_asof_floor.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-first-correction-date-only-asof-floor-no-pit
+          path: research_results/m20_original_correction_asof_floor/contract.json
+          retention-days: 7
+          if-no-files-found: warn

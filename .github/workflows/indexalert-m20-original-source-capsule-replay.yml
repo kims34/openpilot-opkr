@@ -1,0 +1,98 @@
+name: IndexAlert M20 Original Source Sealed Archive Offline Replay
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_source_capsule_replay.py'
+      - 'test_research_v1_m20_source_capsule_replay.py'
+      - '.github/workflows/indexalert-m20-original-source-capsule-replay.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-first-original-source-only-replay
+  cancel-in-progress: false
+jobs:
+  offline-capsule-tamper-and-no-order:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit test sealed-file checksums, four original count identities, source non-admission
+        run: |
+          python -m py_compile research_v1_m20_source_capsule_replay.py test_research_v1_m20_source_capsule_replay.py
+          python -m unittest -v test_research_v1_m20_source_capsule_replay
+      - name: Ensure offline-only code has no market, DART or broker access
+        run: |
+          ! grep -E 'requests.get|urllib.request|opendart.fss.or.kr/api/|api.kiwoom.com|data.krx.co.kr|/api/dostk/ordr' research_v1_m20_source_capsule_replay.py
+          grep -F '"real_orders_authorized": False' research_v1_m20_source_capsule_replay.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_source_capsule_replay.py
+  replay-exact-sealed-historical-capsule:
+    needs: offline-capsule-tamper-and-no-order
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify prior GitHub replay capsule identity and original completed run (no DART request)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p research_results/m20_replay_meta
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/39132675511" > research_results/m20_replay_meta/run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/12138239045" > research_results/m20_replay_meta/artifact.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("research_results/m20_replay_meta/run.json").read_text())
+          a=json.loads(Path("research_results/m20_replay_meta/artifact.json").read_text())
+          assert r["id"]==39132675511 and r["head_sha"]=="faa68ad257fff1eff697e78653e1e369db3453f3"
+          assert r["status"]=="completed" and r["conclusion"]=="success"
+          assert a["id"]==12138239045 and a["expired"] is False
+          assert a["name"]=="m20-first-original-four-pinned-counts-replay-capsule-no-pit"
+          assert a["digest"]=="sha256:c9465d204b6a5c0b109807b06c352e46e12a50d8d717e953bd06ab3e9176036b"
+          PY
+      - name: Download ONLY sealed 30-day count replay capsule, not original expired DART artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: m20-first-original-four-pinned-counts-replay-capsule-no-pit
+          run-id: 39132675511
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: research_results/m20_replay_extracted
+      - name: Replay sealed four-count diagnostics and enforce financial PIT NO-GO
+        run: |
+          python research_v1_m20_source_capsule_replay.py \
+            --capsule-root research_results/m20_replay_extracted \
+            --output research_results/m20_source_replay_verdict/verdict.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/m20_source_replay_verdict/verdict.json").read_text())
+          assert x["status"]=="FOUR_SEALED_SOURCE_COUNTS_REPLAY_CONSISTENT_NOT_NEW_OFFICIAL_SOURCE"
+          assert x["original_official_run_count_in_archive"]==4
+          assert x["original_viewer_table_tags"]==329
+          assert x["original_operating_label_candidates"]==2
+          assert x["source_replay_is_new_official_dart_result"] is False
+          assert x["original_2022_q3_cfs_fact_verified"] is False
+          assert x["original_2021_q3_cfs_fact_verified"] is False
+          assert x["m20_feature_pit_admitted"] is False
+          assert x["m20_performance_run_authorized"] is False
+          assert x["independent_holdout_authorized"] is False
+          assert x["real_orders_authorized"] is False
+          assert x["ordering"]=="DISABLED"
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-four-source-sealed-capsule-replay-no-fresh-dart-no-pit
+          path: research_results/m20_source_replay_verdict/verdict.json
+          if-no-files-found: warn
+          retention-days: 7

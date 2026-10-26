@@ -1,0 +1,89 @@
+name: IndexAlert M20 First-Original 2022 Later-Edition Census
+
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_later_edition_census.py'
+      - 'test_research_v1_opendart_m20_2022_later_edition_census.py'
+      - '.github/workflows/indexalert-m20-2022-later-edition-census.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m20-opendart-later-edition-source
+  cancel-in-progress: false
+
+jobs:
+  offline-source-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Run bounded source-only tests without credentials
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_later_edition_census.py test_research_v1_opendart_m20_2022_later_edition_census.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_later_edition_census
+      - name: No broker/market or performance authorization
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_later_edition_census.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_later_edition_census.py
+          grep -F '"real_orders_authorized": False' research_v1_opendart_m20_2022_later_edition_census.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_later_edition_census.py
+
+  official-later-edition-census:
+    needs: offline-source-integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Enumerate later 2022 Q3 amendments within strict official budget
+        run: |
+          python research_v1_opendart_m20_2022_later_edition_census.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x = json.loads(Path("research_results/opendart_m20_2022_later_editions/summary.json").read_text())
+          assert x["credential_present"] is True
+          assert x["source_status"] == "POST_WINDOW_SOURCE_EDITION_COUNTS_ONLY_NOT_PIT", "OFFICIAL_LATER_EDITION_SOURCE_GAP"
+          assert x["fixed_cohort_slot"] == 5
+          assert x["source_as_of"] == "20261013"
+          assert x["max_official_requests"] == 5
+          assert x["late_index_complete_for_fixed_bounded_window"] is True
+          assert x["late_index_pages_checked"] <= 4
+          assert x["initial_and_later_edition_lineage_semantically_linked"] is False
+          assert x["all_revisions_ever_identified"] is False
+          assert x["ordering"] == "DISABLED"
+          for k in ("full_correction_lineage_verified",
+                    "original_q3_cfs_three_month_operating_profit_verified",
+                    "original_q3_qminus4_comparability_verified",
+                    "historical_corp_security_mapping_verified",
+                    "historical_publication_instant_pit_verified",
+                    "original_xbrl_2022_source_gap_resolved",
+                    "m20_feature_pit_admitted",
+                    "m20_performance_run_authorized",
+                    "independent_holdout_authorized",
+                    "champion_change_authorized", "real_orders_authorized",
+                    "funds_movement_authorized", "permissions_change_authorized",
+                    "raw_source_identifiers_dates_or_values_persisted"):
+            assert x[k] is False, k
+          PY
+      - name: Upload non-sensitive counts and PIT blockers only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-2022-later-edition-counts-only
+          path: research_results/opendart_m20_2022_later_editions/summary.json
+          if-no-files-found: warn
+          retention-days: 7

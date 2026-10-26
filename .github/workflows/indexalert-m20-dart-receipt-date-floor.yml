@@ -1,0 +1,68 @@
+name: IndexAlert M20 OpenDART Receipt-Date-Only PIT Floor Offline
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_dart_receipt_date_floor.py'
+      - 'test_research_v1_m20_dart_receipt_date_floor.py'
+      - '.github/workflows/indexalert-m20-dart-receipt-date-floor.yml'
+permissions:
+  contents: read
+concurrency:
+  group: indexalert-m20-date-only-publication-floor
+  cancel-in-progress: false
+jobs:
+  offline-no-lookahead-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test no same-day lookahead and no invented trading sessions
+        run: |
+          python -m py_compile research_v1_m20_dart_receipt_date_floor.py test_research_v1_m20_dart_receipt_date_floor.py
+          python -m unittest -v test_research_v1_m20_dart_receipt_date_floor
+      - name: Source-only synthetic date rule, never authorize M20/trading
+        run: |
+          python research_v1_m20_dart_receipt_date_floor.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("research_results/m20_dart_receipt_date_floor/contract.json")
+          v=json.loads(p.read_text())
+          assert v["source_status"] == "SYNTHETIC_OFFLINE_RULES_ONLY_NO_SOURCE_OR_PIT"
+          assert v["official_opendart_rcept_dt_is_date_only"] is True
+          assert v["same_day_trading_from_rcept_dt_is_prohibited"] is True
+          assert v["no_calendar_weekday_or_holiday_inference"] is True
+          assert v["original_financial_fact_or_publication_availability_from_date_only"] is False
+          assert v["synthetic_rule_self_test_success"] is True
+          assert v["ordering"] == "DISABLED"
+          for key in ("source_accounting_cfs_original_values_pit_verified",
+                      "source_first_public_release_instant_verified",
+                      "source_first_public_release_day_verified",
+                      "source_correction_vintage_complete",
+                      "historical_security_issuer_pit_verified",
+                      "m20_feature_pit_admitted",
+                      "m20_performance_run_authorized",
+                      "independent_holdout_authorized",
+                      "champion_change_authorized",
+                      "real_orders_authorized", "funds_movement_authorized",
+                      "permissions_change_authorized",
+                      "source_dates_times_calendar_or_identifiers_persisted"):
+              assert v[key] is False, key
+          assert not any("2022" in str(x) for x in v.values())
+          PY
+      - name: Check no DART/KRX/other external traffic or broker calls
+        run: |
+          ! grep -E 'requests\.|urllib\.|httpx\.|http[s]?://|api\.kiwoom|data\.krx|/api/dostk/ordr' research_v1_m20_dart_receipt_date_floor.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_dart_receipt_date_floor.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_dart_receipt_date_floor.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-dart-date-only-conservative-floor-contract-no-pit
+          path: research_results/m20_dart_receipt_date_floor/contract.json
+          retention-days: 7
+          if-no-files-found: warn

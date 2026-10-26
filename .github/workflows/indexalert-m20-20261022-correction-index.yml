@@ -1,0 +1,85 @@
+name: IndexAlert M20 Oct22 Elapsed-Day Amendment Index
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_2022_q3_incremental_20261022.py'
+      - 'test_research_v1_m20_2022_q3_incremental_20261022.py'
+      - '.github/workflows/indexalert-m20-20261022-correction-index.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-slot5-2022q3-oct22-incremental-census
+  cancel-in-progress: false
+jobs:
+  offline-no-trading-and-source-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Strict one-day issuer/no-data/additional-edition tests
+        run: |
+          python -m py_compile research_v1_m20_2022_q3_incremental_20261022.py test_research_v1_m20_2022_q3_incremental_20261022.py
+          python -m unittest -v test_research_v1_m20_2022_q3_incremental_20261022
+      - name: Ensure no brokerage, financial amount or KRX calls
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr|fnlttSinglAcntAll|fnlttXbrl' research_v1_m20_2022_q3_incremental_20261022.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_m20_2022_q3_incremental_20261022.py
+          grep -F '"ordering": "DISABLED"' research_v1_m20_2022_q3_incremental_20261022.py
+  read-only-official-oct22-index:
+    needs: offline-no-trading-and-source-rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Official read-only frozen issuer 2026 Oct22 one-day original-Q3 amendment lookup
+        run: |
+          python research_v1_m20_2022_q3_incremental_20261022.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/m20_2022_q3_oct22_amendment_index/counts.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_authenticated_official_requests"] == 2
+          assert x["verified_window_start"] == "20261022"
+          assert x["verified_window_end"] == "20261022"
+          assert x["source_status"] in ("OFFICIAL_INDEX_013_NO_PERIODIC_ROWS_OCT22",
+                                        "OFFICIAL_INDEX_000_NO_TARGET_Q3_EDITION_OCT22"),x.get("source_gap_reason","STOP_ON_NEW_EDITION")
+          assert x["official_day_index_observed"] is True
+          assert x["target_report_new_vintage_found_quarantine"] is False
+          assert x["new_q3_2022_correction_rows"] == 0
+          assert x["new_q3_2022_attachment_rows"] == 0
+          assert x["ordering"] == "DISABLED"
+          for key in ("first_2022_cfs_three_month_operating_profit_verified",
+                      "original_2021_q3_cfs_comparator_verified",
+                      "original_vs_corrected_financial_cell_lineage_verified",
+                      "original_first_publication_instant_verified",
+                      "historical_issuer_security_pit_verified",
+                      "historical_market_trading_days_verified",
+                      "immutable_historical_edition_inventory_verified",
+                      "entire_later_edition_history_independently_complete",
+                      "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                      "independent_holdout_authorized", "champion_change_authorized",
+                      "real_orders_authorized", "funds_movement_authorized",
+                      "permissions_change_authorized",
+                      "provider_company_ids_receipts_days_titles_content_or_key_saved"):
+            assert x[key] is False,key
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-2022-q3-oct22-elapsed-day-amendment-counts-only
+          path: research_results/m20_2022_q3_oct22_amendment_index/counts.json
+          retention-days: 7
+          if-no-files-found: warn

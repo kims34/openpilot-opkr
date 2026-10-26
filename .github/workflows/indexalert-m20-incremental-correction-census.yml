@@ -1,0 +1,86 @@
+name: IndexAlert M20 Q3 Incremental Correction Census Read-Only
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_2022_q3_incremental_correction_census.py'
+      - 'test_research_v1_m20_2022_q3_incremental_correction_census.py'
+      - '.github/workflows/indexalert-m20-incremental-correction-census.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-2022q3-incremental-fixed-correction-window
+  cancel-in-progress: false
+jobs:
+  offline-fail-closed-provider-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Test strict no-data status, capped pagination, nonleaking provider failures
+        run: |
+          python -m py_compile research_v1_m20_2022_q3_incremental_correction_census.py test_research_v1_m20_2022_q3_incremental_correction_census.py
+          python -m unittest -v test_research_v1_m20_2022_q3_incremental_correction_census
+      - name: Reject any trading or performance code
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr|fnlttSinglAcntAll' research_v1_m20_2022_q3_incremental_correction_census.py
+          grep -F '"ordering":"DISABLED"' research_v1_m20_2022_q3_incremental_correction_census.py
+          grep -F '"m20_performance_run_authorized":False' research_v1_m20_2022_q3_incremental_correction_census.py
+  official-source-only-incremental-window:
+    needs: offline-fail-closed-provider-schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Query only fully elapsed October 14 through October 21 official issuer periodic filings
+        run: |
+          python research_v1_m20_2022_q3_incremental_correction_census.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path("research_results/m20_2022_q3_incremental_correction_census/source_only.json")
+          z=json.loads(path.read_text())
+          assert z["fixed_cohort_slot"] == 5
+          assert z["max_official_requests"] == 2
+          assert z["credential_present"] is True
+          assert z["source_status"] in {
+              "OFFICIAL_INDEX_013_NO_ROWS_IN_INCREMENTAL_WINDOW",
+              "OFFICIAL_INDEX_000_NO_TARGET_EDITION_IN_INCREMENTAL_WINDOW"
+          },z.get("source_gap_reason","NEW_TARGET_EDITION_OR_PROVIDER_GAP_STOP")
+          assert z["official_scoped_index_metadata_retrieved"] is True
+          assert z["new_target_edition_found_stop"] is False
+          assert z["new_2022_q3_correction_rows_in_window"] == 0
+          assert z["new_2022_q3_attachment_rows_in_window"] == 0
+          assert z["incremental_window_has_no_matching_target_report"] is True
+          assert z["ordering"] == "DISABLED"
+          for k in ("first_original_2022_q3_cfs_3month_profit_verified",
+                    "first_original_2021_q3_comparator_verified",
+                    "original_to_amended_profit_cell_binding_verified",
+                    "full_correction_lineage_all_time_verified",
+                    "first_filing_publication_instant_verified",
+                    "historical_issuer_security_pit_verified",
+                    "official_historical_market_calendar_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_identifiers_dates_names_amounts_or_provider_contents_saved"):
+              assert z[k] is False,k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-2022q3-oct21-official-incremental-amendment-status-only
+          path: research_results/m20_2022_q3_incremental_correction_census/source_only.json
+          retention-days: 7
+          if-no-files-found: warn
