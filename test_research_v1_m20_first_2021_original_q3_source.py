@@ -114,9 +114,12 @@ class First2021OriginalTests(unittest.TestCase):
             self.assertNotIn(secret,str(result))
 
     def test_source_table_label_is_never_original_fiscal_cell_proof(self):
+        # DART 2021 original document.xml can contain legacy SGML,
+        # so exercise the SGML HTMLParser branch rather than wellformed XML.
         source=zip_document((
             "<DOCUMENT><TABLE><TR><TH>2021 3개월</TH></TR>"
-            "<TR><TD>영업이익</TD><TD>1,000,000</TD></TR>"
+            "<TR><TD>영업이익<TD>1,000,000<TD>2,000,000"
+            "<TD>3,000,000<TD>4,000,000</TR>"
             "</TABLE></DOCUMENT>"
         ).encode())
         with (patch.object(p,"_official_get",side_effect=[
