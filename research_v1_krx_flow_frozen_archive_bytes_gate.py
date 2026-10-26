@@ -77,6 +77,32 @@ def audit_private_krx_flow_archived_snapshot_bytes(
              "FROZEN_ORIGINAL_MANIFEST_BYTES_SHA_DRIFT")
     manifest = _decode_original_private_json_bytes(private_manifest_bytes)
     state = _decode_original_private_json_bytes(private_phase_state_bytes)
+    # Original frozen 2026-10-03 historical batch-state writer:
+    # research_v1_krx_historical_batch_state.initialize_phase_state and
+    # record_task_completion persist a strictly metadata-only 18-key map.
+    # State content does NOT have an independently pinned original file SHA,
+    # so reject malicious extras (including raw identifiers and asserted
+    # trading permission), altered version and any changed security gates.
+    expected_original_state_fields = {
+        "state_version", "plan_id", "execution_contract_id", "phase",
+        "status", "expected_task_count", "task_set_fingerprint_sha256",
+        "expected_task_ids_sha256", "completed", "completed_task_count",
+        "failed_task_count", "phase_complete", "source_gate_c_closed",
+        "source_gate_d_closed", "source_gate_e_closed",
+        "feature_performance_testing_authorized",
+        "sealed_holdout_authorized", "live_trading_authorized",
+    }
+    _require(set(state) == expected_original_state_fields,
+             "FROZEN_ORIGINAL_PHASE_STATE_FIELDS_DRIFT")
+    _require(state["state_version"] == "2026-10-02.v1",
+             "FROZEN_ORIGINAL_PHASE_STATE_VERSION_DRIFT")
+    for flag in (
+        "source_gate_c_closed", "source_gate_d_closed",
+        "source_gate_e_closed", "feature_performance_testing_authorized",
+        "sealed_holdout_authorized", "live_trading_authorized",
+    ):
+        _require(state[flag] is False,
+                 "FROZEN_ORIGINAL_PHASE_AUTHORITY_DRIFT")
     counts = summarise_existing_flow_checkpoints(
         manifest, state,
         expected_by_kind={
