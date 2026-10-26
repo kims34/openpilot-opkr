@@ -30,6 +30,11 @@ SLOT = 5
 YEAR = 2021
 START, END = "20211001", "20220228"
 MAX_OFFICIAL_GETS = 3
+# First independent official original source validation #40262282075.
+# This pins the exact submitted-document ZIP bytes, NOT earnings values.
+EXPECTED_FIRST_2021_DOCUMENT_SHA256 = (
+    "8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625"
+)
 MAX_ROWS = 100
 DATE = re.compile(r"[0-9]{8}\Z")
 RECEIPT = re.compile(r"[0-9]{14}\Z")
@@ -151,6 +156,10 @@ def execute(session, key: str) -> dict:
     first, edition_count = earliest_first_receipt(source_index, issuer=issuer)
     original_zip = _fetch_first_document(session, key, first)
     source_hash = hashlib.sha256(original_zip).hexdigest()
+    if source_hash != EXPECTED_FIRST_2021_DOCUMENT_SHA256:
+        # File repackage/content drift is NOT silently treated as the
+        # original financial vintage. Do not emit the unexpected SHA.
+        raise First2021Gap("FIRST_2021_DOCUMENT_SHA256_DRIFT")
     original = inspect_original_document_layout(original_zip)
     if (original.get("official_original_document_zip_received") is not True
             or original.get("zip_crc_and_bounded_read_completed") is not True):
@@ -211,6 +220,7 @@ def run(session=None) -> dict:
             "FIRST_2021_MULTIPLE_ORIGINAL_EDITION",
             "FIRST_2021_FIXED_ISSUER_REGISTRY_MISSING",
             "FIRST_2021_DOCUMENT_ZIP_INTEGRITY_NOT_PROVEN",
+            "FIRST_2021_DOCUMENT_SHA256_DRIFT",
         }
         reason = str(e) if type(e) is First2021Gap else ""
         evidence["source_status"] = "SOURCE_GAP_FAIL_CLOSED"
