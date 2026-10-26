@@ -97,7 +97,9 @@ class First2021OriginalTests(unittest.TestCase):
             raise AssertionError("unapproved route")
         with (patch.object(p,"_official_get",side_effect=fake),
               patch.object(p,"_registry",return_value={p.COHORT[p.SLOT]:COMPANY}),
-              patch.object(p,"_fetch_first_document",return_value=source) as getter):
+              patch.object(p,"_fetch_first_document",return_value=source) as getter,
+              patch.object(p,"EXPECTED_FIRST_2021_DOCUMENT_SHA256",
+                           hashlib.sha256(source).hexdigest())):
             result = p.execute(object(),"PRIVATE_KEY")
         getter.assert_called_once()
         self.assertEqual(getter.call_args.args[2],FIRST)
@@ -125,11 +127,37 @@ class First2021OriginalTests(unittest.TestCase):
         with (patch.object(p,"_official_get",side_effect=[
                    b"fake_registry",index()]),
               patch.object(p,"_registry",return_value={p.COHORT[p.SLOT]:COMPANY}),
-              patch.object(p,"_fetch_first_document",return_value=source)):
+              patch.object(p,"_fetch_first_document",return_value=source),
+              patch.object(p,"EXPECTED_FIRST_2021_DOCUMENT_SHA256",
+                           hashlib.sha256(source).hexdigest())):
             x=p.execute(object(),"PRIVATE_KEY")
         self.assertGreaterEqual(x["2021_original_operating_label_table_candidates"],1)
         self.assertTrue(x["original_2021_q3_comparative_is_not_bound_to_2022"])
         self.assertNotIn("1,000,000",str(x))
+
+    def test_changed_original_zip_digest_rejected_before_layout_scan(self):
+        synthetic=zip_document()
+        with (patch.object(p,"_official_get",side_effect=[
+                    b"fake_registry",index()]),
+              patch.object(p,"_registry",return_value={p.COHORT[p.SLOT]:COMPANY}),
+              patch.object(p,"_fetch_first_document",return_value=synthetic),
+              patch.object(p,"inspect_original_document_layout") as scan):
+            with self.assertRaisesRegex(
+                p.First2021Gap,"FIRST_2021_DOCUMENT_SHA256_DRIFT"
+            ):
+                p.execute(object(),"PRIVATE_KEY")
+        scan.assert_not_called()
+        with (patch.dict(os.environ,{"OPENDART_API_KEY":"PRIVATE_KEY"}),
+              patch.object(p,"_official_get",side_effect=[b"fake_registry",index()]),
+              patch.object(p,"_registry",return_value={p.COHORT[p.SLOT]:COMPANY}),
+              patch.object(p,"_fetch_first_document",return_value=synthetic)):
+            outcome=p.run(object())
+        self.assertEqual(outcome["source_status"],"SOURCE_GAP_FAIL_CLOSED")
+        self.assertEqual(outcome["source_gap_reason"],
+                         "FIRST_2021_DOCUMENT_SHA256_DRIFT")
+        self.assertNotIn(hashlib.sha256(synthetic).hexdigest(),str(outcome))
+        self.assertFalse(outcome["real_orders_authorized"])
+        self.assertFalse(outcome["m20_feature_pit_admitted"])
 
     def test_empty_auth_means_no_official_requests(self):
         with (patch.dict(os.environ,{"OPENDART_API_KEY":""}),
