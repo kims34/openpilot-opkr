@@ -178,6 +178,42 @@ class KRXPrivateFlowInventoryTest(unittest.TestCase):
         self.assertFalse(result["source_admitted"])
         self.assertFalse(result["performance_testing_authorized"])
 
+    def test_rehashed_completion_cannot_add_live_trade_approval_field(self):
+        m, s, fp = sample()
+        first = next(iter(s["completed"].values()))
+        first["live_trading_authorized"] = True
+        with self.assertRaisesRegex(
+            KRXExistingFlowInventoryError, "ORIGINAL_COMPLETION_FIELDS_DRIFT",
+        ):
+            audit(m, s, fp)
+
+    def test_rehashed_completion_cannot_smuggle_private_numeric_rows(self):
+        m, s, fp = sample()
+        first = next(iter(s["completed"].values()))
+        first["raw_rows"] = [{"foreign_net_buy": 100000000}]
+        with self.assertRaisesRegex(
+            KRXExistingFlowInventoryError, "ORIGINAL_COMPLETION_FIELDS_DRIFT",
+        ):
+            audit(m, s, fp)
+
+    def test_completion_with_unpinned_source_gate_promotion_rejected(self):
+        m, s, fp = sample()
+        first = next(iter(s["completed"].values()))
+        first["source_admitted"] = True
+        with self.assertRaisesRegex(
+            KRXExistingFlowInventoryError, "ORIGINAL_COMPLETION_FIELDS_DRIFT",
+        ):
+            audit(m, s, fp)
+
+    def test_missing_original_completion_field_is_not_recoverable_by_other_hashes(self):
+        m, s, fp = sample()
+        first = next(iter(s["completed"].values()))
+        del first["receipt_fingerprint_sha256"]
+        with self.assertRaisesRegex(
+            KRXExistingFlowInventoryError, "ORIGINAL_COMPLETION_FIELDS_DRIFT",
+        ):
+            audit(m, s, fp)
+
     def test_fake_completion_not_in_pinned_task_set_rejected(self):
         m, s, fp = sample()
         s["completed"]["f" * 64] = receipt(m["tasks"][1])
