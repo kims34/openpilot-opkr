@@ -176,9 +176,20 @@ def summarise_existing_flow_checkpoints(
     completed_2022 = 0
     nonempty_2022 = 0
     empty_2022 = 0
+    # Original 2026-10-03 record_task_completion persisted exactly these
+    # eight metadata fields, with no user-selectable extra authority keys.
+    # A state-file writer that appends source/holdout/trading approval claims,
+    # raw numeric rows or private paths has NOT produced an original checkpoint.
+    original_completion_fields = {
+        "task_id", "request_metadata_sha256", "raw_object_sha256",
+        "raw_bytes_size", "response_rows", "response_schema_sha256",
+        "response_payload_sha256", "receipt_fingerprint_sha256",
+    }
     for task_id, record in completed.items():
         _require(isinstance(record, Mapping) and record.get("task_id") == task_id,
                  "INVALID_COMPLETION_RECEIPT")
+        _require(set(record) == original_completion_fields,
+                 "ORIGINAL_COMPLETION_FIELDS_DRIFT")
         for field in (
             "raw_object_sha256", "request_metadata_sha256",
             "response_schema_sha256", "response_payload_sha256",
