@@ -1,0 +1,25 @@
+# IndexAlert independent PIT / economic NO-GO gate — 2026-10-29 06:46 KST
+
+## Scope and explicit safety boundary
+Read-only independent GitHub source/PR/Actions checks and one isolated audit Markdown addition only. No M20 profitability replay, original market-source acquisition, model fitting, Holdout access, Frozen/Champion/Top3 changes, live ordering, funds, privileges, deploy, merge, or promotion. ORDERING=false is the **required policy**, not a freshly verified Railway live setting.
+
+## GitHub refs, directly read via connected repository
+- Research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a`; development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`; KRX owner `indexalert-krx-pit-source-audit-20261013`: `073d2d49e95f69fb10b943b93e51bb179fb3c698`. Branch refs resolved via GitHub commit endpoint.
+- PR #412 `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; #414 prewrite `3e6363bd6afdda3ff64b0f7aa350584225d152fb`; #416 `053de553646fc4765d2616544ca1e8d6bbdde35f`; #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`; KRX #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #422 `c14857620973531013799e44625d43080904fd5f`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`: all open Draft unmerged.
+- #414 prewrite HEAD added a separate 06:16 KST evidence document; no evidence that this admitted original PIT. Preserve other specialists' paths. Repo-wide latest Actions run list is **not** accessible from these connector actions; no claim of globally newest run.
+
+## Direct original GitHub Actions job logs re-read
+- [Watchdog #40748772316](https://github.com/kims34/openpilot-opkr/actions/runs/40748772316), job 123029518611 completed successfully (4 watchdog + 31 governance tests); log explicitly says `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. This is a software safety test, not market data approval.
+- [Chronology Anchor #40726273259](https://github.com/kims34/openpilot-opkr/actions/runs/40726273259), job 122950285352: `HTTP Error 404: Not Found`, failed; validation job 122950287614 skipped. Existing source-availability block remains, no new PIT.
+- [OpenDART 2021 original #40262558066](https://github.com/kims34/openpilot-opkr/actions/runs/40262558066), job 121379096007: recorded archive SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625`; 13 candidate operating labels; 0 same-table exact Q3 period matches; publication instant unverified.
+- [OpenDART 2022 original #38381866190](https://github.com/kims34/openpilot-opkr/actions/runs/38381866190), job 115244084285: recorded archive SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`; 15 candidates, `2022_q3_window_bound_to_profit_table=false`.
+- [OpenDART correction #38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742), job 115372636726: original/corrected 15/15 label candidates; `full_correction_lineage_verified=false`; numerical semantic parity, three-month consolidated operating profit and historical publication instant unverified. SHA values are **log-recorded**, not independent byte rehash in this run.
+- [KRX offline #39721289545](https://github.com/kims34/openpilot-opkr/actions/runs/39721289545), job 119635081965: 164 synthetic tests PASS, not private original 2021 13-day or 2022 14-day exact-set verification. Prior 1,565 weekday-pair receipts, 90 uncertain sessions, 27 nonpositive-OHLC vetoes and 12,003 zero-activity exclusions are prior records, not new source approvals.
+- [Runtime cost tests #38508247773](https://github.com/kims34/openpilot-opkr/actions/runs/38508247773), job 115670591137: 9 offline cost tests PASS, `profitability_evaluated=false`, `ordering=false` in test. Not actual fills/commissions/taxes. [Runtime archived manifest #39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478), job 117628139395: FAIL-CLOSED expected `108f66714602a1bd3ae42c34dcca7c16e38f460b` observed `e0055c66c59398fd4a1158077446d886b54c4e37`.
+
+## Railway and financial verdict
+Read-only Railway `list_projects({})` requested interactive input and was blocked in this non-interactive context. No bypass, no second access path. Live logs, deployments, live ORDERING value and real market/transaction data were **not attested**.
+
+**M20 = NO-GO.** No admitted original PIT panel, original ZIP byte rehash, fully corrected financial lineage, per-security historical tradability/filled-order/cost/tax evidence, or independent untouched Holdout approval. NetEV, PF, CAGR, MDD, ES95/ES99 after costs/tax are **NOT EVALUABLE**, not zero or positive. Frozen H5/M20, WF504/126/126, purge/embargo/CPCV, Top3/NO_TRADE and Champion safeguards unchanged. Await original data-owner approvals before any profitability experiment. No duplicate work in source-owner branches.
+
+**Delta:** No independently verified new PIT approval or new distinct critical blocker relative to previous gate. This note is audit-only, no authorization.
