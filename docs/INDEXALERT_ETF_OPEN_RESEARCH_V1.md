@@ -124,3 +124,32 @@ Railway `list_projects` read failed with `UNAUTHORIZED`: **This app connection r
 5. Only admitted real observations may support fill-aware after-tax performance. Current actual original datasets/trades newly accessed: **0**. Net EV/win rate/PF/CAGR/MDD remain unavailable. No fresh synthetic scenarios were presented as measured returns.
 
 No collection, broker login, service mutation, merge, deployment, Frozen/Holdout/Champion or order authority changes occurred. The research branch remains Draft and code-level ORDERING=DISABLED.
+
+## 2026-10-29 15:22 KST — Railway restored; ONE actual isolated auth probe failed at TOKEN
+
+### Restored platform visibility and actual packaging evidence
+Railway IndexAlert project and production environment are readable again; previous UNAUTHORIZED snapshot is historical. Current `indexalert-kiwoom-real-readonly-run` start command only prints `INDEXALERT_START_COMMAND_ATTESTED_NO_NETWORK=true` and exits. Its platform SUCCESS does not establish broker transport.
+
+Retrieved 52 historical build log entries for failed Oct-8 deployment `028c7110-5cbf-457b-b1a6-539c818280b0`. They prove that build selected `Dockerfile.krx-historical-worker` and failed due to missing KRX/model COPY inputs, rather than completing a Kiwoom smoke.
+
+Inspected existing pinned commit `85bb6fd10bcc9ff2b14abe1c774f0d99f8eb84ab`: dedicated smoke Git blob `a8c24b14464b14ca1bdd86ef82a05db72a1bb9d8`, root dedicated Dockerfile and config exist. Current isolated repo-service config already specifies `/kiwoom_real_readonly`, `Dockerfile`, `python -B smoke.py`, restart NEVER. Attempt to stage a legacy custom railway.json path was rejected as deprecated (INVALID_ARGUMENT); no patch resulted. A subsequent exact current-config stage request was a no-op; get-staged-changes confirmed nothing staged. No legacy-config workaround or project-wide IaC migration was applied.
+
+### Actual one-shot execution
+Re-executed existing isolated repo-service `indexalert-kiwoom-real-readonly` from its existing archived deployment build path, without changing credentials, variables, order/account permissions or production runtime. New deployment:
+`a77fb922-b679-4d88-92c4-03054ec579cd`, created 2026-10-29 15:21:36 KST.
+
+New build actually installed the two smoke dependencies and copied `smoke.py`. Railway terminal status **SUCCESS**, but the application diagnostic at **2026-10-29 15:22:02 KST** is **authentication FAILURE**:
+- STAGE=TOKEN, RETURN_CODE=3, DETAIL_CODE=8050.
+- TOKEN_OK=false; ACCOUNT_ENDPOINT_OK=false.
+- WS_CONNECTED=false; WS_LOGIN_OK=false; TYPE00_REG_SENT=false; TYPE00_REG_ACK_OK=false.
+- ORDERING=DISABLED; REAL_ORDERS_AUTHORIZED=false; FUNDS_MOVEMENT_AUTHORIZED=false; PERMISSION_CHANGE_AUTHORIZED=false.
+- Zero market data, account events, broker executions or empirical strategy observations admitted.
+
+**Interpretation correction:** existing old smoke reports ERROR_CLASS=TOKEN_OR_LOGIN_AUTH for 8050. Kiwoom-Securities' current official helper source places 8050 in DEVICE_AUTH_CODES and raises DeviceAuthenticationError:
+https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/kiwoom/core/errors.py
+Preserve the actual old raw classification for audit, but interpret this fresh receipt as a **device-authentication class failure at OAuth token issuance**. It is NOT a newly observed WebSocket-login failure, stale-token expiry proof or proof that a particular IP registration is missing. The exact designated-device/account policy cause still needs confirmation in Kiwoom's authenticated device settings. Keys/secret values were never retrieved or printed.
+
+No blind retries after this failure. The one-shot policy is NEVER, not a recurring authentication loop. No staging patch remains. No H5/M20/Frozen/Holdout/Champion change, no merge, no empirical backtest or trade. Platform build/deploy SUCCESS must never be promoted to authenticated broker success or profitability acceptance.
+
+### Next blocking dependency
+Resolve the existing credential's designated-device authorisation for the actual intended execution environment (the server request and a registered local-PC request are distinct). Do not weaken device controls, rotate/expose keys, or assume a user's PC registration authorises this Railway request. After that issue is resolved, a separately controlled single read-only check is required before any ETF observation path or after-cost performance test.
