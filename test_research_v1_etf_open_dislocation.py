@@ -146,6 +146,35 @@ class ETFOpenOfflineResearchTest(unittest.TestCase):
         with self.assertRaises(OfflineETFInputError):
             inspect_snapshot(x)
 
+    def test_valuation_cannot_use_a_later_reference(self):
+        for key in ("nav_at_ms", "fx_at_ms", "us_futures_at_ms"):
+            x = fixture()
+            x[key] = x["valuation_at_ms"] + 1
+            with self.subTest(field=key):
+                y = inspect_snapshot(x)
+                self.assertFalse(y["candidate"])
+                self.assertEqual(y["reason"],
+                                 "VALUATION_PRECEDES_REQUIRED_REFERENCE")
+                for name, denied in _prohibited_state().items():
+                    self.assertEqual(y[name], denied)
+
+    def test_valuation_reference_exact_boundary(self):
+        x = fixture()
+        for key in ("nav_at_ms", "fx_at_ms", "us_futures_at_ms"):
+            x[key] = x["valuation_at_ms"]
+        self.assertTrue(inspect_snapshot(x)["candidate"])
+
+    def test_uncertainty_fractional_bps_above_limit_rejected(self):
+        x = fixture()
+        x.update(fair_lower_krw=10000, fair_upper_krw=10081)
+        self.assertEqual(inspect_snapshot(x)["reason"],
+                         "FAIR_VALUE_UNCERTAINTY_TOO_WIDE")
+
+    def test_uncertainty_exact_limit_allowed(self):
+        x = fixture()
+        x.update(fair_lower_krw=10250, fair_upper_krw=10332)
+        self.assertTrue(inspect_snapshot(x)["candidate"])
+
     def test_high_ask_not_discount_even_if_nav_appears_low(self):
         x = fixture()
         x["ask_krw"] = 10210
@@ -199,3 +228,4 @@ class ETFOpenOfflineResearchTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
