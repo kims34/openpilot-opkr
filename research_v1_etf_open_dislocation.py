@@ -188,6 +188,43 @@ def replay_offline(snapshots: object) -> dict:
     }
 
 
+def hypothetical_round_trip(scenario: object) -> dict:
+    """Explicit cash arithmetic only; no quote-to-fill or tax-model inference.
+
+    Entry/exit are assumed execution prices including price slippage/spread.
+    Cash costs are totals for this quantity, not per-share rates. Callers must
+    supply tax even when assuming zero. No evidence or permission is granted.
+    """
+    fields = {"entry_krw", "exit_krw", "quantity", "entry_fee_krw",
+              "exit_fee_krw", "tax_krw", "other_cost_krw"}
+    if type(scenario) is not dict or set(scenario) != fields:
+        raise OfflineETFInputError("HYPOTHETICAL_COST_SCOPE_INVALID")
+    if any(type(v) is not int or v < 0 for v in scenario.values()):
+        raise OfflineETFInputError("HYPOTHETICAL_COST_VALUE_INVALID")
+    if any(scenario[k] == 0 for k in ("entry_krw", "exit_krw", "quantity")):
+        raise OfflineETFInputError("HYPOTHETICAL_PRICE_OR_QUANTITY_INVALID")
+    q = scenario["quantity"]
+    capital = scenario["entry_krw"] * q
+    gross = (scenario["exit_krw"] - scenario["entry_krw"]) * q
+    costs = sum(scenario[k] for k in (
+        "entry_fee_krw", "exit_fee_krw", "tax_krw", "other_cost_krw"))
+    return {
+        "schema": "indexalert-etf-open-hypothetical-cash-v1",
+        "status": "HYPOTHETICAL_ARITHMETIC_NOT_EMPIRICAL_PERFORMANCE",
+        "assumed_entry_notional_krw": capital,
+        "hypothetical_gross_pnl_krw": gross,
+        "assumed_total_cash_cost_krw": costs,
+        "hypothetical_net_pnl_krw": gross - costs,
+        # Fixed cash costs ONLY; a future tax/fee schedule may depend on exit.
+        # Integer KRW arithmetic; NOT an exchange tick-valid order price.
+        "fixed_cost_breakeven_exit_krw": (capital + costs + q - 1) // q,
+        "empirical_profitability_verified": False,
+        "tax_model_verified": False,
+        "fill_probability_estimated": False,
+        **_prohibited_state(),
+    }
+
+
 if __name__ == "__main__":
     # Dry-run is intentionally independent of market/broker/network and does
     # not read a configured private data mount, account, or any other file.
