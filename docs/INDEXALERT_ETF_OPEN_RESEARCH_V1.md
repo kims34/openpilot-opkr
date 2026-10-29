@@ -55,3 +55,10 @@ Do not assume `ka40009` or a 1-minute chart is a full subsecond historical book.
 `offline syntax + synthetic regression` → `authenticated entitlement & read-only local observer authorization` → `paper event replay with historical original as-of evidence` → `economic acceptance before separate broker-readonly stage` → `shadow/no-order forward record` → `explicit separate live order permission only if all gates succeed`.
 
 **For now every stage after the first is blocked.** Never merge this branch into research core/production, deploy Railway, change credential or device authorization, start official network acquisition, modify Frozen/Holdout/Champion, or place a real order without dedicated gate and required approval. Keep `ORDERING=false`.
+
+## 2026-10-29 KST continuation — chronology and uncertainty boundaries
+
+- Reject a valuation if any NAV, FX or US futures reference timestamp is later than `valuation_at_ms`, even when all timestamps precede receipt. Equal timestamps remain allowed. This prevents an internally inconsistent synthetic valuation; it does not authenticate feed receipt times or prove valuation lineage.
+- Compare valuation range uncertainty using exact integer products. An 81 KRW range over 10,000 KRW is 81 bps and is rejected; fractional excess such as 82 KRW over 10,200 KRW (~80.39 bps) is also rejected rather than floored to 80. Exactly 80 bps remains allowed.
+- Local Python unittest run: **21/21 synthetic tests PASS**, including four new regression methods. No authentic market data, fill, performance or source admission was tested. Remote CI must be checked separately for the final commit.
+- Next dependency remains licensed, timestamp-defined original ETF book/NAV/futures/FX observations and registered-machine read-only feed feasibility. No network collection, broker login, order, merge, deployment, Holdout or Champion change performed by this continuation. All authorisation flags remain denied and `ORDERING=DISABLED`.
