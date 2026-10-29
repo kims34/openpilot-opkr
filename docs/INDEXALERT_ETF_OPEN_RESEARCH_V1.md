@@ -88,3 +88,39 @@ Official source review: Kiwoom's own REST examples identify ka40009 as ETF intra
 API existence alone does not demonstrate subsecond historical depth/receipt chronology, access entitlement, foreign futures/FX fair-value lineage or successful registered-PC REAL WS authentication. No new provider acquisition performed.
 
 **Current outcome: EMPIRICAL PROFITABILITY UNVERIFIED / NO-GO.** Actual verified opening datasets and trades used in this continuation: zero. EV, win rate, PF, CAGR, MDD and ES remain unavailable, never zero-filled. Next necessary evidence is authorised source-original, timestamp-defined book/trade/NAV plus independent futures/FX observations and ETF/account-specific charge treatment. No live trades, deployment, broker login, merge, permission/Frozen/Holdout/Champion changes. ORDERING remains DISABLED.
+
+## 2026-10-29 KST — actual source-path audit and operational access blocker
+
+This continuation investigated acquisition dependencies instead of treating further synthetic test counts as empirical progress.
+
+### Direct repository evidence
+
+Read current development branch `index-alert-position-regen-fix-v1` file `kiwoom_real_type00_readonly_smoke.py`, Git blob `a8c24b14464b14ca1bdd86ef82a05db72a1bb9d8`. The existing module logs in and subscribes exactly `{"item": [], "type": ["00"]}`. It processes only type `00` events and retains `REAL_ORDERS_AUTHORIZED=False`.
+
+PR #349 is confirmed closed/merged into the development branch; its purpose is read-only transport/account-event smoke, not ETF market capture. A successful type00 subscription is NOT book/trade/NAV dataset admission. Do not simply repurpose this account-event observer or weaken its guard to collect new market types.
+
+### Official NAV timestamp semantics
+
+The Kiwoom-Securities official `subscribe_domestic_etf_nav_async.py` example labels:
+- realtime type `0G`: ETF NAV;
+- field `36`: NAV;
+- field `20`: **체결시간 (trade execution time)**.
+
+Source:
+https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/examples/%EA%B5%AD%EB%82%B4%EC%A3%BC%EC%8B%9D/%EC%8B%A4%EC%8B%9C%EA%B0%84%EC%8B%9C%EC%84%B8/subscribe_domestic_etf_nav_async.py
+
+This example alone does **not** establish field 20 as NAV computation/publication time. A future adapter must not automatically populate `nav_at_ms` with field 20 or local receipt time and claim NAV freshness. Preserve separately original field semantics, receipt UTC/KST and monotonic capture time, clock uncertainty, NAV valuation-age unknown status, gaps and source bytes/digest privately. Unknown NAV age must remain an explicit blocker for real-data freshness validation. Local receipt proves when a value arrived, not when its underlying basket was valued.
+
+### Operational check result
+
+Railway `list_projects` read failed with `UNAUTHORIZED`: **This app connection requires reauthentication. Reconnect the app and try again.** Therefore no current service, worker, volume, source count, WS status or deployed ORDERING variable was observed. Do not report the old 8050 as a newly reproduced failure or claim the deployed ordering state verified. Source code disables orders; current remote runtime remains unobserved.
+
+### Concrete handoff
+
+1. Reauthenticate the existing Railway app connection to resume **read-only** service/log discovery. No new project/service/credential, deploy/restart or config change is needed for this access recovery.
+2. Read the latest existing smoke's redacted terminal result, including WS_LOGIN_OK and TYPE00_REG_ACK_OK, without rerunning brokerage authentication.
+3. Independently define and verify the market observation path: ETF trades/book/NAV, market-session/VI timeline and separately licensed futures/FX. Type00 account events cannot supply these market records.
+4. Before any newly authorised observation, resolve NAV timestamp/update policy, capture original receipt chronology and explicit data rights; do not infer millisecond precision from HHMMSS trade time.
+5. Only admitted real observations may support fill-aware after-tax performance. Current actual original datasets/trades newly accessed: **0**. Net EV/win rate/PF/CAGR/MDD remain unavailable. No fresh synthetic scenarios were presented as measured returns.
+
+No collection, broker login, service mutation, merge, deployment, Frozen/Holdout/Champion or order authority changes occurred. The research branch remains Draft and code-level ORDERING=DISABLED.
