@@ -165,10 +165,12 @@ class ETFOpenOfflineResearchTest(unittest.TestCase):
         self.assertTrue(inspect_snapshot(x)["candidate"])
 
     def test_uncertainty_fractional_bps_above_limit_rejected(self):
-        x = fixture()
-        x.update(fair_lower_krw=10000, fair_upper_krw=10081)
-        self.assertEqual(inspect_snapshot(x)["reason"],
-                         "FAIR_VALUE_UNCERTAINTY_TOO_WIDE")
+        for lower, upper in ((10000, 10081), (10200, 10282)):
+            x = fixture()
+            x.update(fair_lower_krw=lower, fair_upper_krw=upper)
+            with self.subTest(lower=lower, upper=upper):
+                self.assertEqual(inspect_snapshot(x)["reason"],
+                                 "FAIR_VALUE_UNCERTAINTY_TOO_WIDE")
 
     def test_uncertainty_exact_limit_allowed(self):
         x = fixture()
