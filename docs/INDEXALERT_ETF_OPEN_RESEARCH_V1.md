@@ -62,3 +62,29 @@ Do not assume `ka40009` or a 1-minute chart is a full subsecond historical book.
 - Compare valuation range uncertainty using exact integer products. An 81 KRW range over 10,000 KRW is 81 bps and is rejected; fractional excess such as 82 KRW over 10,200 KRW (~80.39 bps) is also rejected rather than floored to 80. Exactly 80 bps remains allowed.
 - Local Python unittest run: **21/21 synthetic tests PASS**, including four new regression methods. No authentic market data, fill, performance or source admission was tested. Remote CI must be checked separately for the final commit.
 - Next dependency remains licensed, timestamp-defined original ETF book/NAV/futures/FX observations and registered-machine read-only feed feasibility. No network collection, broker login, order, merge, deployment, Holdout or Champion change performed by this continuation. All authorisation flags remain denied and `ORDERING=DISABLED`.
+
+## 2026-10-29 KST — cash-cost sensitivity, NOT measured returns
+
+Previous chronology-fix commit `96fee34cf5a81ef59e0f67256886fa15c8b9bd40` has completed PR CI SUCCESS: https://github.com/kims34/openpilot-opkr/actions/runs/40796553100 . This only validates synthetic code.
+
+Added `hypothetical_round_trip`: long-only hypothetical round-trip cash arithmetic. All seven fields are mandatory: assumed entry and exit execution prices, quantity, total entry fee, total exit fee, total tax and total other costs. Prices must already reflect execution spread/slippage; do not subtract them twice as cash costs. Missing taxes/exit/quantity or negative costs and non-integer/bool inputs are rejected. This function is separate from the quote detector and never converts a detected discount into an exit price, fill probability or return series. The breakeven price is an integer KRW ceiling under fixed assumed cash costs, not a tax-aware schedule or a valid exchange-tick order.
+
+Executed nine **arbitrary sensitivity scenarios**, each assuming 100 shares bought at KRW 10,000 (KRW 1,000,000 entry notional). Rows are assumed execution-price increases; columns are assumed total costs expressed as a percentage of that entry notional, not published brokerage/tax rates. The runner groups all hypothetical cash deductions in other_cost and explicitly sets the three remaining components to zero **for arithmetic only**, not because real taxes/commissions are zero.
+
+| Assumed executed price increase | KRW 1,000 total cost (0.10%) | KRW 3,000 (0.30%) | KRW 5,000 (0.50%) |
+| --- | ---: | ---: | ---: |
+| +0.10% (sell 10,010) | 0 | -2,000 | -4,000 |
+| +0.30% (sell 10,030) | +2,000 | 0 | -2,000 |
+| +0.50% (sell 10,050) | +4,000 | +2,000 | 0 |
+
+Values are **hypothetical net KRW**, conditional on both assumed executions and fully specified assumed costs. No fill process, adverse selection distribution, attempt rate, observed opportunity frequency, no-fill/partial-fill economics, markout series, actual tax model or annualisation exists. Thus this table does NOT validate the opening-dislocation hypothesis. A positive quote-to-fair discount does not establish a positive realised exit.
+
+Local verification: **27/27 synthetic tests PASS** (21 snapshot/replay + 6 cash arithmetic). Tests include independent expected cash reconciliation, omitted cost rejection, each cost's monotonic effect on net, explicit non-admission flags, invalid/zero fill-size rejection and breakeven ceiling at fractional per-share cost. Remote CI for the new code must be checked separately.
+
+Official source review: Kiwoom's own REST examples identify ka40009 as ETF intraday NAV status and 0G as ETF NAV subscription:
+- https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/examples/%EA%B5%AD%EB%82%B4%EC%A3%BC%EC%8B%9D/ETF/get_domestic_etf_intraday_nav_status.py
+- https://github.com/Kiwoom-Securities/Kiwoom-REST-API/blob/main/examples/%EA%B5%AD%EB%82%B4%EC%A3%BC%EC%8B%9D/%EC%8B%A4%EC%8B%9C%EA%B0%84%EC%8B%9C%EC%84%B8/subscribe_domestic_etf_nav_async.py
+
+API existence alone does not demonstrate subsecond historical depth/receipt chronology, access entitlement, foreign futures/FX fair-value lineage or successful registered-PC REAL WS authentication. No new provider acquisition performed.
+
+**Current outcome: EMPIRICAL PROFITABILITY UNVERIFIED / NO-GO.** Actual verified opening datasets and trades used in this continuation: zero. EV, win rate, PF, CAGR, MDD and ES remain unavailable, never zero-filled. Next necessary evidence is authorised source-original, timestamp-defined book/trade/NAV plus independent futures/FX observations and ETF/account-specific charge treatment. No live trades, deployment, broker login, merge, permission/Frozen/Holdout/Champion changes. ORDERING remains DISABLED.
