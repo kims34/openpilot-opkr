@@ -121,11 +121,15 @@ def inspect_snapshot(snapshot: object) -> dict:
         allowed = MAX_EVENT_LAG_MS if key == "quote_at_ms" else MAX_REFERENCE_LAG_MS
         if age > allowed:
             return {**base, "reason": "REFERENCE_OR_BOOK_STALE"}
-    fair_spread_bps = (
-        (s["fair_upper_krw"] - s["fair_lower_krw"]) * 10000
-        // s["fair_lower_krw"]
-    )
-    if fair_spread_bps > MAX_FAIR_RANGE_BPS:
+    # The valuation cannot incorporate a reference observed after it was made.
+    # This is a necessary chronology check, not source authentication.
+    if any(s[key] > s["valuation_at_ms"] for key in (
+        "nav_at_ms", "fx_at_ms", "us_futures_at_ms"
+    )):
+        return {**base, "reason": "VALUATION_PRECEDES_REQUIRED_REFERENCE"}
+    # Compare exact integer products: flooring bps would admit >80 bps.
+    if ((s["fair_upper_krw"] - s["fair_lower_krw"]) * 10000
+            > MAX_FAIR_RANGE_BPS * s["fair_lower_krw"]):
         return {**base, "reason": "FAIR_VALUE_UNCERTAINTY_TOO_WIDE"}
     # Not a PnL estimate. No queue position, order/cancel latency, slippage,
     # executable fill, FX future-vs-spot reconciliation, or taxation is known.
@@ -191,3 +195,4 @@ if __name__ == "__main__":
         "schema": SCHEMA, "status": "OFFLINE_RESEARCH_ONLY_NO_DATA",
         "snapshots_observed": 0, **_prohibited_state()
     }, sort_keys=True))
+
