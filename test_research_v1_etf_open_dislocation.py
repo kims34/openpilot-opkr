@@ -6,7 +6,7 @@ import unittest
 
 from research_v1_etf_open_dislocation import (
     OfflineETFInputError, inspect_snapshot, replay_offline,
-    _prohibited_state,
+    _prohibited_state, hypothetical_round_trip,
 )
 KST = timezone(timedelta(hours=9))
 
@@ -226,6 +226,65 @@ class ETFOpenOfflineResearchTest(unittest.TestCase):
         x["live_orders_authorized"] = True
         with self.assertRaises(OfflineETFInputError):
             inspect_snapshot(x)
+
+
+class HypotheticalCashArithmeticTest(unittest.TestCase):
+    def scenario(self, **changes):
+        return dict(entry_krw=10000, exit_krw=10030, quantity=100,
+                    entry_fee_krw=100, exit_fee_krw=100, tax_krw=500,
+                    other_cost_krw=300, **changes)
+
+    def test_explicit_cost_reconciliation(self):
+        y = hypothetical_round_trip(self.scenario())
+        self.assertEqual(y["hypothetical_gross_pnl_krw"], 3000)
+        self.assertEqual(y["assumed_total_cash_cost_krw"], 1000)
+        self.assertEqual(y["hypothetical_net_pnl_krw"], 2000)
+        self.assertEqual(y["fixed_cost_breakeven_exit_krw"], 10010)
+
+    def test_each_cost_is_required_even_zero_tax(self):
+        for key in ("entry_fee_krw", "exit_fee_krw", "tax_krw", "other_cost_krw"):
+            x = self.scenario()
+            del x[key]
+            with self.subTest(key=key), self.assertRaises(OfflineETFInputError):
+                hypothetical_round_trip(x)
+
+    def test_no_fill_inference_or_permission_from_positive_scenario(self):
+        y = hypothetical_round_trip(self.scenario())
+        for key, denied in _prohibited_state().items():
+            self.assertEqual(y[key], denied)
+        self.assertFalse(y["empirical_profitability_verified"])
+        self.assertFalse(y["tax_model_verified"])
+        self.assertFalse(y["fill_probability_estimated"])
+
+    def test_missing_exit_zero_quantity_bad_costs_and_extra_fields_rejected(self):
+        for key, value in (("exit_krw", 0), ("quantity", 0),
+                           ("tax_krw", None), ("tax_krw", -1),
+                           ("entry_fee_krw", True), ("quantity", 1.5),
+                           ("live_orders_authorized", True)):
+            x = self.scenario()
+            x[key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(OfflineETFInputError):
+                hypothetical_round_trip(x)
+
+    def test_increasing_each_cost_cannot_increase_net_profit(self):
+        baseline = hypothetical_round_trip(self.scenario())
+        for key in ("entry_fee_krw", "exit_fee_krw", "tax_krw", "other_cost_krw"):
+            x = self.scenario()
+            x[key] += 3000
+            y = hypothetical_round_trip(x)
+            self.assertEqual(y["hypothetical_net_pnl_krw"],
+                             baseline["hypothetical_net_pnl_krw"] - 3000)
+            self.assertLess(y["hypothetical_net_pnl_krw"], 0)
+
+    def test_breakeven_ceiling_and_loss(self):
+        x = self.scenario()
+        x.update(entry_fee_krw=0, exit_fee_krw=0, tax_krw=0, other_cost_krw=101)
+        y = hypothetical_round_trip(x)
+        self.assertEqual(y["fixed_cost_breakeven_exit_krw"], 10002)
+        x["exit_krw"] = 10001
+        self.assertEqual(hypothetical_round_trip(x)["hypothetical_net_pnl_krw"], -1)
+        x["exit_krw"] = 10002
+        self.assertEqual(hypothetical_round_trip(x)["hypothetical_net_pnl_krw"], 99)
 
 
 if __name__ == "__main__":
