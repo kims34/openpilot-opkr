@@ -1,0 +1,31 @@
+# IndexAlert independent profitability admission audit — 2026-10-30 06:45 KST
+
+## Scope / safety boundary
+Read-only independent GitHub/Railway observations and **one** documentation-only write on existing Draft PR #414 isolation branch. No source acquisition, new KRX requests, private volume reads, code or CI edits, M20/H5 replay, sealed Holdout, orders, money, credentials/permissions, Railway deployment, PR merge, or Champion/Top3 changes. This audit grants **no** PIT, performance, or trading authority.
+
+## Current source and branch lineage (direct GitHub REST)
+- Research `index-alert-research-v1` = `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Development `index-alert-position-regen-fix-v1` = `1e6367d2863a86c3470da13d81a955d277eba485`.
+- KRX specialist `indexalert-krx-pit-source-audit-20261013` = `073d2d49e95f69fb10b943b93e51bb179fb3c698`.
+- PR #412 `bf3d951`, #413 `f003ef6`, #414 before write `65c1cf2`, #416 `053de55`, #418 `2f98401`, #420 `fab3cbb`, #422 `c148576`, #423 `0e38004`: all observed Draft/open/unmerged. #420/#422/#423 are offline KRX exception/calendar candidate tools, **not** actual private 2021/2022 date-set or tradability certifications.
+
+## Actions and independent SHA checks
+- GitHub REST `/actions/runs?per_page=15`: 4,620 runs total, newest [Watchdog #40916116225](https://github.com/kims34/openpilot-opkr/actions/runs/40916116225), created 2026-10-29 16:54:15 UTC, SUCCESS. Actual job `123596670661` logs: 4 watchdog and 31 governance synthetic/offline checks PASS; `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. This is safety-contract evidence only.
+- [Chronology Anchor #40914179246](https://github.com/kims34/openpilot-opkr/actions/runs/40914179246), created 2026-10-29 16:42:17 UTC, FAILURE: job `123589876652` ends `urllib.error.HTTPError: HTTP Error 404: Not Found`; anchor build/validation skipped. Existing failure class, not new approved time provenance.
+- [OpenDART original source #38381866190](https://github.com/kims34/openpilot-opkr/actions/runs/38381866190), job `115244084285`: first 2022 document digest recorded as SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`; 15 row-shape candidates; explicit `original_cfs_q3_three_month_operating_profit_verified=false`, `historical_publication_instant_pit_verified=false`, `full_correction_lineage_verified=false`, `m20_performance_run_authorized=false`. [Corrected-vs-original #38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742) jobs SUCCESS but row-shape matching is not exact three-month CFS value/available-at proof. 2021 original also remains unadmitted.
+- **Independent Git-blob recheck** via Contents API for `research_v1_runtime_manifest.py`: PR #418 head `108f66714602a1bd3ae42c34dcca7c16e38f460b` (103 lines); PR #413 base `e0055c66c59398fd4a1158077446d886b54c4e37` (188 lines); `refs/pull/418/merge` = `e0055c66c59398fd4a1158077446d886b54c4e37`. Existing archived merge-context SHA drift persists. This verifies **Git blob SHA-1**, not original market/document ZIP SHA-256. No repin, workflow bypass, cache reuse or manifest promotion.
+- No private KRX original raw bytes, DART source ZIP bytes, full historical publication-time archive, or private 2021/2022 day-set was independently retrieved/rehashed. A receipt digest and synthetic CI cannot substitute for independent raw-byte/PIT admission.
+
+## Railway production read-only
+- Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`. PIT service `indexalert-pit-rebuild` deployment `8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5` SUCCESS; 1 running/0 crashed replica. Most recent returned PIT runtime log 2026-10-29 14:46:21.992 UTC (23:46:21 KST): `status=FAIL_CLOSED`, `ordering=DISABLED`, `real_orders_authorized=false`, independent source/chronology/model admission false, 803 common-stock rows, 27 nonpositive OHLC, 27 zero-volume/value, `session_manifest_sha256=null`. No later PIT logs returned through this inspection; **observability gap is not proof of outage or safety change**.
+- Kiwoom REAL read-only `indexalert-kiwoom-real-readonly` latest deployment `a77fb922-b679-4d88-92c4-03054ec579cd` SUCCESS, but environment reports 0 running/1 crashed replica; no new deploy logs since queried 2026-10-29 14:00 UTC. Existing 8050 token/auth, WS disconnected, Type00 count zero remain previously recorded, not newly diagnosed.
+- KRX worker `16c93d7c-7cd0-4d84-a327-298d2805376c` SUCCESS deployment, dedicated volume present; no recent runtime logs returned in this window. No new worker command, private /data read, or trading operation.
+- Offline push/backend and critical db-query-readonly notification are present but no proven causal relationship to M20. An empty staged patch is present; no accept/deploy action taken.
+
+## Economic/tradability independent verdict
+- Six-year 1,565 private weekday-pair stored SHA receipts are **storage-integrity evidence only**, not official per-security PIT/tradability. 90 uncertain sessions, private 2021 13-day and 2022 14-day exact-set matching, 27 nonpositive OHLC, historical security status, corporate actions, market-cap/vintage and fill feasibility are not independently admitted.
+- No admissible real execution cost/commission/spread/slippage/partial fill/capacity/tax receipts or complete reproducible source+code+runtime SHA closure. **After-cost NetEV, PF, CAGR, MDD, ES95, ES99: NOT EVALUABLE.** Do not create numeric return estimates, run M20 or access independent Holdout.
+- **M20 NO-GO**; keep Frozen H5/M20 (horizon 20, purge20, WF504/126/126), Champion, Top3/no rank-4 backfill, NO_TRADE, sealed Holdout, and `ORDERING=false` unchanged. New source/PIT approval and distinct critical blocker categories: none verified this cycle.
+
+## Next independently required evidence
+Source-owner official 2021/2022 first-edition three-month CFS values with original publication-time and complete correction lineage; KRX-owner exact historical calendar/security tradability/corporate-action and fill evidence; optimization-owner corrected head/base/merge manifest immutable closure; independently measured executable taxes/fees/slippage/capacity. Only after separately attested admission may the pre-registered one-shot M20 profitability decision be reconsidered.
