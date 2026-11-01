@@ -1,0 +1,36 @@
+# IndexAlert 독립 수익성·격리 최적화 감사 — 2026-11-01 14:20 KST
+
+**판정: M20 NOT EVALUABLE / NO-GO; ORDERING=false / Railway DISABLED.** 이번 회차는 실제 GitHub 원본 SHA, Actions job logs, Railway production deployment/logs를 읽기전용 확인했다. 연구·개발·KRX·OpenDART·#413/#414/#418 담당 파일은 수정하지 않는다. 공식 PIT/경제성/승격/실주문 실행 없음.
+
+## 1. 현재 HEAD와 전담 격리
+- 연구 `index-alert-research-v1` HEAD `3b8b7830612a6284d7c7a60628cb527cb741627a`; 개발 `index-alert-position-regen-fix-v1` HEAD `1e6367d2863a86c3470da13d81a955d277eba485`; KRX `indexalert-krx-pit-source-audit-20261013` HEAD `073d2d49e95f69fb10b943b93e51bb179fb3c698`. Branch API commit SHA 직접 조회.
+- 전부 open/draft: [#412](https://github.com/kims34/openpilot-opkr/pull/412) `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; [#413](https://github.com/kims34/openpilot-opkr/pull/413) `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; [#414](https://github.com/kims34/openpilot-opkr/pull/414) `c40a5e4d4e6b02b847084aa371aaca048538a43b`; [#416](https://github.com/kims34/openpilot-opkr/pull/416) `053de553646fc4765d2616544ca1e8d6bbdde35f`; [#418](https://github.com/kims34/openpilot-opkr/pull/418) `2f98401cc50a6c6a25808a98516efd5bf0c944ee`; KRX [#420](https://github.com/kims34/openpilot-opkr/pull/420) `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, [#422](https://github.com/kims34/openpilot-opkr/pull/422) `c14857620973531013799e44625d43080904fd5f`, [#423](https://github.com/kims34/openpilot-opkr/pull/423) `0e38004363cac9fc4475556b3a1c445de9af407f`; 별도 [#424](https://github.com/kims34/openpilot-opkr/pull/424) `a4ae98f40b3e6dcaf565cc402679497e42cdabb5`.
+- #414 직전 13:16 KST `e1a6e14aa5c1c2a08264607d1bd8af66b3bd7547` → 현재 `c40a5e4...`; 새 커밋 변경 파일은 `docs/INDEXALERT_INDEPENDENT_PROFITABILITY_AUDIT_20261101_1342KST.md` **한 개**. 총괄 기준 문서 `docs/INDEXALERT_PROFITABILITY_INTEGRATION_GATE_2026-10-13.md` blob SHA-1 `984c933651f39f1ee9e26a1d7ac3893aaa5335be` (현재 #414 HEAD에서 fetch_file). 타 전담 문서 쓰기 중복 없음.
+- 독립 감사 브랜치 작업 전 HEAD `6c01355250ff186c815b63eddbc4868e06e34db2`, 이전 13:16 감사 blob SHA-1 `52552cc214df3e13b1657b945fdd0d532467fa02`.
+
+## 2. Actions 실제 로그와 한정된 PASS
+- [Watchdog 41264126871](https://github.com/kims34/openpilot-opkr/actions/runs/41264126871), job `124723240979` SUCCESS (2026-11-01 02:11 UTC): 로그 `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. Artifact ZIP SHA-256 `f30092454e52fb715a4cbba3631dbf2ecb8b4e9d57261e9bba942477908064b6`. 성공은 안전정책 검사이지 소스/수익성 승인이 아니다.
+- [OpenDART 38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742), official-safe job `115372636726` SUCCESS. 원본/정정 각 15개 exact operating row 후보, 동일 label 및 numeric peer shape, artifact ZIP SHA-256 `9380e385d6fc946a7668c47cce32aa23ed718d9fb5cb2c2edf620bb055bbfcb9`. **동일 후보 모양 ≠ 최초 2022/2021 연결 3개월 영업이익, period/cell/unit/sign, public available-at, 정정 lineage 승인**. 2022 최초 document SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb` 및 2021 ZIP SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625`는 **과거 증거 인용**이지 금회 원본 재해시가 아니다.
+- [#413 Actions 38381997417](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417), [38382214223](https://github.com/kims34/openpilot-opkr/actions/runs/38382214223), [38419111311](https://github.com/kims34/openpilot-opkr/actions/runs/38419111311) 각 6/6 jobs SUCCESS를 job API에서 재확인. 기존 34-case 고정 identity/outcome SHA-256 `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`, 13 adversarial mocks는 **과거 제한적 offline PASS**.
+- [#418 초기 38419649711](https://github.com/kims34/openpilot-opkr/actions/runs/38419649711) 1/1 SUCCESS, synthetic-only. [archived replay 39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478) job `117628139395` **FAIL-CLOSED**: 실제 로그 `SourceDriftError`, manifest Git blob expected `108f66714602a1bd3ae42c34dcca7c16e38f460b`, observed `e0055c66c59398fd4a1158077446d886b54c4e37`. [candidate 39111405494](https://github.com/kims34/openpilot-opkr/actions/runs/39111405494) 1/1 SUCCESS는 22 direct blobs만 검증; transitive dependency/정책/권한/런타임 SHA 완결 및 merge 승인 아님. [single-runner 39111405562](https://github.com/kims34/openpilot-opkr/actions/runs/39111405562) 1/1 SUCCESS는 합성 소프트웨어 테스트. 기존 serial 2.9656s / concurrent 2.6209s = regression-phase 1.1315x, 전체 CI/공식 PIT 백테스트 가속 **NOT VERIFIED**. #418 병합/채택 NO-GO.
+- Chronology Anchor [41091128151](https://github.com/kims34/openpilot-opkr/actions/runs/41091128151) failure/HTTP 404 과거 blocker, 독립 시점 승인 불가.
+
+## 3. Railway 운영 실제 상태
+- Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`. `describe_environment` 및 `get_staged_changes`: staged=null, 0 changes. **동시 `environment_status`는 patch `e113dacb-6705-4416-9997-dc694539d382` staged / changes=[]**. API 상태 상충, **NOT VERIFIED**. 적용/배포 금지.
+- `indexalert-pit-rebuild` SUCCESS deployment `8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5`; 전체 154개 반환 로그 최종 2026-10-31 14:46:01 UTC = 23:46:01 KST. `FAIL_CLOSED / COMMON_OHLC_NONPOSITIVE`, common-stock 803 중 27 nonpositive OHLC, 27 zero-volume/value, `independent_source_admission_verified=false`, `independent_chronology_admission_verified=false`, `session_manifest_sha256=null`, `ordering=DISABLED`. 기존 90일 미분류 및 zero-activity 12,003건 차단 유지(과거 증거).
+- `indexalert-krx-historical-worker` SUCCESS deployment `16c93d7c-7cd0-4d84-a327-298d2805376c`, commit `1e6367d...`, 이번 로그 0건. 2017–2022 private 1,565/1,565 weekday 원본쌍 SHA 저장 무결성은 **과거 저장 범위 제한적 PASS**, 공식 거래일/상태/기업행위/실제 체결가능성 아님.
+- `indexalert-runtime` SUCCESS deployment `eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00`, 최신 반환 로그 2026-11-01 05:19:42 UTC = 14:19:42 KST. 지수 알림 서비스 운영 로그이며 M20 PIT/경제성 증거 아님.
+- Kiwoom read-only SUCCESS deployment `a77fb922-b679-4d88-92c4-03054ec579cd` (2026-10-29 06:21 UTC), 로그 `DETAIL_CODE=8050`, `TOKEN_OK=false`, `WS_CONNECTED=false`, `TYPE00_EVENT_COUNT=0`, `ORDERING=DISABLED`. 실거래/인증 성공 아님. 최신 `list_deployments`에서 그 이후 새 배포 확인 없음. `environment_status`는 일부 offline 서비스만 노출해 전체 서비스 실행 상태 판정 근거로 사용하지 않음.
+
+## 4. PASS/FAIL/NOT VERIFIED 및 다음 검증 게이트
+| 항목 | 판정 |
+|---|---|
+| OpenDART 2022/2021 original SGML 후보 모양/identity | HISTORICAL LIMITED PASS, 경제적 의미 NOT VERIFIED |
+| 최초 연결 3개월 영업이익, original filing/available-at/PIT, 정정 lineage, 기업·종목 as-of mapping | **NOT VERIFIED** |
+| KRX 1,565 private weekday 원본쌍 저장 무결성 | HISTORICAL STORAGE-ONLY LIMITED PASS |
+| KRX 공식 달력/거래상태/기업행위/호가·체결가능성, 비용·세금 | **NOT VERIFIED / FAIL-CLOSED** |
+| #413 합성 회귀 동등성 | LIMITED PASS |
+| #418 archived SHA replay / candidate 22 direct blobs | archived **FAIL-CLOSED**, candidate LIMITED PASS, merge NO-GO |
+| NetEV/PF/CAGR/MDD/ES95·99, 수익 집중도, 기간별 강건성, M20 세후 연간 위험조정 순수익 | **NOT EVALUABLE / NO-GO** |
+
+**다음 단계:** OpenDART 담당은 최초 공시 2022·2021 연결 Q3 단일 3개월 셀·공개시점·정정 전체 lineage·과거 mapping을 원본 바이트/receipt SHA로 독립 증명; KRX 담당은 90일/27건/12,003건 차단을 유지하며 공식 시장 달력·거래상태·CA·체결가능성/비용·세금의 독립 evidence SHA를 확보; 최적화 담당은 #418 22 direct blobs를 넘어 전이 의존성·권한 alias·TOCTOU·runtime/evidence SHA-256 완전 고정 및 독립 전체 CI wall-clock을 합성 offline-only로 검증. 소스 승인 전 공식 수익률·모델 탐색·M20 경제성 RUN 금지. Frozen H5, M20 horizon20/purge20, WF504/126/126, PIT/label/Purged/CPCV/독립 Holdout/Champion/Top3/NO_TRADE, 비용/세금/NetEV/위험/승격 고정. 실패·소비 Holdout 및 Dynamic 재활용 금지. 캐시는 독립 승인원본·데이터·코드·Frozen·런타임·승인 evidence SHA-256 전부 일치할 때만 fail-closed; 병렬화는 읽기전용 독립 후처리만. 주문/자금/인증·계좌권한/Champion 승격은 매번 별도 명시 승인 필요. Workflow 우회 변경, PR 병합, 운영 배포 없음.
