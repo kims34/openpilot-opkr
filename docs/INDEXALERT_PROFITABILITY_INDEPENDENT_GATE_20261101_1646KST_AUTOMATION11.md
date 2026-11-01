@@ -1,0 +1,26 @@
+# IndexAlert independent profitability gate — 2026-11-01 16:46 KST
+
+Scope: read-only verification of GitHub branches/PRs/Actions and Railway service status/logs, followed by exactly one isolated documentation-only write attempt. No M20 profitability run, raw-source endpoint request, historical worker execution, Holdout access, specialist branch edits, trading, funds, permissions, deployment, PR merge, or Champion/Top3 promotion.
+
+## Source and repository checkpoints (live reads)
+- GitHub research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a`; development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`; KRX source specialist `indexalert-krx-pit-source-audit-20261013`: `073d2d49e95f69fb10b943b93e51bb179fb3c698`. All checked via GitHub branch REST GET.
+- PR #414 Draft/open/unmerged before documentation write: head `1bcf0c72f01c0faeb3b7c1cd7a5570bd87f679dd`; #412 Draft/open/unmerged head `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; KRX #420/#422/#423 all Draft/open/unmerged heads `fab3cbb`/`c148576`/`0e38004`. No source-admission decision implied by these statuses.
+- Latest listed watchdog [Actions #41264126871](https://github.com/kims34/openpilot-opkr/actions/runs/41264126871), created 2026-11-01 02:11:08 UTC, succeeded. Actual job log: 4 fail-closed contract tests PASS and 31 research governance tests PASS; explicit `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. Success is a software safety test only.
+- [Chronology Anchor #41091128151](https://github.com/kims34/openpilot-opkr/actions/runs/41091128151) failed: public anchor/latest HTTP 404 after retry; follow-on validation skipped.
+- OpenDART official source-only [Actions #38381866190](https://github.com/kims34/openpilot-opkr/actions/runs/38381866190), job 115244084285, logged original 2022 ZIP integrity true and SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`. It reports 15 operating-profit *candidate shapes*, no verified consolidated 3-month Q3 profit, no comparable q-4 period, no full correction history, no intraday publication instant, and no issuer/security PIT mapping. This audit read the log, NOT the original ZIP bytes; no independent byte rehash was performed. GitHub artifact ZIP digest is a different object and must not be confused with source ZIP SHA.
+
+## Railway independent read-only checkpoints
+- Production `indexalert-pit-rebuild`: latest deployment `8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5` SUCCESS. Latest returned runtime record 2026-10-31 14:46:01 UTC: `FAIL_CLOSED`, `COMMON_OHLC_NONPOSITIVE`, 27 nonpositive OHLC rows out of 803 common-stock rows, independent source/chronology/model admission false, `ordering=DISABLED`, real orders false, no fresh admitted alpha observation.
+- KRX 2017–2022 private original-pair SHA receipts historically reported 1,565/1,565; 90 unresolved historical calendar/source-gap sessions remain. Private source bytes, disputed exact dates, and independent official historical trading-status originals were NOT accessed here. The 27 prospective OHLC exceptions are distinct from those 90 historical sessions.
+- Kiwoom REAL read-only deployment `a77fb922-b679-4d88-92c4-03054ec579cd` SUCCESS, but Railway status shows 0 running / 1 crashed replica. Log attributes: TOKEN_OR_LOGIN_AUTH code 8050, TOKEN_OK=false, WS_CONNECTED=false, TYPE00_EVENT_COUNT=0, ORDERING=DISABLED. Deployment success is not a successful broker session.
+- Railway `describe_environment` and `get_staged_changes` show no staged patch; `environment_status` independently reports an empty staged pendingWork patch `e113dacb-6705-4416-9997-dc694539d382`. Conflicting read models; do not accept/deploy.
+- KRX historical worker had no returned deployment log events in this read; no new source authority inferred.
+
+## Independent admission and economic metrics
+1. Raw SHA: official OpenDART SHA and KRX private receipt assertions are previously recorded, but original bytes were not independently rehashed in this checkpoint. Raw immutable originals and independent reproducibility still required.
+2. PIT: first-filed standalone consolidated 3-month earnings for both comparable periods, historical availability timestamps, full amendments, security mapping, complete universe, and chronology unapproved.
+3. Tradability: 90 historical session/source exceptions and 27 distinct prospective nonpositive-OHLC cases remain quarantined. Historical stock suspension, corporate-action-adjusted prices, spread, volume, fills, and capacity not verified.
+4. Costs/taxes: no approved executable fill ledger, fee schedule, spread/slippage/impact, market tax schedule, and dated cash-flow ledger. No defensible after-tax trade path.
+5. NetEV, PF, CAGR, MDD, ES95, ES99: not computable as independently verified net-of-cost-and-tax performance, and no point estimates or confidence intervals should be published. No M20 backtest executed.
+
+Decision: `M20_PERFORMANCE_RUN=NO_GO`, `ORDERING=false` (observed runtime `DISABLED`), Frozen/Holdout/Champion/Top3/preregistration unchanged. No new independent source admission, required user approval, or newly material blocker relative to 15:50 KST. Specialist work remains isolated.
