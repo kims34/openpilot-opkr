@@ -1,0 +1,22 @@
+# IndexAlert independent profitability gate delta — 2026-11-02 21:48 KST
+
+**Verdict: M20 NO-GO; ORDERING=DISABLED; no authorized performance estimates.** This is a documentation-only independent read-only evidence checkpoint. No private KRX volume access, no new source downloads, no backtest or Holdout use, no source/CI/model edits, no execution, funds, credentials, deployments, merges, or Champion promotion.
+
+## GitHub immutable references
+- Research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`.
+- KRX specialist `indexalert-krx-pit-source-audit-20261013`: `073d2d49e95f69fb10b943b93e51bb179fb3c698`.
+- Draft, open and unmerged PRs: #414 head before this audit `cd021dca9de3bdb5a8fdbafe21648f651202ec99`; #412 `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`; #422 `c14857620973531013799e44625d43080904fd5f`; #423 `0e38004363cac9fc4475556b3a1c445de9af407f`.
+- Repository-wide latest Actions listing at check: [read-only Watchdog #41407627828](https://github.com/kims34/openpilot-opkr/actions/runs/41407627828), created 2026-11-02 07:38:39 UTC, completed success. Job `125153144198` logs: 4 fail-closed contract tests and 31 research governance tests pass, but `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. CI success is not PIT admission.
+- [Chronology #41091128151](https://github.com/kims34/openpilot-opkr/actions/runs/41091128151): public hash-only `/anchor/latest` fetch HTTP 404; auto-anchor failed and validation skipped. No chronology proof.
+
+## Source integrity and PIT boundaries
+- [Official OpenDART 2022 provenance #38381866190](https://github.com/kims34/openpilot-opkr/actions/runs/38381866190), job `115244084285`, reported first-filed ZIP SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`. Separately [official layout #38380988990](https://github.com/kims34/openpilot-opkr/actions/runs/38380988990) reports 1,570 tables, 15 operating-row *shapes* (not facts), zero exact three-month CFS quarter-window matches; source-only. Neither original ZIP bytes nor original private KRX bytes independently rehashed in this checkpoint.
+- First-publication *instant*, complete amendment lineage, issuer/security mapping, first-filed 3-month consolidated operating profit, and original KRX historical market-calendar/stock-level tradability remain NOT ATTESTED. Prior 2017–2022 KRX 1,565 weekday daily/master SHA pairs demonstrate storage integrity only; 90 uncertain historical sessions and 27 nonpositive common-stock OHLC cases remain unresolved. Specialist synthetic offline comparator PRs are not original historical PIT authorization.
+- Railway production `83d5840b-270e-4d3f-a941-a37fd4a55ff7` `indexalert-pit-rebuild`: latest observed log 2026-11-02 12:46:02 UTC (21:46:02 KST), `status=FAIL_CLOSED`, `error_reason_code=COMMON_OHLC_NONPOSITIVE`, 27/803 OHLC failures, `independent_source_admission_verified=false`, `independent_model_admission_verified=false`, `independent_chronology_admission_verified=false`, `session_manifest_sha256=null`, `ordering=DISABLED`, `real_orders_authorized=false`.
+- Railway `indexalert-kiwoom-real-readonly`: deployment `a77fb922-b679-4d88-92c4-03054ec579cd` marked SUCCESS, yet environment health shows 0 running / 1 crashed replica. No successful broker/WS attestation. `describe_environment` and `get_staged_changes` show no staged patch, while `environment_status.pendingWork` still reports stale patch `e113dacb-6705-4416-9997-dc694539d382` with empty changes; do not apply or reconcile by mutation.
+
+## Execution economics and decision
+- No independently admitted point-in-time tradeable panel or immutable timestamped quote/lot/fees/slippage/market impact/tax assumptions. Thus **after-tax NetEV, PF, CAGR, MDD, ES95 and ES99: not estimable/validatable**, not zero and not backtested.
+- Preserve Frozen H5/M20, 20-session horizon, WF 504/126/126, purge20, CPCV, sealed Holdout, Champion, Top3/no rank-4 backfill, NO_TRADE, ORDERING=false. No M20 profitability run before independent original SHA, source publication chronology and corporate-action/tradability approval plus preregistered full-cost/tax evidence and immutable runtime chain. No authority granted by this note.
+- No newly approved original data, mandatory authorization, or new critical blocker found in this checkpoint. Other specialists' workstreams left untouched.
