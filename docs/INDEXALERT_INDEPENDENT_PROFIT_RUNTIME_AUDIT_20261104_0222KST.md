@@ -1,0 +1,26 @@
+# IndexAlert independent profitability and offline runtime audit — 2026-11-04 02:22 KST
+
+Scope: independent read-only source/CI/Railway inspection. This is not a source-PIT approval, profitability run, deployment, strategy change, or trading authority. All judgments are fail-closed.
+
+## Exact current GitHub refs (read at this run)
+- Research `index-alert-research-v1`: `df474df348f22aa38b1dedaa59fcff66e548b406` (GitHub branch endpoint).
+- Development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`.
+- Draft, open, unmerged PR heads: #412 `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; #413 `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; #414 `18c5418d9684d1717df58261ea27f28e514385b2`; #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`; KRX #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #422 `c14857620973531013799e44625d43080904fd5f`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`.
+- PR #414 canonical gate document `docs/INDEXALERT_PROFITABILITY_INTEGRATION_GATE_2026-10-13.md` blob SHA-1 `984c933651f39f1ee9e26a1d7ac3893aaa5335be`; fetched and read. This SHA-1 is a Git blob identifier, not independently verified original-data SHA-256.
+
+## Independent evidence and decisions
+- GitHub Actions [38419111311](https://github.com/kims34/openpilot-opkr/actions/runs/38419111311): six jobs completed SUCCESS (gates, cache, cost, risk, serial, exact parity). [38419649711](https://github.com/kims34/openpilot-opkr/actions/runs/38419649711): one-runner-offline-comparison 1/1 SUCCESS. **PASS limited to offline synthetic CI execution**, not independent original-market economics.
+- [41515392296](https://github.com/kims34/openpilot-opkr/actions/runs/41515392296): auto-anchor FAIL; validation SKIPPED. **FAIL** for this anchor execution; not proof of market data correctness.
+- Earlier supplied [38381997417](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417), [38382214223](https://github.com/kims34/openpilot-opkr/actions/runs/38382214223), 34-case fixed SHA-256 `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`, 13 adversarial mocks, 28 synthetic additions: **historical user-supplied evidence, not independently rehashed this run**. Serial 2.9656s vs concurrent 2.6209s = regression-phase 1.1315x; end-to-end CI and actual official backtest acceleration **NOT VERIFIED**. A prior #418 manifest SHA mismatch remains unresolved until independently reconciled.
+- Railway IndexAlert production project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`: KRX historical-worker deployment `16c93d7c-7cd0-4d84-a327-298d2805376c` SUCCESS at 2026-10-12 13:08 UTC, commit `1e6367d2863a86c3470da13d81a955d277eba485`. **PASS only for deployment status**. Historical private raw pairs 1565/1565 are prior evidence; official session calendar, trading status, corporate actions, execution and tax remain **NOT VERIFIED**.
+- Railway PIT rebuild service `225f2279-d728-4e1a-a3f3-2447ff0f9dc1`: read-only deploy logs show recurring `KRXProspectiveOpenAPISourceError / COMMON_OHLC_NONPOSITIVE`, latest observed 2026-11-03 14:46:33 UTC (23:46:33 KST). No evidence of successful fresh source admission. This is a live source-quality blocker; do not promote.
+- OpenDART [38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742) original/correction SGML 15 candidate row signatures: historical shape evidence only; exact original filing semantics, public available-at, 2021/2022 first-three-month consolidated operating income, period and correction lineage, historical corp/security mapping **NOT VERIFIED**.
+- PIT and labeling, purged/CPCV/independent holdout, executable KRX official status/corporate actions/costs/taxes, NetEV/PF/CAGR/MDD/ES95/99, concentration and temporal robustness **NOT VERIFIED**. M20 after-cost/tax risk-adjusted annual profit **NOT EVALUABLE / NO-GO**.
+
+## Immutable gates / next safe work
+1. Obtain independent official first-filing original document identity, publication time, exact fiscal period and restatement lineage, historical entity-security mapping with source and evidence SHA-256. Never backfill original with corrected data.
+2. Independently verify official KRX trading calendar, halt/delist/zero activity, corporate actions, realistic fills, fees and taxes; reconcile invalid OHLC and chronology anchor; retain 90-day classification and 12003 zero-activity exclusions.
+3. For isolated PR #413 and #418, run **synthetic offline policy and software parity only**, reconcile 34-case SHA and #418 manifest evidence, measure total CI vs regression-only separately. Cache only when independently approved original/data/code/Frozen/runtime/approval SHA-256 all match, fail closed. Parallelize read-only postprocessing only; never dependent retraining or capital transitions.
+4. Preserve Frozen H5, M20 horizon20/purge20, WF504/126/126, holdout/Champion/Top3/NO_TRADE, costs/taxes/risk and promotion rules; ORDERING=false. No official M20 economics, new model search, deployment, PR merge, orders, funds or authorization changes. Explicit fresh approval required for trading, funds, credentials or Champion promotion.
+
+Sources: linked GitHub PRs/Actions above and Railway project/service/deployment/logs read through connected Railway, 2026-11-04 02:22 KST. No secret/private raw contents exported.
