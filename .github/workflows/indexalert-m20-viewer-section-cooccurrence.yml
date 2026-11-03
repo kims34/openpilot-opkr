@@ -1,0 +1,88 @@
+name: IndexAlert M20 Original Viewer Same-Section Q3 Source Hints
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_viewer_cooccurrence.py'
+      - 'test_research_v1_opendart_m20_2022_first_viewer_cooccurrence.py'
+      - '.github/workflows/indexalert-m20-viewer-section-cooccurrence.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-2022-original-viewer-section-cooccurrence
+  cancel-in-progress: false
+jobs:
+  offline-source-cooccurrence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Ensure same section hints never turn into source accounting facts
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_first_viewer_cooccurrence.py test_research_v1_opendart_m20_2022_first_viewer_cooccurrence.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_first_viewer_cooccurrence
+      - name: Confirm no broker order or return research
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_first_viewer_cooccurrence.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_first_viewer_financial_sections.py
+  official-first-source-cooccurrence:
+    needs: offline-source-cooccurrence
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Inspect only four first receipt financial subdocuments and cooccurrence flags
+        run: |
+          python research_v1_opendart_m20_2022_first_viewer_cooccurrence.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_2022_viewer_section_cooccurrence/counts.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_official_requests"] == 2
+          assert x["max_public_viewer_requests"] == 5
+          assert x["source_status"] == "FIRST_ORIGINAL_VIEWER_SUBDOCUMENT_COOCCURRENCE_ONLY", x.get("failure_code","UNVERIFIED")
+          assert x["first_original_viewer_financial_sections"] == 4
+          assert x["viewer_cooccurrence_is_not_a_fact_period_or_edition_binding"] is True
+          assert x["original_2022_2021_three_month_cfs_profit_values_verified"] is False
+          for key in ("operating_and_cfs_same_section_count",
+                      "operating_and_three_month_same_section_count",
+                      "operating_and_2022_complete_q3_window_same_section_count",
+                      "operating_and_2021_complete_q3_window_same_section_count",
+                      "operating_and_both_complete_q3_windows_same_section_count",
+                      "operating_cfs_three_month_both_complete_periods_same_section_count"):
+            assert type(x[key]) is int and 0 <= x[key] <= 4, key
+          assert x["operating_cfs_three_month_both_complete_periods_same_section_count"] <= x["operating_and_cfs_same_section_count"]
+          assert x["ordering"] == "DISABLED"
+          for key in ("original_2022_cfs_profit_three_month_verified",
+                      "original_2021_comparator_three_month_verified",
+                      "original_viewer_html_is_immutable_filing_proof",
+                      "viewer_financial_toc_is_accounting_statement_lineage",
+                      "original_2022_xbrl_verified",
+                      "original_publication_instant_verified",
+                      "historical_issuer_security_pit_verified",
+                      "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                      "independent_holdout_authorized", "champion_change_authorized",
+                      "real_orders_authorized", "funds_movement_authorized",
+                      "permissions_change_authorized",
+                      "raw_amounts_document_ids_titles_url_params_source_or_secrets_saved"):
+            assert x[key] is False,key
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-first-source-q3-subdocument-cooccurrence-counts-only
+          path: research_results/opendart_m20_2022_viewer_section_cooccurrence/counts.json
+          retention-days: 7
+          if-no-files-found: warn

@@ -1,0 +1,95 @@
+name: IndexAlert M20 Original Viewer Same-Table Q3 Header Evidence
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_viewer_table_q3.py'
+      - 'test_research_v1_opendart_m20_2022_first_viewer_table_q3.py'
+      - '.github/workflows/indexalert-m20-viewer-table-q3-source.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-first-vintage-q3-viewer-table-shapes
+  cancel-in-progress: false
+jobs:
+  offline-table-period-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Validate per-table periods and no PIT admission
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_first_viewer_table_q3.py test_research_v1_opendart_m20_2022_first_viewer_table_q3.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_first_viewer_table_q3
+      - name: No broker endpoints or source financial amounts persisted
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_first_viewer_table_q3.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_first_viewer_table_q3.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_first_viewer_table_q3.py
+  official-original-four-financial-tables:
+    needs: offline-table-period-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Read four exact first-receipt viewer finance sections as source-only
+        run: |
+          python research_v1_opendart_m20_2022_first_viewer_table_q3.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_original_viewer_quarter_table/counts.json").read_text())
+          assert x["credential_present"] is True
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_official_api_calls"] == 2
+          assert x["max_public_viewer_calls"] == 5
+          assert x["source_status"] == "FIRST_ORIGINAL_VIEWER_SAME_TABLE_Q3_SHAPE_ONLY", x.get("failure_code", "UNVERIFIED")
+          assert x["first_original_financial_viewer_sections"] == 4
+          assert x["total_viewer_tables_in_financial_sections"] > 0
+          assert x["nested_original_tables_are_not_authoritatively_bound"] is True
+          assert x["same_table_header_is_not_source_financial_semantics"] is True
+          assert x["source_table_is_authoritative_cfs_statement"] is False
+          assert x["original_2022_2021_three_month_cfs_profit_cells_verified"] is False
+          assert x["ordering"] == "DISABLED"
+          labels=("profit_candidate_tables",
+                  "profit_nested_candidate_tables",
+                  "profit_in_outer_table_with_nested_children",
+                  "profit_rows_with_two_numeric_peer_cells",
+                  "profit_rows_with_four_numeric_peer_cells",
+                  "profit_tables_with_three_month_header",
+                  "profit_tables_with_current_and_prior_quarter_headers",
+                  "profit_tables_with_complete_2022_q3_date_window",
+                  "profit_tables_with_complete_2021_q3_date_window",
+                  "profit_tables_with_both_complete_q3_date_windows",
+                  "profit_tables_with_explicit_cfs_income_heading",
+                  "profit_tables_with_currency_unit_lexical_hint")
+          assert 0<=x["profit_candidate_tables"]<=10
+          for label in labels:
+            assert type(x[label]) is int and 0<=x[label]<=x["profit_candidate_tables"],label
+          for name in ("original_filing_vintage_as_of_pit_verified",
+                       "historical_publication_instant_verified",
+                       "historical_corp_security_pit_verified",
+                       "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                       "independent_holdout_authorized", "champion_change_authorized",
+                       "real_orders_authorized", "funds_movement_authorized",
+                       "permissions_change_authorized",
+                       "raw_source_titles_dates_amounts_table_positions_or_ids_persisted"):
+            assert x[name] is False,name
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-first-original-viewer-same-table-q3-counts-only
+          path: research_results/opendart_m20_original_viewer_quarter_table/counts.json
+          retention-days: 7
+          if-no-files-found: warn

@@ -1,0 +1,58 @@
+name: IndexAlert M20 Corrected OpenDART Source Pair
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_correction_source_pair.py'
+      - 'test_research_v1_opendart_m20_2022_correction_source_pair.py'
+      - '.github/workflows/indexalert-m20-2022-correction-source-pair.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-corrected-source-pair
+  cancel-in-progress: false
+jobs:
+  offline-source-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - run: python -m unittest -v test_research_v1_opendart_m20_2022_correction_source_pair
+  official-read-only-source-pair:
+    needs: offline-source-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Original and corrected first-source provenance only
+        run: |
+          python research_v1_opendart_m20_2022_correction_source_pair.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_2022_correction_document/source_pair.json").read_text())
+          assert x["source_status"]=="OFFICIAL_ORIGINAL_AND_CORRECTION_DOCUMENTS_VALIDATED_SHAPE_ONLY"
+          assert x["verified_original_and_corrected_archives_count"]==2
+          assert x["source_pair_actual_financial_changes_unverified"] is True
+          assert x["m20_feature_pit_admitted"] is False
+          assert x["m20_performance_run_authorized"] is False
+          assert x["real_orders_authorized"] is False
+          assert x["ordering"]=="DISABLED"
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-m20-corrected-source-pair-evidence
+          path: research_results/opendart_m20_2022_correction_document/source_pair.json
+          retention-days: 7
+          if-no-files-found: warn

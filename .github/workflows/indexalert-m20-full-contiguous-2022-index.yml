@@ -1,0 +1,91 @@
+name: IndexAlert M20 Complete Original-to-Correction Official Index
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_m20_2022_q3_full_edition_index_20261021.py'
+      - 'test_research_v1_m20_2022_q3_full_edition_index_20261021.py'
+      - '.github/workflows/indexalert-m20-full-contiguous-2022-index.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-original-to-oct21-official-index-contiguous
+  cancel-in-progress: false
+jobs:
+  offline-complete-edition-chain-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Test 3-call original-to-later complete index, failure cases and no leakage
+        run: |
+          python -m py_compile research_v1_m20_2022_q3_full_edition_index_20261021.py test_research_v1_m20_2022_q3_full_edition_index_20261021.py
+          python -m unittest -v test_research_v1_m20_2022_q3_full_edition_index_20261021
+      - name: Require no brokerage, KRX, returns or financial API calls
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr|fnlttSinglAcntAll|fnlttXbrl' research_v1_m20_2022_q3_full_edition_index_20261021.py
+          grep -F '"ordering":"DISABLED"' research_v1_m20_2022_q3_full_edition_index_20261021.py
+          grep -F '"m20_performance_run_authorized":False' research_v1_m20_2022_q3_full_edition_index_20261021.py
+  official-complete-edition-chronology:
+    needs: offline-complete-edition-chain-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Cross-check earliest edition and full later index in same three-call source run
+        run: |
+          python research_v1_m20_2022_q3_full_edition_index_20261021.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          z=json.loads(Path("research_results/m20_2022_q3_full_contiguous_edition_index/source_counts.json").read_text())
+          assert z["credential_present"] is True
+          assert z["fixed_cohort_slot"] == 5
+          assert z["max_official_requests"] == 3
+          assert z["source_status"] == "FULL_CONTIGUOUS_OFFICIAL_INDEX_RANGE_VERIFIED_SOURCE_ONLY", z.get("source_gap_reason","SOURCE_UNVERIFIED")
+          assert z["first_submission_window_complete_paged"] is True
+          assert z["later_correction_window_complete_paged"] is True
+          assert z["initial_to_later_index_windows_adjacent"] is True
+          assert z["all_scanned_index_rows_same_current_registry_issuer"] is True
+          assert z["original_first_2022_q3_filing_unique"] is True
+          assert z["initial_official_first_receipt_correction_marker_seen"] is True
+          assert z["later_verified_correction_rows"] == 1
+          assert z["later_verified_attachment_addition_rows"] == 0
+          assert z["later_periodic_index_rows"] == 31
+          assert z["new_correction_after_prior_2026_10_13_boundary"] is False
+          assert z["observed_correction_index_coverage_end"] == "20261021"
+          assert z["current_day_20261022_index_complete"] is False
+          assert z["original_to_corrected_data_semantics_bound"] is False
+          assert z["ordering"] == "DISABLED"
+          for k in ("index_is_historically_immutable_archive_verified",
+                    "original_2022_q3_cfs_standalone_operating_profit_verified",
+                    "original_2021_q3_cfs_comparative_operating_profit_verified",
+                    "2022_first_publication_instant_verified",
+                    "original_vs_correction_financial_cell_change_verified",
+                    "all_time_revision_history_verified",
+                    "historical_corporation_security_pit_verified",
+                    "official_krx_historical_session_verified",
+                    "m20_feature_pit_admitted","m20_performance_run_authorized",
+                    "independent_holdout_authorized","champion_change_authorized",
+                    "real_orders_authorized","funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_company_receipts_filing_days_titles_source_or_values_persisted"):
+            assert z[k] is False,k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-2022-first-to-oct21-complete-index-counts-only
+          path: research_results/m20_2022_q3_full_contiguous_edition_index/source_counts.json
+          retention-days: 7
+          if-no-files-found: warn

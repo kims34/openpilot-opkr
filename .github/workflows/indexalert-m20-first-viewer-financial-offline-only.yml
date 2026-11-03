@@ -1,0 +1,39 @@
+name: IndexAlert First-Edition Financial Viewer Offline Edition Guard
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_viewer_toc.py'
+      - 'research_v1_opendart_m20_2022_first_viewer_financial_sections.py'
+      - 'test_research_v1_opendart_m20_2022_first_viewer_financial_sections.py'
+      - '.github/workflows/indexalert-m20-first-viewer-financial-offline-only.yml'
+  pull_request:
+    branches: [index-alert-research-v1]
+    paths:
+      - 'research_v1_opendart_m20_2022_first_viewer_toc.py'
+      - 'research_v1_opendart_m20_2022_first_viewer_financial_sections.py'
+      - 'test_research_v1_opendart_m20_2022_first_viewer_financial_sections.py'
+      - '.github/workflows/indexalert-m20-first-viewer-financial-offline-only.yml'
+permissions:
+  contents: read
+jobs:
+  original-receipt-synthetic-no-network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned imports only, do not call data providers
+        run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Confirm imports and adversarial first-edition financial selector
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_first_viewer_toc.py research_v1_opendart_m20_2022_first_viewer_financial_sections.py test_research_v1_opendart_m20_2022_first_viewer_financial_sections.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_first_viewer_financial_sections
+      - name: Confirm PIT and trading remain explicitly prohibited
+        run: |
+          grep -F '"m20_feature_pit_admitted": False' research_v1_opendart_m20_2022_first_viewer_financial_sections.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_first_viewer_financial_sections.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_first_viewer_financial_sections.py
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_first_viewer_financial_sections.py

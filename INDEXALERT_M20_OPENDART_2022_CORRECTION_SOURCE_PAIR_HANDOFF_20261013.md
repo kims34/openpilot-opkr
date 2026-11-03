@@ -1,0 +1,43 @@
+# M20 2022 Q3 original vs official correction archive source pair (2026-10-13)
+
+**Scope:** one frozen issuer slot 5, official OpenDART source-only provenance. No performance, market-price, broker or holdout requests.
+
+Previous independent official evidence:
+- [Initial original ZIP checksum and structure](https://github.com/kims34/openpilot-opkr/actions/runs/38392847048): first-filed 2022 Q3 ZIP SHA256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`.
+- [Original official index reported rm=정](https://github.com/kims34/openpilot-opkr/actions/runs/38413190868).
+- [Complete bounded follow-up index census](https://github.com/kims34/openpilot-opkr/actions/runs/38415899682): 31 periodic-filing rows, one later 2022-Q3 correction, zero attachment additions through 2026-10-13.
+
+New isolated proof:
+- `research_v1_opendart_m20_2022_correction_source_pair.py` and `test_research_v1_opendart_m20_2022_correction_source_pair.py`.
+- [Source-pair official CI](https://github.com/kims34/openpilot-opkr/actions/runs/38417433460): offline regression tests **PASS**. The official read-only archive-pair job was **still running at the time of this initial note**; its outcome must be read from Actions before claiming that the corrected document was retrieved.
+- Exact original source SHA is pinned. The code derives the single corrected receipt ephemerally from the fixed 2022 Q3 original and complete bounded post-2023 issuer index. It uses at most five read-only official requests and verifies archive ZIP integrity with existing strict bounded helper.
+- The results (if the official read succeeds) only record non-reversible ZIP SHA256 values and structural flags. A difference between archived bytes **does not prove a changed financial fact**. Precise edition receipt IDs, dates, issuer IDs and financial amounts are neither printed nor persisted.
+
+Open PIT blockers regardless of success: original standardized 2022 XBRL endpoint status 014, no validated 2022/2021 Q3 standalone CFS operating-profit values, unknown financial-semantic differences between original and amended statements, no original intraday public availability timestamp, no historically PIT-verified issuer/security mapping.
+
+**Safety:** `m20_feature_pit_admitted=false`; `m20_performance_run_authorized=false`; independent Holdout, Champion promotion, real orders, funds and account rights remain unauthorized. `ORDERING=DISABLED`. Draft PR only, no merge.
+
+
+## 2026-10-13 final verified official pair result
+
+- [Completed real official Actions run #38417433460](https://github.com/kims34/openpilot-opkr/actions/runs/38417433460): **both** offline tests and OpenDART read-only original/correction archive verification **SUCCESS**, not merely queued.
+- Original first-filed 2022 Q3 ZIP SHA256: `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`; later amendment ZIP SHA256: `606be9d03928808f0a2a05f052444587bd2457bdef7a47a8f4bff3d2ea098a30`.
+- The ZIP **bytes differ**, but each archive contains one legacy SGML/HTML markup entry, zero strict-XML documents and **15** tables with candidate operating-profit row shapes. The previous report's original publication time, 2022/2021 Q3 financial statement cells and corrected financial cell differences **remain unverified**.
+- Official safe flags-only artifact `11825490610` (`indexalert-m20-corrected-source-pair-evidence`), digest `sha256:1daf76e9e19f688c10211b2d7607cba5025a0ae1dee357b49e344d3b0cc98d6f`.
+- All PIT, M20 performance, Holdout, Champion, real orders and account permissions remain disallowed; `ORDERING=DISABLED`. A difference in archive SHA does **not** mean operating income was changed.
+
+## Candidate operating-profit row text diff — verified source-only evidence
+
+- [Actual source-only run #38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742): **both offline regression and official source jobs SUCCESS**. Source-code commit `39af5b0043e122bc0e42935d8813759ff6c1a6e7`.
+- The immutable original/correction ZIP pair was checked again against exact prior SHA-256 values. Both SGML versions yielded **15** exact-label `영업이익` / `영업손실` candidate rows each. **15 of 15 rows have identical normalized full row text across original and corrected versions, and 15 of 15 numeric-peer row candidates also match**. No row strings, numeric cells, company identity, receipts or document contents were persisted or logged.
+- Therefore the previously established ZIP byte difference **does not correspond to a change among the scanner's exact-label operating-row candidates**. This is **NOT proof of unchanged authoritative CFS operating profit**, because the SGML candidates are not yet semantically bound to the connected standalone July–September income statement and 2021 Q3 comparator. Unrecognized labels, hidden structured tags, note context, restatement or different presentation remain outside proof.
+- Safe flags-only artifact `11826291004`, name `indexalert-m20-operating-row-diff-counts-only`, artifact digest `sha256:9380e385d6fc946a7668c47cce32aa23ed718d9fb5cb2c2edf620bb055bbfcb9` (7 days). Source-only comparator: `research_v1_opendart_m20_2022_correction_row_diff.py`; regression `test_research_v1_opendart_m20_2022_correction_row_diff.py`; dedicated workflow `.github/workflows/indexalert-m20-2022-correction-row-diff.yml`.
+- **Outstanding gates unchanged:** original normalized CFS three-month earnings, 2021 prior-year comparable, original XBRL `014`, exact initial release instant, historical corporation/security PIT, financial-cell-to-edition linkage. `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, no holdout/Champion/orders/funds/permissions, `ORDERING=DISABLED`.
+
+
+## 2026-10-14 continued source fingerprint investigation (provisional until latest CI)
+
+- Existing official source verification [#38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742) found identical exact-label earnings-row candidates in both versioned SGML documents (15/15), but the ZIP container fingerprints differed. Previous, independently verified exact-original and amended archive SHA values remain pinned.
+- Added a focused, fail-closed check of the **decompressed sole SGML document member** SHA-256, rather than comparing only outer ZIP fingerprints or earnings-row candidate strings. A source-only boolean `embedded_markup_bytes_differ` is emitted; the inner document digests and contents are not persisted. This distinguishes ZIP packaging/metadata differences from actual embedded source-content changes without treating any textual change as an amended operating-profit fact.
+- Test code patch `0f2d3d67bb825ce0727aaff4d1b03c30d4dd51f9`, source code patch `b4ef34a9f95de9277be25fa255a9969f354f8699`. [Newest code+tests CI #38464847141](https://github.com/kims34/openpilot-opkr/actions/runs/38464847141) was **queued** when this handoff note was created; **do not claim a successful official source read or a particular content-change result until the exact run reports success**.
+- `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`, independent Holdout, Champion and live orders remain blocked, `ORDERING=DISABLED`. Exact initial 2022 CFS Q3 three-month earnings, 2021 Q3 comparable, intraday publication timestamp and issuer/security PIT remain unresolved.

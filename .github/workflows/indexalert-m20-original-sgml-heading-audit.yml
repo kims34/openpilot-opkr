@@ -1,0 +1,83 @@
+name: IndexAlert M20 First-Original SGML Heading-Period Audit
+on:
+  push:
+    branches: [indexalert-m20-opendart-original-proof-20261013]
+    paths:
+      - 'research_v1_opendart_m20_2022_original_sgml_heading_probe.py'
+      - 'test_research_v1_opendart_m20_2022_original_sgml_heading_probe.py'
+      - '.github/workflows/indexalert-m20-original-sgml-heading-audit.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m20-2022-first-original-sgml-heading
+  cancel-in-progress: false
+jobs:
+  offline-original-neighborhood-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Test source bounds, semantic gaps and no live authorization
+        run: |
+          python -m py_compile research_v1_opendart_m20_2022_original_sgml_heading_probe.py test_research_v1_opendart_m20_2022_original_sgml_heading_probe.py
+          python -m unittest -v test_research_v1_opendart_m20_2022_original_sgml_heading_probe
+      - name: Confirm no broker/market API calls or performance authorizations
+        run: |
+          ! grep -E 'api.kiwoom.com|data.krx.co.kr|data-dbg.krx.co.kr|/api/dostk/ordr' research_v1_opendart_m20_2022_original_sgml_heading_probe.py
+          grep -F '"m20_performance_run_authorized": False' research_v1_opendart_m20_2022_original_sgml_heading_probe.py
+          grep -F '"ordering": "DISABLED"' research_v1_opendart_m20_2022_original_sgml_heading_probe.py
+  official-first-original-neighborhood:
+    needs: offline-original-neighborhood-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests==2.32.3 defusedxml==0.7.1
+      - name: Verify SHA-pinned first SGML original and only source context booleans
+        run: |
+          python research_v1_opendart_m20_2022_original_sgml_heading_probe.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("research_results/opendart_m20_first_original_neighborhood/counts.json").read_text())
+          assert x["fixed_cohort_slot"] == 5
+          assert x["max_official_requests"] == 3
+          assert x["source_status"] == "PINNED_ORIGINAL_SGML_HEADING_PERIOD_DIAGNOSTIC_ONLY"
+          assert x["exact_label_operating_table_candidates"] == 15
+          assert x["original_sgml_tables_examined"] >= 15
+          assert x["heading_proximity_is_authoritative_statement_identity"] is False
+          assert x["period_text_proximity_is_accounting_fact"] is False
+          assert x["actual_q3_cfs_quarter_values_unverified"] is True
+          assert x["ordering"] == "DISABLED"
+          for k in ("original_2022_2021_cfs_quarter_facts_semantically_bound",
+                    "first_published_operating_profit_values_verified",
+                    "original_xbrl_available_verified",
+                    "original_period_statement_currency_unit_verified",
+                    "historical_original_filing_publication_instant_verified",
+                    "historical_issuer_security_pit_verified",
+                    "m20_feature_pit_admitted", "m20_performance_run_authorized",
+                    "independent_holdout_authorized", "champion_change_authorized",
+                    "real_orders_authorized", "funds_movement_authorized",
+                    "permissions_change_authorized",
+                    "raw_values_labels_company_receipts_or_source_persisted"):
+            assert x[k] is False,k
+          for k,v in x.items():
+            if k.startswith(("prefix_","table_contains_","numeric_peers_","operating_row_")):
+              assert type(v) is int and 0 <= v <= 15,k
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m20-original-sgml-heading-period-counts-only
+          path: research_results/opendart_m20_first_original_neighborhood/counts.json
+          if-no-files-found: warn
+          retention-days: 7

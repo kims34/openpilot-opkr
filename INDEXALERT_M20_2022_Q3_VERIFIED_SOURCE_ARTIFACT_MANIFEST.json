@@ -1,0 +1,44 @@
+{
+  "schema_version": "M20_FIRST_Q3_ORIGINAL_VIEWER_EVIDENCE_1",
+  "source_kind": "GITHUB_ACTIONS_PINNED_SOURCE_ONLY_COUNTS",
+  "fixed_cohort_slot": 5,
+  "year": 2022,
+  "report": "Q3",
+  "source_records": [
+    {
+      "key": "financial_sections",
+      "run_id": 38706084440,
+      "head_sha": "595743780a11b203fa37e29dbb3a83e5c4ba31d4",
+      "artifact_id": 11958577751,
+      "artifact_name": "m20-2022-original-viewer-financial-section-counts-only",
+      "artifact_digest": "sha256:6968c8d31404b8fc87f2c08d0bb92e00c7fd72c564d20f46f2994cb0a808d106"
+    },
+    {
+      "key": "same_subdocument",
+      "run_id": 38708786002,
+      "head_sha": "8703a83d5430b064b3e67d2091c912d034c6c60e",
+      "artifact_id": 11958909398,
+      "artifact_name": "m20-first-source-q3-subdocument-cooccurrence-counts-only",
+      "artifact_digest": "sha256:d615ae2888883df0fe1cb7ce093cc4ed4faa84ef8b8ebca39785ef74b83f8aa3"
+    },
+    {
+      "key": "same_table",
+      "run_id": 38731230183,
+      "head_sha": "af048d8d202d63a6fb41527e622658588cb1f339",
+      "artifact_id": 11971011193,
+      "artifact_name": "m20-first-original-viewer-same-table-q3-counts-only",
+      "artifact_digest": "sha256:145cbca42fd9336f9a375aa8a9475f3f11464ca08795a0ba1b65935dc0a3a153"
+    },
+    {
+      "key": "header_rows",
+      "run_id": 38822004271,
+      "head_sha": "bb61dc5da281c1a0388575de3e13e9cc30caa5a0",
+      "artifact_id": 12013358036,
+      "artifact_name": "m20-2022-original-viewer-header-shape-counts-only",
+      "artifact_digest": "sha256:9c6aa171cf30902a502b611096587389d5ba5d8d99aadec5300d92fba1ebef66"
+    }
+  ],
+  "performance_authorization": false,
+  "order_authorization": false,
+  "ordering": "DISABLED"
+}
