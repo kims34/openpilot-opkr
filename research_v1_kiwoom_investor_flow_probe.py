@@ -1,5 +1,6 @@
 """Bounded ka10059 source feasibility probe; no orders or public numeric rows."""
 import datetime as dt
+from decimal import Decimal
 import hashlib
 import json
 import os
@@ -10,7 +11,8 @@ import urllib.request
 BASE = "https://api.kiwoom.com"
 BODY = {"dt": "20261008", "stk_cd": "005930", "amt_qty_tp": "1",
         "trde_tp": "0", "unit_tp": "1"}
-FIELDS = ("dt", "frgnr_invsr", "orgn", "acc_trde_prica")
+FIELDS = ("dt", "frgnr_invsr", "orgn", "acc_trde_prica", "acc_trde_qty")
+NUMERIC_PATTERN = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?")
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -75,15 +77,28 @@ def run(env, send=request):
                 except ValueError:
                     bad += 1
             missing = sum(any(row.get(k) in (None, "") for k in FIELDS) for row in rows)
-            numeric_bad = sum(any(not re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?", str(row.get(k, "")))
+            numeric_bad = sum(any(not NUMERIC_PATTERN.fullmatch(str(row.get(k, "")))
                                   for k in FIELDS[1:]) for row in rows)
+            # Broker response may include stopped/zero-trade sessions, so zero
+            # volume/value is not missing data. Negative *cumulative* volume
+            # or trade value is not a valid daily observation.
+            negative_activity = sum(any(
+                NUMERIC_PATTERN.fullmatch(str(row.get(k, "")))
+                and Decimal(str(row[k])) < 0
+                for k in ("acc_trde_prica", "acc_trde_qty")
+            ) for row in rows)
+            # The current query expects reverse chronological pagination.
+            # Log anomalies as metadata only; never silently reorder rows.
+            nonmonotonic_dates = sum(a < b for a, b in zip(dates, dates[1:]))
             all_dates.extend(dates)
             h = {k.lower():v for k,v in headers.items()}
             more = h.get("cont-yn") == "Y"
             result["pages"].append({"rows":len(rows),"min_date":min(dates,default=None),
                 "max_date":max(dates,default=None),"invalid_dates":bad,"missing_required_rows":missing,
-                "invalid_numeric_rows":numeric_bad,"raw_sha256":digest,"more":more})
-            if bad or missing or numeric_bad:
+                "invalid_numeric_rows":numeric_bad,"negative_activity_rows":negative_activity,
+                "nonmonotonic_date_pairs":nonmonotonic_dates,
+                "raw_sha256":digest,"more":more})
+            if bad or missing or numeric_bad or negative_activity or nonmonotonic_dates:
                 return dict(result, status="ROW_VALIDATION_REJECTED")
             if not more:
                 break
@@ -95,10 +110,22 @@ def run(env, send=request):
                 time.sleep(0.3)
         result["duplicate_dates"] = len(all_dates)-len(set(all_dates))
         result["requested_body"] = BODY
-        result["history_exhausted"] = not more
+        # A terminal broker continuation is NOT proof of full historical depth
+        # or any historical as-published revision. Report this distinction.
+        result["pagination_exhausted"] = not more
+        result["history_exhausted"] = False
+        result["historical_retention_verified"] = False
         result["status"] = "SOURCE_REACHABLE_METADATA_ONLY" if all_dates else "SOURCE_REACHABLE_EMPTY"
         result["publication_time_verified"] = False
         result["historical_revision_policy_verified"] = False
+        # Do not advertise a successful bounded source when the response
+        # remains truncated at the hard cap or pages go backwards in time.
+        if not result["pagination_exhausted"]:
+            result["status"] = "PAGINATION_LIMIT_REACHED"
+        elif result["duplicate_dates"] or any(
+            prev < curr for prev, curr in zip(all_dates, all_dates[1:])
+        ):
+            result["status"] = "PAGINATION_VALIDATION_REJECTED"
         return result
     except Exception as exc:
         return dict(result, status="TRANSPORT_OR_PARSE_FAILED", error_type=type(exc).__name__)

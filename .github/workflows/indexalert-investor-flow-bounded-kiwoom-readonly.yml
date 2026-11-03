@@ -1,0 +1,67 @@
+name: IndexAlert Investor Flow Bounded Kiwoom Readonly Feasibility
+
+on:
+  push:
+    branches:
+      - indexalert-investor-flow-validation-v1
+    paths:
+      - '.github/workflows/indexalert-investor-flow-bounded-kiwoom-readonly.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  metadata-only-ka10059:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # These are optional repository secrets. They are NEVER echoed or
+      # written to artifacts. Empty means AUTH_NOT_CONFIGURED.
+      KIWOOM_APP_KEY: ${{ secrets.KIWOOM_APP_KEY }}
+      KIWOOM_APP_SECRET: ${{ secrets.KIWOOM_APP_SECRET }}
+      KIWOOM_ENV: REAL
+      KIWOOM_BASE_URL: https://api.kiwoom.com
+      KIWOOM_ORDERING_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute existing hardcoded read-only one-stock three-page probe
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from research_v1_kiwoom_investor_flow_probe import run
+          from research_v1_kiwoom_flow_source_gate import audit_kiwoom_probe
+
+          # The existing probe can only call /oauth2/token and /api/dostk/stkinfo
+          # and refuses any ORDERING configuration other than false.
+          result = run(os.environ)
+          audited = audit_kiwoom_probe(result)
+          Path("research_results/kiwoom_flow_bounded").mkdir(parents=True, exist_ok=True)
+          output = {
+              "probe": result,
+              "source_gate": audited,
+              "contains_numeric_market_rows": False,
+              "strategy_performance_result": False,
+              "credential_values_recorded": False,
+          }
+          Path("research_results/kiwoom_flow_bounded/summary.json").write_text(
+              json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True),
+              encoding="utf-8",
+          )
+          print("KIWOOM_FLOW_PROBE_STATUS=" + str(result.get("status")))
+          print("KIWOOM_FLOW_SOURCE_ADMITTED=false")
+          print("KIWOOM_FLOW_PERFORMANCE_AUTHORIZED=false")
+          PY
+      - name: Upload metadata-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-kiwoom-flow-bounded-metadata-only
+          path: research_results/kiwoom_flow_bounded/summary.json
+          if-no-files-found: warn
+          retention-days: 14
