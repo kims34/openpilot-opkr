@@ -1,0 +1,24 @@
+# IndexAlert independent profitability admission audit — 2026-10-31 00:48 KST
+
+Scope: read-only GitHub PR/Actions and Railway production verification, with only this isolated Markdown evidence receipt. No market data mutation, replay, order, deployment, permission, merge, capital movement, or Champion promotion. No duplicate specialist investigation.
+
+## Branch / PR immutable refs
+- Direct GitHub compare of pinned SHA versus named branch returned **identical, ahead=0, behind=0**: research `3b8b7830612a6284d7c7a60628cb527cb741627a`; development `1e6367d2863a86c3470da13d81a955d277eba485`; KRX specialist `073d2d49e95f69fb10b943b93e51bb179fb3c698`; integration pre-write `c3ea6e80c585bf8429c55d2ee2f0b88f73e4752a`. These are verified branch identities at read time, not future immutability.
+- PR #412/#413/#414/#416/#418/#420/#422/#423/#424 are open, Draft, unmerged. PR #414 advanced one documentation-only commit since `df04df9` to `c3ea6e80`; compare reports only `docs/INDEXALERT_INDEPENDENT_PROFIT_RUNTIME_AUDIT_20261031_0024KST.md` added.
+- [Watchdog #41027450112](https://github.com/kims34/openpilot-opkr/actions/runs/41027450112), job 123968824089: 31 governance tests PASS; explicitly `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. This is not source or economic approval.
+- [Chronology anchor #40914179246](https://github.com/kims34/openpilot-opkr/actions/runs/40914179246), job 123589876652: HTTP 404 failure; downstream validation skipped.
+- [Archived optimizer #39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478), job 117628139395: `SourceDriftError` on `research_v1_runtime_manifest.py`, expected Git blob `108f66714602a1bd3ae42c34dcca7c16e38f460b`, observed `e0055c66c59398fd4a1158077446d886b54c4e37`. Not a SHA-256 market-data approval.
+
+## Original SHA / PIT / tradability
+- [Official 2021 original source #40262558066](https://github.com/kims34/openpilot-opkr/actions/runs/40262558066), job 121379096007, logged source ZIP SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625`, 13 operating-label candidates, zero same-table 2021 Q3/three-month matches. Original exact CFS three-month operating profit, first-publication instant, amendment lineage and issuer/security chronology **NOT VERIFIED**.
+- [Official 2022 original source #38392847048](https://github.com/kims34/openpilot-opkr/actions/runs/38392847048), job 115280695115, logged source ZIP SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`, 15 operating-row candidates, no proven strict Q3 CFS three-month fact or original publication instant. The log SHA was rechecked; original ZIP bytes were **not** separately downloaded and rehashed.
+- Historical KRX 2017–2022 1,565 source-pair integrity receipts are historical limited PASS only. The 90 unresolved exchange-session/source-gap cases and official historical stock-day halt/corporate-action/tradability remain NOT VERIFIED. These are distinct from the prospective 27 nonpositive OHLC common-stock rows.
+- No accepted PIT/tradable return series, fills, market impact, fee schedule, tax/account mapping or 2x-cost stress; after-cost/tax NetEV, PF, CAGR, MDD, ES95, ES99 **NOT EVALUABLE**, not zero. Do not compute or replay M20.
+
+## Railway production, read only
+- Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`. PIT service `indexalert-pit-rebuild` deployment `8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5` SUCCESS, 1 running replica. Latest returned explicit log 2026-10-30 **14:46:37Z (23:46:37 KST)**: `FAIL_CLOSED`, `COMMON_OHLC_NONPOSITIVE`, 27/803 common stocks, source failure session 2026-09-28, independent source/model/chronology admission all false, `session_manifest_sha256=null`, `ordering=DISABLED`, no orders or funds authorized.
+- `indexalert-kiwoom-real-readonly` deployment `a77fb922-b679-4d88-92c4-03054ec579cd` SUCCESS but replica status running=0, crashed=1; runtime logs show container start only, no fresh authenticated WebSocket/Type00 success. Railway summary `online` conflicts with crashed replica, so no healthy-connection inference.
+- Existing staged production patch `e113dacb-6705-4416-9997-dc694539d382` still reported, `changes=[]`. Not touched. Other offline services and their warning counts are not new M20 evidence.
+
+## Admission decision
+**M20 NO-GO** until independently verified first-original CFS/available-at/lineage and official KRX tradability/CA, actual cost/tax/fillability, runtime parity and immutable approval receipts. Preserve Frozen H5, sealed Holdout, M20 horizon20/purge20, WF504/126/126, CPCV, Champion, Top3/no rank-4 backfill, NO_TRADE and `ORDERING=false`. No live trading, capital, credentials, deployments, PR merges or Champion promotions. Specialist owner branches unchanged.

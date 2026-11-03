@@ -1,0 +1,19 @@
+# IndexAlert independent M20 admission audit — 2026-10-29 19:48 KST
+
+Scope: read-only GitHub/Railway evidence, isolated documentation only. No M20 profitability run, live orders, capital, permission, deploy, merge, Champion promotion, or changes to Frozen/Holdout/Top3/ORDERING.
+
+## Verified sources
+- Research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`.
+- KRX owner `indexalert-krx-pit-source-audit-20261013`: `073d2d49e95f69fb10b943b93e51bb179fb3c698`.
+- PR #412 `bf3d9514`, #414 `894eab17`, #416 `053de553`, #418 `2f98401c`, KRX #420 `fab3cbbd`, #422 `c1485762`, #423 `0e380043`: all open Draft, unmerged at read time.
+- GitHub Actions total 4618. Latest watchdog run [40853112299](https://github.com/kims34/openpilot-opkr/actions/runs/40853112299), created 2026-10-29 09:53:02Z, succeeded. Actual job [123377258416](https://github.com/kims34/openpilot-opkr/actions/runs/40853112299/job/123377258416) logged watchdog 4 tests and governance 31 tests passed; `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. Artifact ZIP SHA256 `97a56fc1bbaa537696fc1474373e35c352174b2b7678eb2ff87e011dcb7cca64` is a status artifact checksum, **not** source-data proof.
+- Chronology Anchor [40726273259](https://github.com/kims34/openpilot-opkr/actions/runs/40726273259) remains failed (prior HTTP 404); no independently accepted chronology evidence.
+- OpenDART official-safe candidate diff [38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742) reported first/corrected exact-label candidate rows 15/15, `exact_label_row_text_multisets_differ=false`, but `financial_semantic_differences_still_unverified=true`. This does **not** verify the exact consolidated 3-month operating-profit fact, first-publication timestamp, revision chain, or historical security mapping. No independent raw original ZIP byte rehash was performed in this run.
+- KRX PR #420/#422/#423 remain Draft. Actual source-date sets (2021 13 days / 2022 14 days), 90 uncertain sessions, 27 nonpositive OHLC rows, and per-security historical tradeability are not independently approved. Prior synthetic/offline tests do not establish original raw source acceptance.
+- Railway production `indexalert-pit-rebuild` read-only deploy logs at 2026-10-29 09:30, 09:45, 10:00, 10:15, 10:30, 10:45 UTC: `ordering=DISABLED`, `real_orders_authorized=false`, `independent_source_admission_verified=false`, `independent_chronology_admission_verified=false`, `independent_model_admission_verified=false`, `COMMON_OHLC_NONPOSITIVE`, 27 nonpositive rows. Latest observed 19:45 KST. No new class of blocker.
+- Railway `indexalert-kiwoom-real-readonly` latest SUCCESS deploy `a77fb922-b679-4d88-92c4-03054ec579cd`, source pinned `85bb6fd10bcc9ff2b14abe1c774f0d99f8eb84ab`, runtime log shows container start only. Actual order-enable environment variable is not independently attested by this log.
+- No new validated real-world fills, slippage, fees, Korean tax treatment, chronology/manifest provenance, or full costed, tradeable out-of-sample performance inputs were obtained. NetEV/PF/CAGR/MDD/ES95/ES99 (after cost and tax) **NOT EVALUABLE**. M20 profitability execution **NO-GO**.
+
+## Decision and boundary
+Frozen/Holdout/Champion/Top3 unchanged; ORDERING=false is a required policy and PIT runtime reported disabled (not proof of all services' secret env settings). M20 admission and profit execution remain blocked pending independently reproducible raw SHA, point-in-time disclosure and corrections, KRX historical tradeability, execution/tax, and chronology/manifest evidence. No cross-workstream code edits or experiments. This document is the single permitted isolated write attempt for this audit.

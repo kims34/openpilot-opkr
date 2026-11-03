@@ -1,0 +1,34 @@
+# IndexAlert independent read-only profitability gate — 2026-10-24 11:42 KST
+
+Scope: read-only GitHub branch/PR/Actions inspection and attempted read-only Railway project discovery. Documentation-only audit in PR #414 isolated branch. No official market performance execution, new model search, Holdout access, code/workflow change, deployment, PR merge, credential or order action.
+
+## Immutable references verified in this execution
+
+- Research `index-alert-research-v1` HEAD `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Development `index-alert-position-regen-fix-v1` HEAD `1e6367d2863a86c3470da13d81a955d277eba485`.
+- PR #414 isolated branch HEAD **before this document** `2e6e7ca7af762508a12a81ca93b43cdb0167be00`; frozen integration ledger `docs/INDEXALERT_PROFITABILITY_INTEGRATION_GATE_2026-10-13.md` Git blob SHA-1 `984c933651f39f1ee9e26a1d7ac3893aaa5335be`.
+- OpenDART PR #412 HEAD `e82b26e2431ea15a42888f073a4b0b72a2e11ef6`.
+- Runtime optimization PR #413 HEAD `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; independent one-runner PR #418 HEAD `2f98401cc50a6c6a25808a98516efd5bf0c944ee`.
+- KRX PR #420/#422/#423 HEAD `fab3cbbd63a951a4e081f9e7f08c1391ca308581` / `c14857620973531013799e44625d43080904fd5f` / `0e38004363cac9fc4475556b3a1c445de9af407f`. All reviewed PRs are open Draft, unmerged.
+
+## Direct read-only CI and original-source evidence
+
+- Latest repository [read-only watchdog Actions #40045981668](https://github.com/kims34/openpilot-opkr/actions/runs/40045981668), 2026-10-24 00:38:37 UTC, job `120727693995`: SUCCESS. Decoded job log says `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. Artifact ID `12541112970` (941-byte ZIP), uploader-reported SHA-256 `791a832c32c526b6cdb65bbb1ccd1faf657239d0dfdb7b23449f19873c285a2c`; **not independently downloaded and rehashed**. These are CI assertions, not proof of Railway production ordering or market PIT.
+- OpenDART PR #412 [Actions #39884427765](https://github.com/kims34/openpilot-opkr/actions/runs/39884427765), job `120189157379`: SUCCESS, 12 synthetic no-network original-financial-section controls, with `m20_feature_pit_admitted=False`, `m20_performance_run_authorized=False`, `ordering=DISABLED`. Prior original 2022 Q3 document SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb` is prior source-identity evidence, **not independently rehashed in this execution**, nor a semantic/PIT approval.
+- KRX #420 [Actions #39714369438](https://github.com/kims34/openpilot-opkr/actions/runs/39714369438) and #423 [Actions #39714207925](https://github.com/kims34/openpilot-opkr/actions/runs/39714207925) succeeded for offline synthetic no-provider tests. The prior 1,565/1,565 weekday private original-pair integrity result is **storage-only**; 90 historical source/calendar gaps and 27 separate prospective nonpositive OHLC observations are not admitted. Official trading calendar, historical security-day status, corporate actions and fills remain NOT VERIFIED.
+- Independent original Git blob comparison on exact PR HEADs: #413 `research_v1_runtime_manifest.py` SHA-1 `e0055c66c59398fd4a1158077446d886b54c4e37`, #418 same path SHA-1 `108f66714602a1bd3ae42c34dcca7c16e38f460b`. [Archived gate #39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478), job `117628139395`, intentionally FAIL CLOSED: expected `108f66714602a1bd3ae42c34dcca7c16e38f460b`, observed `e0055c66c59398fd4a1158077446d886b54c4e37`. The two files are materially different: #413 requires literal False for local holdout/order denial and any optional elevated flags; #418 rejects only literal True for two local flags. Candidate [#39111405494](https://github.com/kims34/openpilot-opkr/actions/runs/39111405494) PASS is non-admitting, with `all_transitive_imports_pinned=false`, `exact_wheel_hashes_verified=false`, `os_native_dependency_identity_verified=false`, `candidate_approved_for_merge=false`. Immutable synthetic 34-case outcome digest `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34` does not prove full CI or financial backtest speedup.
+- [Prospective chronology Actions #39972035700](https://github.com/kims34/openpilot-opkr/actions/runs/39972035700): `auto-anchor` failed during public hash-only payload fetch; build/append/validation skipped. No first-public available-at chronology evidence.
+- Railway read-only `list_projects` returned `User input required but current turn is running in a non-interactive mode.` Production deployment/logs and live `ORDERING` **NOT REVERIFIED**. No attempt to change auth, service settings or permissions.
+
+## PASS / FAIL / NOT VERIFIED and hard stop
+
+- **PASS (bounded):** observed GitHub CI synthetic fail-closed controls, exact two manifest Git blob identities, watchdog CI flags. Prior source storage/document hash claims remain separately labeled, not independently rehashed here.
+- **FAIL / BLOCKED:** archived #418 source identity mismatch; prospective chronology fetch. Candidate merge authorization denied.
+- **NOT VERIFIED:** original first-filed 2022 and 2021 July–September 3-month consolidated operating profit values and exact period/sign/unit/currency, first-public available-at/PIT, complete correction lineage, historical issuer-security as-of mapping, official KRX trading sessions/security-day status/corporate actions/feasible fills, independent fees/taxes/slippage and after-tax NetEV/PF/CAGR/MDD/ES95/ES99/concentration/time-robustness, full original source SHA-256 closure, Railway live ordering, and end-to-end runtime speedup.
+- **M20 PERFORMANCE RUN NO-GO** pending independent source/PIT and market trading admission. Frozen H5, M20 horizon20/purge20, WF504/126/126, PIT/labels/Purged/CPCV, consumed sealed Holdout, Champion/Top3/NO_TRADE, original costs/taxes/risk/promotion thresholds unchanged. Require `ORDERING=false`. Cache only with independently admitted source/data/code/Frozen policy/runtime/receipt SHA-256 closure; parallelize only independent read-only postprocessing, not retraining/capital transitions. No live orders, funds, permissions, deployment, merge, Champion promotion, or delegated specialist code changes.
+
+## Next independent proof
+
+OpenDART owner: authenticate first-filed original consolidated three-month financial cell plus earliest publication timestamp and correction lineage. KRX owner: authenticate exact original private day-set and official per-security as-of trade state/actions/fill path. Runtime owner: independently close #418 transitive source/environment identity and full-CI timing without altering archived baseline. Railway connection needs user-driven interactive authorization before production read-only re-attestation.
+
+No newly admitted financial or economic evidence in this execution.

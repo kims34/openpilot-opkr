@@ -1,0 +1,26 @@
+# IndexAlert independent read-only profitability gate — 2026-10-28 09:44 KST
+
+**Decision:** Original/PIT admission **NO-GO**; M20 economic run **PROHIBITED**; Holdout **NOT AUTHORIZED**; live ORDERING value **UNVERIFIED** (mandatory `ORDERING=false`). No returns or profitability claims. This is a documentary audit only; no source/model, PR merge, deployment, trading, funds, permissions, Champion or Top3 changes.
+
+## Direct read-only GitHub verification
+- `index-alert-research-v1` exact branch comparison against `3b8b7830612a6284d7c7a60628cb527cb741627a`: identical, ahead/behind 0/0.
+- `index-alert-position-regen-fix-v1` exact branch comparison against `1e6367d2863a86c3470da13d81a955d277eba485`: identical, ahead/behind 0/0.
+- `indexalert-krx-pit-source-audit-20261013` exact branch comparison against `073d2d49e95f69fb10b943b93e51bb179fb3c698`: identical, ahead/behind 0/0.
+- Open Draft, unmerged: #412 `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; #413 `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; #414 pre-write `3b037756f316de93d5a8206ca3fae24ad0c107de`; #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`; #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`; #422 `c14857620973531013799e44625d43080904fd5f`; #423 `0e38004363cac9fc4475556b3a1c445de9af407f`.
+- PR #414 pre-write HEAD commit changed one audit Markdown file only; not new source authority.
+- [Watchdog #40604202566](https://github.com/kims34/openpilot-opkr/actions/runs/40604202566) job `122539521979`: 4 watchdog + 31 governance tests PASS; explicit `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. Artifact ZIP SHA-256 `aeccdfcdafa0d4c8c3a2934a61e92523db4cfd728bbda6464e39f0a2aa786b7e` is a status artifact, not source authenticity or live Railway proof.
+- [Chronology Anchor #40534270813](https://github.com/kims34/openpilot-opkr/actions/runs/40534270813) job `122295113858`: `/anchor/latest` HTTP 404; downstream validation skipped.
+- [KRX offline guard #39721289545](https://github.com/kims34/openpilot-opkr/actions/runs/39721289545) job `119635081965`: 164 offline/synthetic tests PASS; **not** a private 2021 13-day or 2022 14-day exact date-set comparison, original calendar admission or tradability proof.
+
+## Independent source-log cross-check and limits
+- [OpenDART 2021 official original #40262558066](https://github.com/kims34/openpilot-opkr/actions/runs/40262558066), job `121379096007`: source ZIP SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625`, archive integrity true; 1,728 table shapes, 13 operating-label candidates, 0 same-table explicit Q3/three-month matches. First-original CFS 3-month operating-profit fact, first-publication instant and amendment vintage **NOT VERIFIED**.
+- [OpenDART 2022 official original #38392847048](https://github.com/kims34/openpilot-opkr/actions/runs/38392847048), job `115280695115`: original ZIP SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb`, ZIP integrity true, 15 table candidates, no extracted financial values; original CFS 3-month fact, full correction lineage and publication instant **NOT VERIFIED**. These are official-job source-byte checks, **not** independent raw-byte rehashes performed in this audit.
+- KRX private 2017–2022 1,565 daily/master pair integrity is **prior reported evidence**, not independently re-read this run. The 90 unresolved market-session/source gaps and 27 nonpositive-OHLC quarantines remain. Exact official market calendar, issuer/security/day as-of mapping, halts, corporate actions, price limits, fill capacity, and transaction-feasibility **NOT VERIFIED**. No original private volume was accessed.
+- Costs/fees, taxes, spread, slippage, capacity, order sizing and PIT-aligned execution ledger have no independent admitted manifest. Therefore after-cost/tax NetEV, PF, CAGR, MDD, ES95/ES99 and stability/concentration are **NOT EVALUABLE**, not zero, not a PASS.
+- Railway native read-only `list_projects({})` attempted and returned `User input required but current turn is running in a non-interactive mode.` No bypass, alternate credential, API token, deployment, log or variable mutation. Live logs and production `ORDERING` value remain **NOT DIRECTLY VERIFIED**.
+- Commit-linked workflow search checked research/development/KRX and PR heads; no newer independently admissible source or PIT authority was surfaced. This is not a claim of an exhaustive all-workflows search.
+
+## Strict unchanged boundaries
+Frozen H5, WF504/126/126, M20 horizon20/purge20, preregistration, PIT/Purged/CPCV, independent sealed Holdout, Champion/Top3, 0–N Challenger-only, NO_TRADE and fail-closed policies remain unchanged. No M20 economic execution, no parameter search or promotion, no capital movement or live order. Other KRX, DART and optimization owners retain their separate work; this audit does not duplicate their source acquisition or private tests.
+
+**Required independent gates before M20 can be considered:** official vintage-correct 2021/2022 original 3-month CFS financial cells and publication instants, KRX exact official private calendar/source/day tradability with issuer/security/corporate-action mapping, and separately attested cost/tax/execution manifest. This document does not approve those gates.

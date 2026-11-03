@@ -1,0 +1,25 @@
+# IndexAlert independent profitability and runtime isolation gate — 2026-10-25 06:20 KST
+
+Read-only verification only. This is an incremental audit of existing source and CI, not approval to run market-data economics or change live settings. Previous audit: `docs/INDEXALERT_INDEPENDENT_READONLY_GATE_2026-10-25_0550KST.md` (blob SHA-1 `30ac078b2c9b6da32c2eb34d67e6db190daaf3cc`).
+
+## Exact source snapshot and scope
+- Research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a` (compare identical to pinned ref).
+- Development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485` (compare identical to pinned ref).
+- Draft PR #414 before this write: `686d1e00e8bba527e424661425638ed9510d6866`; 86 changed paths, independently listed, all `docs/`. Integration gate document read from PR branch; no changes to it.
+- Draft #412 `e82b26e2431ea15a42888f073a4b0b72a2e11ef6`; Draft #413 `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; Draft #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`; KRX Draft #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`. No merges or branch/code modifications.
+
+## Profitability integration independent gates
+- **LIMITED PASS**: DART #412 head CI #39884427805 and #39884427765 offline original viewer guards SUCCESS. Earlier official #39884243351 completed-day 2026-10-22 amendment list returned 013; no newly observed target correction on that day. Neither proves original 2022/2021 3-month CFS operating-profit semantics, original available-at instant, or complete future correction lineage. Source original ZIP digest `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb` is historical archive identity evidence only.
+- **LIMITED PASS**: KRX #420 head Actions #39714369396/#39714369438/#39714369327 SUCCESS, and #423 head #39714207925 SUCCESS, all offline/no-private-volume synthetic checks. Historical official market-calendar as-published, individual tradability, actions, price/volume integrity, fills and cost/tax evidence **NOT VERIFIED**. No protected original data was accessed.
+- **NOT VERIFIED**: historical issuer/security mapping, original-publication PIT, fees, slippage, tax, NetEV, PF, CAGR, MDD, ES95/99, profit concentration, date-cluster lower confidence bound and temporal robustness. No official M20 profitability run, no Holdout read.
+
+## Isolated optimization — independent code/blob and Actions cross-check
+- PR #413 `research_v1_runtime_manifest.py` at HEAD Git blob SHA-1 `e0055c66c59398fd4a1158077446d886b54c4e37`; PR #418 at HEAD blob SHA-1 `108f66714602a1bd3ae42c34dcca7c16e38f460b`. Direct GitHub file reads confirm different implementations. Git blob SHA-1 is not the source archive SHA-256 and not external PIT attestation.
+- PR #418 archived-source check [#39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478), job 117628139395: **FAIL** with expected `108f66714602a1bd3ae42c34dcca7c16e38f460b`, observed `e0055c66c59398fd4a1158077446d886b54c4e37` in merge-context. Environment versions match for 22 packages, but exact wheel hashes and OS-native dependencies are **NOT VERIFIED**. This is an implementation identity failure, not evidence of market-source corruption.
+- Separate #418 one-runner [#39111405562](https://github.com/kims34/openpilot-opkr/actions/runs/39111405562), job 117628139856: 34 fixed outcomes SHA-256 `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34` matched; serial subprocess 2.3911s, concurrent group 2.0755s, 1.1521x subprocess-only ratio; whole-CI and real official-backtest speed **NOT VERIFIED**. The independent archived source FAIL remains binding.
+- PR #413 [#38508247773](https://github.com/kims34/openpilot-opkr/actions/runs/38508247773), job 115640050664: 34-case SHA-256 matched, serial 1.7114s vs parallel 2.5776s (0.664x); no general speedup claim. Do not combine measurements across dissimilar CI configurations. Cache remains fail-closed until independent approved source/data/code/policy/runtime/evidence SHA-256; parallelize read-only independent postprocessing only.
+
+## Railway and decision
+- Railway `list_projects` returned `User input required but current turn is running in a non-interactive mode`. No auth bypass, repeat attempt, deployment/log read or live `ORDERING` attestation. User-side Railway connector interactive authorization is needed for future live read-only evidence.
+- **M20 original PIT NO-GO; M20 economics RUN NO-GO; PR #413/#414/#418 merge NO-GO; Champion and Holdout NO-GO.** Frozen H5, M20 horizon20/purge20, WF504/126/126, PIT/Purged/CPCV, Top3/NO_TRADE and cost/tax gates unchanged. `ORDERING=false` is mandatory; live setting unverified. No real order, funds, account/secret/permission change, deployment, merge, or strategy promotion.
+- Next permitted step: independent owner-attested first-filing DART semantic/available-at lineage and official KRX historical status/tradability/cost receipts, plus Railway read-only access. Do not duplicate specialist tests or repin original hashes to make a failing merge pass.

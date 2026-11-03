@@ -1,0 +1,40 @@
+# IndexAlert — independent profitability and isolated runtime evidence audit (2026-10-27 17:20 KST)
+
+**Scope:** read-only GitHub PR/CI/original-source-evidence review and one isolated documentation-only record. No live Railway connection, source-PIT approval, official-market M20 performance run, new model search, consumed Holdout reuse, code/workflow modification, deployment, PR merge, Champion promotion, order, funds or permission changes. `ORDERING=false` is required but **not freshly attested in Railway**.
+
+## Current GitHub reference snapshot (connector read)
+
+| Ref | Snapshot / state |
+|---|---|
+| Research `index-alert-research-v1` | Branch name exists; PR #414/#412/#413 base SHA `3b8b7830612a6284d7c7a60628cb527cb741627a`. This is a PR-base snapshot, not a fresh direct branch-HEAD SHA attestation. |
+| Development `index-alert-position-regen-fix-v1` | Branch name exists; PR #420 base SHA `1e6367d2863a86c3470da13d81a955d277eba485`. Same branch-HEAD limitation. |
+| [#414](https://github.com/kims34/openpilot-opkr/pull/414) | Draft/open/unmerged; pre-write HEAD `e4d41cf5925dc80065f8fc2ae5f9f217aaeefcd0`; integration gate file blob `984c933651f39f1ee9e26a1d7ac3893aaa5335be`. Existing 16:47 KST isolated audit was read to avoid specialist duplication. |
+| [#412](https://github.com/kims34/openpilot-opkr/pull/412) | Draft/open/unmerged; HEAD `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`. |
+| [#413](https://github.com/kims34/openpilot-opkr/pull/413) | Draft/open/unmerged; HEAD `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`. |
+| [#418](https://github.com/kims34/openpilot-opkr/pull/418) | Draft/open/unmerged; HEAD `2f98401cc50a6c6a25808a98516efd5bf0c944ee`. |
+| KRX [#420](https://github.com/kims34/openpilot-opkr/pull/420), [#422](https://github.com/kims34/openpilot-opkr/pull/422), [#423](https://github.com/kims34/openpilot-opkr/pull/423) | All Draft/open/unmerged; respective HEADs `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, `c14857620973531013799e44625d43080904fd5f`, `0e38004363cac9fc4475556b3a1c445de9af407f`. |
+
+## Independently checked CI / evidence verdicts
+
+| Gate | Verdict | Direct evidence and precise scope |
+|---|---|---|
+| First-filed 2021 Q3 archive byte identity | **PASS, source integrity only** | [OpenDART #40262558066](https://github.com/kims34/openpilot-opkr/actions/runs/40262558066), two jobs success; official job log asserts original ZIP SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625`; 13 operating-label table candidates, 0 same-table explicit 2021 Q3/three-month period bindings; source-only artifact #12625042488 ZIP SHA-256 `3fe75e2af23f508d3c518a14e98732a399eb0daeca46cccd7b3191b1e2e4777b`. |
+| First-filed 2022 Q3 source archive | **PASS per prior pinned original evidence, not newly rehashed this run** | Original ZIP digest `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb` from delegated #412 integration record. Archive identity is not an operating-profit cell. |
+| First-filed 2022/2021 July–September consolidated three-month operating profit, exact first public available-at, correction vintage lineage, historical issuer/security mapping | **NOT VERIFIED** | First-filed financial account, sign/unit/context, comparator and source-publication instant are not bound by source archive identity or offline viewer parser; [#40263193758](https://github.com/kims34/openpilot-opkr/actions/runs/40263193758) is a successful **offline** viewer-TOC safety job, not issuer PIT certification. |
+| 2017–2022 private KRX 1,565/1,565 weekday raw pairs | **PASS per prior storage-only Railway record; NOT freshly re-attested** | Existing receipt documents pair integrity; 90 unresolved calendar/source gaps, 27 nonpositive OHLC prospective exclusions and 12,003 zero-activity rows remain non-admitted. |
+| Official KRX session/security state, historical listing/halts, corporate actions, fill feasibility, fees/slippage/taxes | **NOT VERIFIED** | [KRX #423 Action #39714207925](https://github.com/kims34/openpilot-opkr/actions/runs/39714207925) job success; its own log asserts `DRY_RUN_NO_PRIVATE_STORAGE_READ`, `2022_private_candidate_date_sets_equal=false`. Synthetic 2022 candidate controls cannot attest private source dates or tradability. |
+| Prospective chronology anchor | **FAIL for that job** | [#40360864884](https://github.com/kims34/openpilot-opkr/actions/runs/40360864884) auto-anchor step failed on `/anchor/latest` HTTP 404, validation skipped. Does not prove historical source corruption. |
+| Watchdog safety contract | **PASS offline-only** | Freshest observed [#40469249920](https://github.com/kims34/openpilot-opkr/actions/runs/40469249920) (2026-10-27 07:47 UTC) 4 watchdog + 31 governance tests pass; log: `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`; artifact #12717524016 ZIP SHA-256 `d89cd791f1032710567ef2b1d2706cda6d80fe843dd7aa04ef1072ed50a96720`. These are software flags, not live Railway config. |
+| #413 pinned offline regression identity | **PASS, limited** | [#38508247773](https://github.com/kims34/openpilot-opkr/actions/runs/38508247773) 6/6 jobs, 34-case digest `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34` identical; serial 1.765s vs parallel max 2.7079s = **0.652x** (slower) for that CI test phase. |
+| #418 one-runner candidate isolated offline | **PASS for 34-case parity, FAIL for immutable archived source identity** | [#39111405562](https://github.com/kims34/openpilot-opkr/actions/runs/39111405562) one-runner phase serial 2.3484s vs parallel max 2.0154s = **1.165x test-phase only**; [#39111405478](https://github.com/kims34/openpilot-opkr/actions/runs/39111405478) archived-source gate fails `research_v1_runtime_manifest.py` Git blob expected `108f66714602a1bd3ae42c34dcca7c16e38f460b`, observed `e0055c66c59398fd4a1158077446d886b54c4e37`. Do not silently repin immutable baseline. |
+| Complete transitive source/runtime hashes, exact wheel/native dependencies, full CI / actual official backtest speedup | **NOT VERIFIED** | Offline timing does not measure end-to-end or approved official-market execution; candidate code provenance is not independently fully pinned. |
+| Fees/taxes/fills and independent after-cost NetEV, PF, CAGR, MDD, ES95/ES99, concentration, temporal robustness | **NOT VERIFIED** | No authorized PIT/tradability inputs, so **no M20 economic run** and no invented profitability figures. |
+| Railway current deployment/runtime logs and actual `ORDERING` variable | **NOT VERIFIED / connector access blocked** | Read-only `list_projects` attempted; returned `User input required but current turn is running in a non-interactive mode`. No credential workaround or alternate route used. |
+
+## Fail-closed decision / ownership
+
+**M20 profitability RUN = NO-GO.** Preserve Frozen H5, M20 horizon20/purge20, WF504/126/126, PIT/label/Purged/CPCV, sealed and consumed Holdout restrictions, Champion/Top3/NO_TRADE, original fees/tax/risk/promotion thresholds. No H5/Dynamic post-hoc reuse. `ORDERING=false` remains mandatory, not a claim of direct live verification. No orders, funds, account/permissions, production deployments, PR merges or Champion promotion.
+
+Cache admission requires independently approved original source/data/code/Frozen/runtime/authority SHA-256, all matching; reject on missing/contradictory receipt. Only independent read-only postprocessing may be parallelized; no dependent refit/capital transition parallelism.
+
+**Next independent owner evidence:** (1) OpenDART original-edition CFS account/period/first-publication/correction chain and as-of issuer-security mapping; (2) KRX authoritative day/security state, corporate actions, private-pair date-set comparison and realistic fills/cost/tax; (3) optimization owner immutable-vs-candidate source closure and paired whole-CI runtime; (4) Railway owner supported interactive read-only authentication and live `ORDERING` attestation; (5) chronology owner correct missing anchor route. Do not overlap their code or experiments. No specialist files changed.

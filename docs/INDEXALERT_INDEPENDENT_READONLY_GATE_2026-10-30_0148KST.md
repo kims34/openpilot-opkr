@@ -1,0 +1,27 @@
+# IndexAlert independent read-only gate delta — 2026-10-30 01:48 KST
+
+## Scope
+Independent read-only review of GitHub refs, Draft PRs, prior Actions job logs and Railway production service logs/status. No data-source acquisition, model execution, backtest, Holdout access, broker request, configuration edit, deployment, merge, or permission change. This single Markdown document is the only permitted write attempt, confined to Draft PR #414's isolated integration branch. This note is not an admission or profitability result.
+
+## Immutable refs and draft state
+- Research `index-alert-research-v1`: `3b8b7830612a6284d7c7a60628cb527cb741627a`.
+- Development `index-alert-position-regen-fix-v1`: `1e6367d2863a86c3470da13d81a955d277eba485`.
+- KRX owner `indexalert-krx-pit-source-audit-20261013`: `073d2d49e95f69fb10b943b93e51bb179fb3c698`.
+- Read from GitHub connector: #412 (`bf3d951`), #413 (`f003ef6`), #414 (pre-write `74cacb9`), #416 (`053de55`), #418 (`2f98401`), #420 (`fab3cbb`), #422 (`c148576`), #423 (`0e38004`) are all open, Draft, unmerged.
+- Most recent *directly inspected* read-only watchdog job: [Actions #40853112299](https://github.com/kims34/openpilot-opkr/actions/runs/40853112299), job `123377258416`, 2026-10-29 09:53 UTC: 31 governance tests PASS and watchdog's `M20 PIT admission: NOT ATTESTED; orders: DISABLED; holdout: NOT AUTHORIZED`. This connector path does not establish an exhaustive latest-run listing; do not claim that no newer Actions runs exist.
+- [Chronology Anchor #40726273259](https://github.com/kims34/openpilot-opkr/actions/runs/40726273259), job `122950285352`, still FAILED; actual job log ends with HTTP 404 and exit code 1.
+
+## Official source SHA and PIT
+- [OpenDART first-versus-corrected official diagnostic #38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742), job `115372636726`: first and corrected operating-row label candidates each 15, same exact-label and numeric-peer candidate multisets; nevertheless `original_cfs_q3_2022_2021_three_month_profit_verified=false`, `historical_publication_instant_pit_verified=false`, `full_correction_lineage_verified=false`, `historical_corp_security_mapping_verified=false`, `m20_feature_pit_admitted=false`, `m20_performance_run_authorized=false`. Same candidate counts do not prove semantic financial equivalence.
+- Previously recorded 2022 original ZIP SHA-256 `56639d8f6ebbecf14cd8bc3179d75d01162e2cd7bbdf8f6a3c9479b44f5084bb` and 2021 original ZIP SHA-256 `8728c0a3c12761ca19e9c6455bea8f1bed0e4c1ebc2e21dc263c373a82a2b625` are *log assertions*, not independently rehashed original ZIP bytes in this check. Do not upgrade these to source admission.
+- KRX specialist #420/#422/#423 remain isolated Draft/offline comparators; 2017–2022 original-private SHA/receipt checks do not prove 90 uncertain session/calendar classifications, 2021 13-day and 2022 14-day exact historical sets, issuer-level tradability, halts, delistings, corporate actions, or executable fills. No independent real private volume byte-level audit was performed here.
+
+## Railway production, fresh read-only observation
+- `indexalert-pit-rebuild`: most recent log **returned** is 2026-10-29 14:46:21.992 UTC (23:46:21 KST), still the same after explicit log query through 2026-10-29 16:48 UTC (01:48 KST). Last JSON: `status=FAIL_CLOSED`, `ordering=DISABLED`, `live_order_authorized=false`, `independent_source_admission_verified=false`, `independent_chronology_admission_verified=false`, `independent_model_admission_verified=false`, `COMMON_OHLC_NONPOSITIVE`, 803 common-stock rows and 27 nonpositive OHLC/zero volume-value rows. Earlier logs were approximately 15 minutes apart; **newer log visibility is absent for about 2 hours**, while environment status still shows 1/1 running replica and latest deployment SUCCESS. Treat as an unconfirmed freshness/observability gap, **not** proof of outage or permission change. No restart or new diagnostic execution.
+- `indexalert-kiwoom-real-readonly`: deployment `a77fb922-b679-4d88-92c4-03054ec579cd` SUCCESS from 2026-10-29 06:21 UTC, runtime logs only container start. Environment status paradoxically reports online with 0 running/1 crashed replica; actual broker token/WS health and hidden ordering variable cannot be independently attested. Never interpret deployment SUCCESS as trading readiness.
+- `get_staged_changes` and `describe_environment`: `staged=null`, zero resource/shared-variable changes. A status API's empty pendingWork patch is not evidence of a committed deployment. No operational changes were made.
+
+## Economic and governance gate
+No admitted PIT source + historical stock-day execution/fillability + real slippage/fees/taxes + independent chronology => **NetEV, PF, CAGR, MDD, ES95 and ES99 not evaluable**. Runtime manifest discrepancy (#418 archived blob `108f667` vs #413 hardened `e0055c6`) remains an existing independent fail-closed blocker; do not repin hashes to mask it. M20 profitability run **NO-GO**; no synthetic evidence relabeling as realized returns. Frozen H5, sealed Holdout, Champion, Top3, preregistration, cost/tax and promotion rules remain unchanged. Mandatory `ORDERING=false`, no real trades, funds, access changes, deployment, PR merge or Champion promotion.
+
+**Decision:** no newly established admission or novel critical blocker; the >2h PIT log visibility gap merits passive verification on the next read-only check, without operational intervention.
