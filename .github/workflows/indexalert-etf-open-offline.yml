@@ -1,0 +1,35 @@
+name: IndexAlert ETF Open Offline Only (No Orders)
+on:
+  push:
+    branches: [indexalert-etf-open-dislocation-research-v1]
+    paths:
+      - 'research_v1_etf_open_dislocation.py'
+      - 'test_research_v1_etf_open_dislocation.py'
+      - '.github/workflows/indexalert-etf-open-offline.yml'
+  pull_request:
+    paths:
+      - 'research_v1_etf_open_dislocation.py'
+      - 'test_research_v1_etf_open_dislocation.py'
+      - '.github/workflows/indexalert-etf-open-offline.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-no-provider-no-orders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pure offline syntax and adversarial feed tests
+        run: |
+          python -m py_compile research_v1_etf_open_dislocation.py test_research_v1_etf_open_dislocation.py
+          python -m unittest -v test_research_v1_etf_open_dislocation
+          python research_v1_etf_open_dislocation.py
+      - name: Stop unsupported order or broker capabilities
+        run: |
+          ! grep -En '^(import|from) (requests|httpx|urllib|websocket|socket|kiwoom)' research_v1_etf_open_dislocation.py
+          grep -F '"ordering": "DISABLED"' research_v1_etf_open_dislocation.py
+          grep -F '"live_orders_authorized": False' research_v1_etf_open_dislocation.py
+          grep -F '"net_after_tax_profit_verified": False' research_v1_etf_open_dislocation.py
