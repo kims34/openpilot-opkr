@@ -1,0 +1,18 @@
+# IndexAlert independent profit/runtime audit — 2026-11-05 02:21 KST
+
+Scope: read-only GitHub/Railway evidence. No M20 economic run, trading, deployment, merge, policy or workflow changes. Historical claims below distinguished from this-run observations.
+
+## GitHub directly observed
+Draft OPEN PR HEAD: #412 bf3d9514a87c53b1775e22ec9ba7711f6cecc49f; #413 f003ef6247e16fcc71bd3b1b20cd4904c4d984c0; #414 18c5418d9684d1717df58261ea27f28e514385b2; #418 2f98401cc50a6c6a25808a98516efd5bf0c944ee; #420 fab3cbbd63a951a4e081f9e7f08c1391ca308581; #422 c14857620973531013799e44625d43080904fd5f; #423 0e38004363cac9fc4475556b3a1c445de9af407f. Current research/development branch HEAD not independently resolved this run (NOT VERIFIED). PR #414 integration gate blob SHA-1 984c933651f39f1ee9e26a1d7ac3893aaa5335be verified directly.
+
+Action jobs directly checked: 38381997417 6/6 success; 38382214223 6/6 success; 38419111311 6/6 success; 38419649711 1/1 success; 38419439742 2/2 success; chronology anchor 41515392296 failure 1/1, validation skipped. Fixed 34-case SHA-256 5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34 and synthetic 28-case/1.1315x regression-phase are historical assertions, NOT independently recomputed this run. Full CI/official backtest speedup NOT VERIFIED.
+
+## Railway directly observed
+Project d1c1a050-b7d6-41ce-b300-13c20f82a20a production 83d5840b-270e-4d3f-a941-a37fd4a55ff7. KRX worker SUCCESS deployment 16c93d7c-7cd0-4d84-a327-298d2805376c (2026-10-12 UTC), commit 1e6367d2863a86c3470da13d81a955d277eba485. PIT rebuild SUCCESS 8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5 (2026-10-10 UTC). Runtime SUCCESS eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00 (2026-10-05 UTC). 2026-11-04 16:00–17:25 UTC: KRX/PIT deploy logs zero; runtime logs present through 17:21 UTC (quotes and USDKRW Yahoo fallback), not PIT authorization. Railway status shows indexalert-kiwoom-real-readonly state online but replica running=0 crashed=1 on SUCCESS deployment a77fb922-b679-4d88-92c4-03054ec579cd: STATUS/REPLICA INCONSISTENCY, requires read-only diagnosis before any claim of healthy real-readonly service. indexalert-push and indexalert-backend offline with warnings, db-query-readonly offline with critical notification. No operational remediation authorized. Staged pending patch e113dacb-6705-4416-9997-dc694539d382 untouched.
+
+## Independent gates
+Historical 1565/1565 weekday private raw pairs storage integrity PASS (prior evidence, not freshly rehashed). Official calendar/market states, corporate actions, fillability, historical entity mapping, first original filing public available-at, 2021/2022 first-three-month consolidated operating profit and corrections lineage NOT VERIFIED. OpenDART SGML 15 candidate rows and numeric adjacency are prior limited software evidence, not source semantic/PIT approval. NetEV/PF/CAGR/MDD/ES95/99, tax/cost-adjusted risk-adjusted annual returns, concentration and temporal robustness NOT EVALUABLE. M20 PIT and profitability NO-GO; H5 consumed holdout/Dynamic cannot be reused. ORDERING=false, NO_TRADE, Frozen H5, horizon20/purge20, WF504/126/126 remain unchanged.
+
+Optimization: offline-only software gates PASS for listed historical CI jobs, actual speedup NOT VERIFIED. Cache must fail-closed unless all independently approved original/data/code/Frozen/runtime/evidence SHA-256 match; parallelize only read-only postprocessing, never dependent retraining or capital transitions.
+
+Next safe actions: inspect exact failing chronology anchor log and Kiwoom replica discrepancy read-only; resolve first-filing available-at and official KRX state lineage independently; no official market return test until explicit PIT approval. Do not merge #413/#414/#418, deploy, trade, or change workflows.
