@@ -1,0 +1,24 @@
+# IndexAlert independent source/PIT and isolated optimisation audit — 2026-11-10 02:16 KST
+
+Read-only evidence refresh; no economic experiment, market return, model search, deploy, merge, workflow edit, order, account permission change, or Champion promotion.
+
+## GitHub exact refs (direct 2026-11-10 refresh)
+- Development branch `index-alert-position-regen-fix-v1`: compare base SHA `1e6367d2863a86c3470da13d81a955d277eba485`. Research `index-alert-research-v1` vs development: DIVERGED, ahead 281 / behind 1148; merge-base `c490974ff6619bb978dc6f83f9c24f2c46622f85`. Compare response does NOT expose research tip SHA; previously attested `df474df348f22aa38b1dedaa59fcff66e548b406` is historical, not fresh HEAD.
+- Draft OPEN unmerged PR HEAD: #412 `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`; #413 `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`; #414 `18c5418d9684d1717df58261ea27f28e514385b2`; #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`; KRX #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #422 `c14857620973531013799e44625d43080904fd5f`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`.
+- PR #414 gate `docs/INDEXALERT_PROFITABILITY_INTEGRATION_GATE_2026-10-13.md` blob SHA `984c933651f39f1ee9e26a1d7ac3893aaa5335be`.
+- Direct Actions job checks: 38381997417 6/6 SUCCESS; 38382214223 6/6 SUCCESS; 38419111311 6/6 SUCCESS; 38419649711 1/1 SUCCESS; OpenDART 38419439742 2/2 SUCCESS; chronology 41515392296 auto-anchor FAILURE, validation SKIPPED. Historical 34-case SHA `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34` and synthetic 28-case, adversarial 13-case, 2.9656/2.6209=1.1315x regression-phase only: NOT independently rehashed or rebenchmarked this run; end-to-end acceleration NOT VERIFIED.
+
+## Railway production direct read
+Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`. PIT rebuild and runtime: running 1/1 each. Real-account read-only: online label but running 0, crashed 1/1 = runtime FAIL. Backend, push, db-query-readonly offline; db-query-readonly critical 1. KRX worker online label, running 0/crashed 0/total 1: actual process activity NOT VERIFIED. Environment status reports pending empty-change staged patch `e113dacb-6705-4416-9997-dc694539d382` while describe-environment reports staged null: inconsistent API views; do not apply patch.
+PIT latest returned deployment logs end at 2026-11-09T14:46:18Z (23:46:18 KST), with `COMMON_OHLC_NONPOSITIVE`, common stock 803, nonpositive OHLC 27, zero volume/value 27, `fresh_alpha_observation_admitted=false`, `live_order_authorized=false`, `ordering=DISABLED`, private rejected receipt saved. Explicit 2026-11-09T16:00Z onward log query returned zero entries, so no claim of current 02:16 KST PIT log continuity. Safety fail-closed PASS for observed entries; KRX source admission FAIL/BLOCKED. Historical private 1565/1565 weekday source-pair integrity PASS only in earlier evidence; official trading calendar, status and fillability NOT VERIFIED.
+
+## Independent gate decisions
+- Original-filing public available-at/PIT: NOT VERIFIED; 2021/2022 first three-month consolidated operating income period and amendment lineage: NOT VERIFIED. OpenDART SGML 15 candidate rows and adjacent numeric signature are extraction evidence, NOT source/temporal approval.
+- Historical issuer/security mapping, KRX trading halts/delistings/corporate actions, fillability, fees and tax: NOT VERIFIED.
+- Post-cost/tax NetEV, PF, CAGR, MDD, ES95/99, concentration and temporal robustness: NOT VERIFIED; M20 economic run NO-GO.
+- H5 spent/failed holdout and dynamic outcomes may not be retuned or reused as independent evidence. Frozen H5, M20 horizon20/purge20, WF504/126/126, PIT/labels/Purged/CPCV/independent holdout/Champion/Top3/NO_TRADE, cost/tax/risk/promotion unchanged.
+- Optimisation remains offline synthetic-only. Cache fail-closed unless approved source/data/code/Frozen policy/runtime/approval SHA-256 all match. Parallel read-only postprocessing only; no dependent retraining or capital transition parallelism.
+- ORDERING=false required; logs show DISABLED only at last observed timestamp, live environment variable not independently read. No order, funds transfer, credentials, production deploy, merge, or promotion.
+
+## Next independent read-only steps
+Resolve official original-filing receipt/public available-at and 2021/2022 3-month consolidated income lineage; obtain official KRX day/status/action-to-security mapping and safe executable fill/cost evidence, isolate 27 rejected OHLC rows without admitting them. Investigate chronology /anchor/latest 404 and Railway crashed real-readonly instance via read-only logs, confirm runtime ORDERING variable only with safe non-secret verification. Revalidate historical fixed-case hash/benchmark only in separate offline scope without altering frozen inputs. Do not enable M20 until source PIT independently approved.
