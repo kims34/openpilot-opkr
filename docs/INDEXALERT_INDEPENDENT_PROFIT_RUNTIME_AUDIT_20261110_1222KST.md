@@ -1,0 +1,21 @@
+# IndexAlert independent profitability and runtime audit — 2026-11-10 12:22 KST
+
+Scope: read-only inspection; no original PIT admission, no market backtest, no economic testing, no order or deployment. Research base commit `df474df348f22aa38b1dedaa59fcff66e548b406`. Development comparison target `index-alert-position-regen-fix-v1`; compare endpoint reports DIVERGED, development ahead 1148 and behind 281; merge-base `c490974ff6619bb978dc6f83f9c24f2c46622f85`. Development exact HEAD not returned by compare endpoint and is NOT VERIFIED here.
+
+GitHub PR search returned #412, #413, #414, #418 and KRX #420/#422/#423, plus other active owner rooms. Search did not return authoritative draft/head/merged metadata: those specific properties NOT VERIFIED in this run. #414 document fetch against research branch failed, so latest gate blob SHA and contents NOT VERIFIED this run; do not infer deletion or permission. Owner PR links: https://github.com/kims34/openpilot-opkr/pull/414 ; /413 ; /418 ; /412 ; /420 ; /422 ; /423.
+
+Actions jobs inspected directly:
+- https://github.com/kims34/openpilot-opkr/actions/runs/38381997417 — 6/6 SUCCESS
+- https://github.com/kims34/openpilot-opkr/actions/runs/38382214223 — 6/6 SUCCESS
+- https://github.com/kims34/openpilot-opkr/actions/runs/38419111311 — 6/6 SUCCESS
+- https://github.com/kims34/openpilot-opkr/actions/runs/38419649711 — 1/1 SUCCESS
+- https://github.com/kims34/openpilot-opkr/actions/runs/38419439742 — 2/2 SUCCESS.
+Job status PASS, but original 34-case SHA-256, 13 adversarial mocks, 28 synthetic test identities and original SGML 15-row semantics were not independently recalculated in this run: NOT VERIFIED. Historical 2.9656s vs 2.6209s is regression-phase-only 1.1315x, not total CI or real-backtest acceleration.
+
+Railway project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production `83d5840b-270e-4d3f-a941-a37fd4a55ff7`, read-only environment_status: PIT rebuild 1 running/0 crashed; runtime 1/0; Kiwoom REAL readonly reports state online and deployment SUCCESS but replica 0 running/1 crashed — runtime health FAIL despite summary online. KRX historical worker replica 0 running/0 crashed/total 1, health NOT VERIFIED; Backend, Push, db-query-readonly offline. Pending staged patch `e113dacb-6705-4416-9997-dc694539d382` has zero changes; not applied. Deployment logs since 2026-11-10 00:00 UTC: PIT/KRX/Kiwoom 0 rows each, so no recovery proof. Runtime log at 03:22:43 UTC shows Investing.com USD/KRW HTTPError then Yahoo fallback; no PIT admission implication.
+
+Evidence adjudication: original-filing public available-at/PIT NOT VERIFIED; 2021/2022 initial CFS 3-month operating-income period/restatement lineage NOT VERIFIED; historical issuer/security mapping NOT VERIFIED; official KRX calendar/status/corporate actions/executability NOT VERIFIED; private 1565/1565 weekday pair storage and 12003 zero-activity quarantines are prior reported observations, not new official-session admission; 27/803 invalid OHLC resolution NOT VERIFIED. NetEV, PF, CAGR, MDD, ES95/99, concentration, temporal robustness after fees/taxes NOT VERIFIED; no new official profitability run. Kiwoom REAL readonly runtime health FAIL (0/1 running).
+
+Decision: M20 NO-GO; source/PIT not admitted. H5 holdout remains consumed and unusable for fresh independent validation. Preserve Frozen H5, M20 horizon20/purge20, WF504/126/126, Purged/CPCV, holdout, Champion/Top3/NO_TRADE, risk/fees/tax, ORDERING=false. Cache fail-closed on independently approved original source/data/code/Frozen policy/runtime/evidence SHA256; parallelize only independent read-only postprocessing. No dependent training/capital transitions in parallel. No live order, fund transfer, credential change, Champion promotion, merge, deployment, workflow edit, or performance/holdout replay.
+
+Next permitted independent work: owner-supplied immutable first-publication timestamps and exact filing/period/correction evidence; official KRX session/tradeability original proof and protected-volume SHA chain; independently inspect actual PR heads and gated doc blob; investigate readonly crashed replica without modifying production; compare complete CI wall time with regression-phase timings using offline synthetic-only evidence. Keep all source gates closed until original authority is proven.
