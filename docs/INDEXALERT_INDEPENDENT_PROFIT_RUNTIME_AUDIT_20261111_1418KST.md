@@ -1,0 +1,19 @@
+# IndexAlert independent profitability and isolated runtime audit — 2026-11-11 14:18 KST
+
+## Read-only evidence
+- Research HEAD `df474df348f22aa38b1dedaa59fcff66e548b406`; development HEAD `1e6367d2863a86c3470da13d81a955d277eba485`. Verified using GitHub branch API this run.
+- Draft OPEN/unmerged PRs #412, #413, #414, #418, #420, #422, #423 verified via GitHub PR connector. These are other owners' work: no changes.
+- GitHub Actions verified directly: 38381997417 (head 55e7fe2b3fe322e39f817914ff1ed5b589bbe0da) 6/6; 38382214223 (05d73661bcc879fe0dd66ffcea5fe1f5ee6fbd56) 6/6; 38419111311 (b22e4f39517c2bc38e173e63e8fd52f29a535dad) 6/6; 38419649711 (8f363b8683d34a48754916b34810a5a8bb958896) 1/1; 38419439742 (39af5b0043e122bc0e42935d8813759ff6c1a6e7) 2/2; 38498552499 (bfe1be1b1f3edad94d064d21203c0b13f663c129) 6/6. All jobs concluded success. The 34-case fixed SHA `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34` was not independently recomputed; PASS applies only to job conclusion.
+- Railway project d1c1a050-b7d6-41ce-b300-13c20f82a20a, production environment 83d5840b-270e-4d3f-a941-a37fd4a55ff7: PIT rebuild running 1/1; Runtime running 1/1; KRX historical worker 0 running/0 crashed of 1, so live execution NOT VERIFIED; Kiwoom real readonly 0 running/1 crashed of 1, runtime FAIL despite provider state online. Backend, Push and db-query-readonly offline; db-query-readonly critical issue count 1. Existing staged patch e113dacb-6705-4416-9997-dc694539d382 has 0 changes and was not applied.
+- Railway deploy logs queried for 2026-11-11 03:00–05:20 UTC: PIT 0, KRX 0, Kiwoom 0; Runtime returned 101 entries including Investing.com USD/KRW HTTP errors and Yahoo fallback. No official PIT approval follows from these logs.
+
+## Independent gate decisions
+- Historical KRX 2017–2022 1565/1565 weekday raw-pair storage integrity: prior evidence PASS, not independently rehashed in this run. Official exchange calendar, halt/status, corporate actions, execution feasibility and costs/tax: NOT VERIFIED.
+- OpenDART original/correction SGML 15 operating-profit candidate rows and numeric-neighbour signatures: prior evidence only; original-filing semantics, first-public available-at/PIT and 2021/2022 first three months consolidated operating-profit period/correction lineage: NOT VERIFIED.
+- Historical company/security mapping: NOT VERIFIED.
+- M20 source PIT, labels, purged/CPCV, independent holdout and net-of-cost/tax profitability NetEV/PF/CAGR/MDD/ES95/99, concentration and time-slice robustness: NOT VERIFIED; M20 NO-GO.
+- PR #413/#418 synthetic offline software checks: CI execution PASS; independent 34-case hash recalculation, end-to-end CI speedup and official-market backtest speedup: NOT VERIFIED. Prior isolated serial 2.9656s vs parallel 2.6209s (regression phase only), later serial 1.7114s vs parallel 2.5776s; do not generalise speedups.
+
+## Frozen safeguards and next safe steps
+Keep H5 consumed/failed holdout and Dynamic results out of tuning and independent reuse. Freeze M20 horizon20/purge20, WF504/126/126, PIT/label/Purged/CPCV/holdout/Champion/Top3/NO_TRADE, execution, cost/tax, risk and promotion rules. ORDERING=false required, live environment variable not independently read this run. Fail-closed cache requires independently approved source, data, computation code, frozen policy, runtime and approval-evidence SHA-256; parallelise only read-only post-processing, never dependent retraining or capital transitions.
+Next: acquire independent official original-filing/public-available-at and period/correction lineage evidence, official KRX market-state and mapping source hashes, then independently verify costs/taxes and PIT before authorising any M20 economic run. Only synthetic offline safety tests may proceed. No market-performance experiments, model exploration, live orders, transfers, permission changes, Champion promotion, workflow writes, PR merge or production deploy performed.
