@@ -1,0 +1,20 @@
+# IndexAlert independent audit — 2026-11-13 01:17 KST
+
+Read-only evidence review; no performance run, deployment, merge, workflow modification, trading or permissions action.
+
+## GitHub exact refs (fresh direct compare)
+- Research index-alert-research-v1: df474df348f22aa38b1dedaa59fcff66e548b406 (self-compare identical).
+- Development index-alert-position-regen-fix-v1: 1e6367d2863a86c3470da13d81a955d277eba485 (self-compare identical).
+- Pinned SHA versus refs/pull/N/head, each identical 0 ahead / 0 behind: #412 bf3d9514a87c53b1775e22ec9ba7711f6cecc49f; #413 f003ef6247e16fcc71bd3b1b20cd4904c4d984c0; #414 18c5418d9684d1717df58261ea27f28e514385b2; #418 2f98401cc50a6c6a25808a98516efd5bf0c944ee; #420 fab3cbbd63a951a4e081f9e7f08c1391ca308581; #422 c14857620973531013799e44625d43080904fd5f; #423 0e38004363cac9fc4475556b3a1c445de9af407f. PR state/draft flag NOT independently reread this run.
+- PR #414 gate blob SHA 984c933651f39f1ee9e26a1d7ac3893aaa5335be (fetched refs/pull/414/head); policy gate, not source approval.
+- GitHub Actions direct job checks: 38381997417 6/6 success, 38382214223 6/6, 38419111311 6/6, 38419649711 1/1, 38498552499 6/6, OpenDART 38419439742 2/2. CI PASS limited to jobs; independently recalculated 34-case SHA-256 5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34 NOT VERIFIED. #413/#418 code parity and full official backtest acceleration NOT VERIFIED. Historical serial 2.9656s vs concurrent 2.6209s is regression phase only.
+
+## Railway production (fresh)
+Project d1c1a050-b7d6-41ce-b300-13c20f82a20a, environment 83d5840b-270e-4d3f-a941-a37fd4a55ff7. PIT rebuild 1/1 running, runtime 1/1 running; Kiwoom real-readonly 0/1 running and 1/1 crashed (operational FAIL); KRX historical worker 0/1 running, 0 crashed (actual activity NOT VERIFIED); backend, push and db-query-readonly offline, latter 1 critical. Empty staged patch e113dacb-6705-4416-9997-dc694539d382 unchanged, not deployed.
+- PIT service 225f2279-d728-4e1a-a3f3-2447ff0f9dc1, deployment 8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5. Query 2026-11-12 14:45–16:18 UTC returned one record at 14:46:34 UTC, no later records in this window. COMMON_OHLC_NONPOSITIVE for source 2026-09-28, 803 common-stock rows, 27 nonpositive OHLC and 27 zero volume/value; session_manifest_sha256 null, private receipt self-reported but bytes independently NOT VERIFIED. Source quality FAIL.
+- The observed record has status FAIL_CLOSED, ordering DISABLED, fresh_alpha_observation_admitted false, real_orders_authorized false, funds_movement_authorized false, permission_change_authorized false. Observed safety gate PASS only; global ordering config not independently proven.
+
+## Independent decision
+Historical 1565/1565 private KRX weekday raw-pair storage integrity PASS on earlier evidence only. Official calendar, historical trade status, corporate actions, execution feasibility, cost/tax and company/security PIT mapping NOT VERIFIED. OpenDART original-filing candidate-row shape and adjacent signatures have prior limited CI evidence but exact initial 2021/2022 consolidated three-month operating profit, period/correction lineage and public available-at NOT VERIFIED. NetEV, PF, CAGR, MDD, ES95/99, concentration, temporal robustness and annual after-tax risk-adjusted profit NOT VERIFIED. M20 performance authorization NO-GO; H5 consumed holdout cannot be reused.
+- Frozen H5; M20 horizon20/purge20; WF504/126/126; PIT/Purged/CPCV/independent Holdout/Champion/Top3/NO_TRADE unchanged. No market-return tests or model search. Cache fail-closed unless independent source/data/code/Frozen/runtime/approval SHA-256 all match; only read-only postprocessing parallel; dependent retraining and capital transitions serial.
+- Next: KRX owner independently hash and classify the 27 private raw rows, verify calendar/trading status and execution; OpenDART owner verify original public timestamps, consolidated Q3 period and correction lineage; optimization owners compare #413/#418 implementation and immutable fixture output SHA offline only. Keep ORDERING=false and no live actions, deployment or merges.
