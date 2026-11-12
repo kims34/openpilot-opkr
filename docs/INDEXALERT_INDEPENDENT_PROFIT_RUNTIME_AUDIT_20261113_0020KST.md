@@ -1,0 +1,28 @@
+# IndexAlert independent audit — 2026-11-13 00:20 KST
+
+Scope: read-only independent profitability/source audit and separate offline-only optimization evidence. No market return or new M20/H5 performance experiment, deployment, workflow edit, merge, trading, authority or secrets change.
+
+## Fresh GitHub evidence
+- Research `index-alert-research-v1`: compare with `df474df348f22aa38b1dedaa59fcff66e548b406` = identical, ahead/behind 0/0.
+- Development `index-alert-position-regen-fix-v1`: compare with `1e6367d2863a86c3470da13d81a955d277eba485` = identical, ahead/behind 0/0.
+- PR #412, #413, #414, #418, KRX #420/#422/#423: direct PR reads OPEN, Draft, not merged; last-pinned head SHA values (NOT independently re-extracted from PR response this run): #412 `bf3d9514a87c53b1775e22ec9ba7711f6cecc49f`, #413 `f003ef6247e16fcc71bd3b1b20cd4904c4d984c0`, #414 `18c5418d9684d1717df58261ea27f28e514385b2`, #418 `2f98401cc50a6c6a25808a98516efd5bf0c944ee`, #420 `fab3cbbd63a951a4e081f9e7f08c1391ca308581`, #422 `c14857620973531013799e44625d43080904fd5f`, #423 `0e38004363cac9fc4475556b3a1c445de9af407f`. Current exact PR HEAD equality NOT VERIFIED in this run.
+- PR #414 gate fetched from `refs/pull/414/head`: blob `984c933651f39f1ee9e26a1d7ac3893aaa5335be`. This is a policy/evidence gate, not PIT approval.
+- Actions job verification, direct: [38381997417](https://github.com/kims34/openpilot-opkr/actions/runs/38381997417) 6/6 success, [38382214223](https://github.com/kims34/openpilot-opkr/actions/runs/38382214223) 6/6, [38419111311](https://github.com/kims34/openpilot-opkr/actions/runs/38419111311) 6/6, [38419649711](https://github.com/kims34/openpilot-opkr/actions/runs/38419649711) 1/1, [38419439742](https://github.com/kims34/openpilot-opkr/actions/runs/38419439742) 2/2, [38498552499](https://github.com/kims34/openpilot-opkr/actions/runs/38498552499) 6/6.
+- Fixed 34-case SHA-256 `5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34`: historical CI claim only; independent byte recalculation NOT VERIFIED. Prior 13 adversarial mocks and 28 synthetic cases are software-only. One-runner serial 2.9656s versus concurrent 2.6209s = 1.1315x regression-phase only. PR #413/#418 implementation parity, entire CI wall-time and real official backtest speed NOT VERIFIED.
+
+## Fresh Railway production
+Project `d1c1a050-b7d6-41ce-b300-13c20f82a20a`, production environment `83d5840b-270e-4d3f-a941-a37fd4a55ff7`. Direct environment status: PIT rebuild 1/1 running; runtime 1/1 running; Kiwoom real-readonly service 0 running / 1 crashed (operational FAIL despite deployment SUCCESS); KRX historical worker 0 running / 0 crashed of total 1 (live worker NOT VERIFIED); backend/push/db-query-readonly offline, db-query-readonly 1 critical. Empty staged patch remains staged, not accepted.
+- PIT service `225f2279-d728-4e1a-a3f3-2447ff0f9dc1`, deployment `8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5`, direct deploy logs in 2026-11-12 14:15–15:25 UTC: three records at 14:16:31, 14:31:27, 14:46:34 UTC. All report `KRXProspectiveOpenAPISourceError / COMMON_OHLC_NONPOSITIVE`, failed source session 2026-09-28, 803 common-stock rows, 27 nonpositive OHLC, 27 zero-volume/value rows, `session_manifest_sha256=null`. **Source quality FAIL**. `private_rejected_source_receipt_saved=true` is self-reported; independent private raw bytes/SHA NOT VERIFIED.
+- All three records: `status=FAIL_CLOSED`, `ordering=DISABLED`, `fresh_alpha_observation_admitted=false`, `independent_source_admission_verified=false`, `real_orders_authorized=false`, `funds_movement_authorized=false`, `permission_change_authorized=false`. **Observed safety gate PASS**. Not proof of global live trading permissions.
+
+## Source/economics decisions
+- Historical 2017–2022 KRX 1565/1565 weekday private raw pairs: storage integrity PASS from prior evidence only. Official trading calendar/status, corporate actions, mapping, execution feasibility, costs/taxes NOT VERIFIED; 90 uncertain sessions, 12,003 zero-activity observations and 27 suspicious rows remain blocked.
+- OpenDART original-filing SGML candidate rows 15 and adjacent numeric signatures from Action 38419439742: candidate-level evidence only. Original 2021/2022 consolidated exact three-month operating profit, amendment lineage, public available-at/PIT and historical corp/security mapping NOT VERIFIED.
+- NetEV/PF/CAGR/MDD/ES95/99, profit concentration, period robustness, after-tax risk-adjusted annual net return NOT VERIFIED. H5 consumed holdout and Dynamic not reused. M20 performance run NO-GO, no independent Champion/Top3 promotion.
+- Frozen H5; M20 horizon20/purge20, WF504/126/126, PIT/labels/Purged/CPCV/independent Holdout/Champion/Top3/NO_TRADE, fees/tax/fills/risk thresholds unchanged. `ORDERING=false` policy remains; observed log reports DISABLED. Caching only with independently approved source/data/code/Frozen/runtime/approval evidence SHA-256, fail-closed; parallelize only independent read-only postprocessing, never dependent retraining/capital transition.
+
+## Next independent gates
+1. KRX owner independently rehashes the 27 rejected original private rows and proves official session/tradability lineage; do not override veto or replay returns.
+2. OpenDART owner supplies original first-filed exact three-month CFS operating profit, amendment lineage and public available-at for 2021/2022; no corrected-backfill substitution.
+3. Optimization owner verifies #413/#418 implementation and pinned 34-case SHA byte parity, CI wall-time separately, using synthetic offline tests only.
+4. After all independent source/market gates PASS, seek separate authorization for pre-registered one-time M20 economics. No deployment, PR merge, orders, funds, credentials, or Champion promotion authorized.
