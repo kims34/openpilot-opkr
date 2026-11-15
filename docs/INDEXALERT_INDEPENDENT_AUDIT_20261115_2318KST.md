@@ -1,0 +1,20 @@
+# IndexAlert independent read-only audit — 2026-11-15 23:18 KST
+
+Scope: isolated evidence documentation only; no model/data/workflow/deployment changes. Source PIT is NOT APPROVED. ORDERING remains disabled; no orders, transfers, permissions, promotion or merges.
+
+## GitHub evidence (read-only, 2026-11-15)
+Repo kims34/openpilot-opkr. PRs all OPEN/DRAFT/unmerged: #412 bf3d9514a87c53b1775e22ec9ba7711f6cecc49f; #413 f003ef6247e16fcc71bd3b1b20cd4904c4d984c0; #414 18c5418d9684d1717df58261ea27f28e514385b2; #418 2f98401cc50a6c6a25808a98516efd5bf0c944ee; #420 fab3cbbd63a951a4e081f9e7f08c1391ca308581; #422 c14857620973531013799e44625d43080904fd5f; #423 0e38004363cac9fc4475556b3a1c445de9af407f.
+Research index-alert-research-v1 and development index-alert-position-regen-fix-v1 exact current branch HEAD: NOT VERIFIED by branch endpoint in this run. #414 base_sha 3b8b7830612a6284d7c7a60628cb527cb741627a; #420 base_sha 1e6367d2863a86c3470da13d81a955d277eba485, not evidence of current branch HEAD.
+Integration document docs/INDEXALERT_PROFITABILITY_INTEGRATION_GATE_2026-10-13.md at #414 branch: Git blob SHA-1 984c933651f39f1ee9e26a1d7ac3893aaa5335be.
+Actions: 38381997417 6/6 SUCCESS, 38382214223 6/6 SUCCESS, 38419111311 6/6 SUCCESS, 38419439742 2/2 SUCCESS, 38419649711 1/1 SUCCESS; 38486028854 0/1 SUCCESS, FAIL (job 115599778959). Prior logged manifest expected blob SHA-1 108f66714602a1bd3ae42c34dcca7c16e38f460b versus observed e428789e2e97ca7be3a4482e0df23b483a1ad69d. Original 34-case SHA-256 5d957eb8b89242d3ba7aa4966a7b81f8db5500aee8a82ca223dd121a7b23cc34 not independently recomputed this run; NOT VERIFIED. Synthetic/offline CI PASS is not market economics or end-to-end acceleration PASS.
+
+## Railway IndexAlert production (read-only)
+Project d1c1a050-b7d6-41ce-b300-13c20f82a20a; environment 83d5840b-270e-4d3f-a941-a37fd4a55ff7.
+PIT deployment 8b354fc1-cfb2-4ef0-863e-67f7f5dda2b5 SUCCESS, 1/1 replica. 2026-11-15 13:16,13:31,13:46,14:01,14:16 UTC: five repeated COMMON_OHLC_NONPOSITIVE, common-stock rows 803, nonpositive OHLC 27, zero-volume/value 27; fresh_alpha_observation_admitted=false, independent source/model/chronology verified=false, live_order_authorized=false. KRX prospective source quality FAIL; fail-closed safety PASS.
+KRX historical deployment 16c93d7c-7cd0-4d84-a327-298d2805376c SUCCESS but 0/1 replica; selected 13:15–14:20 UTC logs 0. Historical 1565/1565 weekday-pair integrity is previously attested PASS only; official calendar/tradability NOT VERIFIED.
+Runtime deployment eaaa9f67-b9f2-41d2-832c-7d6fad9b9b00 SUCCESS 1/1; 14:18 UTC Investing USD/KRW HTTPError, Yahoo fallback observed. db-query-readonly offline, one critical; backend/push offline. Pending environment patch e113dacb-6705-4416-9997-dc694539d382 staged since 2026-10-29 06:20:53Z, not deployed.
+
+## Admission verdict
+DART original-filing 2021/2022 exact first 3-month consolidated operating profit, correction lineage, available-at/PIT, historical corp-security mapping: NOT VERIFIED. KRX market status, corporate actions, fills, costs and taxes: NOT VERIFIED; current prospective source gate FAIL. Frozen H5 archived economics NO-GO; consumed Holdout not reusable. M20 horizon20/purge20, WF504/126/126 and all frozen label/Purged/CPCV/Holdout/Champion/Top3/NO_TRADE gates unchanged; M20 economic RUN NOT AUTHORIZED. Post-tax annual risk-adjusted NetEV/PF/CAGR/MDD/ES95/99, concentration and temporal robustness: NOT VERIFIED. Optimization only offline synthetic parity PASS; overall CI and official backtest acceleration NOT VERIFIED. Cache fail-closed on all approved evidence SHA-256; only independent read-only post-processing parallelism, no dependent retraining/capital transition parallelism.
+
+Next independent evidence: KRX 27 rows official state/source SHA and corporate-action disposition; DART original available-at and Q3 consolidated period lineage; isolated #418 manifest blob mismatch diagnosis, no workflow edits. No economic experiments, deployments, merges, trading or permissions changes.
