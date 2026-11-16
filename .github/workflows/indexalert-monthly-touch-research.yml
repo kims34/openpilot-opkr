@@ -1,0 +1,25 @@
+name: IndexAlert monthly 21-session touch research (isolated)
+on:
+  push:
+    branches: [indexalert-monthly-touch-research-20261116]
+    paths:
+      - research_monthly_touch_v1.py
+      - test_research_monthly_touch_v1.py
+      - .github/workflows/indexalert-monthly-touch-research.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-monthly-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.3.3
+      - name: Check source and causality guards
+        run: |
+          python -m py_compile research_monthly_touch_v1.py test_research_monthly_touch_v1.py
+          python -m unittest -v test_research_monthly_touch_v1
