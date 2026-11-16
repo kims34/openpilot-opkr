@@ -241,9 +241,30 @@ def audit(main_dir,early_dir,out_dir):
             scores.append(gain)
             result["calibration"].extend(_bins(rows,symbol,side))
         average=(scores[0]+scores[1])/2
+        cohort_stats={}
+        for label,subset in (
+            ("full_10y",[r for r in rows if r["history_full_ten_years"]]),
+            ("partial_10y",[r for r in rows if not r["history_full_ten_years"]]),
+            ("calendar_2010_2026",[r for r in rows if r["as_of"]>="2010-01-01"]),
+        ):
+            if not subset:
+                continue
+            sc=_stats(subset)
+            for side in ("up","down"):
+                sc[side].pop("row_gain",None)
+            cohort_stats[label]={
+                "n":len(subset),"start":subset[0]["as_of"],
+                "end":subset[-1]["as_of"],
+                "events_up":sc["up"]["hit_count"],
+                "events_down":sc["down"]["hit_count"],
+                "brier_model":sc["combined_brier"],
+                "brier_baseline":sc["combined_baseline_brier"],
+                "baseline_minus_model_gain":sc["combined_gain"],
+            }
         result["by_symbol"][symbol]={
             "n":len(rows),"as_of_start":rows[0]["as_of"],
             "as_of_end":rows[-1]["as_of"],
+            "cohorts":cohort_stats,
             "up":s["up"],"down":s["down"],
             "combined_brier":s["combined_brier"],
             "combined_baseline_brier":s["combined_baseline_brier"],
