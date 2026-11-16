@@ -24,13 +24,17 @@ private object KospiOneMonthRepository {
     @Synchronized
     fun get(ctx: Context): OneMonthEstimate? {
         val now = System.currentTimeMillis()
-        if (now - lastFetch < 60_000L && cache != null) return cache
+        if (now - lastFetch < 60_000L && cache != null) return cache?.takeIf { it.verificationExpiresAt * 1000 > now }
         val prefs = ctx.getSharedPreferences("kospi_one_month", Context.MODE_PRIVATE)
         val fresh = runCatching { fetch() }.getOrNull()
         val parsed = fresh?.let { parse(it) }
-        if (parsed != null && fresh != null) prefs.edit().putString("payload", fresh).apply()
-        val saved = prefs.getString("payload", null)?.let { parse(it) }
-        cache = parsed ?: saved
+        if (fresh != null) {
+            if (parsed != null) prefs.edit().putString("payload", fresh).apply()
+            else prefs.edit().remove("payload").apply()
+            cache = ProbabilityDisplayContract.resolve(true, parsed, null)
+        } else {
+            cache = ProbabilityDisplayContract.resolve(false, parsed, prefs.getString("payload", null)?.let { parse(it) })
+        }
         lastFetch = now
         return cache
     }
@@ -83,7 +87,7 @@ fun KospiOneMonthProbabilitySection(refreshKey: String = "") {
             if (m == null) {
                 Text("KOSPI 1개월 확률 분석", fontWeight = FontWeight.Bold)
                 Text(
-                    if (checked) "최신 1개월 분석값을 확인하지 못했습니다. 잠시 후 새로고침해 주세요." else "최근 10년 KOSPI 일봉으로 1개월 분석 중…",
+                    if (checked) "검증 완료된 확률이 없습니다." else "최근 10년 KOSPI 일봉으로 1개월 분석 중…",
                     style = MaterialTheme.typography.bodySmall
                 )
                 return@Column
@@ -109,7 +113,7 @@ fun KospiOneMonthProbabilitySection(refreshKey: String = "") {
                     Text("분포 유효표본 ${String.format(Locale.US, "%.1f", m.terminalReturnSixEffectiveSample)}", style = MaterialTheme.typography.bodySmall)
                     kospiValidationLine("6구간 종가분포", m.terminalReturnSixSelection ?: "baseline", m.terminalReturnSixValidation)
                 }
-                Text("검증에서 유사장세 모델이 장기 기본분포보다 낫지 않으면 자동으로 장기 기본확률을 사용합니다.", style = MaterialTheme.typography.labelSmall)
+                Text("해당 종목과 예측 목표의 검증이 완료된 항목만 표시합니다.", style = MaterialTheme.typography.labelSmall)
             }
             Text("과거 통계에 따른 추정이며 향후 수익률을 보장하지 않습니다.", style = MaterialTheme.typography.labelSmall)
         }
