@@ -313,7 +313,7 @@ def run(symbol,year,out_dir="daily_monthly_artifacts"):
     replay=DailyExactReplay(bars)
     indices=[i for i,d in enumerate(replay.dates)
              if d.startswith(str(year)) and i<=replay.last_sessions_max
-             and i-bisect.bisect_left(replay.dates,_date_years_earlier(d))>=714]
+             and i-bisect.bisect_left(replay.dates,_date_years_earlier(d))>=713]
     if not indices:
         raise ValueError("no finished 21-session forecasts for year")
     results=[]
