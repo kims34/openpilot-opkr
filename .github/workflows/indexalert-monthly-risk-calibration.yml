@@ -1,0 +1,47 @@
+name: IndexAlert as-of risk regime calibration historical test
+on:
+  push:
+    branches: [indexalert-monthly-risk-calibration-20261116]
+    paths:
+      - research_monthly_risk_calibration.py
+      - test_research_monthly_risk_calibration.py
+      - .github/workflows/indexalert-monthly-risk-calibration.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  safe-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline Brier analysis dependency
+        run: python -m pip install numpy==2.3.3
+      - name: Run causal tests before reading forecast archive
+        run: |
+          python -m py_compile research_monthly_risk_calibration.py test_research_monthly_risk_calibration.py
+          python -m unittest -v test_research_monthly_risk_calibration
+      - name: Download validated source daily index forecasts
+        uses: actions/download-artifact@v4
+        with:
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          run-id: 43832283103
+          name: indexalert-all-daily-spy-qqq-2002-2026
+          path: downloaded
+      - name: 2018-2026 rolling matured-only risk regime recalibration
+        run: |
+          python research_monthly_risk_calibration.py --input-dir downloaded --out-dir risk_calibration_result
+          test -s risk_calibration_result/risk_calibration_summary.json
+          test -s risk_calibration_result/daily_risk_recalibration_2018_2026.csv
+      - name: Archive all daily as-of challenger predictions and reliability tables
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-21day-risk-calibration-2018-2026
+          path: risk_calibration_result/*
+          retention-days: 90
