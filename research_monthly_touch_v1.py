@@ -162,10 +162,19 @@ def evaluate(symbol, close_rows, ohlc_rows, implied_by_day: Mapping,
             "reference": "causal-matured-rolling-frequency-NOT-deployed-v3.3",
             "production_admission": "BLOCKED", "app_changed": False,
             "order_authorization": False}
+    # Precompute each fully matured label once; prefixes never incorporate a
+    # label beyond t-HORIZON for any forecast t.
+    labels = np.stack([touch_label(prices, highs, lows, i) for i in range(final_target)])
+    label_prefix = np.concatenate((np.zeros((1, 2)), np.cumsum(labels, axis=0)), axis=0)
     base, mc, actual = [], [], []
     for t in targets:
-        actual.append(touch_label(prices, highs, lows, t))
-        base.append(asof_baseline(prices, highs, lows, t))
+        known_end = t - HORIZON + 1
+        known_count = known_end - HISTORY
+        if known_count < HISTORY:
+            raise SourceQualityError("too few matured labels")
+        actual.append(labels[t])
+        base.append((label_prefix[known_end] - label_prefix[HISTORY] + 2.0)
+                    / (known_count + 4.0))
         mc.append(simulate_touch(prices, t, implied_by_day[dates[t]],
                                  seed=20261116 + t, paths=paths))
     base, mc, actual = np.array(base), np.array(mc), np.array(actual)
