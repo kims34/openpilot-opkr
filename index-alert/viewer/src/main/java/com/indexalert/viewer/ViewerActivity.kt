@@ -121,6 +121,21 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
                 "$symbol · 저장 ${score.optInt("stored_count")}건 / 채점 완료 ${score.optInt("scored_count")}건",
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
         }
+        Spacer(Modifier.height(16.dp))
+        Text("검증 중인 ±5% 후보", fontWeight = FontWeight.Bold)
+        for (symbol in listOf("SPY", "QQQ")) {
+            val candidate = data.scores?.optJSONObject("candidates")?.optJSONObject(symbol)
+            if (candidate != null) {
+                Text(candidate.optString("target_label"), fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 10.dp))
+                Text("과거 검증 통과 후보 · 독립 실전 확인 중", style = MaterialTheme.typography.bodySmall)
+                Text("발행 ${candidate.optInt("stored_count")}건 / 결과 대기 ${candidate.optInt("pending_count")}건 / 채점 ${candidate.optInt("scored_count")}건",
+                    style = MaterialTheme.typography.bodySmall)
+                val maturity = candidate.optString("next_maturity_session").takeIf { it.isNotBlank() && it != "null" }
+                if (maturity != null) Text("첫 결과 확인 대상 거래일: $maturity", style = MaterialTheme.typography.bodySmall)
+                Text("첫 결과가 나오는 것과 검증 완료는 다릅니다.", style = MaterialTheme.typography.labelSmall)
+            } else Text("$symbol · 후보 기록 확인 중", style = MaterialTheme.typography.bodySmall)
+        }
         Text("과거 검증만 통과한 연구 후보와 기본 발생률은 예측 확률로 표시하지 않습니다.",
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp, bottom = 18.dp))
     }
