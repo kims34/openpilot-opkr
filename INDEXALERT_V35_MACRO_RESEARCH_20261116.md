@@ -89,3 +89,31 @@ original vintage; even archive declarations remain blocked for admission.
   permissions, or funds movement.
 - No invented profitability, accuracy gains or source lineage.
 - Do not resume deleted KRX worker or private volumes.
+
+
+## First real-history *exploratory* run (2026-11-16)
+
+[GitHub Actions #43814976893](https://github.com/kims34/openpilot-opkr/actions/runs/43814976893) completed successfully.
+
+- Data: retrospective public Yahoo ETF/VIX/TNX daily bars, 1,008 aligned
+  observations per SPY and QQQ; neither the as-published release timestamps
+  nor the as-issued deployed v3.3 prediction series are authenticated.
+- Comparison: *causal fixed-rate research baseline*; 504 development
+  observations, final 252 reserved and not scored because no contender
+  passed development selection.
+- SPY development Brier: reference 0.244045; VIX-only 0.244611;
+  VIX+10Y 0.244955.
+- QQQ development Brier: reference 0.243596; VIX-only 0.244772;
+  VIX+10Y 0.245023.
+- Both added-feature configurations were worse over the full development
+  period for both ETFs. Neither passed the prespecified positive-gain gate
+  in both chronological halves. **Decision: NO_STABLE_DEVELOPMENT_WINNER**.
+- Breadth was not evaluated: its historical constituent universe and
+  genuine as-of data are not yet established. It must NOT be represented
+  by current survivors or mislabeled as real breadth.
+- No claim about production v3.3 relative performance, profitability, or
+  future skill is supported. No production changes, secrets or live orders.
+
+[Offline safety CI #43814544851](https://github.com/kims34/openpilot-opkr/actions/runs/43814544851):
+**12/12 synthetic adversarial tests passed**, independent of the historical
+performance experiment.
