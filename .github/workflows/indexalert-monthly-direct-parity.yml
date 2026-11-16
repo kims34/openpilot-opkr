@@ -1,0 +1,26 @@
+name: IndexAlert monthly direct legacy parity
+on:
+  push:
+    branches: [indexalert-monthly-direct-benchmark-20261116]
+    paths:
+      - research_monthly_direct_benchmark.py
+      - test_research_monthly_direct_benchmark.py
+      - .github/workflows/indexalert-monthly-direct-parity.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-baseline-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numerical dependencies
+        run: python -m pip install numpy==2.3.3 requests==2.32.3
+      - name: Compare frozen direct app code vs memoized replay
+        run: |
+          python -m py_compile research_monthly_direct_benchmark.py test_research_monthly_direct_benchmark.py
+          python -m unittest -v test_research_monthly_direct_benchmark
