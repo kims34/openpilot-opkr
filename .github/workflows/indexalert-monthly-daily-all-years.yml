@@ -1,0 +1,37 @@
+name: IndexAlert all-years daily 21-session time-machine research
+on:
+  push:
+    branches: [indexalert-monthly-daily-all-years-20261116]
+    paths:
+      - research_monthly_daily_all_years.py
+      - .github/workflows/indexalert-monthly-daily-all-years.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  daily-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SPY, QQQ]
+        year: [2015]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen research dependencies
+        run: python -m pip install numpy==2.3.3 pandas==2.3.3 exchange-calendars==4.13.2 requests==2.32.3
+      - name: Run 2015 daily original-monthly-model historical replay
+        run: |
+          python -m py_compile research_monthly_daily_all_years.py
+          python research_monthly_daily_all_years.py --symbol ${{ matrix.symbol }} --year ${{ matrix.year }}
+      - name: Preserve all daily predictions and scorecard files
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-daily-${{ matrix.symbol }}-${{ matrix.year }}
+          path: daily_monthly_artifacts/*
+          retention-days: 30
