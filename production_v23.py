@@ -18,6 +18,7 @@ import production_v20
 import extended_market_display
 from probability_pipeline import ProbabilityPipeline, install_scheduler
 import monitor
+from verified_probability_display import public_probability_payload
 
 # Install only after the full production evaluation chain has been imported so
 # this wrapper is outermost and can enrich the final market-card payload.
@@ -38,7 +39,7 @@ probability_pipeline = ProbabilityPipeline(next_day_probability.get_all, (
 
 @app.get("/next-day-probabilities")
 def next_day_probabilities():
-    return probability_pipeline.get()
+    return public_probability_payload(probability_pipeline.get())
 
 
 @app.on_event("startup")

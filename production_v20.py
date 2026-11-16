@@ -1,5 +1,6 @@
 """IndexAlert runtime with probability model 3.3 calibration guardrails."""
 import threading
+from verified_probability_display import public_probability_payload
 import time
 
 import briefing
@@ -29,12 +30,12 @@ def market_briefings():
 
 @app.get("/next-day-probabilities")
 def next_day_probabilities():
-    return next_day_probability.get_all()
+    return public_probability_payload(next_day_probability.get_all())
 
 
 @app.get("/one-month-probabilities")
 def one_month_probabilities():
-    return kospi_monthly.get_all()
+    return public_probability_payload(kospi_monthly.get_all())
 
 
 @app.on_event("startup")
