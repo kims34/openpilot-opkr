@@ -103,7 +103,7 @@ class ProspectiveMonthlyTests(unittest.TestCase):
 
     def test_duplicate_or_unordered_history_rejected(self):
         rows,m,meta,vendor=history()
-        bad=rows[:31]
+        bad=rows.copy()
         bad[8]=(bad[7][0],100.0)
         with self.assertRaises(ValueError):
             self._record(bad,m,meta)
