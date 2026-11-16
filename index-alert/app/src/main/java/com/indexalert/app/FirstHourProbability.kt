@@ -46,7 +46,8 @@ data class FirstHourEstimate(
     val trainingCount: Int,
     val prospectiveCount: Int,
     val prospectiveBrier: Double?,
-    val prospectivePreviousBrier: Double?
+    val prospectivePreviousBrier: Double?,
+    val verificationExpiresAt: Long = 0
 )
 
 object FirstHourProbabilityRepository {
@@ -58,13 +59,12 @@ object FirstHourProbabilityRepository {
     fun get(indexId: String): FirstHourEstimate? {
         if (indexId !in ids) return null
         val now = System.currentTimeMillis()
-        if (now - lastFetch < 20_000L && cache.isNotEmpty()) return cache[indexId]
+        if (now - lastFetch < 20_000L && cache.isNotEmpty()) return cache[indexId]?.takeIf { it.verificationExpiresAt * 1000 > now }
         val fresh = runCatching { fetchAll() }.getOrNull()
-        if (fresh != null) {
-            cache = fresh
-            lastFetch = now
-        }
-        return cache[indexId]
+        // Verification cannot survive a failed refresh indefinitely.
+        cache = fresh.orEmpty()
+        lastFetch = now
+        return cache[indexId]?.takeIf { it.verificationExpiresAt * 1000 > now }
     }
 
     private fun fetchAll(): Map<String, FirstHourEstimate> {
@@ -80,6 +80,7 @@ object FirstHourProbabilityRepository {
             buildMap {
                 ids.forEach { id ->
                     val value = items.optJSONObject(id)?.optJSONObject("first_hour") ?: return@forEach
+                    if (!value.independentDisplayAllowed()) return@forEach
                     val model = value.optString("model_version")
                     if (model != FIRST_HOUR_MODEL) return@forEach
                     val available = value.optBoolean("available", false)
@@ -99,7 +100,8 @@ object FirstHourProbabilityRepository {
                             trainingCount = value.optInt("training_count", 0),
                             prospectiveCount = value.optInt("prospective_count", 0),
                             prospectiveBrier = value.numberOrNull("prospective_brier"),
-                            prospectivePreviousBrier = value.numberOrNull("prospective_previous_brier")
+                            prospectivePreviousBrier = value.numberOrNull("prospective_previous_brier"),
+                            verificationExpiresAt = value.optLong("verification_expires_at", 0)
                         )
                     )
                 }
@@ -139,7 +141,7 @@ fun FirstHourProbabilitySection(indexId: String, refreshKey: String = "") {
             Text("첫 1시간 반영 종가 상승확률", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
             if (e == null) {
                 Text(
-                    if (checked) "첫 1시간 확률 상태를 확인하지 못했습니다." else "미국장 상태 확인 중…",
+                    if (checked) "검증 완료된 확률이 없습니다." else "미국장 상태 확인 중…",
                     style = MaterialTheme.typography.bodySmall
                 )
                 return@Column

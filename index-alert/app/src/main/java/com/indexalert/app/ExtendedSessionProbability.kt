@@ -47,7 +47,8 @@ data class ExtendedSessionEstimate(
     val targetDate: String?,
     val modelVersion: String,
     val kospiBaseProbability: Double?,
-    val kospiBaseModel: String?
+    val kospiBaseModel: String?,
+    val verificationExpiresAt: Long = 0
 )
 
 object ExtendedSessionProbabilityRepository {
@@ -58,13 +59,12 @@ object ExtendedSessionProbabilityRepository {
     fun get(indexId: String): ExtendedSessionEstimate? {
         if (indexId !in EXTENDED_IDS) return null
         val now = System.currentTimeMillis()
-        if (now - lastFetch < 20_000L && cache.isNotEmpty()) return cache[indexId]
+        if (now - lastFetch < 20_000L && cache.isNotEmpty()) return cache[indexId]?.takeIf { it.verificationExpiresAt * 1000 > now }
         val fresh = runCatching { fetchAll() }.getOrNull()
-        if (fresh != null) {
-            cache = fresh
-            lastFetch = now
-        }
-        return cache[indexId]
+        // Verification cannot survive a failed refresh indefinitely.
+        cache = fresh.orEmpty()
+        lastFetch = now
+        return cache[indexId]?.takeIf { it.verificationExpiresAt * 1000 > now }
     }
 
     private fun fetchAll(): Map<String, ExtendedSessionEstimate> {
@@ -80,7 +80,9 @@ object ExtendedSessionProbabilityRepository {
             buildMap {
                 EXTENDED_IDS.forEach { id ->
                     val parent = items.optJSONObject(id) ?: return@forEach
+                    if (!parent.independentDisplayAllowed()) return@forEach
                     val e = parent.optJSONObject("extended_session")
+                    if (e != null && !e.independentDisplayAllowed()) return@forEach
                     val model = e?.optString("model_version").orEmpty()
                     val probability = e?.numberOrNull("probability")?.takeIf { it in 0.0..100.0 }
                     val available = e?.optBoolean("available", false) == true && probability != null && model == EXTENDED_MODEL
@@ -104,7 +106,8 @@ object ExtendedSessionProbabilityRepository {
                                 ?: parent.optString("target_date").takeIf { it.isNotBlank() },
                             modelVersion = model.ifBlank { EXTENDED_MODEL },
                             kospiBaseProbability = if (id == "kospi100") parentProbability else null,
-                            kospiBaseModel = if (id == "kospi100") parent.optString("model_version").takeIf { it.isNotBlank() } else null
+                            kospiBaseModel = if (id == "kospi100") parent.optString("model_version").takeIf { it.isNotBlank() } else null,
+                            verificationExpiresAt = parent.optLong("verification_expires_at", 0)
                         )
                     )
                 }
@@ -144,7 +147,7 @@ fun ExtendedSessionProbabilitySection(indexId: String, refreshKey: String = "") 
 
             if (e == null) {
                 Text(
-                    if (checked) "시간외 시세 상태를 확인하지 못했습니다." else "시간외 시세 확인 중…",
+                    if (checked) "검증 완료된 확률이 없습니다." else "시간외 시세 확인 중…",
                     style = MaterialTheme.typography.bodySmall
                 )
                 return@Column

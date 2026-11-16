@@ -46,7 +46,8 @@ data class AfterOpenEstimate(
     val trainingCount: Int,
     val prospectiveCount: Int,
     val prospectiveBrier: Double?,
-    val prospectivePreopenBrier: Double?
+    val prospectivePreopenBrier: Double?,
+    val verificationExpiresAt: Long = 0
 )
 
 object AfterOpenProbabilityRepository {
@@ -58,13 +59,12 @@ object AfterOpenProbabilityRepository {
     fun get(indexId: String): AfterOpenEstimate? {
         if (indexId !in ids) return null
         val now = System.currentTimeMillis()
-        if (now - lastFetch < 20_000L && cache.isNotEmpty()) return cache[indexId]
+        if (now - lastFetch < 20_000L && cache.isNotEmpty()) return cache[indexId]?.takeIf { it.verificationExpiresAt * 1000 > now }
         val fresh = runCatching { fetchAll() }.getOrNull()
-        if (fresh != null) {
-            cache = fresh
-            lastFetch = now
-        }
-        return cache[indexId]
+        // Verification cannot survive a failed refresh indefinitely.
+        cache = fresh.orEmpty()
+        lastFetch = now
+        return cache[indexId]?.takeIf { it.verificationExpiresAt * 1000 > now }
     }
 
     private fun fetchAll(): Map<String, AfterOpenEstimate> {
@@ -80,6 +80,7 @@ object AfterOpenProbabilityRepository {
             buildMap {
                 ids.forEach { id ->
                     val a = items.optJSONObject(id)?.optJSONObject("after_open") ?: return@forEach
+                    if (!a.independentDisplayAllowed()) return@forEach
                     val model = a.optString("model_version")
                     if (model != AFTER_OPEN_MODEL) return@forEach
                     val available = a.optBoolean("available", false)
@@ -99,7 +100,8 @@ object AfterOpenProbabilityRepository {
                             trainingCount = a.optInt("training_count", 0),
                             prospectiveCount = a.optInt("prospective_count", 0),
                             prospectiveBrier = a.numberOrNull("prospective_brier"),
-                            prospectivePreopenBrier = a.numberOrNull("prospective_preopen_brier")
+                            prospectivePreopenBrier = a.numberOrNull("prospective_preopen_brier"),
+                            verificationExpiresAt = a.optLong("verification_expires_at", 0)
                         )
                     )
                 }
@@ -139,7 +141,7 @@ fun AfterOpenProbabilitySection(indexId: String, refreshKey: String = "") {
             Text("오늘 마감 상승확률", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
             if (e == null) {
                 Text(
-                    if (checked) "장중 확률 상태를 확인하지 못했습니다." else "미국장 상태 확인 중…",
+                    if (checked) "검증 완료된 확률이 없습니다." else "미국장 상태 확인 중…",
                     style = MaterialTheme.typography.bodySmall
                 )
                 return@Column

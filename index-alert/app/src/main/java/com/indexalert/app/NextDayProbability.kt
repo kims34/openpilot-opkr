@@ -78,7 +78,8 @@ data class OneMonthEstimate(
     val terminalReturnSixTotalProbability: Double? = null,
     val terminalReturnSixSelection: String? = null,
     val terminalReturnSixValidation: MonthValidation? = null,
-    val terminalReturnSixEffectiveSample: Double = 0.0
+    val terminalReturnSixEffectiveSample: Double = 0.0,
+    val verificationExpiresAt: Long = 0
 )
 
 data class NextDayEstimate(
@@ -103,7 +104,8 @@ data class NextDayEstimate(
     val auditStart: String,
     val auditEnd: String,
     val oneMonth: OneMonthEstimate? = null,
-    val cached: Boolean = false
+    val cached: Boolean = false,
+    val verificationExpiresAt: Long = 0
 )
 
 object NextDayProbabilityRepository {
@@ -114,13 +116,18 @@ object NextDayProbabilityRepository {
     @Synchronized
     fun get(ctx: Context, indexId: String): NextDayEstimate? {
         val now = System.currentTimeMillis()
-        if (now - lastFetch < 30_000L) return cache[indexId]?.takeIf { it.validUntil * 1000 > now }
+        if (now - lastFetch < 30_000L) return cache[indexId]?.takeIf { it.validUntil * 1000 > now && it.verificationExpiresAt * 1000 > now }
         val prefs = ctx.getSharedPreferences("validated_probability", Context.MODE_PRIVATE)
         val fresh = runCatching { fetch() }.getOrNull()
         val parsed = fresh?.let { parse(it, now, false) }.orEmpty()
-        if (parsed.isNotEmpty()) prefs.edit().putString("payload", fresh).apply()
-        val saved = prefs.getString("payload", null)?.let { parse(it, now, true) }.orEmpty()
-        cache = saved + parsed
+        if (fresh != null) {
+            if (parsed.isNotEmpty()) prefs.edit().putString("payload", fresh).apply()
+            else prefs.edit().remove("payload").apply()
+            // A fresh refusal revokes every previously cached forecast.
+            cache = ProbabilityDisplayContract.resolve(true, parsed, emptyMap()) ?: emptyMap()
+        } else {
+            cache = ProbabilityDisplayContract.resolve(false, parsed, prefs.getString("payload", null)?.let { parse(it, now, true) }).orEmpty()
+        }
         lastFetch = now
         return cache[indexId]
     }
@@ -143,7 +150,7 @@ object NextDayProbabilityRepository {
         buildMap {
             ids.forEach { id ->
                 val o = items.optJSONObject(id) ?: return@forEach
-                if (o.has("error") || o.optString("model_version") != VALIDATED_MODEL) return@forEach
+                if (!o.independentDisplayAllowed(now / 1000) || o.has("error") || o.optString("model_version") != VALIDATED_MODEL) return@forEach
                 val p = o.optDouble("probability", Double.NaN)
                 val base = o.optDouble("base_rate", Double.NaN)
                 val expires = o.optLong("valid_until", 0)
@@ -163,14 +170,15 @@ object NextDayProbabilityRepository {
                     calibration.numberOrNull("range_low"), calibration.numberOrNull("range_high"),
                     o.optInt("prospective_count"), o.optString("audit_start"), o.optString("audit_end"),
                     parseOneMonth(o.optJSONObject("one_month")),
-                    saved || o.optBoolean("cached")
+                    saved || o.optBoolean("cached"),
+                    o.optLong("verification_expires_at", 0)
                 ))
             }
         }
     }.getOrDefault(emptyMap())
 
     fun parseOneMonth(o: JSONObject?): OneMonthEstimate? {
-        if (o == null || o.has("error")) return null
+        if (o == null || !o.independentDisplayAllowed() || o.has("error")) return null
         val up = o.optDouble("up_10_probability", Double.NaN)
         val down = o.optDouble("down_10_probability", Double.NaN)
         val baseUp = o.optDouble("baseline_up_10_probability", Double.NaN)
@@ -242,7 +250,8 @@ object NextDayProbabilityRepository {
             o.numberOrNull("terminal_return_six_total_probability")?.takeIf { it in 99.9..100.1 },
             o.optString("terminal_return_six_selection").takeIf { it == "analog" || it == "baseline" },
             parseMonthValidation(o.optJSONObject("terminal_return_six_validation")),
-            o.optDouble("terminal_return_six_effective_sample", 0.0)
+            o.optDouble("terminal_return_six_effective_sample", 0.0),
+            o.optLong("verification_expires_at", 0)
         )
     }
 
@@ -283,7 +292,7 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
             val e = estimate
             if (e == null) {
                 Text("확률 분석", fontWeight = FontWeight.Bold)
-                Text(if (checked) "검증된 최신 값을 확인하지 못했습니다. 잠시 후 새로고침해 주세요." else "최신 종가와 검증 결과 확인 중…",
+                Text(if (checked) "검증 완료된 확률이 없습니다." else "최신 종가와 검증 결과 확인 중…",
                     style = MaterialTheme.typography.bodySmall)
                 return@Column
             }
@@ -291,11 +300,11 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
             Text("다음 거래일 종가 상승 추정  ${pct(e.probability)}",
                 style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text("${e.asOf} 종가 기준 → ${e.targetDate} 종가 · 배당 미포함", style = MaterialTheme.typography.bodySmall)
-            Text(if (e.useBase) "기본 상승률 사용 · 조건별 예측 근거 부족" else "조건별 추정 사용 · ${e.evidence}",
+            Text("독립 검증을 통과한 확률만 표시합니다.",
                 style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             if (e.cached) Text("저장된 검증값 · 서버 연결 재확인 중", style = MaterialTheme.typography.labelSmall)
 
-            e.oneMonth?.let { m ->
+            e.oneMonth?.takeIf { it.verificationExpiresAt > System.currentTimeMillis() / 1000 }?.let { m ->
                 HorizontalDivider(Modifier.padding(vertical = 9.dp))
                 OneMonthSixBucketTable(m)
                 Text("${m.asOf} 종가 기준 · 21거래일 뒤 종가 수익률 기준", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
@@ -314,7 +323,7 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                 }
                 Text("실제 사전 예측 누적 검증 ${e.prospectiveCount}회", style = MaterialTheme.typography.bodySmall)
 
-                e.oneMonth?.let { m ->
+                e.oneMonth?.takeIf { it.verificationExpiresAt > System.currentTimeMillis() / 1000 }?.let { m ->
                     Spacer(Modifier.height(8.dp))
                     Text("[1개월 6구간 모델]", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     val trend = if (m.trendRegime == "up") "21일 상승추세" else "21일 하락추세"
@@ -329,7 +338,7 @@ fun NextDayProbabilitySection(indexId: String, refreshKey: String = "") {
                         Text("분포 유효표본 ${oneDecimal(m.terminalReturnSixEffectiveSample)}", style = MaterialTheme.typography.bodySmall)
                         monthValidationLine("6구간 종가분포", m.terminalReturnSixSelection ?: "baseline", m.terminalReturnSixValidation)
                     }
-                    Text("검증에서 유사장세 모델이 장기 기본분포보다 낫지 않으면 자동으로 장기 기본확률을 사용합니다.",
+                    Text("해당 종목과 예측 목표의 검증이 완료된 항목만 표시합니다.",
                         style = MaterialTheme.typography.labelSmall)
                 }
             }
