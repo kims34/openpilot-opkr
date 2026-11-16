@@ -141,12 +141,14 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
             }
         }
         Text("막대 하나의 전체 길이 = 100%", color = Muted, style = MaterialTheme.typography.bodySmall)
+        Text("진한 색 = 도달 · 연한 색 = 미도달", color = Muted, style = MaterialTheme.typography.labelSmall)
         DirectionChart(selected, "up", "▲ 상승 목표", UpColor)
         DirectionChart(selected, "down", "▼ 하락 목표", DownColor)
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFE9EFFD))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("합이 100%가 아니어도 정상이에요", fontWeight = FontWeight.Bold)
+                Text("각 막대 안에서는 ‘도달 + 미도달 = 100%’예요.", style = MaterialTheme.typography.bodySmall)
                 Text("+10%에 도달하면 +5%에도 도달한 거예요. 같은 기간에 상승·하락 목표를 모두 찍을 수도 있어요.",
                     style = MaterialTheme.typography.bodySmall)
                 Text("서로 겹치는 사건이라 각각 읽어 주세요. ±15%를 추가해도 합계가 100%로 나뉘지 않아요.",
