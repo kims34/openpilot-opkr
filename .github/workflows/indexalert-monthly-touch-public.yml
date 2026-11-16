@@ -4,6 +4,7 @@ on:
     branches: [indexalert-monthly-touch-research-20261116]
     paths:
       - research_monthly_touch_public_pilot.py
+      - research_monthly_touch_v1.py
       - .github/workflows/indexalert-monthly-touch-public.yml
   workflow_dispatch:
 permissions:
