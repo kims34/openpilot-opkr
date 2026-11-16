@@ -1,0 +1,28 @@
+name: IndexAlert 3.5 public macro exploratory pilot
+
+on:
+  push:
+    branches:
+      - indexalert-accuracy-v35-research-20261116
+    paths:
+      - research_v35_public_data_pilot.py
+      - .github/workflows/indexalert-v35-public-pilot.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retrospective-public-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install historical research dependencies
+        run: python -m pip install numpy==2.3.3 pandas==2.3.3 exchange-calendars==4.13.2 requests==2.32.3
+      - name: Run public backfilled-history exploratory test (NO PIT admission)
+        run: |
+          python research_v35_public_data_pilot.py
