@@ -26,4 +26,4 @@ jobs:
       - name: Rewind exactly ten years as of Jan 2 2015; no live app changes
         run: |
           python -m py_compile research_monthly_time_machine_exact10y.py
-          python research_monthly_time_machine_exact10y.py --symbol ${{ matrix.symbol }} --example 2015-01-02 --only-example
+          python research_monthly_time_machine_exact10y.py --symbol ${{ matrix.symbol }} --example 2015-01-02
