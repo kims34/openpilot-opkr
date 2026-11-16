@@ -1,0 +1,30 @@
+name: IndexAlert 3.5 macro research (offline only)
+
+on:
+  push:
+    branches:
+      - indexalert-accuracy-v35-research-20261116
+    paths:
+      - research_v35_macro_overlay.py
+      - test_research_v35_macro_overlay.py
+      - .github/workflows/indexalert-v35-macro-research.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-source-and-causality-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline numerical dependency only
+        run: python -m pip install numpy==2.3.3
+      - name: Compile and test; no broker, data network, or production deploy
+        run: |
+          python -m py_compile research_v35_macro_overlay.py test_research_v35_macro_overlay.py
+          python -m unittest -v test_research_v35_macro_overlay
