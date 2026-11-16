@@ -213,11 +213,16 @@ def evaluate(symbol, close_rows, ohlc_rows, implied_by_day: Mapping,
         ids = (blocks[:, None] + np.arange(HORIZON)).reshape(-1)[:TEST_DAYS]
         gains.append(float(np.mean(daily_diff[ids])))
     lo, hi = np.quantile(gains, (0.025, 0.975))
+    passed = (score["gain_combined"] > 0.0
+              and score["gain_up"] > 0.0 and score["gain_down"] > 0.0
+              and float(lo) > 0.0)
     result.update(
         selected_weight=weight, reserved_test_scored=True,
         reserved_test={**score, "block_bootstrap_ci95_gain": [float(lo), float(hi)],
-                       "improved_both_sides": score["gain_up"] > 0 and score["gain_down"] > 0},
-        decision="RESEARCH_ONLY_INDEPENDENT_PIT_AND_PROSPECTIVE_REQUIRED")
+                       "improved_both_sides": score["gain_up"] > 0 and score["gain_down"] > 0,
+                       "research_gate_passed": bool(passed)},
+        decision=("RESEARCH_ONLY_INDEPENDENT_PIT_AND_PROSPECTIVE_REQUIRED"
+                  if passed else "HOLDOUT_FAILED_NO_PROMOTION"))
     return result
 
 
