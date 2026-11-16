@@ -27,7 +27,7 @@ def _hash(value):
 
 
 def evaluate(symbol, window, days=126, paths=1024):
-    if symbol not in ("SPY", "QQQ") or window not in ("2020", "2022", "2024", "recent"):
+    if symbol not in ("SPY", "QQQ") or window not in ("2019", "2020", "2021", "2022", "2023", "2024", "2025", "recent"):
         raise ValueError("invalid prespecified study grid")
     rows, metadata = market.fetch_history(symbol, time.time())
     ohlc_map, missing = public.raw_daily(symbol)
@@ -39,7 +39,7 @@ def evaluate(symbol, window, days=126, paths=1024):
     iv_map, missing_iv = public.raw_daily("^" + iv_symbol)
     iv = {d: float(bar[2]) for d, bar in iv_map.items()}
     last = len(dates) - touch.HORIZON - 1
-    limit = {"2020":"2020-06-30","2022":"2022-12-30","2024":"2024-12-31","recent":dates[last]}[window]
+    limit = {"2019":"2019-12-31","2020":"2020-06-30","2021":"2021-12-31","2022":"2022-12-30","2023":"2023-12-29","2024":"2024-12-31","2025":"2025-12-31","recent":dates[last]}[window]
     while last >= 0 and dates[last] > limit:
         last -= 1
     targets = list(range(last - days + 1, last + 1))
@@ -125,7 +125,7 @@ def evaluate(symbol, window, days=126, paths=1024):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbol",choices=("SPY","QQQ"),required=True)
-    parser.add_argument("--window",choices=("2020","2022","2024","recent"),required=True)
+    parser.add_argument("--window",choices=("2019","2020","2021","2022","2023","2024","2025","recent"),required=True)
     parser.add_argument("--days",type=int,default=126)
     parser.add_argument("--paths",type=int,default=1024)
     opt=parser.parse_args()
