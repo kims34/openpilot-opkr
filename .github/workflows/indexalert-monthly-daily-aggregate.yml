@@ -1,0 +1,52 @@
+name: IndexAlert 2002-2026 complete daily probability scorecard
+on:
+  push:
+    branches: [indexalert-monthly-daily-all-years-20261116]
+    paths:
+      - research_monthly_daily_aggregate.py
+      - .github/workflows/indexalert-monthly-daily-aggregate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit-50-completed-source-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numerical scorer
+        run: python -m pip install numpy==2.3.3
+      - name: Fetch full-ten-year 2010-2026 daily forecast artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 43830584150
+          pattern: monthly-daily-*
+          path: downloaded/main
+          merge-multiple: true
+      - name: Fetch partial-ten-year 2002-2009 daily forecast artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 43831041370
+          pattern: monthly-early-*
+          path: downloaded/early
+          merge-multiple: true
+      - name: Integrity-audit and merge daily forecasts, observed outcomes and Brier calibration
+        run: |
+          python -m py_compile research_monthly_daily_aggregate.py
+          python research_monthly_daily_aggregate.py --main downloaded/main --early downloaded/early --out full_daily_results
+          test -s full_daily_results/all_daily_spy_qqq_2002_2026.csv
+          test -s full_daily_results/annual_brier_2002_2026.csv
+      - name: Save all daily forecasts 2002-2026 (zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: indexalert-all-daily-spy-qqq-2002-2026
+          path: full_daily_results/*
+          retention-days: 90
