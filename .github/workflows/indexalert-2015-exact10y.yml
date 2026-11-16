@@ -1,0 +1,29 @@
+name: IndexAlert 2015 exact 10y historical time machine
+on:
+  push:
+    branches: [indexalert-monthly-time-machine-2015-20261116]
+    paths:
+      - research_monthly_time_machine_exact10y.py
+      - .github/workflows/indexalert-2015-exact10y.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulate-original-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SPY, QQQ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install historical research dependencies
+        run: python -m pip install numpy==2.3.3 pandas==2.3.3 exchange-calendars==4.13.2 requests==2.32.3
+      - name: Rewind exactly ten years as of Jan 2 2015; no live app changes
+        run: |
+          python -m py_compile research_monthly_time_machine_exact10y.py
+          python research_monthly_time_machine_exact10y.py --symbol ${{ matrix.symbol }} --example 2015-01-02 --only-example
