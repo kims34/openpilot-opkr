@@ -118,7 +118,7 @@ def fitted_offset(probs, labels, *, min_n=MIN_GLOBAL):
     left,right=-3.0,3.0
     for _ in range(54):
         mid=(left+right)/2
-        prediction=np.array([expit(z+mid) for z in logits])
+        prediction=np.reciprocal(1.0+np.exp(-np.clip(logits+mid,-35.0,35.0)))
         grad=float(np.sum(prediction-labels)+PENALTY*mid)
         if grad>0:
             right=mid
