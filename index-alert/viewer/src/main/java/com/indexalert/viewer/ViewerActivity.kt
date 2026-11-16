@@ -104,7 +104,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
                         val node = if (id == "kospi100") data.monthly?.optJSONObject("items")?.optJSONObject(id)
                             else data.probabilities?.optJSONObject("items")?.optJSONObject(id)
                         val forecasts = ViewerPolicy.forecasts(node, ViewerPolicy.symbols[id].orEmpty(), System.currentTimeMillis()/1000)
-                        Text("검증된 예측", fontWeight = FontWeight.SemiBold)
+                        Text("독립 검증 예측", fontWeight = FontWeight.SemiBold)
                         if (forecasts.isEmpty()) {
                             Text(if (data.updated) "검증 완료된 확률이 없습니다." else "검증 결과 확인 중…")
                         } else forecasts.forEach { f ->
@@ -122,13 +122,27 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
         }
         Spacer(Modifier.height(16.dp))
-        Text("검증 중인 ±5% 후보", fontWeight = FontWeight.Bold)
+        Text("21거래일 ±5% 도달확률", fontWeight = FontWeight.Bold)
         for (symbol in listOf("SPY", "QQQ")) {
             val candidate = data.scores?.optJSONObject("candidates")?.optJSONObject(symbol)
             if (candidate != null) {
                 Text(candidate.optString("target_label"), fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 10.dp))
-                Text("과거 검증 통과 후보 · 독립 실전 확인 중", style = MaterialTheme.typography.bodySmall)
+                Text("과거 백테스트 통과 · 실전 검증 진행 중", style = MaterialTheme.typography.bodySmall)
+                val forecast = ViewerPolicy.backtested(candidate, symbol, System.currentTimeMillis()/1000)
+                if (forecast != null) {
+                    Text(String.format(Locale.US, "%.1f%%", forecast.optDouble("probability")),
+                        fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    Text("${forecast.optString("as_of")} 종가 기준 → ${forecast.optString("target_date")}까지",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("기간 중 고가·저가 기준 · 21일 뒤 종가 예측과 다릅니다.", style = MaterialTheme.typography.bodySmall)
+                    val evidence = forecast.getJSONObject("evidence")
+                    Text("과거 ${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text(String.format(Locale.US, "비교 모델 대비 확률 오차 %.2f%% 감소 (적중률 아님)", evidence.optDouble("gain")),
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("같은 과거 데이터를 개발에 재사용한 결과입니다.", style = MaterialTheme.typography.labelSmall)
+                } else Text("최신 유효 확률을 확인하지 못했습니다. 새로고침해 주세요.", style = MaterialTheme.typography.bodySmall)
                 Text("발행 ${candidate.optInt("stored_count")}건 / 결과 대기 ${candidate.optInt("pending_count")}건 / 채점 ${candidate.optInt("scored_count")}건",
                     style = MaterialTheme.typography.bodySmall)
                 val maturity = candidate.optString("next_maturity_session").takeIf { it.isNotBlank() && it != "null" }
@@ -136,7 +150,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
                 Text("첫 결과가 나오는 것과 검증 완료는 다릅니다.", style = MaterialTheme.typography.labelSmall)
             } else Text("$symbol · 후보 기록 확인 중", style = MaterialTheme.typography.bodySmall)
         }
-        Text("과거 검증만 통과한 연구 후보와 기본 발생률은 예측 확률로 표시하지 않습니다.",
+        Text("과거 백테스트 통과 항목만 별도로 표시합니다. 탈락한 방향과 기본 발생률은 표시하지 않습니다.",
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp, bottom = 18.dp))
     }
 }
