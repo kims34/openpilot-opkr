@@ -52,6 +52,9 @@ COPY historical_touch_evidence.json .
 COPY annual_touch.py .
 COPY annual_touch_model.py .
 COPY annual_touch_evidence.json .
+COPY extended_touch.py .
+COPY extended_touch_model.py .
+COPY extended_touch_evidence.json .
 COPY kospi_monthly.py .
 COPY kospi_nextday_probability.py .
 COPY extended_session_probability.py .

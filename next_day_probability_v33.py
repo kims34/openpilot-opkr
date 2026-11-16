@@ -20,6 +20,7 @@ import monthly_touch_shadow
 import quarterly_touch
 import historical_touch
 import annual_touch
+import extended_touch
 import probability_live_gate
 import probability_milestone
 import probability_shadow
@@ -88,6 +89,7 @@ def estimate(symbol, now=None):
     quarterly_touch.schedule(symbol, rows, meta)
     historical_touch.schedule(symbol, rows, meta)
     annual_touch.schedule(symbol, rows, meta)
+    extended_touch.schedule(symbol, rows, meta)
 
     # Freeze and score the RAW historically-approved production candidate first.
     try:

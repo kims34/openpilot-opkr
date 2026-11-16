@@ -244,10 +244,12 @@ def summary(db_path=None):
         import quarterly_touch
         import historical_touch
         import annual_touch
+        import extended_touch
         return {"model":MODEL_FAMILY,"horizon_sessions":HORIZON,
                 "source":"independent prospectively issued predictions, public subsequently checked OHLC",
                 "probabilities_altered":False,"orders_enabled":False,
                 "symbols":out,"candidates":monthly_touch_shadow.summary(db_path),
                 "quarterly_forecasts":quarterly_touch.summary(db_path),
                 "historical_forecasts":historical_touch.summary(db_path),
-                "annual_forecasts":annual_touch.summary(db_path)}
+                "annual_forecasts":annual_touch.summary(db_path),
+                "extended_forecasts":extended_touch.summary(db_path)}
