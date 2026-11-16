@@ -19,6 +19,7 @@ from fastapi import HTTPException
 
 import fx_basis
 import market_basis
+import monthly_prospective
 import monitor
 import production
 import production_v30
@@ -334,3 +335,13 @@ def history_v31(index_id: str, snapshot_id: str = ""):
             payload["basis_provider"] = extra.get("basis_provider")
             payload["quote_provider"] = extra.get("quote_provider")
     return payload
+
+
+@app.get("/monthly-prospective-scores")
+def read_monthly_prospective_scores():
+    """Aggregate prospective Brier statistics only; no credentials or orders."""
+    try:
+        return monthly_prospective.summary()
+    except Exception as exc:
+        print("monthly validation summary unavailable", type(exc).__name__, flush=True)
+        raise HTTPException(503, "monthly validation summary unavailable")
