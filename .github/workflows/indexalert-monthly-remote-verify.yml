@@ -1,0 +1,42 @@
+name: IndexAlert monthly read-only remote API verification
+on:
+  push:
+    branches: [indexalert-monthly-prospective-20261116]
+    paths:
+      - .github/workflows/indexalert-monthly-remote-verify.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-live-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: GET only health/status/new-ledger; no writes or broker credentials
+        run: |
+          python - <<'PY'
+          import json, time, urllib.request
+          origin="https://indexalert-runtime-production.up.railway.app"
+          for path in ("/health","/status","/monthly-prospective-scores"):
+              payload=None
+              for attempt in range(5):
+                  try:
+                      with urllib.request.urlopen(origin+path,timeout=20) as response:
+                          assert response.status == 200, (path,response.status)
+                          payload=json.loads(response.read().decode())
+                          break
+                  except Exception as exc:
+                      if attempt == 4: raise
+                      time.sleep(3)
+              if path=="/health":
+                  assert payload.get("ok") is True
+                  print("MONTHLY_REMOTE_HEALTH_OK")
+              if path=="/status":
+                  assert isinstance(payload.get("indices"),list)
+                  print("MONTHLY_REMOTE_MARKET_STATUS_OK",len(payload["indices"]))
+              if path=="/monthly-prospective-scores":
+                  assert payload.get("orders_enabled") is False
+                  assert payload.get("probabilities_altered") is False
+                  assert {"SPY","QQQ"}.issubset(payload.get("symbols",{}))
+                  print("MONTHLY_REMOTE_LEDGER",json.dumps(payload,sort_keys=True))
+          PY
