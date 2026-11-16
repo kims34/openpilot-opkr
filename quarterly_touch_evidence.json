@@ -1,0 +1,46 @@
+{
+  "id": "quarterly-touch-history-v1-20261116",
+  "model_sha256": "94de4a9c927f03b600c5155782902f71c3ce9120c6cf42839eac229c63886276",
+  "horizon_sessions": 63,
+  "scope": "reused retrospective development; no independent holdout",
+  "family_comparisons": 75,
+  "accepted": [
+    {
+      "symbol": "SPY",
+      "direction": "up",
+      "event": "up5_touch",
+      "threshold_percent": 5,
+      "samples": 7345,
+      "first": "1997-06-05",
+      "last": "2026-08-17",
+      "gain": 9.847564045900572,
+      "reference_brier": 0.25907443444172673,
+      "candidate_brier": 0.233561913583523,
+      "recent504_candidate_brier": 0.22947507416292068,
+      "recent504_reference_brier": 0.25715932377302725,
+      "family75_confidence": {
+        "63": [
+          0.0037752157411849807,
+          0.04756730747539671
+        ],
+        "126": [
+          0.00151574345872182,
+          0.05127893324016405
+        ]
+      },
+      "checks": {
+        "relative_gain": true,
+        "first_half": true,
+        "second_half": true,
+        "recent504": true,
+        "annual_consistency": true,
+        "overall_calibration": true,
+        "recent_calibration": true,
+        "block63_confidence": true,
+        "block126_confidence": true
+      },
+      "source_sha256": "d45a8129d2274a572610ea0081c0913e76eceea9c66fcdeeb764a39bdeb25a42",
+      "protocol_sha256": "a8c0af5f8f51abbb1abce379d380b11dc5b1a093f503715a957d9be85bccd26a"
+    }
+  ]
+}

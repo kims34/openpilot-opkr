@@ -241,7 +241,9 @@ def summary(db_path=None):
                 report["down_event_count"] = sum(int(r[5]) for r in rows)
             out[symbol] = report
         import monthly_touch_shadow
+        import quarterly_touch
         return {"model":MODEL_FAMILY,"horizon_sessions":HORIZON,
                 "source":"independent prospectively issued predictions, public subsequently checked OHLC",
                 "probabilities_altered":False,"orders_enabled":False,
-                "symbols":out,"candidates":monthly_touch_shadow.summary(db_path)}
+                "symbols":out,"candidates":monthly_touch_shadow.summary(db_path),
+                "quarterly_forecasts":quarterly_touch.summary(db_path)}

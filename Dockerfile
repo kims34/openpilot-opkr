@@ -42,6 +42,10 @@ COPY monthly_prospective.py .
 COPY monthly_touch_shadow.py .
 COPY monthly_touch_shadow_model.py .
 COPY monthly_touch_backtested_display.py .
+COPY quarterly_touch.py .
+COPY quarterly_touch_model.py .
+COPY quarterly_touch_evidence.json .
+COPY quarterly_touch_validation.json .
 COPY kospi_monthly.py .
 COPY kospi_nextday_probability.py .
 COPY extended_session_probability.py .

@@ -17,6 +17,7 @@ import one_month_calibrated
 import one_month_probability
 import monthly_prospective
 import monthly_touch_shadow
+import quarterly_touch
 import probability_live_gate
 import probability_milestone
 import probability_shadow
@@ -82,6 +83,7 @@ def estimate(symbol, now=None):
 
     # Independent 5% candidates run asynchronously; raw/public values stay separate.
     monthly_touch_shadow.schedule(symbol, rows, meta)
+    quarterly_touch.schedule(symbol, rows, meta)
 
     # Freeze and score the RAW historically-approved production candidate first.
     try:
