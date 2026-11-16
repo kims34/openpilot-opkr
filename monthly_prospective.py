@@ -240,7 +240,8 @@ def summary(db_path=None):
                 report["up_event_count"] = sum(int(r[4]) for r in rows)
                 report["down_event_count"] = sum(int(r[5]) for r in rows)
             out[symbol] = report
+        import monthly_touch_shadow
         return {"model":MODEL_FAMILY,"horizon_sessions":HORIZON,
                 "source":"independent prospectively issued predictions, public subsequently checked OHLC",
                 "probabilities_altered":False,"orders_enabled":False,
-                "symbols":out}
+                "symbols":out,"candidates":monthly_touch_shadow.summary(db_path)}
