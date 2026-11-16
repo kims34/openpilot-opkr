@@ -35,7 +35,7 @@ jobs:
           dependency=pathlib.Path('viewer-dependencies.txt').read_text()
           assert 'com.google.firebase' not in dependency and 'androidx.work' not in dependency
           suites=[ET.parse(p).getroot() for p in pathlib.Path('viewer/build/test-results/testDebugUnitTest').glob('TEST-*.xml')]
-          assert len(suites)==1 and sum(int(s.get('tests','0')) for s in suites)==6
+          assert len(suites)==1 and sum(int(s.get('tests','0')) for s in suites)==7
           assert all(int(s.get(k,'0'))==0 for s in suites for k in ('failures','errors','skipped'))
           directory=pathlib.Path('viewer/build/outputs/apk/debug')
           meta=json.loads((directory/'output-metadata.json').read_text())
@@ -47,7 +47,7 @@ jobs:
           for forbidden in ('POST_NOTIFICATIONS','RECEIVE_BOOT_COMPLETED','WAKE_LOCK'):
               assert forbidden not in badging
           signature=subprocess.check_output([str(tool/'apksigner'),'verify','--verbose','--print-certs',str(apk)],text=True)
-          result={'application_id':meta['applicationId'],'source_head':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'tests':6,'firebase':False,'workmanager':False,'original_app_replaced':False,'orders_enabled':False}
+          result={'application_id':meta['applicationId'],'source_head':os.environ['GITHUB_SHA'],'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'tests':7,'firebase':False,'workmanager':False,'original_app_replaced':False,'orders_enabled':False}
           pathlib.Path('viewer-verification.json').write_text(json.dumps(result,indent=2)+'\n')
           pathlib.Path('viewer-badging.txt').write_text(badging)
           import shutil

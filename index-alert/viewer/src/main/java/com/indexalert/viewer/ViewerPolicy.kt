@@ -5,6 +5,22 @@ import org.json.JSONObject
 data class VerifiedForecast(val label: String, val probability: Double)
 
 object ViewerPolicy {
+    fun quarterly(f: JSONObject?, now: Long): JSONObject? {
+        f ?: return null
+        val p=f.optDouble("probability", Double.NaN)
+        if (f.optString("display_policy_version") != "backtested-quarterly-v1" ||
+            f.opt("display_allowed") != true || f.opt("independent_confirmed") != false ||
+            f.optString("verification_status") != "historical_backtest_passed" ||
+            f.optString("verification_evidence_id") != "quarterly-touch-history-v1-20261116:SPY:up5_touch" ||
+            f.optString("model_version") != "quarterly-volatility-scaled-touch-v1" ||
+            f.optString("model_sha256") != "94de4a9c927f03b600c5155782902f71c3ce9120c6cf42839eac229c63886276" ||
+            f.optString("symbol") != "SPY" || f.optString("event") != "up5_touch" ||
+            f.optInt("horizon_sessions") != 63 || f.optInt("threshold_percent") != 5 ||
+            f.optLong("valid_until") <= now || f.optString("as_of").isBlank() ||
+            f.optString("target_date").isBlank() || f.optJSONObject("evidence") == null ||
+            !p.isFinite() || p !in 0.0..100.0) return null
+        return f
+    }
     fun backtested(node: JSONObject?, symbol: String, now: Long): JSONObject? {
         val f = node?.optJSONObject("backtested_forecast") ?: return null
         val event = mapOf("SPY" to "down5_touch", "QQQ" to "up5_touch")[symbol] ?: return null

@@ -6,6 +6,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViewerPolicyTest {
+    private fun quarterProof() = historical()
+        .put("display_policy_version", "backtested-quarterly-v1")
+        .put("verification_evidence_id", "quarterly-touch-history-v1-20261116:SPY:up5_touch")
+        .put("model_version", "quarterly-volatility-scaled-touch-v1")
+        .put("model_sha256", "94de4a9c927f03b600c5155782902f71c3ce9120c6cf42839eac229c63886276")
+        .put("event", "up5_touch").put("horizon_sessions", 63)
+    @Test fun quarterlyRequiresItsOwnHorizonEventAndEvidence() {
+        val f=quarterProof()
+        assertNotNull(ViewerPolicy.quarterly(f, 100))
+        assertNull(ViewerPolicy.backtested(JSONObject().put("backtested_forecast",f), "SPY",100))
+        assertNull(ViewerPolicy.quarterly(f.put("horizon_sessions",21),100))
+        assertNull(ViewerPolicy.quarterly(quarterProof().put("event","up10_touch"),100))
+        assertNull(ViewerPolicy.quarterly(quarterProof().put("symbol","QQQ"),100))
+        assertNull(ViewerPolicy.quarterly(quarterProof(),200))
+    }
     private fun historical() = JSONObject().put("display_policy_version", "backtested-touch-v1")
         .put("display_allowed", true).put("independent_confirmed", false)
         .put("verification_status", "historical_backtest_passed")

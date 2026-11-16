@@ -150,6 +150,29 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
                 Text("첫 결과가 나오는 것과 검증 완료는 다릅니다.", style = MaterialTheme.typography.labelSmall)
             } else Text("$symbol · 후보 기록 확인 중", style = MaterialTheme.typography.bodySmall)
         }
+        Spacer(Modifier.height(16.dp))
+        Text("3개월(63거래일) 도달확률", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text("SPY · 기간 중 +5% 이상 도달", fontWeight = FontWeight.SemiBold)
+        Text("과거 백테스트 통과 · 실전 검증 진행 중", style = MaterialTheme.typography.bodySmall)
+        val quarterly = data.scores?.optJSONArray("quarterly_forecasts")
+        val quarterForecast = (0 until (quarterly?.length() ?: 0)).firstNotNullOfOrNull { i ->
+            ViewerPolicy.quarterly(quarterly?.optJSONObject(i), System.currentTimeMillis()/1000)
+        }
+        if (quarterForecast != null) {
+            Text(String.format(Locale.US, "%.1f%%", quarterForecast.optDouble("probability")),
+                fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text("${quarterForecast.optString("as_of")} 종가 기준 → ${quarterForecast.optString("target_date")}까지",
+                style = MaterialTheme.typography.bodySmall)
+            Text("기간 중 고가 기준 · 3개월 뒤 종가가 +5%라는 뜻은 아닙니다.", style = MaterialTheme.typography.bodySmall)
+            val evidence=quarterForecast.getJSONObject("evidence")
+            Text("과거 ${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
+                style = MaterialTheme.typography.bodySmall)
+            Text(String.format(Locale.US, "비교 모델 대비 확률 오차 %.2f%% 감소 (적중률 아님)", evidence.optDouble("gain")),
+                style = MaterialTheme.typography.bodySmall)
+            Text("같은 과거 데이터를 개발에 재사용한 결과입니다.", style = MaterialTheme.typography.labelSmall)
+        } else Text("최신 유효 확률 확인 중 · 새로고침해 주세요.", style = MaterialTheme.typography.bodySmall)
+        Text("3개월 ±10%와 나머지 종목·방향은 과거 검증 기준 미달로 확률을 표시하지 않습니다.",
+            style = MaterialTheme.typography.bodySmall)
         Text("과거 백테스트 통과 항목만 별도로 표시합니다. 탈락한 방향과 기본 발생률은 표시하지 않습니다.",
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp, bottom = 18.dp))
     }
