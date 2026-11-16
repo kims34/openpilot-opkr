@@ -6,6 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,86 +75,164 @@ class ViewerActivity : ComponentActivity() {
     }
 }
 
+private val UpColor = Color(0xFFB92340)
+private val DownColor = Color(0xFF2458C6)
+private val Muted = Color(0xFF525E73)
+
 @Composable
 private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Color(0xFFF4F7FB))
-        .verticalScroll(rememberScrollState()).padding(20.dp)) {
-        Text("IndexAlert", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text("과거 데이터 확률", fontSize = 18.sp, color = Color(0xFF244BD0))
-        Spacer(Modifier.height(10.dp))
-        Text("시세·검증 결과 조회 전용입니다. 기존 앱의 알림과 설정은 유지됩니다.", style = MaterialTheme.typography.bodySmall)
-        Button(onClick = refresh, enabled = !refreshing, modifier = Modifier.padding(vertical = 12.dp)) {
-            Text(if (refreshing) "확인 중…" else "새로고침")
-        }
-        val names = linkedMapOf("sp500" to "SPY · S&P 500", "ndx" to "QQQ · NASDAQ 100", "djdiv" to "SCHD", "kospi100" to "KOSPI", "usdkrw" to "USD/KRW")
-        names.forEach { (id, name) ->
-            Card(Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Column(Modifier.padding(18.dp)) {
-                    Text(name, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                    val row = data.markets[id]
-                    val price = row?.optDouble("last_value", Double.NaN) ?: Double.NaN
-                    if (price.isFinite() && price > 0) {
-                        Text(String.format(Locale.US, "%,.2f", price), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                        val change = row?.optDouble("day_change_percent", Double.NaN) ?: Double.NaN
-                        if (row?.optBoolean("basis_verified", false) == true && change.isFinite()) {
-                            Text(String.format(Locale.US, "전일 대비 %+.2f%%", change),
-                                color = if (change >= 0) Color(0xFFBA2338) else Color(0xFF2454BB))
-                        }
-                        Text(row?.optString("source").orEmpty(), style = MaterialTheme.typography.bodySmall)
-                    } else Text(if (data.updated) "시세를 확인하지 못했습니다." else "시세 확인 중…")
+    var symbol by rememberSaveable { mutableStateOf("SPY") }
+    var horizon by rememberSaveable { mutableIntStateOf(21) }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
+    var showMarkets by rememberSaveable { mutableStateOf(false) }
+    val forecasts = ViewerPolicy.historical(data.scores, System.currentTimeMillis()/1000)
+    val selected = forecasts.filter { it.optString("symbol") == symbol && it.optInt("horizon_sessions") == horizon }
+    val marketId = mapOf("SPY" to "sp500", "QQQ" to "ndx", "SCHD" to "djdiv")[symbol]
+    val market = data.markets[marketId]
 
-                }
+    Column(Modifier.fillMaxSize().background(Color(0xFFF3F6FB))
+        .windowInsetsPadding(WindowInsets.safeDrawing)
+        .verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.weight(1f)) {
+                Text("IndexAlert", fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                Text("목표 도달확률", color = Muted, fontSize = 15.sp)
+            }
+            OutlinedButton(onClick = refresh, enabled = !refreshing) { Text(if (refreshing) "갱신 중" else "새로고침") }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (item in listOf("SPY", "QQQ", "SCHD")) {
+                FilterChip(selected = symbol == item, onClick = { symbol = item; showHistory = false },
+                    label = { Text(item, fontWeight = FontWeight.SemiBold) }, modifier = Modifier.weight(1f))
             }
         }
-        Text("과거 데이터 기반 도달확률", fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        Text("기간 중 한 번이라도 목표에 도달할 확률입니다. 기간 말 종가 예측과 다릅니다.",
-            style = MaterialTheme.typography.bodySmall)
-        Text("비교 모델 대비 개선 여부와 관계없이 모든 항목을 표시합니다. 독립 실전 검증 완료 수치는 아닙니다.",
-            style = MaterialTheme.typography.bodySmall)
-        val forecasts=ViewerPolicy.historical(data.scores, System.currentTimeMillis()/1000)
-        for (horizon in listOf(21,63)) {
-            Text(if (horizon==21) "1개월 · 21거래일" else "3개월 · 63거래일",
-                fontWeight = FontWeight.Bold, fontSize = 21.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
-            for (symbol in listOf("SPY","QQQ","SCHD")) {
-                val group=forecasts.filter { it.optString("symbol")==symbol && it.optInt("horizon_sessions")==horizon }
-                Card(Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(symbol, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        val first=group.firstOrNull()
-                        if (first != null) {
-                            Text("${first.optString("as_of")} 종가 기준 → ${first.optString("target_date")}까지",
-                                style = MaterialTheme.typography.bodySmall)
-                            val evidence=first.getJSONObject("evidence")
-                            Text("과거 ${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                        for (threshold in listOf(5,10)) for (direction in listOf("up","down")) {
-                            val label="${if(direction=="up") "+" else "-"}${threshold}% 도달"
-                            val f=group.firstOrNull { it.optInt("threshold_percent")==threshold && it.optString("direction")==direction }
-                            HorizontalDivider(Modifier.padding(vertical = 9.dp))
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(label, fontWeight = FontWeight.SemiBold)
-                                Text(if(f==null) "확인 중" else String.format(Locale.US,"%.1f%%",f.optDouble("probability")),
-                                    fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                            }
-                            if (f != null) {
-                                val evidence=f.getJSONObject("evidence")
-                                Text(String.format(Locale.US,"과거 적중률 %.1f%% · 실제 도달 비율 %.1f%%",
-                                    evidence.optDouble("accuracy_pct"),evidence.optDouble("actual_touch_rate_pct")),
-                                    style = MaterialTheme.typography.bodySmall)
-                                Text(String.format(Locale.US,"단순 다수 판단 적중률 %.1f%%",evidence.optDouble("majority_accuracy_pct")),
-                                    style = MaterialTheme.typography.labelSmall)
-                            }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (days in listOf(21, 63)) {
+                FilterChip(selected = horizon == days, onClick = { horizon = days; showHistory = false },
+                    label = { Text(if (days == 21) "1개월 · 21거래일" else "3개월 · 63거래일") },
+                    modifier = Modifier.weight(1f))
+            }
+        }
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("$symbol · ${if (horizon == 21) "1개월" else "3개월"}", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                val price = market?.optDouble("last_value", Double.NaN) ?: Double.NaN
+                if (price.isFinite() && price > 0) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(String.format(Locale.US, "%,.2f", price), fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                        val change = market?.optDouble("day_change_percent", Double.NaN) ?: Double.NaN
+                        if (market?.optBoolean("basis_verified", false) == true && change.isFinite()) {
+                            Text(String.format(Locale.US, "%+.2f%%", change), color = if (change >= 0) UpColor else DownColor)
                         }
                     }
+                    Text(market?.optString("source").orEmpty(), color = Muted, style = MaterialTheme.typography.labelSmall)
+                }
+                val first = selected.firstOrNull()
+                if (first != null) {
+                    Text("기준 종가: ${first.optString("as_of")}", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text("목표 기간: 다음 $horizon 거래일 · ${first.optString("target_date")}까지",
+                        color = Muted, style = MaterialTheme.typography.bodySmall)
+                } else Text(if (data.updated) "최신 유효 확률을 확인하지 못했어요. 새로고침해 주세요." else "과거 데이터 확인 중…",
+                    color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text("기준 종가에서 목표 가격에 한 번이라도 닿을 확률", fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 5.dp), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Text("막대 하나의 전체 길이 = 100%", color = Muted, style = MaterialTheme.typography.bodySmall)
+        DirectionChart(selected, "up", "▲ 상승 목표", UpColor)
+        DirectionChart(selected, "down", "▼ 하락 목표", DownColor)
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE9EFFD))) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("합이 100%가 아니어도 정상이에요", fontWeight = FontWeight.Bold)
+                Text("+10%에 도달하면 +5%에도 도달한 거예요. 같은 기간에 상승·하락 목표를 모두 찍을 수도 있어요.",
+                    style = MaterialTheme.typography.bodySmall)
+                Text("서로 겹치는 사건이라 각각 읽어 주세요. ±15%를 추가해도 합계가 100%로 나뉘지 않아요.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        OutlinedButton(onClick = { showHistory = !showHistory }, modifier = Modifier.fillMaxWidth()) {
+            Text(if (showHistory) "과거 기록 접기 ▲" else "과거 적중률·표본 보기 ▼")
+        }
+        if (showHistory) HistoryDetails(selected)
+        Text("과거 데이터 기반 추정 · 독립 실전 검증 완료 아님", color = Muted, style = MaterialTheme.typography.bodySmall)
+        Text("21·63거래일 × 3개 종목 × ±5%·±10%, 총 24개 항목을 선택해 볼 수 있어요. 새 종가가 확정되면 갱신되며 만료된 값은 표시하지 않아요.",
+            color = Muted, style = MaterialTheme.typography.labelSmall)
+        TextButton(onClick = { showMarkets = !showMarkets }, modifier = Modifier.fillMaxWidth()) {
+            Text(if (showMarkets) "다른 시세 접기 ▲" else "다른 시세 보기 ▼")
+        }
+        if (showMarkets) {
+            for ((id, label) in linkedMapOf("sp500" to "SPY", "ndx" to "QQQ", "djdiv" to "SCHD", "kospi100" to "KOSPI", "usdkrw" to "USD/KRW")) {
+                val price = data.markets[id]?.optDouble("last_value", Double.NaN) ?: Double.NaN
+                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label)
+                    Text(if (price.isFinite() && price > 0) String.format(Locale.US, "%,.2f", price) else "확인 중")
                 }
             }
         }
-        Text("적중률: 예측 확률 50% 이상이면 도달, 미만이면 미도달로 판단한 과거 일치율입니다. 도달확률 자체와 다릅니다. 상승·하락은 동시에 도달할 수 있어 합이 100%가 아닙니다.",
-            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-        Text("같은 과거 데이터를 개발에 재사용한 추정입니다. 새 종가가 확정되면 갱신되며, 유효기간이 지난 값은 숨깁니다.",
-            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 18.dp))
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun DirectionChart(forecasts: List<JSONObject>, direction: String, title: String, color: Color) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Text(title, color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            for (threshold in listOf(5, 10)) {
+                val label = "${if (direction == "up") "+" else "-"}$threshold% 도달"
+                val forecast = forecasts.firstOrNull { it.optString("direction") == direction && it.optInt("threshold_percent") == threshold }
+                val probability = forecast?.optDouble("probability", Double.NaN) ?: Double.NaN
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(label, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        Text(if (probability.isFinite()) String.format(Locale.US, "%.1f%%", probability) else "확인 중",
+                            color = color, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (probability.isFinite()) {
+                        LinearProgressIndicator(progress = { (probability/100).toFloat().coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(8.dp)),
+                            color = color, trackColor = color.copy(alpha = .10f), strokeCap = StrokeCap.Round)
+                    } else Text("유효한 데이터가 들어오면 표시돼요.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                for (label in listOf("0%", "50%", "100%")) Text(label, color = Muted, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryDetails(forecasts: List<JSONObject>) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("과거 기록", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            val evidence = forecasts.firstOrNull()?.optJSONObject("evidence")
+            if (evidence != null) {
+                Text("${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
+                    color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            for (direction in listOf("up", "down")) for (threshold in listOf(5, 10)) {
+                val f = forecasts.firstOrNull { it.optString("direction") == direction && it.optInt("threshold_percent") == threshold }
+                val e = f?.optJSONObject("evidence") ?: continue
+                HorizontalDivider()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${if (direction == "up") "+" else "-"}$threshold% 도달", fontWeight = FontWeight.SemiBold)
+                    Text(String.format(Locale.US, "적중률 %.1f%%", e.optDouble("accuracy_pct")), fontWeight = FontWeight.SemiBold)
+                }
+                Text(String.format(Locale.US, "실제 도달 비율 %.1f%% · 단순 다수 판단 적중률 %.1f%%",
+                    e.optDouble("actual_touch_rate_pct"), e.optDouble("majority_accuracy_pct")),
+                    color = Muted, style = MaterialTheme.typography.labelSmall)
+            }
+            Text("적중률은 과거 예측 확률이 50% 이상이면 ‘도달’, 미만이면 ‘미도달’로 판단했을 때 실제 결과와 맞은 비율이에요.",
+                color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text("같은 과거 데이터를 개발에 재사용한 결과예요. 기간 말 종가의 수익률을 나눠 합계 100%로 만든 분포와는 다른 지표예요.",
+                color = Muted, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
