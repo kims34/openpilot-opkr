@@ -14,7 +14,8 @@ from datetime import date, timedelta
 
 import numpy as np
 import one_month_calibrated as existing_app
-from research_monthly_time_machine_2015 import historical_bars,exchange_session_guard
+import exchange_calendars as xcals
+from research_monthly_time_machine_2015 import historical_bars
 
 START = "2004-12-01"
 END = "2016-03-01"
@@ -73,9 +74,23 @@ def one_asof(bars, t):
     }
 
 
+
+def historical_session_guard(bars):
+    # Default XNYS calendar only spans ~20y relative to now; explicitly
+    # request older session rules for genuine ten-year 2015 lookbacks.
+    cal=xcals.get_calendar("XNYS",start="2004-01-01",end="2017-01-01")
+    expected=[d.date().isoformat() for d in cal.sessions_in_range(bars[0][0],bars[-1][0])]
+    actual=[r[0] for r in bars]
+    if expected!=actual:
+        missing=sorted(set(expected)-set(actual))
+        extra=sorted(set(actual)-set(expected))
+        raise ValueError("missing or unexpected XNYS daily sessions: "
+                         +repr({"missing":missing[:7],"extra":extra[:7]}))
+    return {"first":actual[0],"last":actual[-1],"sessions":len(actual),"missing":0}
+
 def replay(symbol, example="2015-01-02", monthly=True):
     bars=historical_bars(symbol,start=START,end=END)
-    guard=exchange_session_guard(bars)
+    guard=historical_session_guard(bars)
     datepos={r[0]:i for i,r in enumerate(bars)}
     if example not in datepos:
         raise ValueError("exact forecast as-of date not found")
