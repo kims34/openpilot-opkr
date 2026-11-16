@@ -1,7 +1,7 @@
 """Append-only prospective validation for frozen historically screened 5% candidates.
 
-Only completed OHLC and pre-open first issues are admitted. No public numeric
-forecast, backfill, model promotion, order or original-ledger modification.
+Only completed OHLC and pre-open first issues are admitted. Historical display
+admission is separate from independent confirmation. No backfill or orders.
 """
 import hashlib
 import json
@@ -128,5 +128,9 @@ def summary(db_path=None):
             if scored:
                 result['candidate_brier']=sum((p-y)**2 for p,b,y in scored)/len(scored)
                 result['baseline_brier']=sum((b-y)**2 for p,b,y in scored)/len(scored)
+            from monthly_touch_backtested_display import admitted_forecast
+            forecast=admitted_forecast(con,symbol,MODEL_DIGEST)
+            if forecast is not None:
+                result['backtested_forecast']=forecast
             out[symbol]=result
     return out

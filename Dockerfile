@@ -41,6 +41,7 @@ COPY one_month_calibrated.py .
 COPY monthly_prospective.py .
 COPY monthly_touch_shadow.py .
 COPY monthly_touch_shadow_model.py .
+COPY monthly_touch_backtested_display.py .
 COPY kospi_monthly.py .
 COPY kospi_nextday_probability.py .
 COPY extended_session_probability.py .
