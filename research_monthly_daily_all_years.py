@@ -48,7 +48,7 @@ REQUIRED_PARITY_KEYS = (
 )
 COLUMNS = (
     "symbol","as_of","first_future_session","last_future_session",
-    "lookback_start","training_sessions","anchor_close",
+    "lookback_start","training_sessions","history_full_ten_years","anchor_close",
     "up_threshold","down_threshold",
     "up_10_probability_pct","down_10_probability_pct",
     "baseline_up_pct","baseline_down_pct",
@@ -174,6 +174,7 @@ class DailyExactReplay:
         result={
             "as_of":self.dates[at],
             "training_sessions":at-window_first+1,
+            "history_full_ten_years":self.dates[0]<=_date_years_earlier(self.dates[at]),
             "lookback_start":self.dates[window_first],
         }
         for side,name in ((0,"up"),(1,"down")):
@@ -254,6 +255,7 @@ class DailyExactReplay:
             "last_future_session":future[-1][0],
             "lookback_start":result["lookback_start"],
             "training_sessions":result["training_sessions"],
+            "history_full_ten_years":result["history_full_ten_years"],
             "anchor_close":round(float(a),4),
             "up_threshold":round(float(a*1.1),4),
             "down_threshold":round(float(a*.9),4),
@@ -297,6 +299,7 @@ def summarize(rows):
     out["combined_historical_baseline_brier"]=round((
         out["up"]["historical_rate_brier"]+
         out["down"]["historical_rate_brier"])/2,8)
+    out["full_ten_years_count"]=sum(int(r["history_full_ten_years"]) for r in rows)
     out["first_as_of"]=rows[0]["as_of"]
     out["last_as_of"]=rows[-1]["as_of"]
     out["mean_annualized_volatility_note"]="not a trading return or directional forecast"
@@ -304,13 +307,13 @@ def summarize(rows):
 
 
 def run(symbol,year,out_dir="daily_monthly_artifacts"):
-    if symbol not in ("SPY","QQQ") or not (2010<=year<=2026):
+    if symbol not in ("SPY","QQQ") or not (2002<=year<=2009):
         raise ValueError("outside supported full 10y window")
     bars=get_complete_bars(symbol)
     replay=DailyExactReplay(bars)
     indices=[i for i,d in enumerate(replay.dates)
              if d.startswith(str(year)) and i<=replay.last_sessions_max
-             and d >= "2010-01-01"]
+             and i-bisect.bisect_left(replay.dates,_date_years_earlier(d))>=714]
     if not indices:
         raise ValueError("no finished 21-session forecasts for year")
     results=[]
