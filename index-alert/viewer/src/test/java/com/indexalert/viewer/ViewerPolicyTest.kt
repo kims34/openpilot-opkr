@@ -6,6 +6,25 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViewerPolicyTest {
+    private fun annualProof(symbol: String, threshold: Int, direction: String): JSONObject {
+        val f=allProof(symbol,252,threshold,direction)
+        val event=f.getString("event")
+        return f.put("display_policy_version","annual-estimates-v1")
+            .put("verification_evidence_id","annual-touch-history-v1-20261117:$symbol:$event")
+            .put("model_version","annual-historical-volatility-touch-v1")
+            .put("model_sha256","5bdaac0269af9243ea5e7689c0cf0801ca1534f86c41ada3d1ada76d505260ca")
+    }
+    @Test fun annualTargetsAreBoundTo252SessionsAndSeparateEvidence() {
+        val array=JSONArray()
+        for(s in listOf("SPY","QQQ","SCHD")) for(t in listOf(5,10))
+            for(d in listOf("up","down")) array.put(annualProof(s,t,d))
+        val node=JSONObject().put("annual_forecasts",array)
+        assertEquals(12,ViewerPolicy.annual(node,100).size)
+        assertTrue(ViewerPolicy.historical(node,100).isEmpty())
+        assertTrue(ViewerPolicy.annual(node,200).isEmpty())
+        val f=annualProof("SPY",5,"up").put("horizon_sessions",63)
+        assertTrue(ViewerPolicy.annual(JSONObject().put("annual_forecasts",JSONArray().put(f)),100).isEmpty())
+    }
     private fun allProof(symbol: String, h: Int, threshold: Int, direction: String): JSONObject {
         val event="$h:$direction${threshold}_touch"
         return JSONObject().put("symbol",symbol).put("event",event)

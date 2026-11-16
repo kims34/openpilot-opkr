@@ -33,6 +33,34 @@ object ViewerPolicy {
             }
         }
     }
+    fun annual(node: JSONObject?, now: Long): List<JSONObject> {
+        val array=node?.optJSONArray("annual_forecasts") ?: return emptyList()
+        val seen=mutableSetOf<String>()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val f=array.optJSONObject(i) ?: continue
+                val symbol=f.optString("symbol");val h=f.optInt("horizon_sessions")
+                val threshold=f.optInt("threshold_percent");val direction=f.optString("direction")
+                val event="$h:$direction${threshold}_touch";val p=f.optDouble("probability",Double.NaN)
+                val evidence=f.optJSONObject("evidence") ?: continue
+                val accuracy=evidence.optDouble("accuracy_pct",Double.NaN)
+                if (symbol !in listOf("SPY","QQQ","SCHD") || h != 252 ||
+                    threshold !in listOf(5,10) || direction !in listOf("up","down") ||
+                    f.optString("event") != event ||
+                    f.optString("display_policy_version") != "annual-estimates-v1" ||
+                    f.opt("display_allowed") != true || f.opt("independent_confirmed") != false ||
+                    f.optString("verification_status") != "historical_estimate" ||
+                    f.optString("verification_evidence_id") != "annual-touch-history-v1-20261117:$symbol:$event" ||
+                    f.optString("model_version") != "annual-historical-volatility-touch-v1" ||
+                    f.optString("model_sha256") != "5bdaac0269af9243ea5e7689c0cf0801ca1534f86c41ada3d1ada76d505260ca" ||
+                    f.optLong("valid_until") <= now || f.optString("as_of").isBlank() ||
+                    f.optString("target_date").isBlank() || !p.isFinite() || p !in 0.0..100.0 ||
+                    !accuracy.isFinite() || accuracy !in 0.0..100.0 || evidence.optInt("samples") < 1 ||
+                    evidence.optString("symbol") != symbol || evidence.optString("event") != event) continue
+                if (seen.add("$symbol:$event")) add(f)
+            }
+        }
+    }
     fun quarterly(f: JSONObject?, now: Long): JSONObject? {
         f ?: return null
         val p=f.optDouble("probability", Double.NaN)

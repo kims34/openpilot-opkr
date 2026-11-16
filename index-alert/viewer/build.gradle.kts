@@ -10,8 +10,8 @@ android {
         applicationId = "com.indexalert.verified"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.5-chart"
+        versionCode = 7
+        versionName = "1.6-annual"
         buildConfigField("String", "INDEXALERT_BACKEND_URL", "\"https://indexalert-runtime-production.up.railway.app\"")
     }
     compileOptions {

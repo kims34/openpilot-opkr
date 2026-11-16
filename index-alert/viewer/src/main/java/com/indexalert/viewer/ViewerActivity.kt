@@ -85,7 +85,8 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
     var horizon by rememberSaveable { mutableIntStateOf(21) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var showMarkets by rememberSaveable { mutableStateOf(false) }
-    val forecasts = ViewerPolicy.historical(data.scores, System.currentTimeMillis()/1000)
+    val now = System.currentTimeMillis()/1000
+    val forecasts = ViewerPolicy.historical(data.scores, now) + ViewerPolicy.annual(data.scores, now)
     val selected = forecasts.filter { it.optString("symbol") == symbol && it.optInt("horizon_sessions") == horizon }
     val marketId = mapOf("SPY" to "sp500", "QQQ" to "ndx", "SCHD" to "djdiv")[symbol]
     val market = data.markets[marketId]
@@ -97,7 +98,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
                 Text("IndexAlert", fontSize = 25.sp, fontWeight = FontWeight.Bold)
-                Text("목표 도달확률", color = Muted, fontSize = 15.sp)
+                Text("상승·하락 도달확률", color = Muted, fontSize = 15.sp)
             }
             OutlinedButton(onClick = refresh, enabled = !refreshing) { Text(if (refreshing) "갱신 중" else "새로고침") }
         }
@@ -108,16 +109,16 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (days in listOf(21, 63)) {
+            for (days in listOf(21, 63, 252)) {
                 FilterChip(selected = horizon == days, onClick = { horizon = days; showHistory = false },
-                    label = { Text(if (days == 21) "1개월 · 21거래일" else "3개월 · 63거래일") },
+                    label = { Text(when (days) { 21 -> "1개월"; 63 -> "3개월"; else -> "1년" }) },
                     modifier = Modifier.weight(1f))
             }
         }
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("$symbol · ${if (horizon == 21) "1개월" else "3개월"}", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("$symbol · ${when (horizon) { 21 -> "1개월"; 63 -> "3개월"; else -> "1년" }}", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 val price = market?.optDouble("last_value", Double.NaN) ?: Double.NaN
                 if (price.isFinite() && price > 0) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -142,8 +143,8 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
         }
         Text("막대 하나의 전체 길이 = 100%", color = Muted, style = MaterialTheme.typography.bodySmall)
         Text("진한 색 = 도달 · 연한 색 = 미도달", color = Muted, style = MaterialTheme.typography.labelSmall)
-        DirectionChart(selected, "up", "▲ 상승 목표", UpColor)
-        DirectionChart(selected, "down", "▼ 하락 목표", DownColor)
+        DirectionChart(selected, "up", "▲ 상승확률", UpColor)
+        DirectionChart(selected, "down", "▼ 하락확률", DownColor)
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFE9EFFD))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -160,7 +161,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
         }
         if (showHistory) HistoryDetails(selected)
         Text("과거 데이터 기반 추정 · 독립 실전 검증 완료 아님", color = Muted, style = MaterialTheme.typography.bodySmall)
-        Text("21·63거래일 × 3개 종목 × ±5%·±10%, 총 24개 항목을 선택해 볼 수 있어요. 새 종가가 확정되면 갱신되며 만료된 값은 표시하지 않아요.",
+        Text("21·63·252거래일 × 3개 종목 × ±5%·±10%, 총 36개 항목을 선택해 볼 수 있어요. 새 종가가 확정되면 갱신되며 만료된 값은 표시하지 않아요.",
             color = Muted, style = MaterialTheme.typography.labelSmall)
         TextButton(onClick = { showMarkets = !showMarkets }, modifier = Modifier.fillMaxWidth()) {
             Text(if (showMarkets) "다른 시세 접기 ▲" else "다른 시세 보기 ▼")
