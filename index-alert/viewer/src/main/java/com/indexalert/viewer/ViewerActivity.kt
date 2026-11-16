@@ -86,7 +86,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var showMarkets by rememberSaveable { mutableStateOf(false) }
     val now = System.currentTimeMillis()/1000
-    val forecasts = ViewerPolicy.historical(data.scores, now) + ViewerPolicy.annual(data.scores, now)
+    val forecasts = ViewerPolicy.historical(data.scores, now) + ViewerPolicy.annual(data.scores, now) + ViewerPolicy.extended(data.scores, now)
     val selected = forecasts.filter { it.optString("symbol") == symbol && it.optInt("horizon_sessions") == horizon }
     val marketId = mapOf("SPY" to "sp500", "QQQ" to "ndx", "SCHD" to "djdiv")[symbol]
     val market = data.markets[marketId]
@@ -161,7 +161,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
         }
         if (showHistory) HistoryDetails(selected)
         Text("과거 데이터 기반 추정 · 독립 실전 검증 완료 아님", color = Muted, style = MaterialTheme.typography.bodySmall)
-        Text("21·63·252거래일 × 3개 종목 × ±5%·±10%, 총 36개 항목을 선택해 볼 수 있어요. 새 종가가 확정되면 갱신되며 만료된 값은 표시하지 않아요.",
+        Text("21·63·252거래일 × 3개 종목 × ±5%·±10%·±15%·±20%, 총 72개 항목을 선택해 볼 수 있어요. 새 종가가 확정되면 갱신되며 만료된 값은 표시하지 않아요.",
             color = Muted, style = MaterialTheme.typography.labelSmall)
         TextButton(onClick = { showMarkets = !showMarkets }, modifier = Modifier.fillMaxWidth()) {
             Text(if (showMarkets) "다른 시세 접기 ▲" else "다른 시세 보기 ▼")
@@ -185,14 +185,14 @@ private fun DirectionChart(forecasts: List<JSONObject>, direction: String, title
         colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text(title, color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            for (threshold in listOf(5, 10)) {
+            for (threshold in listOf(5, 10, 15, 20)) {
                 val label = "${if (direction == "up") "+" else "-"}$threshold% 도달"
                 val forecast = forecasts.firstOrNull { it.optString("direction") == direction && it.optInt("threshold_percent") == threshold }
                 val probability = forecast?.optDouble("probability", Double.NaN) ?: Double.NaN
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(label, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                        Text(if (probability.isFinite()) String.format(Locale.US, "%.1f%%", probability) else "확인 중",
+                        Text(if (probability.isFinite()) String.format(Locale.US, if (probability > 0 && probability < 1) "%.2f%%" else "%.1f%%", probability) else "확인 중",
                             color = color, fontSize = 25.sp, fontWeight = FontWeight.Bold)
                     }
                     if (probability.isFinite()) {
@@ -220,7 +220,7 @@ private fun HistoryDetails(forecasts: List<JSONObject>) {
                 Text("${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
                     color = Muted, style = MaterialTheme.typography.bodySmall)
             }
-            for (direction in listOf("up", "down")) for (threshold in listOf(5, 10)) {
+            for (direction in listOf("up", "down")) for (threshold in listOf(5, 10, 15, 20)) {
                 val f = forecasts.firstOrNull { it.optString("direction") == direction && it.optInt("threshold_percent") == threshold }
                 val e = f?.optJSONObject("evidence") ?: continue
                 HorizontalDivider()
@@ -234,6 +234,8 @@ private fun HistoryDetails(forecasts: List<JSONObject>) {
             }
             Text("적중률은 과거 예측 확률이 50% 이상이면 ‘도달’, 미만이면 ‘미도달’로 판단했을 때 실제 결과와 맞은 비율이에요.",
                 color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text("큰 변동이 드문 항목은 미도달만 골라도 적중률이 높게 나올 수 있어요. 실제 도달 비율과 함께 읽어 주세요.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text("0%는 과거 관측·환산 표본에서 도달 사례가 없다는 뜻이며, 발생이 불가능하다는 뜻은 아니에요.", color = Muted, style = MaterialTheme.typography.bodySmall)
             Text("같은 과거 데이터를 개발에 재사용한 결과예요. 기간 말 종가의 수익률을 나눠 합계 100%로 만든 분포와는 다른 지표예요.",
                 color = Muted, style = MaterialTheme.typography.bodySmall)
         }

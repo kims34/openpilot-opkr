@@ -6,6 +6,25 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViewerPolicyTest {
+    private fun extendedProof(symbol: String, h: Int, threshold: Int, direction: String): JSONObject {
+        val f=allProof(symbol,h,threshold,direction);val event=f.getString("event")
+        return f.put("display_policy_version","extended-estimates-v1")
+            .put("verification_evidence_id","extended-touch-history-v1-20261117:$symbol:$event")
+            .put("model_version","extended-historical-volatility-touch-v1")
+            .put("model_sha256","63a08c20607130d95d73510eba208ba8443db0b0056062fa9c3596494f591da0")
+    }
+    @Test fun extendedTargetsCoverThreeHorizonsWithSeparateEvidence() {
+        val array=JSONArray()
+        for(s in listOf("SPY","QQQ","SCHD")) for(h in listOf(21,63,252))
+            for(t in listOf(15,20)) for(d in listOf("up","down")) array.put(extendedProof(s,h,t,d))
+        val node=JSONObject().put("extended_forecasts",array)
+        assertEquals(36,ViewerPolicy.extended(node,100).size)
+        assertTrue(ViewerPolicy.extended(node,200).isEmpty())
+        assertTrue(ViewerPolicy.historical(node,100).isEmpty())
+        assertTrue(ViewerPolicy.annual(node,100).isEmpty())
+        val wrong=JSONObject().put("extended_forecasts",JSONArray().put(extendedProof("SPY",21,5,"up")))
+        assertTrue(ViewerPolicy.extended(wrong,100).isEmpty())
+    }
     private fun annualProof(symbol: String, threshold: Int, direction: String): JSONObject {
         val f=allProof(symbol,252,threshold,direction)
         val event=f.getString("event")
