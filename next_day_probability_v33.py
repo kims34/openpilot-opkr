@@ -15,6 +15,7 @@ import time
 import next_day_probability as base
 import one_month_calibrated
 import one_month_probability
+import monthly_prospective
 import probability_live_gate
 import probability_milestone
 import probability_shadow
@@ -69,6 +70,14 @@ def estimate(symbol, now=None):
             month.update(one_month_calibrated.estimate_distribution(rows))
         except Exception as exc:
             print("one-month terminal distribution unavailable", type(exc).__name__, str(exc), flush=True)
+
+    # Observation-only ledger: immutable as-issued 21-day probabilities.
+    # Never alters the monthly forecast that the Android client receives.
+    try:
+        monthly_prospective.observe(symbol, month, rows, meta, now)
+    except Exception as exc:
+        print("monthly prospective observer unavailable", symbol,
+              type(exc).__name__, str(exc)[:180], flush=True)
 
     # Freeze and score the RAW historically-approved production candidate first.
     try:
