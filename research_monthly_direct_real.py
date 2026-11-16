@@ -105,8 +105,8 @@ def evaluate(symbol, window, days=126, paths=1024):
         "reference":"unmodified one_month_calibrated.estimate_probability per as-of prefix",
         "baseline_replay_verified_at":dates[targets[-1]],
         "baseline_parity":parity,
-        "mean_actual_legacy_up":float(legacy[:,0].mean()),
-        "mean_actual_legacy_down":float(legacy[:,1].mean()),
+        "mean_served_legacy_up":float(legacy[:,0].mean()),
+        "mean_served_legacy_down":float(legacy[:,1].mean()),
         "legacy_analog_active_up":sum(replay.estimate(t)["up_analog_enabled"] for t in targets),
         "legacy_analog_active_down":sum(replay.estimate(t)["down_analog_enabled"] for t in targets),
         "input_digest_sha256":{
