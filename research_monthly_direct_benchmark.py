@@ -215,9 +215,3 @@ def metric(a, b, outcomes, *, block_size=H):
                                      {"side":"down","bins":buckets[1]}],
     }
 
-
-def compare(prices, highs, lows, baseline, rival, *, dates=None, block=H):
-    outcomes = []
-    for t in range(len(baseline)):
-        outcomes.append(monthly.touch_label(prices,highs,lows,t))
-    return metric(baseline,rival,outcomes,block_size=block)
