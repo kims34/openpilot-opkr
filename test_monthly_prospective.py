@@ -47,7 +47,8 @@ class ProspectiveMonthlyTests(unittest.TestCase):
         self.assertFalse(second["inserted"])
         with sqlite3.connect(self.db) as con:
             r=con.execute("SELECT up_p,issued_at,maturity_session FROM monthly_prospective_v1").fetchone()
-            self.assertEqual(r,(.123,1000.0,rows[51][0]))
+            self.assertAlmostEqual(r[0],.123,places=12)
+            self.assertEqual((r[1],r[2]),(1000.0,rows[51][0]))
 
     def test_21_full_sessions_not_20(self):
         rows,m,meta,vendor=history()
