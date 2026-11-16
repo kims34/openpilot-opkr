@@ -6,6 +6,32 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ViewerPolicyTest {
+    private fun allProof(symbol: String, h: Int, threshold: Int, direction: String): JSONObject {
+        val event="$h:$direction${threshold}_touch"
+        return JSONObject().put("symbol",symbol).put("event",event)
+            .put("horizon_sessions",h).put("threshold_percent",threshold).put("direction",direction)
+            .put("display_policy_version","historical-estimates-v1").put("display_allowed",true)
+            .put("independent_confirmed",false).put("verification_status","historical_estimate")
+            .put("verification_evidence_id","all-touch-history-v1-20261116:$symbol:$event")
+            .put("model_version","historical-volatility-touch-all-v1")
+            .put("model_sha256","35d5657d55d54360a1e82cf90dab051070f3b50ee91437e0133773b4a741cda1")
+            .put("valid_until",200).put("as_of","2026-11-13").put("target_date","2027-02-17")
+            .put("probability",25).put("evidence",JSONObject().put("symbol",symbol)
+                .put("event",event).put("samples",1000).put("accuracy_pct",0))
+    }
+    @Test fun allHistoricalTargetsDisplayWithoutAccuracyOrImprovementThreshold() {
+        val array=JSONArray()
+        for(s in listOf("SPY","QQQ","SCHD")) for(h in listOf(21,63))
+            for(t in listOf(5,10)) for(d in listOf("up","down")) array.put(allProof(s,h,t,d))
+        assertEquals(24,ViewerPolicy.historical(JSONObject().put("historical_forecasts",array),100).size)
+    }
+    @Test fun allHistoricalStillRejectsExpiredOrMismatchedData() {
+        val f=allProof("SPY",21,5,"up")
+        val node=JSONObject().put("historical_forecasts",JSONArray().put(f))
+        assertTrue(ViewerPolicy.historical(node,200).isEmpty())
+        f.put("event","21:up10_touch")
+        assertTrue(ViewerPolicy.historical(node,100).isEmpty())
+    }
     private fun quarterProof() = historical()
         .put("display_policy_version", "backtested-quarterly-v1")
         .put("verification_evidence_id", "quarterly-touch-history-v1-20261116:SPY:up5_touch")

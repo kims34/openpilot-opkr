@@ -76,7 +76,7 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
     Column(Modifier.fillMaxSize().background(Color(0xFFF4F7FB))
         .verticalScroll(rememberScrollState()).padding(20.dp)) {
         Text("IndexAlert", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text("검증 화면", fontSize = 18.sp, color = Color(0xFF244BD0))
+        Text("과거 데이터 확률", fontSize = 18.sp, color = Color(0xFF244BD0))
         Spacer(Modifier.height(10.dp))
         Text("시세·검증 결과 조회 전용입니다. 기존 앱의 알림과 설정은 유지됩니다.", style = MaterialTheme.typography.bodySmall)
         Button(onClick = refresh, enabled = !refreshing, modifier = Modifier.padding(vertical = 12.dp)) {
@@ -99,81 +99,58 @@ private fun ViewerScreen(data: ScreenData, refreshing: Boolean, refresh: () -> U
                         }
                         Text(row?.optString("source").orEmpty(), style = MaterialTheme.typography.bodySmall)
                     } else Text(if (data.updated) "시세를 확인하지 못했습니다." else "시세 확인 중…")
-                    if (id != "usdkrw") {
-                        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                        val node = if (id == "kospi100") data.monthly?.optJSONObject("items")?.optJSONObject(id)
-                            else data.probabilities?.optJSONObject("items")?.optJSONObject(id)
-                        val forecasts = ViewerPolicy.forecasts(node, ViewerPolicy.symbols[id].orEmpty(), System.currentTimeMillis()/1000)
-                        Text("독립 검증 예측", fontWeight = FontWeight.SemiBold)
-                        if (forecasts.isEmpty()) {
-                            Text(if (data.updated) "검증 완료된 확률이 없습니다." else "검증 결과 확인 중…")
-                        } else forecasts.forEach { f ->
-                            Text("${f.label}  ${String.format(Locale.US, "%.1f%%", f.probability)}")
+
+                }
+            }
+        }
+        Text("과거 데이터 기반 도달확률", fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("기간 중 한 번이라도 목표에 도달할 확률입니다. 기간 말 종가 예측과 다릅니다.",
+            style = MaterialTheme.typography.bodySmall)
+        Text("비교 모델 대비 개선 여부와 관계없이 모든 항목을 표시합니다. 독립 실전 검증 완료 수치는 아닙니다.",
+            style = MaterialTheme.typography.bodySmall)
+        val forecasts=ViewerPolicy.historical(data.scores, System.currentTimeMillis()/1000)
+        for (horizon in listOf(21,63)) {
+            Text(if (horizon==21) "1개월 · 21거래일" else "3개월 · 63거래일",
+                fontWeight = FontWeight.Bold, fontSize = 21.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+            for (symbol in listOf("SPY","QQQ","SCHD")) {
+                val group=forecasts.filter { it.optString("symbol")==symbol && it.optInt("horizon_sessions")==horizon }
+                Card(Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(symbol, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        val first=group.firstOrNull()
+                        if (first != null) {
+                            Text("${first.optString("as_of")} 종가 기준 → ${first.optString("target_date")}까지",
+                                style = MaterialTheme.typography.bodySmall)
+                            val evidence=first.getJSONObject("evidence")
+                            Text("과거 ${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        for (threshold in listOf(5,10)) for (direction in listOf("up","down")) {
+                            val label="${if(direction=="up") "+" else "-"}${threshold}% 도달"
+                            val f=group.firstOrNull { it.optInt("threshold_percent")==threshold && it.optString("direction")==direction }
+                            HorizontalDivider(Modifier.padding(vertical = 9.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(label, fontWeight = FontWeight.SemiBold)
+                                Text(if(f==null) "확인 중" else String.format(Locale.US,"%.1f%%",f.optDouble("probability")),
+                                    fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            }
+                            if (f != null) {
+                                val evidence=f.getJSONObject("evidence")
+                                Text(String.format(Locale.US,"과거 적중률 %.1f%% · 실제 도달 비율 %.1f%%",
+                                    evidence.optDouble("accuracy_pct"),evidence.optDouble("actual_touch_rate_pct")),
+                                    style = MaterialTheme.typography.bodySmall)
+                                Text(String.format(Locale.US,"단순 다수 판단 적중률 %.1f%%",evidence.optDouble("majority_accuracy_pct")),
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                 }
             }
         }
-        Text("21거래일 실전 검증 기록", fontWeight = FontWeight.Bold)
-        for (symbol in listOf("SPY", "QQQ")) {
-            val score = data.scores?.optJSONObject("symbols")?.optJSONObject(symbol)
-            Text(if (score == null) "$symbol · 기록 확인 중" else
-                "$symbol · 저장 ${score.optInt("stored_count")}건 / 채점 완료 ${score.optInt("scored_count")}건",
-                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("21거래일 ±5% 도달확률", fontWeight = FontWeight.Bold)
-        for (symbol in listOf("SPY", "QQQ")) {
-            val candidate = data.scores?.optJSONObject("candidates")?.optJSONObject(symbol)
-            if (candidate != null) {
-                Text(candidate.optString("target_label"), fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 10.dp))
-                Text("과거 백테스트 통과 · 실전 검증 진행 중", style = MaterialTheme.typography.bodySmall)
-                val forecast = ViewerPolicy.backtested(candidate, symbol, System.currentTimeMillis()/1000)
-                if (forecast != null) {
-                    Text(String.format(Locale.US, "%.1f%%", forecast.optDouble("probability")),
-                        fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                    Text("${forecast.optString("as_of")} 종가 기준 → ${forecast.optString("target_date")}까지",
-                        style = MaterialTheme.typography.bodySmall)
-                    Text("기간 중 고가·저가 기준 · 21일 뒤 종가 예측과 다릅니다.", style = MaterialTheme.typography.bodySmall)
-                    val evidence = forecast.getJSONObject("evidence")
-                    Text("과거 ${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
-                        style = MaterialTheme.typography.bodySmall)
-                    Text(String.format(Locale.US, "비교 모델 대비 확률 오차 %.2f%% 감소 (적중률 아님)", evidence.optDouble("gain")),
-                        style = MaterialTheme.typography.bodySmall)
-                    Text("같은 과거 데이터를 개발에 재사용한 결과입니다.", style = MaterialTheme.typography.labelSmall)
-                } else Text("최신 유효 확률을 확인하지 못했습니다. 새로고침해 주세요.", style = MaterialTheme.typography.bodySmall)
-                Text("발행 ${candidate.optInt("stored_count")}건 / 결과 대기 ${candidate.optInt("pending_count")}건 / 채점 ${candidate.optInt("scored_count")}건",
-                    style = MaterialTheme.typography.bodySmall)
-                val maturity = candidate.optString("next_maturity_session").takeIf { it.isNotBlank() && it != "null" }
-                if (maturity != null) Text("첫 결과 확인 대상 거래일: $maturity", style = MaterialTheme.typography.bodySmall)
-                Text("첫 결과가 나오는 것과 검증 완료는 다릅니다.", style = MaterialTheme.typography.labelSmall)
-            } else Text("$symbol · 후보 기록 확인 중", style = MaterialTheme.typography.bodySmall)
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("3개월(63거래일) 도달확률", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        Text("SPY · 기간 중 +5% 이상 도달", fontWeight = FontWeight.SemiBold)
-        Text("과거 백테스트 통과 · 실전 검증 진행 중", style = MaterialTheme.typography.bodySmall)
-        val quarterly = data.scores?.optJSONArray("quarterly_forecasts")
-        val quarterForecast = (0 until (quarterly?.length() ?: 0)).firstNotNullOfOrNull { i ->
-            ViewerPolicy.quarterly(quarterly?.optJSONObject(i), System.currentTimeMillis()/1000)
-        }
-        if (quarterForecast != null) {
-            Text(String.format(Locale.US, "%.1f%%", quarterForecast.optDouble("probability")),
-                fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("${quarterForecast.optString("as_of")} 종가 기준 → ${quarterForecast.optString("target_date")}까지",
-                style = MaterialTheme.typography.bodySmall)
-            Text("기간 중 고가 기준 · 3개월 뒤 종가가 +5%라는 뜻은 아닙니다.", style = MaterialTheme.typography.bodySmall)
-            val evidence=quarterForecast.getJSONObject("evidence")
-            Text("과거 ${evidence.optInt("samples")}개 기준일 · ${evidence.optString("first")} ~ ${evidence.optString("last")}",
-                style = MaterialTheme.typography.bodySmall)
-            Text(String.format(Locale.US, "비교 모델 대비 확률 오차 %.2f%% 감소 (적중률 아님)", evidence.optDouble("gain")),
-                style = MaterialTheme.typography.bodySmall)
-            Text("같은 과거 데이터를 개발에 재사용한 결과입니다.", style = MaterialTheme.typography.labelSmall)
-        } else Text("최신 유효 확률 확인 중 · 새로고침해 주세요.", style = MaterialTheme.typography.bodySmall)
-        Text("3개월 ±10%와 나머지 종목·방향은 과거 검증 기준 미달로 확률을 표시하지 않습니다.",
-            style = MaterialTheme.typography.bodySmall)
-        Text("과거 백테스트 통과 항목만 별도로 표시합니다. 탈락한 방향과 기본 발생률은 표시하지 않습니다.",
-            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp, bottom = 18.dp))
+        Text("적중률: 예측 확률 50% 이상이면 도달, 미만이면 미도달로 판단한 과거 일치율입니다. 도달확률 자체와 다릅니다. 상승·하락은 동시에 도달할 수 있어 합이 100%가 아닙니다.",
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+        Text("같은 과거 데이터를 개발에 재사용한 추정입니다. 새 종가가 확정되면 갱신되며, 유효기간이 지난 값은 숨깁니다.",
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 18.dp))
     }
 }

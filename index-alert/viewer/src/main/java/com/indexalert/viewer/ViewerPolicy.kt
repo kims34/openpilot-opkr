@@ -5,6 +5,34 @@ import org.json.JSONObject
 data class VerifiedForecast(val label: String, val probability: Double)
 
 object ViewerPolicy {
+    fun historical(node: JSONObject?, now: Long): List<JSONObject> {
+        val array=node?.optJSONArray("historical_forecasts") ?: return emptyList()
+        val seen=mutableSetOf<String>()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val f=array.optJSONObject(i) ?: continue
+                val symbol=f.optString("symbol");val h=f.optInt("horizon_sessions")
+                val threshold=f.optInt("threshold_percent");val direction=f.optString("direction")
+                val event="$h:$direction${threshold}_touch";val p=f.optDouble("probability",Double.NaN)
+                val evidence=f.optJSONObject("evidence") ?: continue
+                val accuracy=evidence.optDouble("accuracy_pct",Double.NaN)
+                if (symbol !in listOf("SPY","QQQ","SCHD") || h !in listOf(21,63) ||
+                    threshold !in listOf(5,10) || direction !in listOf("up","down") ||
+                    f.optString("event") != event ||
+                    f.optString("display_policy_version") != "historical-estimates-v1" ||
+                    f.opt("display_allowed") != true || f.opt("independent_confirmed") != false ||
+                    f.optString("verification_status") != "historical_estimate" ||
+                    f.optString("verification_evidence_id") != "all-touch-history-v1-20261116:$symbol:$event" ||
+                    f.optString("model_version") != "historical-volatility-touch-all-v1" ||
+                    f.optString("model_sha256") != "35d5657d55d54360a1e82cf90dab051070f3b50ee91437e0133773b4a741cda1" ||
+                    f.optLong("valid_until") <= now || f.optString("as_of").isBlank() ||
+                    f.optString("target_date").isBlank() || !p.isFinite() || p !in 0.0..100.0 ||
+                    !accuracy.isFinite() || accuracy !in 0.0..100.0 || evidence.optInt("samples") < 1 ||
+                    evidence.optString("symbol") != symbol || evidence.optString("event") != event) continue
+                if (seen.add("$symbol:$event")) add(f)
+            }
+        }
+    }
     fun quarterly(f: JSONObject?, now: Long): JSONObject? {
         f ?: return null
         val p=f.optDouble("probability", Double.NaN)
