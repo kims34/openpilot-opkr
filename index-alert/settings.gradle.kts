@@ -3,3 +3,5 @@ dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_P
 rootProject.name = "IndexAlert"
 include(":app")
 include(":preview")
+
+include(":viewer")
