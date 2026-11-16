@@ -1,0 +1,38 @@
+name: IndexAlert monthly observer production import smoke
+on:
+  push:
+    branches: [indexalert-monthly-prospective-20261116]
+    paths:
+      - monthly_prospective.py
+      - next_day_probability_v33.py
+      - production_v31.py
+      - Dockerfile
+      - .github/workflows/indexalert-monthly-observer-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  app-contract-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen existing service dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Verify actual ASGI app imports, routes, and frozen core
+        run: |
+          python - <<'PY'
+          import production_v31
+          from one_month_calibrated import estimate_probability
+          from monthly_prospective import summary
+          paths={r.path for r in production_v31.app.routes}
+          required={'/health','/status','/history/{index_id}',
+                    '/next-day-probabilities','/monthly-prospective-scores'}
+          assert required.issubset(paths),(required-paths)
+          print('MONTHLY_APP_IMPORT_ROUTES_OK',sorted(required))
+          PY
+      - name: Existing one-month probability regression
+        run: python -m unittest -v test_one_month_probability
