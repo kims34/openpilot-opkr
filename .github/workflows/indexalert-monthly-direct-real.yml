@@ -1,0 +1,30 @@
+name: IndexAlert direct 1-month historical model comparison
+on:
+  push:
+    branches: [indexalert-monthly-direct-benchmark-20261116]
+    paths:
+      - research_monthly_direct_real.py
+      - .github/workflows/indexalert-monthly-direct-real.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  per-asset-year:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [SPY, QQQ]
+        window: [recent]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install historical research-only dependencies
+        run: python -m pip install numpy==2.3.3 pandas==2.3.3 exchange-calendars==4.13.2 requests==2.32.3
+      - name: Compare exact app baseline to frozen VIX/VXN challenger, same historical dates
+        run: |
+          python -m py_compile research_monthly_direct_benchmark.py research_monthly_direct_real.py
+          python research_monthly_direct_real.py --symbol ${{ matrix.symbol }} --window ${{ matrix.window }} --days 126 --paths 1024
